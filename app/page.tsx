@@ -334,7 +334,7 @@ type Note = {
   todoItems?: { id: string; text: string; completed: boolean }[];
 };
 
-const getContrastColor = (backgroundColor: string, isDarkMode: boolean): string => {
+const getContrastColor = (backgroundColor: string): string => {
   const colorMap: Record<string, string> = {
     'yellow': 'text-gray-900',
     'red': 'text-gray-900',
@@ -360,9 +360,9 @@ const getContrastColor = (backgroundColor: string, isDarkMode: boolean): string 
   return colorMap[colorName] || 'text-gray-900';
 };
 
-const GradientPurpleBlue = ({ children, isDarkMode }: { children: React.ReactNode, isDarkMode: boolean }) => (
+const GradientPurpleBlue = ({ children }: { children: React.ReactNode }) => (
   <motion.div
-    className="h-full rounded-xl shadow-md bg-gradient-to-br from-purple-300 to-blue-300"
+    className="h-full rounded-xl bg-gradient-to-br from-purple-300 to-blue-300"
     animate={{
       backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
     }}
@@ -376,9 +376,9 @@ const GradientPurpleBlue = ({ children, isDarkMode }: { children: React.ReactNod
   </motion.div>
 );
 
-const GradientOrangeRed = ({ children, isDarkMode }: { children: React.ReactNode, isDarkMode: boolean }) => (
+const GradientOrangeRed = ({ children }: { children: React.ReactNode }) => (
   <motion.div
-    className="h-full rounded-xl shadow-md bg-gradient-to-br from-orange-300 to-red-300"
+    className="h-full rounded-xl bg-gradient-to-br from-orange-300 to-red-300"
     animate={{
       backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
     }}
@@ -392,9 +392,9 @@ const GradientOrangeRed = ({ children, isDarkMode }: { children: React.ReactNode
   </motion.div>
 );
 
-const GradientGreenBlue = ({ children, isDarkMode }: { children: React.ReactNode, isDarkMode: boolean }) => (
+const GradientGreenBlue = ({ children }: { children: React.ReactNode }) => (
   <motion.div
-    className="h-full rounded-xl shadow-md bg-gradient-to-br from-emerald-300 to-sky-300"
+    className="h-full rounded-xl bg-gradient-to-br from-emerald-300 to-sky-300"
     animate={{
       backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
     }}
@@ -408,9 +408,9 @@ const GradientGreenBlue = ({ children, isDarkMode }: { children: React.ReactNode
   </motion.div>
 );
 
-const GradientPinkPurple = ({ children, isDarkMode }: { children: React.ReactNode, isDarkMode: boolean }) => (
+const GradientPinkPurple = ({ children }: { children: React.ReactNode }) => (
   <motion.div
-    className="h-full rounded-xl shadow-md bg-gradient-to-br from-pink-300 to-purple-300"
+    className="h-full rounded-xl bg-gradient-to-br from-pink-300 to-purple-300"
     animate={{
       backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
     }}
@@ -424,17 +424,17 @@ const GradientPinkPurple = ({ children, isDarkMode }: { children: React.ReactNod
   </motion.div>
 );
 
-const NoteBackground = ({ color, children, isDarkMode }: { color: string, children: React.ReactNode, isDarkMode: boolean }) => {
+const NoteBackground = ({ color, children }: { color: string, children: React.ReactNode }) => {
   if (color === 'gradient-purple-blue') {
-    return <GradientPurpleBlue isDarkMode={isDarkMode}>{children}</GradientPurpleBlue>;
+    return <GradientPurpleBlue>{children}</GradientPurpleBlue>;
   } else if (color === 'gradient-orange-red') {
-    return <GradientOrangeRed isDarkMode={isDarkMode}>{children}</GradientOrangeRed>;
+    return <GradientOrangeRed>{children}</GradientOrangeRed>;
   } else if (color === 'gradient-green-blue') {
-    return <GradientGreenBlue isDarkMode={isDarkMode}>{children}</GradientGreenBlue>;
+    return <GradientGreenBlue>{children}</GradientGreenBlue>;
   } else if (color === 'gradient-pink-purple') {
-    return <GradientPinkPurple isDarkMode={isDarkMode}>{children}</GradientPinkPurple>;
+    return <GradientPinkPurple>{children}</GradientPinkPurple>;
   } else {
-    return <div className={`${color} h-full rounded-xl shadow-md`}>{children}</div>;
+    return <div className={`${color} h-full rounded-xl`}>{children}</div>;
   }
 };
 
@@ -594,16 +594,30 @@ function Keep() {
     setTodoItems(todoItems.filter(item => item.id !== id));
   };
 
+  const prepareContentForDisplay = (content: string): string => {
+    return content
+      .replace(/\n/g, '<br/>')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  };
+  const processContentForStorage = (content: string): string => {
+    return content.replace(/<div><br><\/div>/g, '\n').replace(/<div>/g, '').replace(/<\/div>/g, '\n');
+  };
+  
   const addNote = () => {
     if (
       (noteType === 'note' && title.trim() === '' && content.trim() === '') ||
       (noteType === 'todo' && title.trim() === '' && todoItems.every(item => item.text.trim() === ''))
     ) return;
 
+    const processedContent = noteType === 'note' 
+      ? processContentForStorage(content)
+      : '';
+
     const newNote: Note = {
       id: Date.now().toString(),
       title,
-      content: noteType === 'note' ? content : '',
+      content: processedContent,
       color,
       date: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
@@ -664,11 +678,22 @@ function Keep() {
   };
 
   const startEditingNote = (note: Note) => {
-    setEditingNote(note);
+    const noteToEdit = { ...note };
+    
+    // If it's a note type, prepare content for editing
+    if (noteToEdit.type === 'note') {
+      noteToEdit.content = prepareContentForDisplay(noteToEdit.content);
+    }
+    
+    setEditingNote(noteToEdit);
   };
 
   const updateNote = () => {
     if (!editingNote) return;
+
+    if (editingNote.type === 'note') {
+      editingNote.content = processContentForStorage(editingNote.content);
+    }
 
     const updatedNoteData = { ...editingNote };
 
@@ -752,7 +777,7 @@ function Keep() {
     <div className={`min-h-screen w-full font-vt323 transition-colors duration-300 ${isDarkMode ? 'bg-gray-950 text-gray-100' : 'bg-gray-100 text-gray-900'}`}>
       <div className="flex flex-col h-screen">
         {/* Navbar  */}
-        <header className={`sticky top-0 z-40 w-full flex items-center justify-between ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} py-2 px-4 md:px-8 shadow-md border-b transition-colors`}>
+        <header className={`sticky top-0 z-40 w-full flex items-center justify-between ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} py-2 px-4 md:px-8 border-b transition-colors`}>
           <div className="flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
               <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
@@ -761,7 +786,7 @@ function Keep() {
           </div>
           <div className="flex items-center space-x-3">
             <button
-              className={`md:hidden flex items-center justify-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-700'} shadow cursor-pointer transition-colors duration-200`}
+              className={`md:hidden flex items-center justify-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-700'} cursor-pointer transition-colors duration-200`}
               onClick={() => setShowMobileSidebar(true)}
               aria-label="Open sidebar"
             >
@@ -774,7 +799,7 @@ function Keep() {
                 type="text"
                 placeholder="Search"
                 className={`
-                    w-32 md:w-64 px-3 py-2 pl-9 rounded border transition-all duration-200 outline-none
+                    w-32 md:w-64 px-3 py-2 pl-9 rounded-full border transition-all duration-200 outline-none
                     ${isDarkMode
                     ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-400'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-500'
@@ -788,7 +813,7 @@ function Keep() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg cursor-pointer transition-colors duration-200 focus:ring focus:ring-yellow-400 ${isDarkMode ? 'bg-gray-700 text-yellow-300' : 'bg-gray-200 text-gray-900'}`}
+              className={`p-2 rounded-full cursor-pointer transition-colors duration-200 focus:ring focus:ring-yellow-400 ${isDarkMode ? 'bg-gray-700 text-yellow-300' : 'bg-gray-200 text-gray-900'}`}
               aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? (
@@ -827,13 +852,8 @@ function Keep() {
               </svg>
             </button>
 
-            <div className={`flex ${sidebarExpanded ? 'px-6 justify-between' : 'justify-center'} items-center mb-10`}>
-              <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
-                </svg>
-                {sidebarExpanded && <span className="ml-2 text-xl font-bold font-press-start text-sm">Docket</span>}
-              </div>
+            <div className={`flex ${sidebarExpanded ? 'px-6 justify-end' : 'justify-center'} items-center mb-10`}>
+              {sidebarExpanded && <span className="text-xl font-bold font-press-start text-sm mr-auto">Docket</span>}
               <button
                 onClick={() => setSidebarExpanded(!sidebarExpanded)}
                 className={`${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'} cursor-pointer`}
@@ -852,7 +872,7 @@ function Keep() {
             <div className={`mb-8 ${sidebarExpanded ? 'px-6' : 'flex justify-center'}`}>
               <button
                 onClick={() => setShowCreateNote(!showCreateNote)}
-                className={`${showCreateNote ? 'bg-yellow-500' : 'bg-yellow-400'} ${sidebarExpanded ? 'w-full' : 'w-12 h-12 rounded-full'} flex items-center justify-center shadow-md text-white transition-all duration-200 hover:bg-yellow-500 cursor-pointer`}
+                className={`${showCreateNote ? 'bg-yellow-500' : 'bg-yellow-400'} ${sidebarExpanded ? 'w-full rounded-full' : 'w-12 h-12 rounded-full'} flex items-center justify-center text-white transition-all duration-200 hover:bg-yellow-500 cursor-pointer`}
                 aria-label="Create new note"
               >
                 {sidebarExpanded ? (
@@ -882,7 +902,7 @@ function Keep() {
                           option.class === 'gradient-green-blue' ? 'bg-gradient-to-br from-emerald-300 to-sky-300' :
                             'bg-gradient-to-br from-pink-300 to-purple-300'
                       : option.class
-                      } ${sidebarExpanded ? 'w-8 h-8' : 'w-10 h-10'} rounded-full cursor-pointer shadow ${colorFilter === option.class ? 'ring-2 ring-yellow-400' : ''}`}
+                      } ${sidebarExpanded ? 'w-8 h-8' : 'w-10 h-10'} rounded-full cursor-pointer ${colorFilter === option.class ? 'ring-2 ring-yellow-400' : ''}`}
                     onClick={() => toggleColorFilter(option.class)}
                     title={option.name}
                   />
@@ -926,13 +946,13 @@ function Keep() {
 
           {/* Main Content */}
           <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden md:p-8 p-3">
-            <div className="flex items-center mb-10">
+            <div className="flex items-center mb-5">
               <div className="text-3xl font-bold font-press-start mr-auto">Notes</div>
             </div>
 
             {/* Create Note Form */}
             {showCreateNote && (
-              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-md p-4 mb-8 transition-all duration-300 animate-in fade-in`}>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 mb-8 transition-all duration-300 animate-in fade-in`}>
                 <div className={`flex mb-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <button
                     className={`py-2 px-4 font-medium font-vt323 text-lg ${noteType === 'note' ? 'text-yellow-500 border-b-2 border-yellow-500' : isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
@@ -973,6 +993,7 @@ function Keep() {
                             padding: '0.5rem'
                           }
                         }}
+                        placeholder="Description"
                       />
                     </EditorProvider>
                   </div>
@@ -1016,7 +1037,7 @@ function Keep() {
                       onClick={addTodoItem}
                       className={`mt-2 flex items-center ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'} cursor-pointer font-vt323 text-lg`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
                         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                       </svg>
                       Add Item
@@ -1059,7 +1080,7 @@ function Keep() {
                   className="relative transition-transform duration-200 ease-in-out h-full hover:scale-105"
                   onClick={() => startEditingNote(note)}
                 >
-                  <NoteBackground color={note.color} isDarkMode={isDarkMode}>
+                  <NoteBackground color={note.color}>
                     <div className="p-4 h-full text-gray-900 flex flex-col">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center pt-1 space-x-2">
@@ -1108,9 +1129,11 @@ function Keep() {
                               {note.content}
                             </pre>
                           ) : (
-                            <div className="prose prose-sm max-w-none dark:prose-invert font-vt323 text-lg" style={{ color: 'inherit' }}>
-                              <ReactMarkdown>{note.content}</ReactMarkdown>
-                            </div>
+                            <div 
+                              className="prose prose-sm max-w-none dark:prose-invert font-vt323 text-lg" 
+                              style={{ color: 'inherit' }}
+                              dangerouslySetInnerHTML={{ __html: prepareContentForDisplay(note.content) }}
+                            />
                           )
                         )}
                         {note.type === 'todo' && note.todoItems && (
@@ -1171,7 +1194,7 @@ function Keep() {
       {editingNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300">
           <div
-            className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} rounded-xl shadow-xl w-full max-w-lg z-50 transform transition-all duration-300 ease-out animate-in fade-in`}
+            className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} rounded-xl w-full max-w-lg z-50 transform transition-all duration-300 ease-out animate-in fade-in`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
@@ -1219,6 +1242,7 @@ function Keep() {
                           padding: '0.5rem'
                         }
                       }}
+                      placeholder="Description"
                     />
                   </EditorProvider>
                 </div>
@@ -1351,7 +1375,7 @@ function Keep() {
 
       {noteToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6 w-full max-w-md shadow-lg z-50 transform transition-all duration-300 ease-out animate-in fade-in`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6 w-full max-w-md z-50 transform transition-all duration-300 ease-out animate-in fade-in`}>
             <h3 className={`text-lg font-semibold mb-3 font-press-start ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Delete Note</h3>
             <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-6 font-vt323 text-lg`}>Are you sure you want to delete this note? This action cannot be undone.</p>
             <div className="flex justify-end space-x-3">
