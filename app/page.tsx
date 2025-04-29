@@ -657,7 +657,7 @@ const App = () => {
                 transition={{ duration: 0.3 }}
                 className="flex flex-col items-center justify-center h-full text-center p-6"
               >
-                <img src="/api/placeholder/180/180" alt="TeamCollab" className="mb-6 rounded-lg" />
+                <Users size={24} />
                 <h2 className="text-2xl font-bold mb-2">Welcome to TeamCollab</h2>
                 <p className={`max-w-md ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
                   Select a channel or team member to start collaborating and chatting with your team.
