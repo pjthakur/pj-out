@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { 
   MessageSquare, Users, LogOut, Plus, Send, FileText, 
-  Image as ImageIcon, Moon, Sun, ArrowLeft, Bell
+  Image as ImageIcon, Moon, Sun, ArrowLeft, Bell, Menu, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -56,12 +56,27 @@ const App = () => {
   const [notification, setNotification] = useState(false);
   const [showNewChannelForm, setShowNewChannelForm] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme) {
       setTheme(storedTheme);
     }
+  }, []);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
   
   const handleCreateChannel = () => {
@@ -176,6 +191,17 @@ const App = () => {
         className={`px-4 py-3 flex justify-between items-center ${theme === 'light' ? 'bg-indigo-600' : 'bg-indigo-900'} text-white shadow-md`}
       >
         <div className="flex items-center space-x-2">
+          {isMobile && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-2 rounded-lg"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </motion.button>
+          )}
           <Users size={24} />
           <h1 className="text-xl font-bold">TeamCollab</h1>
         </div>
@@ -199,154 +225,163 @@ const App = () => {
 
       <main className="flex flex-1 overflow-hidden">
         {/* Channels sidebar */}
-        <motion.aside 
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className={`w-64 flex flex-col ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-gray-800 border-r border-gray-700'}`}
-        >
-          <div className="p-4">
-            <h2 className="flex items-center text-lg font-semibold mb-3">
-              <MessageSquare size={18} className="mr-2" />
-              Channels
-            </h2>
-            <div className="space-y-1 mb-4 max-h-64 overflow-y-auto">
-              {channels.map((channel) => (
-                <button
-                  key={channel.id}
-                  className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
-                    selectedChannel && selectedChannel.id === channel.id
-                      ? theme === 'light' 
-                        ? 'bg-indigo-100 text-indigo-800' 
-                        : 'bg-indigo-900 text-indigo-100'
-                      : theme === 'light'
-                        ? 'hover:bg-gray-100' 
-                        : 'hover:bg-gray-700'
-                  }`}
-                  onClick={() => {
-                    setSelectedChannel(channel);
-                    setActiveDMUser(null);
-                  }}
-                >
-                  <span className="text-left truncate"># {channel.name}</span>
-                </button>
-              ))}
-            </div>
-            
-            {/* Channel form and buttons remain the same */}
-            {showNewChannelForm ? (
-              <div className="space-y-2 mb-2">
-                <input
-                  type="text"
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
-                  placeholder="Channel name"
-                  className={`w-full px-3 py-2 rounded-md text-sm ${
-                    theme === 'light' 
-                      ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
-                      : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
-                  } focus:outline-none`}
-                  autoFocus
-                />
-                <div className="flex space-x-2">
+        <AnimatePresence>
+          {(!isMobile || isMobileMenuOpen) && (
+            <motion.aside 
+              initial={isMobile ? { x: -300 } : { x: 0 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className={`w-64 flex flex-col fixed md:relative h-[calc(100vh-64px)] z-10 ${
+                theme === 'light' 
+                  ? 'bg-white border-r border-gray-200' 
+                  : 'bg-gray-800 border-r border-gray-700'
+              }`}
+            >
+              <div className="p-4">
+                <h2 className="flex items-center text-lg font-semibold mb-3">
+                  <MessageSquare size={18} className="mr-2" />
+                  Channels
+                </h2>
+                <div className="space-y-1 mb-4 max-h-64 overflow-y-auto">
+                  {channels.map((channel) => (
+                    <button
+                      key={channel.id}
+                      className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
+                        selectedChannel && selectedChannel.id === channel.id
+                          ? theme === 'light' 
+                            ? 'bg-indigo-100 text-indigo-800' 
+                            : 'bg-indigo-900 text-indigo-100'
+                          : theme === 'light'
+                            ? 'hover:bg-gray-100' 
+                            : 'hover:bg-gray-700'
+                      }`}
+                      onClick={() => {
+                        setSelectedChannel(channel);
+                        setActiveDMUser(null);
+                      }}
+                    >
+                      <span className="text-left truncate"># {channel.name}</span>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Channel form and buttons remain the same */}
+                {showNewChannelForm ? (
+                  <div className="space-y-2 mb-2">
+                    <input
+                      type="text"
+                      value={newChannelName}
+                      onChange={(e) => setNewChannelName(e.target.value)}
+                      placeholder="Channel name"
+                      className={`w-full px-3 py-2 rounded-md text-sm ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                          : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                      } focus:outline-none`}
+                      autoFocus
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                          theme === 'light' 
+                            ? 'bg-indigo-600 hover:bg-indigo-700' 
+                            : 'bg-indigo-700 hover:bg-indigo-600'
+                        } text-white transition-colors`}
+                        onClick={handleCreateChannel}
+                      >
+                        Create
+                      </button>
+                      <button
+                        className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                          theme === 'light' 
+                            ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        } transition-colors`}
+                        onClick={() => setShowNewChannelForm(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                    className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-sm ${
                       theme === 'light' 
                         ? 'bg-indigo-600 hover:bg-indigo-700' 
                         : 'bg-indigo-700 hover:bg-indigo-600'
                     } text-white transition-colors`}
-                    onClick={handleCreateChannel}
+                    onClick={() => setShowNewChannelForm(true)}
                   >
-                    Create
+                    <Plus size={16} className="mr-1" />
+                    Create Channel
                   </button>
+                )}
+                
+                {selectedChannel && (
                   <button
-                    className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                    className={`w-full flex items-center justify-center px-4 py-2 mt-2 rounded-md text-sm ${
                       theme === 'light' 
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    } transition-colors`}
-                    onClick={() => setShowNewChannelForm(false)}
+                        ? 'bg-red-500 hover:bg-red-600' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    } text-white transition-colors`}
+                    onClick={handleLeaveChannel}
                   >
-                    Cancel
+                    <LogOut size={16} className="mr-1" />
+                    Leave Channel
                   </button>
+                )}
+              </div>
+              
+              {/* Users section */}
+              <div className={`p-4 mt-auto ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-gray-700'}`}>
+                <h2 className="flex items-center text-lg font-semibold mb-3">
+                  <Users size={18} className="mr-2" />
+                  Team Members
+                </h2>
+                <div className="space-y-1">
+                  {users.map((user) => (
+                    <motion.button
+                      key={user.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
+                        activeDMUser === user.id
+                          ? theme === 'light' 
+                            ? 'bg-indigo-100 text-indigo-800' 
+                            : 'bg-indigo-900 text-indigo-100'
+                          : theme === 'light'
+                            ? 'hover:bg-gray-100' 
+                            : 'hover:bg-gray-700'
+                      }`}
+                      onClick={() => {
+                        setActiveDMUser(user.id);
+                        setSelectedChannel(null);
+                      }}
+                    >
+                      <div className="relative mr-2">
+                        <img 
+                          src={user.avatar} 
+                          alt={user.name} 
+                          className="w-6 h-6 rounded-full"
+                        />
+                        <span 
+                          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+                            user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                          } border border-white`}
+                        ></span>
+                      </div>
+                      <span className="flex-1 text-left truncate">{user.name}</span>
+                    </motion.button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <button
-                className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-sm ${
-                  theme === 'light' 
-                    ? 'bg-indigo-600 hover:bg-indigo-700' 
-                    : 'bg-indigo-700 hover:bg-indigo-600'
-                } text-white transition-colors`}
-                onClick={() => setShowNewChannelForm(true)}
-              >
-                <Plus size={16} className="mr-1" />
-                Create Channel
-              </button>
-            )}
-            
-            {selectedChannel && (
-              <button
-                className={`w-full flex items-center justify-center px-4 py-2 mt-2 rounded-md text-sm ${
-                  theme === 'light' 
-                    ? 'bg-red-500 hover:bg-red-600' 
-                    : 'bg-red-600 hover:bg-red-700'
-                } text-white transition-colors`}
-                onClick={handleLeaveChannel}
-              >
-                <LogOut size={16} className="mr-1" />
-                Leave Channel
-              </button>
-            )}
-          </div>
-          
-          {/* Users section */}
-          <div className={`p-4 mt-auto ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-gray-700'}`}>
-            <h2 className="flex items-center text-lg font-semibold mb-3">
-              <Users size={18} className="mr-2" />
-              Team Members
-            </h2>
-            <div className="space-y-1">
-              {users.map((user) => (
-                <motion.button
-                  key={user.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
-                    activeDMUser === user.id
-                      ? theme === 'light' 
-                        ? 'bg-indigo-100 text-indigo-800' 
-                        : 'bg-indigo-900 text-indigo-100'
-                      : theme === 'light'
-                        ? 'hover:bg-gray-100' 
-                        : 'hover:bg-gray-700'
-                  }`}
-                  onClick={() => {
-                    setActiveDMUser(user.id);
-                    setSelectedChannel(null);
-                  }}
-                >
-                  <div className="relative mr-2">
-                    <img 
-                      src={user.avatar} 
-                      alt={user.name} 
-                      className="w-6 h-6 rounded-full"
-                    />
-                    <span 
-                      className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
-                        user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                      } border border-white`}
-                    ></span>
-                  </div>
-                  <span className="flex-1 text-left truncate">{user.name}</span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </motion.aside>
+            </motion.aside>
+          )}
+        </AnimatePresence>
         
         {/* Main chat area */}
-        <section className="flex-1 flex flex-col">
+        <section className={`flex-1 flex flex-col ${isMobile && isMobileMenuOpen ? 'opacity-50' : ''}`}>
           <AnimatePresence mode="wait">
             {selectedChannel ? (
               <motion.div
@@ -405,26 +440,30 @@ const App = () => {
                   )}
                 </div>
                 
-                <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                <div className={`p-4 ${
+                  theme === 'light' 
+                    ? 'bg-white border-t border-gray-200' 
+                    : 'bg-gray-800 border-t border-gray-700'
+                }`}>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      className={`flex-1 px-4 py-2 rounded-md ${
+                      className={`flex-1 px-4 py-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
-                          : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                          ? 'bg-transparent border border-gray-200 focus:border-indigo-500' 
+                          : 'bg-transparent border border-gray-700 focus:border-indigo-500'
                       } focus:outline-none transition-colors`}
                       placeholder="Type a message..."
                     />
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className={`p-2 rounded-md ${
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                       } transition-colors`}
                       onClick={handleShareFile}
@@ -435,9 +474,9 @@ const App = () => {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className={`p-2 rounded-md ${
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                       } transition-colors`}
                       onClick={handleShareImage}
@@ -448,7 +487,7 @@ const App = () => {
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className={`p-2 rounded-md ${
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
                           ? 'bg-indigo-600 hover:bg-indigo-700' 
                           : 'bg-indigo-700 hover:bg-indigo-600'
@@ -549,44 +588,54 @@ const App = () => {
                   )}
                 </div>
                 
-                <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                <div className={`p-4 ${
+                  theme === 'light' 
+                    ? 'bg-white border-t border-gray-200' 
+                    : 'bg-gray-800 border-t border-gray-700'
+                }`}>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={newDirectMessage}
                       onChange={(e) => setNewDirectMessage(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleSendDirectMessage()}
-                      className={`flex-1 px-4 py-2 rounded-md ${
+                      className={`flex-1 px-4 py-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
-                          : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                          ? 'bg-transparent border border-gray-200 focus:border-indigo-500' 
+                          : 'bg-transparent border border-gray-700 focus:border-indigo-500'
                       } focus:outline-none transition-colors`}
                       placeholder="Type a message..."
                     />
-                    <button
-                      className={`p-2 rounded-md ${
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                       } transition-colors`}
                       onClick={handleShareFile}
                       aria-label="Share File"
                     >
                       <FileText size={20} />
-                    </button>
-                    <button
-                      className={`p-2 rounded-md ${
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
-                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                       } transition-colors`}
                       onClick={handleShareImage}
                       aria-label="Share Image"
                     >
                       <ImageIcon size={20} />
-                    </button>
-                    <button
-                      className={`p-2 rounded-md ${
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-lg ${
                         theme === 'light' 
                           ? 'bg-indigo-600 hover:bg-indigo-700' 
                           : 'bg-indigo-700 hover:bg-indigo-600'
@@ -595,7 +644,7 @@ const App = () => {
                       aria-label="Send Message"
                     >
                       <Send size={20} />
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>
