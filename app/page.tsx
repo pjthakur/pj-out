@@ -4,6 +4,7 @@ import {
   MessageSquare, Users, LogOut, Plus, Send, FileText, 
   Image as ImageIcon, Moon, Sun, ArrowLeft, Bell
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Channel {
   id: number;
@@ -161,9 +162,19 @@ const App = () => {
   };
 
   return (
-    <div className={`h-screen flex flex-col ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-gray-900 text-gray-100'}`}>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className={`h-screen flex flex-col ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-gray-900 text-gray-100'}`}
+    >
       {/* Header */}
-      <header className={`px-4 py-3 flex justify-between items-center ${theme === 'light' ? 'bg-indigo-600' : 'bg-indigo-900'} text-white shadow-md`}>
+      <motion.header 
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`px-4 py-3 flex justify-between items-center ${theme === 'light' ? 'bg-indigo-600' : 'bg-indigo-900'} text-white shadow-md`}
+      >
         <div className="flex items-center space-x-2">
           <Users size={24} />
           <h1 className="text-xl font-bold">TeamCollab</h1>
@@ -184,12 +195,16 @@ const App = () => {
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
         </div>
-      </header>
+      </motion.header>
 
-      {/* Rest of the component remains the same */}
       <main className="flex flex-1 overflow-hidden">
         {/* Channels sidebar */}
-        <aside className={`w-64 flex flex-col ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-gray-800 border-r border-gray-700'}`}>
+        <motion.aside 
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className={`w-64 flex flex-col ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-gray-800 border-r border-gray-700'}`}
+        >
           <div className="p-4">
             <h2 className="flex items-center text-lg font-semibold mb-3">
               <MessageSquare size={18} className="mr-2" />
@@ -293,8 +308,10 @@ const App = () => {
             </h2>
             <div className="space-y-1">
               {users.map((user) => (
-                <button
+                <motion.button
                   key={user.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
                     activeDMUser === user.id
                       ? theme === 'light' 
@@ -322,223 +339,266 @@ const App = () => {
                     ></span>
                   </div>
                   <span className="flex-1 text-left truncate">{user.name}</span>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
-        </aside>
+        </motion.aside>
         
         {/* Main chat area */}
         <section className="flex-1 flex flex-col">
-          {selectedChannel ? (
-            <>
-              <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
-                <h2 className="text-lg font-semibold">
-                  # {selectedChannel.name}
-                </h2>
-              </div>
-              
-              <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
-                {channelMessages[selectedChannel.id] && channelMessages[selectedChannel.id].length > 0 ? (
-                  <div className="space-y-4">
-                    {channelMessages[selectedChannel.id].map((message, index) => (
-                      <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
-                        <div className={`max-w-lg px-4 py-2 rounded-lg ${
-                          message.userId === 1
-                            ? theme === 'light' 
-                              ? 'bg-indigo-100 text-indigo-900' 
-                              : 'bg-indigo-900 text-indigo-100'
-                            : theme === 'light'
-                              ? 'bg-gray-200 text-gray-900' 
-                              : 'bg-gray-800 text-gray-100'
-                        }`}>
-                          <p>{message.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
-                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet in this channel.</p>
-                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Be the first to send a message!</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className={`flex-1 px-4 py-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
-                        : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
-                    } focus:outline-none transition-colors`}
-                    placeholder="Type a message..."
-                  />
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    } transition-colors`}
-                    onClick={handleShareFile}
-                    aria-label="Share File"
-                  >
-                    <FileText size={20} />
-                  </button>
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    } transition-colors`}
-                    onClick={handleShareImage}
-                    aria-label="Share Image"
-                  >
-                    <ImageIcon size={20} />
-                  </button>
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-indigo-600 hover:bg-indigo-700' 
-                        : 'bg-indigo-700 hover:bg-indigo-600'
-                    } text-white transition-colors`}
-                    onClick={handleSendMessage}
-                    aria-label="Send Message"
-                  >
-                    <Send size={20} />
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : activeDMUser !== null ? (
-            <>
-              <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
-                <button 
-                  className={`mr-2 p-1 rounded-md ${
-                    theme === 'light' 
-                      ? 'hover:bg-gray-200 text-gray-600' 
-                      : 'hover:bg-gray-700 text-gray-300'
-                  } transition-colors`}
-                  onClick={() => setActiveDMUser(null)}
-                  aria-label="Back to users"
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <div className="flex items-center">
-                  <div className="relative mr-2">
-                    <img 
-                      src={users.find(u => u.id === activeDMUser)?.avatar} 
-                      alt={users.find(u => u.id === activeDMUser)?.name} 
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <span 
-                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
-                        users.find(u => u.id === activeDMUser)?.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                      } border border-white`}
-                    ></span>
-                  </div>
+          <AnimatePresence mode="wait">
+            {selectedChannel ? (
+              <motion.div
+                key="channel"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="flex-1 flex flex-col"
+              >
+                <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
                   <h2 className="text-lg font-semibold">
-                    {users.find(u => u.id === activeDMUser)?.name}
+                    # {selectedChannel.name}
                   </h2>
                 </div>
-              </div>
-              
-              <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
-                {directMessages[activeDMUser] && directMessages[activeDMUser].length > 0 ? (
-                  <div className="space-y-4">
-                    {directMessages[activeDMUser].map((message, index) => (
-                      <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
-                        <div className={`max-w-lg px-4 py-2 rounded-lg ${
-                          message.userId === 1
-                            ? theme === 'light' 
-                              ? 'bg-indigo-100 text-indigo-900' 
-                              : 'bg-indigo-900 text-indigo-100'
-                            : theme === 'light'
-                              ? 'bg-gray-200 text-gray-900' 
-                              : 'bg-gray-800 text-gray-100'
-                        }`}>
-                          <p>{message.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
-                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet.</p>
-                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Start a conversation!</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newDirectMessage}
-                    onChange={(e) => setNewDirectMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendDirectMessage()}
-                    className={`flex-1 px-4 py-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
-                        : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
-                    } focus:outline-none transition-colors`}
-                    placeholder="Type a message..."
-                  />
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    } transition-colors`}
-                    onClick={handleShareFile}
-                    aria-label="Share File"
-                  >
-                    <FileText size={20} />
-                  </button>
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    } transition-colors`}
-                    onClick={handleShareImage}
-                    aria-label="Share Image"
-                  >
-                    <ImageIcon size={20} />
-                  </button>
-                  <button
-                    className={`p-2 rounded-md ${
-                      theme === 'light' 
-                        ? 'bg-indigo-600 hover:bg-indigo-700' 
-                        : 'bg-indigo-700 hover:bg-indigo-600'
-                    } text-white transition-colors`}
-                    onClick={handleSendDirectMessage}
-                    aria-label="Send Message"
-                  >
-                    <Send size={20} />
-                  </button>
+                
+                <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
+                  {channelMessages[selectedChannel.id] && channelMessages[selectedChannel.id].length > 0 ? (
+                    <div className="space-y-4">
+                      {channelMessages[selectedChannel.id].map((message, index) => (
+                        <motion.div 
+                          key={index} 
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}
+                        >
+                          <motion.div 
+                            whileHover={{ scale: 1.02 }}
+                            className={`max-w-lg px-4 py-2 rounded-lg ${
+                              message.userId === 1
+                                ? theme === 'light' 
+                                  ? 'bg-indigo-100 text-indigo-900' 
+                                  : 'bg-indigo-900 text-indigo-100'
+                                : theme === 'light'
+                                  ? 'bg-gray-200 text-gray-900' 
+                                  : 'bg-gray-800 text-gray-100'
+                            }`}
+                          >
+                            <p>{message.text}</p>
+                          </motion.div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="flex flex-col items-center justify-center h-full text-center"
+                    >
+                      <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
+                      <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet in this channel.</p>
+                      <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Be the first to send a message!</p>
+                    </motion.div>
+                  )}
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <img src="/api/placeholder/180/180" alt="TeamCollab" className="mb-6 rounded-lg" />
-              <h2 className="text-2xl font-bold mb-2">Welcome to TeamCollab</h2>
-              <p className={`max-w-md ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Select a channel or team member to start collaborating and chatting with your team.
-              </p>
-            </div>
-          )}
+                
+                <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      className={`flex-1 px-4 py-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                          : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                      } focus:outline-none transition-colors`}
+                      placeholder="Type a message..."
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      } transition-colors`}
+                      onClick={handleShareFile}
+                      aria-label="Share File"
+                    >
+                      <FileText size={20} />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      } transition-colors`}
+                      onClick={handleShareImage}
+                      aria-label="Share Image"
+                    >
+                      <ImageIcon size={20} />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-indigo-600 hover:bg-indigo-700' 
+                          : 'bg-indigo-700 hover:bg-indigo-600'
+                      } text-white transition-colors`}
+                      onClick={handleSendMessage}
+                      aria-label="Send Message"
+                    >
+                      <Send size={20} />
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : activeDMUser !== null ? (
+              <motion.div
+                key="dm"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="flex-1 flex flex-col"
+              >
+                <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
+                  <button 
+                    className={`mr-2 p-1 rounded-md ${
+                      theme === 'light' 
+                        ? 'hover:bg-gray-200 text-gray-600' 
+                        : 'hover:bg-gray-700 text-gray-300'
+                    } transition-colors`}
+                    onClick={() => setActiveDMUser(null)}
+                    aria-label="Back to users"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div className="flex items-center">
+                    <div className="relative mr-2">
+                      <img 
+                        src={users.find(u => u.id === activeDMUser)?.avatar} 
+                        alt={users.find(u => u.id === activeDMUser)?.name} 
+                        className="w-8 h-8 rounded-full"
+                      />
+                      <span 
+                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
+                          users.find(u => u.id === activeDMUser)?.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                        } border border-white`}
+                      ></span>
+                    </div>
+                    <h2 className="text-lg font-semibold">
+                      {users.find(u => u.id === activeDMUser)?.name}
+                    </h2>
+                  </div>
+                </div>
+                
+                <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
+                  {directMessages[activeDMUser] && directMessages[activeDMUser].length > 0 ? (
+                    <div className="space-y-4">
+                      {directMessages[activeDMUser].map((message, index) => (
+                        <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
+                          <div className={`max-w-lg px-4 py-2 rounded-lg ${
+                            message.userId === 1
+                              ? theme === 'light' 
+                                ? 'bg-indigo-100 text-indigo-900' 
+                                : 'bg-indigo-900 text-indigo-100'
+                              : theme === 'light'
+                                ? 'bg-gray-200 text-gray-900' 
+                                : 'bg-gray-800 text-gray-100'
+                          }`}>
+                            <p>{message.text}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
+                      <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet.</p>
+                      <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Start a conversation!</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newDirectMessage}
+                      onChange={(e) => setNewDirectMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendDirectMessage()}
+                      className={`flex-1 px-4 py-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                          : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                      } focus:outline-none transition-colors`}
+                      placeholder="Type a message..."
+                    />
+                    <button
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      } transition-colors`}
+                      onClick={handleShareFile}
+                      aria-label="Share File"
+                    >
+                      <FileText size={20} />
+                    </button>
+                    <button
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      } transition-colors`}
+                      onClick={handleShareImage}
+                      aria-label="Share Image"
+                    >
+                      <ImageIcon size={20} />
+                    </button>
+                    <button
+                      className={`p-2 rounded-md ${
+                        theme === 'light' 
+                          ? 'bg-indigo-600 hover:bg-indigo-700' 
+                          : 'bg-indigo-700 hover:bg-indigo-600'
+                      } text-white transition-colors`}
+                      onClick={handleSendDirectMessage}
+                      aria-label="Send Message"
+                    >
+                      <Send size={20} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="welcome"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center h-full text-center p-6"
+              >
+                <img src="/api/placeholder/180/180" alt="TeamCollab" className="mb-6 rounded-lg" />
+                <h2 className="text-2xl font-bold mb-2">Welcome to TeamCollab</h2>
+                <p className={`max-w-md ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                  Select a channel or team member to start collaborating and chatting with your team.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
       </main>
-    </div>
+    </motion.div>
   );
 };
 
