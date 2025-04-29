@@ -401,12 +401,22 @@ export default function Dashboard() {
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                         color: mode === 'dark' ? '#fff' : '#000',
                       }}
+                      labelStyle={{
+                        color: mode === 'dark' ? '#fff' : '#000',
+                      }}
+                      itemStyle={{
+                        color: mode === 'dark' ? '#fff' : '#000',
+                      }}
+                      formatter={(value: number, name: string) => [`${value}`, name]}
                     />
                     <Legend
                       wrapperStyle={{
                         paddingTop: '20px',
                         color: mode === 'dark' ? '#fff' : '#000',
                       }}
+                      formatter={(value: string) => (
+                        <span style={{ color: mode === 'dark' ? '#fff' : '#000' }}>{value}</span>
+                      )}
                     />
                   </PieChart>
                 )}
