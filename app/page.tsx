@@ -1,243 +1,545 @@
 "use client";
+import { useState, useEffect } from 'react';
+import { 
+  MessageSquare, Users, LogOut, Plus, Send, FileText, 
+  Image as ImageIcon, Moon, Sun, ArrowLeft, Bell
+} from 'lucide-react';
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-
-type Artwork = {
+interface Channel {
   id: number;
-  title: string;
-  category: string;
-  image: string;
-};
+  name: string;
+}
 
-export default function FamilyArtGallery() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+interface Message {
+  text: string;
+  userId: number;
+}
 
-  const gameArt = [
-    { 
-      id: 1, 
-      title: "Dragon Adventure", 
-      category: "fantasy", 
-      image: "https://images.unsplash.com/photo-1608889825205-eebdb9fc5806?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 2, 
-      title: "Animal Puzzle", 
-      category: "puzzle", 
-      image: "https://images.unsplash.com/photo-1637858868799-7f26a0640eb6?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 3, 
-      title: "Space Explorers", 
-      category: "sci-fi", 
-      image: "https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 4, 
-      title: "Jungle Quest", 
-      category: "adventure", 
-      image: "https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 5, 
-      title: "Fairy Garden", 
-      category: "fantasy", 
-      image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 6, 
-      title: "Dinosaur Park", 
-      category: "adventure", 
-      image: "https://images.unsplash.com/photo-1633876204719-dd74580764ea?q=80&w=3150&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-    },
-    { 
-      id: 7, 
-      title: "Robot City", 
-      category: "sci-fi", 
-      image: "https://images.unsplash.com/photo-1589254065878-42c9da997008?w=500&auto=format&fit=crop&q=60" 
-    },
-    { 
-      id: 8, 
-      title: "Treasure Hunt", 
-      category: "puzzle", 
-      image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60" 
-    }
-  ];
+interface User {
+  id: number;
+  name: string;
+  status: 'online' | 'offline';
+  avatar: string;
+}
 
+const App = () => {
+  const [channels, setChannels] = useState<Channel[]>([
+    { id: 1, name: 'Project 1' },
+    { id: 2, name: 'Project 2' },
+  ]);
+  
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(channels[0] || null); 
+  
+  const [channelMessages, setChannelMessages] = useState<{ [key: number]: Message[] }>({
+    1: [{text: "Welcome to Project 1!", userId: 0}],
+    2: [{text: "Welcome to Project 2!", userId: 0}],
+  });
+  
+  const [newMessage, setNewMessage] = useState('');
+  const [newDirectMessage, setNewDirectMessage] = useState('');
+  
+  const [directMessages, setDirectMessages] = useState<{ [key: number]: Message[] }>({
+    1: [{text: "Hey there!", userId: 1}],
+    2: [],
+  });
+  
+  const [activeDMUser, setActiveDMUser] = useState<number | null>(null);
+  
+  const [users, setUsers] = useState<User[]>([
+    { id: 1, name: 'John Doe', status: 'online', avatar: '/api/placeholder/32/32' },
+    { id: 2, name: 'Jane Smith', status: 'offline', avatar: '/api/placeholder/32/32' },
+    { id: 3, name: 'Mike Johnson', status: 'online', avatar: '/api/placeholder/32/32' },
+  ]);
+  
+  const [theme, setTheme] = useState('light');
+  const [notification, setNotification] = useState(false);
+  const [showNewChannelForm, setShowNewChannelForm] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  
   useEffect(() => {
-    setTimeout(() => {
-      setArtworks(gameArt);
-      setIsLoading(false);
-    }, 800);
-
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setDarkMode(true);
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme) {
+      setTheme(storedTheme);
     }
   }, []);
-
+  
+  const handleCreateChannel = () => {
+    if (!newChannelName.trim()) return;
+    
+    const newChannel = { id: channels.length + 1, name: newChannelName };
+    setChannels([...channels, newChannel]);
+    setChannelMessages({ ...channelMessages, [newChannel.id]: [] });
+    setNewChannelName('');
+    setShowNewChannelForm(false);
+  };
+  
+  const handleLeaveChannel = () => {
+    if (!selectedChannel) return;
+    const updatedChannels = channels.filter(channel => channel.id !== selectedChannel.id);
+    setChannels(updatedChannels);
+    
+    const updatedMessages = { ...channelMessages };
+    delete updatedMessages[selectedChannel.id];
+    setChannelMessages(updatedMessages);
+    
+    setSelectedChannel(updatedChannels.length > 0 ? updatedChannels[0] : null);
+  };
+  
+  const handleSendMessage = () => {
+    if (!selectedChannel || !newMessage.trim() || activeDMUser !== null) return;
+    const message = { text: newMessage, userId: 1 };
+    const updatedChannelMsgs = [...(channelMessages[selectedChannel.id] || []), message];
+    setChannelMessages({ ...channelMessages, [selectedChannel.id]: updatedChannelMsgs });
+    setNewMessage('');
+    setNotification(true);
+    setTimeout(() => setNotification(false), 2000);
+  };
+  
+  const handleSendDirectMessage = () => {
+    if (activeDMUser === null || !newDirectMessage.trim()) return;
+    const message = { text: newDirectMessage, userId: 1 };
+    const updatedDMs = directMessages[activeDMUser]
+      ? [...directMessages[activeDMUser], message]
+      : [message];
+    setDirectMessages({ ...directMessages, [activeDMUser]: updatedDMs });
+    setNewDirectMessage('');
+  };
+  
   useEffect(() => {
-    document.body.style.backgroundColor = darkMode ? "#1a1a2e" : "#f8f9fa";
-    document.body.style.color = darkMode ? "#f0f0f0" : "#333333";
-  }, [darkMode]);
-
-  const filteredArt = selectedCategory === "all" 
-    ? artworks 
-    : artworks.filter(art => art.category === selectedCategory);
+    if (activeDMUser !== null) {
+      setNotification(false);
+    }
+  }, [activeDMUser]);
+  
+  const handleShareFile = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const message = { text: `File: ${file.name}`, userId: 1 };
+        if (activeDMUser !== null) {
+          const updatedDMs = directMessages[activeDMUser]
+            ? [...directMessages[activeDMUser], message]
+            : [message];
+          setDirectMessages({ ...directMessages, [activeDMUser]: updatedDMs });
+        } else if (selectedChannel) {
+          const updatedChannelMsgs = [...(channelMessages[selectedChannel.id] || []), message];
+          setChannelMessages({ ...channelMessages, [selectedChannel.id]: updatedChannelMsgs });
+        }
+      }
+    };
+    fileInput.click();
+  };
+  
+  const handleShareImage = () => {
+    const imageInput = document.createElement('input');
+    imageInput.type = 'file';
+    imageInput.accept = 'image/*';
+    imageInput.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const message = { text: `Image: ${file.name}`, userId: 1 };
+        if (activeDMUser !== null) {
+          const updatedDMs = directMessages[activeDMUser]
+            ? [...directMessages[activeDMUser], message]
+            : [message];
+          setDirectMessages({ ...directMessages, [activeDMUser]: updatedDMs });
+        } else if (selectedChannel) {
+          const updatedChannelMsgs = [...(channelMessages[selectedChannel.id] || []), message];
+          setChannelMessages({ ...channelMessages, [selectedChannel.id]: updatedChannelMsgs });
+        }
+      }
+    };
+    imageInput.click();
+  };
+  
+  const handleThemeSwitch = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   return (
-    <div className={`min-h-screen p-5 max-w-7xl mx-auto transition-all duration-300 ${darkMode ? "bg-[#1a1a2e] text-[#f0f0f0]" : "bg-[#f5f7fa] text-[#22223b]"}`}>
-      <header className={`relative flex flex-row items-center justify-between gap-3 mb-8 flex-wrap ${darkMode ? "bg-transparent" : "bg-[#e3eafc]"} rounded-xl px-4 py-3`}>
-        <h1 className={`min-w-0 truncate font-['Comic_Sans_MS'] text-xl sm:text-3xl md:text-4xl ${darkMode ? "text-[#ff9e00]" : "text-[#ff8800]"} mr-12 sm:mr-0`}>🎨 Family Games Illustrations</h1>
-        <button 
-          className={`${darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]"} h-9 w-9 sm:h-auto sm:w-auto rounded-full flex justify-center items-center gap-2 font-bold transition-all duration-200 hover:scale-105 shrink-0 absolute right-4 top-1/2 -translate-y-1/2 z-10 sm:static sm:right-auto sm:top-auto sm:translate-y-0 p-3`}
-          onClick={() => setDarkMode(!darkMode)}
-        >
-          <span className="block sm:hidden text-xl">{darkMode ? "☀️" : "🌙"}</span>
-          <span className="hidden sm:block">{darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}</span>
-        </button>
+    <div className={`h-screen flex flex-col ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-gray-900 text-gray-100'}`}>
+      {/* Header */}
+      <header className={`px-4 py-3 flex justify-between items-center ${theme === 'light' ? 'bg-indigo-600' : 'bg-indigo-900'} text-white shadow-md`}>
+        <div className="flex items-center space-x-2">
+          <Users size={24} />
+          <h1 className="text-xl font-bold">TeamCollab</h1>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          {notification && (
+            <div className="flex items-center text-sm">
+              <Bell size={16} className="mr-1 text-yellow-300" />
+              <span>New message!</span>
+            </div>
+          )}
+          <button
+            className={`p-2 rounded-full ${theme === 'light' ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-indigo-800 hover:bg-indigo-700'} transition-colors`}
+            onClick={handleThemeSwitch}
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+        </div>
       </header>
 
-      <div className="flex gap-2.5 mb-5 overflow-x-auto pb-2.5 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent">
-        <button 
-          className={`${selectedCategory === "all" ? (darkMode ? "bg-[#ff9e00] text-white" : "bg-[#2563eb] text-white") : (darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]")} px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 font-medium`}
-          onClick={() => setSelectedCategory("all")}
-        >
-          All Games
-        </button>
-        <button 
-          className={`${selectedCategory === "fantasy" ? (darkMode ? "bg-[#ff9e00] text-white" : "bg-[#2563eb] text-white") : (darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]")} px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 font-medium`}
-          onClick={() => setSelectedCategory("fantasy")}
-        >
-          Fantasy
-        </button>
-        <button 
-          className={`${selectedCategory === "adventure" ? (darkMode ? "bg-[#ff9e00] text-white" : "bg-[#2563eb] text-white") : (darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]")} px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 font-medium`}
-          onClick={() => setSelectedCategory("adventure")}
-        >
-          Adventure
-        </button>
-        <button 
-          className={`${selectedCategory === "puzzle" ? (darkMode ? "bg-[#ff9e00] text-white" : "bg-[#2563eb] text-white") : (darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]")} px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 font-medium`}
-          onClick={() => setSelectedCategory("puzzle")}
-        >
-          Puzzle
-        </button>
-        <button 
-          className={`${selectedCategory === "sci-fi" ? (darkMode ? "bg-[#ff9e00] text-white" : "bg-[#2563eb] text-white") : (darkMode ? "bg-gray-800 text-white" : "bg-[#f1f5f9] text-[#2563eb]")} px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 font-medium`}
-          onClick={() => setSelectedCategory("sci-fi")}
-        >
-          Sci-Fi
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className={`flex justify-center items-center h-48 text-lg ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-          Loading family-friendly artwork...
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {filteredArt.map(art => (
-            <div 
-              key={art.id} 
-              className={`${darkMode ? "bg-[#16213e] text-white" : "bg-white text-[#22223b]"} rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer`} 
-              onClick={() => setSelectedArtwork(art)}
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img 
-                  src={art.image} 
-                  alt={art.title} 
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = `data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='200' viewBox='0 0 250 200'%3E%3Crect fill='%23${darkMode ? "2d3748" : "e2e8f0"}' width='250' height='200'/%3E%3Ctext fill='%23${darkMode ? "718096" : "a0aec0"}' font-family='sans-serif' font-size='16' dy='.3em' text-anchor='middle' x='125' y='100'%3E${art.title}%3C/text%3E%3C/svg%3E`;
+      {/* Rest of the component remains the same */}
+      <main className="flex flex-1 overflow-hidden">
+        {/* Channels sidebar */}
+        <aside className={`w-64 flex flex-col ${theme === 'light' ? 'bg-white border-r border-gray-200' : 'bg-gray-800 border-r border-gray-700'}`}>
+          <div className="p-4">
+            <h2 className="flex items-center text-lg font-semibold mb-3">
+              <MessageSquare size={18} className="mr-2" />
+              Channels
+            </h2>
+            <div className="space-y-1 mb-4 max-h-64 overflow-y-auto">
+              {channels.map((channel) => (
+                <button
+                  key={channel.id}
+                  className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
+                    selectedChannel && selectedChannel.id === channel.id
+                      ? theme === 'light' 
+                        ? 'bg-indigo-100 text-indigo-800' 
+                        : 'bg-indigo-900 text-indigo-100'
+                      : theme === 'light'
+                        ? 'hover:bg-gray-100' 
+                        : 'hover:bg-gray-700'
+                  }`}
+                  onClick={() => {
+                    setSelectedChannel(channel);
+                    setActiveDMUser(null);
                   }}
-                />
-              </div>
-              <div className="p-4">
-                <h3 className={`font-semibold mb-1 ${darkMode ? "text-white" : "text-[#22223b]"}`}>{art.title}</h3>
-                <p className={`text-sm capitalize ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{art.category}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <AnimatePresence>
-        {selectedArtwork && (
-          <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-            onClick={() => setSelectedArtwork(null)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className={`${darkMode ? "bg-[#16213e]" : "bg-white"} rounded-lg p-6 max-w-2xl w-full mx-4 relative`}
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            >
-              <div className="relative">
-                <button 
-                  className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center ${darkMode ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"} transition-all duration-200 hover:scale-110 z-10`}
-                  onClick={() => setSelectedArtwork(null)}
                 >
-                  <span className="text-lg">✕</span>
+                  <span className="text-left truncate"># {channel.name}</span>
                 </button>
-                <img 
-                  src={selectedArtwork.image} 
-                  alt={selectedArtwork.title} 
-                  className="w-full h-96 object-cover rounded-lg mb-4 transition-transform duration-300 hover:scale-105"
+              ))}
+            </div>
+            
+            {/* Channel form and buttons remain the same */}
+            {showNewChannelForm ? (
+              <div className="space-y-2 mb-2">
+                <input
+                  type="text"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Channel name"
+                  className={`w-full px-3 py-2 rounded-md text-sm ${
+                    theme === 'light' 
+                      ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                      : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                  } focus:outline-none`}
+                  autoFocus
                 />
+                <div className="flex space-x-2">
+                  <button
+                    className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                      theme === 'light' 
+                        ? 'bg-indigo-600 hover:bg-indigo-700' 
+                        : 'bg-indigo-700 hover:bg-indigo-600'
+                    } text-white transition-colors`}
+                    onClick={handleCreateChannel}
+                  >
+                    Create
+                  </button>
+                  <button
+                    className={`flex-1 flex items-center justify-center px-3 py-1.5 rounded-md text-sm ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    } transition-colors`}
+                    onClick={() => setShowNewChannelForm(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <h2 className={`${darkMode ? "text-white" : "text-gray-800"} text-2xl font-bold mb-2`}>
-                {selectedArtwork.title}
-              </h2>
-              <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-lg capitalize`}>
-                {selectedArtwork.category}
+            ) : (
+              <button
+                className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-sm ${
+                  theme === 'light' 
+                    ? 'bg-indigo-600 hover:bg-indigo-700' 
+                    : 'bg-indigo-700 hover:bg-indigo-600'
+                } text-white transition-colors`}
+                onClick={() => setShowNewChannelForm(true)}
+              >
+                <Plus size={16} className="mr-1" />
+                Create Channel
+              </button>
+            )}
+            
+            {selectedChannel && (
+              <button
+                className={`w-full flex items-center justify-center px-4 py-2 mt-2 rounded-md text-sm ${
+                  theme === 'light' 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : 'bg-red-600 hover:bg-red-700'
+                } text-white transition-colors`}
+                onClick={handleLeaveChannel}
+              >
+                <LogOut size={16} className="mr-1" />
+                Leave Channel
+              </button>
+            )}
+          </div>
+          
+          {/* Users section */}
+          <div className={`p-4 mt-auto ${theme === 'light' ? 'border-t border-gray-200' : 'border-t border-gray-700'}`}>
+            <h2 className="flex items-center text-lg font-semibold mb-3">
+              <Users size={18} className="mr-2" />
+              Team Members
+            </h2>
+            <div className="space-y-1">
+              {users.map((user) => (
+                <button
+                  key={user.id}
+                  className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
+                    activeDMUser === user.id
+                      ? theme === 'light' 
+                        ? 'bg-indigo-100 text-indigo-800' 
+                        : 'bg-indigo-900 text-indigo-100'
+                      : theme === 'light'
+                        ? 'hover:bg-gray-100' 
+                        : 'hover:bg-gray-700'
+                  }`}
+                  onClick={() => {
+                    setActiveDMUser(user.id);
+                    setSelectedChannel(null);
+                  }}
+                >
+                  <div className="relative mr-2">
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name} 
+                      className="w-6 h-6 rounded-full"
+                    />
+                    <span 
+                      className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+                        user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      } border border-white`}
+                    ></span>
+                  </div>
+                  <span className="flex-1 text-left truncate">{user.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+        
+        {/* Main chat area */}
+        <section className="flex-1 flex flex-col">
+          {selectedChannel ? (
+            <>
+              <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
+                <h2 className="text-lg font-semibold">
+                  # {selectedChannel.name}
+                </h2>
+              </div>
+              
+              <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
+                {channelMessages[selectedChannel.id] && channelMessages[selectedChannel.id].length > 0 ? (
+                  <div className="space-y-4">
+                    {channelMessages[selectedChannel.id].map((message, index) => (
+                      <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
+                        <div className={`max-w-lg px-4 py-2 rounded-lg ${
+                          message.userId === 1
+                            ? theme === 'light' 
+                              ? 'bg-indigo-100 text-indigo-900' 
+                              : 'bg-indigo-900 text-indigo-100'
+                            : theme === 'light'
+                              ? 'bg-gray-200 text-gray-900' 
+                              : 'bg-gray-800 text-gray-100'
+                        }`}>
+                          <p>{message.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
+                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet in this channel.</p>
+                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Be the first to send a message!</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    className={`flex-1 px-4 py-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                        : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                    } focus:outline-none transition-colors`}
+                    placeholder="Type a message..."
+                  />
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    } transition-colors`}
+                    onClick={handleShareFile}
+                    aria-label="Share File"
+                  >
+                    <FileText size={20} />
+                  </button>
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    } transition-colors`}
+                    onClick={handleShareImage}
+                    aria-label="Share Image"
+                  >
+                    <ImageIcon size={20} />
+                  </button>
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-indigo-600 hover:bg-indigo-700' 
+                        : 'bg-indigo-700 hover:bg-indigo-600'
+                    } text-white transition-colors`}
+                    onClick={handleSendMessage}
+                    aria-label="Send Message"
+                  >
+                    <Send size={20} />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : activeDMUser !== null ? (
+            <>
+              <div className={`flex items-center px-6 py-3 ${theme === 'light' ? 'bg-white border-b border-gray-200' : 'bg-gray-800 border-b border-gray-700'}`}>
+                <button 
+                  className={`mr-2 p-1 rounded-md ${
+                    theme === 'light' 
+                      ? 'hover:bg-gray-200 text-gray-600' 
+                      : 'hover:bg-gray-700 text-gray-300'
+                  } transition-colors`}
+                  onClick={() => setActiveDMUser(null)}
+                  aria-label="Back to users"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div className="flex items-center">
+                  <div className="relative mr-2">
+                    <img 
+                      src={users.find(u => u.id === activeDMUser)?.avatar} 
+                      alt={users.find(u => u.id === activeDMUser)?.name} 
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <span 
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
+                        users.find(u => u.id === activeDMUser)?.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      } border border-white`}
+                    ></span>
+                  </div>
+                  <h2 className="text-lg font-semibold">
+                    {users.find(u => u.id === activeDMUser)?.name}
+                  </h2>
+                </div>
+              </div>
+              
+              <div className={`flex-1 p-6 overflow-y-auto ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'}`}>
+                {directMessages[activeDMUser] && directMessages[activeDMUser].length > 0 ? (
+                  <div className="space-y-4">
+                    {directMessages[activeDMUser].map((message, index) => (
+                      <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
+                        <div className={`max-w-lg px-4 py-2 rounded-lg ${
+                          message.userId === 1
+                            ? theme === 'light' 
+                              ? 'bg-indigo-100 text-indigo-900' 
+                              : 'bg-indigo-900 text-indigo-100'
+                            : theme === 'light'
+                              ? 'bg-gray-200 text-gray-900' 
+                              : 'bg-gray-800 text-gray-100'
+                        }`}>
+                          <p>{message.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
+                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet.</p>
+                    <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Start a conversation!</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className={`p-4 ${theme === 'light' ? 'bg-white border-t border-gray-200' : 'bg-gray-800 border-t border-gray-700'}`}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newDirectMessage}
+                    onChange={(e) => setNewDirectMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendDirectMessage()}
+                    className={`flex-1 px-4 py-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-100 border border-gray-200 focus:border-indigo-500' 
+                        : 'bg-gray-700 border border-gray-700 focus:border-indigo-500'
+                    } focus:outline-none transition-colors`}
+                    placeholder="Type a message..."
+                  />
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    } transition-colors`}
+                    onClick={handleShareFile}
+                    aria-label="Share File"
+                  >
+                    <FileText size={20} />
+                  </button>
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    } transition-colors`}
+                    onClick={handleShareImage}
+                    aria-label="Share Image"
+                  >
+                    <ImageIcon size={20} />
+                  </button>
+                  <button
+                    className={`p-2 rounded-md ${
+                      theme === 'light' 
+                        ? 'bg-indigo-600 hover:bg-indigo-700' 
+                        : 'bg-indigo-700 hover:bg-indigo-600'
+                    } text-white transition-colors`}
+                    onClick={handleSendDirectMessage}
+                    aria-label="Send Message"
+                  >
+                    <Send size={20} />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6">
+              <img src="/api/placeholder/180/180" alt="TeamCollab" className="mb-6 rounded-lg" />
+              <h2 className="text-2xl font-bold mb-2">Welcome to TeamCollab</h2>
+              <p className={`max-w-md ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Select a channel or team member to start collaborating and chatting with your team.
               </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
-}
+};
 
-// Add these styles to your globals.css or create a new CSS file
-const styles = `
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-scaleIn {
-  animation: scaleIn 0.3s ease-out;
-}
-`;
+export default App;
