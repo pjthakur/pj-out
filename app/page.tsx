@@ -78,11 +78,9 @@ export default function Dashboard() {
       const formattedDate = `${newSale.month} ${newSale.year}`;
       const newSaleAmount = parseInt(newSale.sales);
       
-      // Check if the month-year already exists
       const existingIndex = salesData.findIndex(item => item.name === formattedDate);
       
       if (existingIndex !== -1) {
-        // Update existing entry
         const updatedSalesData = [...salesData];
         updatedSalesData[existingIndex] = {
           ...updatedSalesData[existingIndex],
@@ -91,10 +89,8 @@ export default function Dashboard() {
         setSalesData(updatedSalesData);
         showToast('Sale updated successfully', 'success');
       } else {
-        // Add new entry
         const newSaleData = { name: formattedDate, sales: newSaleAmount };
         
-        // Convert dates to comparable format for sorting
         const dateToSortable = (dateStr: string) => {
           const [month, year] = dateStr.split(' ');
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -102,7 +98,6 @@ export default function Dashboard() {
           return new Date(parseInt(year), monthIndex, 1).getTime();
         };
 
-        // Add new sale and sort by date
         const updatedSalesData = [...salesData, newSaleData].sort((a, b) => 
           dateToSortable(a.name) - dateToSortable(b.name)
         );
