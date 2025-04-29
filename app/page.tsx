@@ -47,9 +47,9 @@ const App = () => {
   const [activeDMUser, setActiveDMUser] = useState<number | null>(null);
   
   const [users, setUsers] = useState<User[]>([
-    { id: 1, name: 'John Doe', status: 'online', avatar: '/api/placeholder/32/32' },
-    { id: 2, name: 'Jane Smith', status: 'offline', avatar: '/api/placeholder/32/32' },
-    { id: 3, name: 'Mike Johnson', status: 'online', avatar: '/api/placeholder/32/32' },
+    { id: 1, name: 'John Doe', status: 'online', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=3087&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
+    { id: 2, name: 'Jane Smith', status: 'offline', avatar: 'https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?q=80&w=3135&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
+    { id: 3, name: 'Mike Johnson', status: 'online', avatar: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?q=80&w=3164&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
   ]);
   
   const [theme, setTheme] = useState('light');
@@ -505,27 +505,47 @@ const App = () => {
                   {directMessages[activeDMUser] && directMessages[activeDMUser].length > 0 ? (
                     <div className="space-y-4">
                       {directMessages[activeDMUser].map((message, index) => (
-                        <div key={index} className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}>
-                          <div className={`max-w-lg px-4 py-2 rounded-lg ${
-                            message.userId === 1
-                              ? theme === 'light' 
-                                ? 'bg-indigo-100 text-indigo-900' 
-                                : 'bg-indigo-900 text-indigo-100'
-                              : theme === 'light'
-                                ? 'bg-gray-200 text-gray-900' 
-                                : 'bg-gray-800 text-gray-100'
-                          }`}>
+                        <motion.div 
+                          key={index} 
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={`flex ${message.userId === 1 ? 'justify-end' : ''}`}
+                        >
+                          <motion.div 
+                            whileHover={{ scale: 1.02 }}
+                            className={`max-w-lg px-4 py-2 rounded-lg ${
+                              message.userId === 1
+                                ? theme === 'light' 
+                                  ? 'bg-indigo-50 text-indigo-600' 
+                                  : 'bg-indigo-900/50 text-indigo-300'
+                                : theme === 'light'
+                                  ? 'bg-gray-200 text-gray-900' 
+                                  : 'bg-gray-800 text-gray-100'
+                            }`}
+                          >
                             <p>{message.text}</p>
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
                       ))}
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <MessageSquare size={48} className={`${theme === 'light' ? 'text-gray-300' : 'text-gray-600'} mb-4`} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="flex flex-col items-center justify-center h-full text-center"
+                    >
+                      <div className={`p-4 rounded-lg mb-4 ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 text-gray-400' 
+                          : 'bg-gray-800 text-gray-600'
+                      }`}>
+                        <MessageSquare size={48} />
+                      </div>
                       <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>No messages yet.</p>
                       <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>Start a conversation!</p>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
                 
