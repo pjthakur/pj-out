@@ -76,26 +76,44 @@ export default function Dashboard() {
   const handleAddSale = () => {
     if (newSale.month && newSale.year && newSale.sales) {
       const formattedDate = `${newSale.month} ${newSale.year}`;
-      const newSaleData = { name: formattedDate, sales: parseInt(newSale.sales) };
+      const newSaleAmount = parseInt(newSale.sales);
       
-      // Convert dates to comparable format for sorting
-      const dateToSortable = (dateStr: string) => {
-        const [month, year] = dateStr.split(' ');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthIndex = months.indexOf(month);
-        return new Date(parseInt(year), monthIndex, 1).getTime();
-      };
+      // Check if the month-year already exists
+      const existingIndex = salesData.findIndex(item => item.name === formattedDate);
+      
+      if (existingIndex !== -1) {
+        // Update existing entry
+        const updatedSalesData = [...salesData];
+        updatedSalesData[existingIndex] = {
+          ...updatedSalesData[existingIndex],
+          sales: newSaleAmount
+        };
+        setSalesData(updatedSalesData);
+        showToast('Sale updated successfully', 'success');
+      } else {
+        // Add new entry
+        const newSaleData = { name: formattedDate, sales: newSaleAmount };
+        
+        // Convert dates to comparable format for sorting
+        const dateToSortable = (dateStr: string) => {
+          const [month, year] = dateStr.split(' ');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthIndex = months.indexOf(month);
+          return new Date(parseInt(year), monthIndex, 1).getTime();
+        };
 
-      // Add new sale and sort by date
-      const updatedSalesData = [...salesData, newSaleData].sort((a, b) => 
-        dateToSortable(a.name) - dateToSortable(b.name)
-      );
+        // Add new sale and sort by date
+        const updatedSalesData = [...salesData, newSaleData].sort((a, b) => 
+          dateToSortable(a.name) - dateToSortable(b.name)
+        );
 
-      setSalesData(updatedSalesData);
+        setSalesData(updatedSalesData);
+        showToast('Sale added successfully', 'success');
+      }
+
       setNewSale({ month: '', year: '', sales: '' });
       setShowSalesPopup(false);
       setActiveNav('Home');
-      showToast('Sale added successfully', 'success');
     } else {
       showToast('Please fill all fields', 'error');
     }
