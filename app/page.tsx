@@ -1,636 +1,215 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Head from 'next/head';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { useState, useEffect } from "react";
+import { Sun, Moon } from "lucide-react";
 
-// Add theme type
-type Theme = 'dark' | 'light';
+const memes = [
+  { text: "Why don't scientists trust atoms? Because they make up everything!" },
+  { text: "I'm reading a book on anti-gravity. It's impossible to put down!" },
+  { text: "Why did the scarecrow win an award? Because he was outstanding in his field!" },
+  { text: "I told my wife she was drawing her eyebrows too high. She looked surprised." },
+  { text: "Why don’t skeletons fight each other? They don’t have the guts." },
+  { text: "I would avoid the sushi if I was you. It’s a little fishy." },
+  { text: "Want to hear a joke about construction? I'm still working on it." },
+  { text: "I used to play piano by ear, but now I use my hands." },
+  { text: "Why don’t some couples go to the gym? Because some relationships don’t work out." },
+  { text: "I would tell you a joke about time travel, but you didn't like it." },
+  { text: "Parallel lines have so much in common… it’s a shame they’ll never meet." },
+  { text: "I have a joke about chemistry, but I don’t think it will get a reaction." },
+  { text: "What do you call fake spaghetti? An impasta!" },
+  { text: "Did you hear about the guy who invented Lifesavers? He made a mint!" },
+  { text: "I’d tell you a joke about paper, but it’s tearable." },
+  { text: "I used to be addicted to soap, but I’m clean now." },
+  { text: "I told my computer I needed a break, and now it won’t stop sending me beach pics." },
+  { text: "What do you get when you cross a snowman and a vampire? Frostbite." },
+  { text: "Why did the math book look sad? Because it had too many problems." },
+  { text: "What do you call a bear with no teeth? A gummy bear!" },
+  { text: "How does a penguin build its house? Igloos it together." },
+  { text: "What do you call cheese that isn't yours? Nacho cheese." },
+  { text: "I'm on a seafood diet. I see food and I eat it." },
+  { text: "Why did the coffee file a police report? It got mugged." },
+  { text: "I told a joke about a roof once… it went over everyone’s head." },
+  { text: "Why did the tomato turn red? Because it saw the salad dressing!" },
+  { text: "What do you call a can opener that doesn’t work? A can’t opener." },
+  { text: "What did one ocean say to the other? Nothing, they just waved." },
+  { text: "Why can’t you give Elsa a balloon? Because she’ll let it go." },
+  { text: "How do you organize a space party? You planet." },
+  { text: "Why don’t eggs tell each other secrets? They might crack up." },
+  { text: "How do you make holy water? You boil the hell out of it." },
+  { text: "What did the janitor say when he jumped out of the closet? Supplies!" },
+  { text: "I’m friends with all electricians. We have good current connections." },
+  { text: "Why did the bicycle fall over? It was two-tired." },
+  { text: "I asked the librarian if the library had books on paranoia. She whispered, 'They're right behind you...'" },
+  { text: "I started a band called 999 Megabytes — we haven’t gotten a gig yet." },
+  { text: "Why did the cookie go to the hospital? Because it felt crummy." },
+  { text: "I bought shoes from a drug dealer. I don’t know what he laced them with, but I was tripping all day!" },
+  { text: "What do you get if you cross a cat with a dark horse? Kitty Perry." },
+  { text: "Why don’t oysters share their pearls? Because they’re shellfish." },
+  { text: "What happens when frogs park illegally? They get toad." },
+  { text: "I once got into a fight with a broken elevator… I took it to another level." },
+  { text: "I used to be a baker, but I couldn't make enough dough." },
+  { text: "What do you call a pile of cats? A meowtain." },
+  { text: "I don’t trust stairs. They’re always up to something." },
+  { text: "I accidentally swallowed some food coloring. The doctor says I’m OK but I feel like I’ve dyed a little inside." },
+  { text: "Why can’t your nose be 12 inches long? Because then it would be a foot." },
+];
 
-interface Artwork {
-  id: number;
-  image: string;
-  title: string;
-  artist: string;
-  description: string;
-  year: number;
-  medium: string;
-}
-
-// Typography constants
-const Typography = {
-  // Headings
-  h1: {
-    size: '48px',
-    lineHeight: '1.25',
-    weight: '700'
-  },
-  h2: {
-    size: '32px',
-    lineHeight: '1.3',
-    weight: '600'
-  },
-  h3: {
-    size: '24px',
-    lineHeight: '1.4',
-    weight: '600'
-  },
-  // Body text
-  body: {
-    size: '16px',
-    lineHeight: '1.75',
-    weight: '400'
-  },
-  // Buttons and CTAs
-  cta: {
-    size: '18px',
-    lineHeight: '1.5',
-    weight: '600'
-  }
-};
-
-const FALLBACK_IMAGE_PATH = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMWEzZiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBVbmF2YWlsYWJsZTwvdGV4dD48L3N2Zz4=';
-
-const DigitalGallery = () => {
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [artworks, setArtworks] = useState<Artwork[]>([
-    {
-      id: 1,
-      image: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986',
-      title: 'Celestial Dreams',
-      artist: 'Emma Rivers',
-      description: 'An exploration of cosmic landscapes through vibrant color harmonies and fluid forms.',
-      year: 2023,
-      medium: 'Digital',
-    },
-    {
-      id: 2,
-      image: 'https://images.unsplash.com/photo-1514565131-fce0801e5785',
-      title: 'Urban Symphony',
-      artist: 'Marcus Chen',
-      description: 'A rhythmic composition inspired by city lights and the pulse of metropolitan life.',
-      year: 2022,
-      medium: 'Mixed Media Digital',
-    },
-    {
-      id: 3,
-      image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
-      title: 'Ephemeral Whispers',
-      artist: 'Sophia James',
-      description: 'Delicate forms emerge from a mist of color, inviting the viewer into a dreamlike state.',
-      year: 2023,
-      medium: 'Digital Painting',
-    },
-    {
-      id: 4,
-      image: 'https://images.unsplash.com/photo-1515266591878-f93e32bc5937',
-      title: 'Digital Odyssey',
-      artist: 'Alex Mercer',
-      description: 'A technological journey through layers of reality and digital abstraction.',
-      year: 2021,
-      medium: 'Generative Art',
-    },
-    {
-      id: 5,
-      image: 'https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d',
-      title: 'Chromatic Emotions',
-      artist: 'Olivia Pascal',
-      description: 'An emotional landscape rendered through a spectrum of colors that shift with perspective.',
-      year: 2022,
-      medium: 'Digital Collage',
-    },
-    {
-      id: 6,
-      image: 'https://images.unsplash.com/photo-1550684376-efcbd6e3f031',
-      title: 'Neon Reverie',
-      artist: 'Zane Thompson',
-      description: 'Bold neon expressions create a vibrant alternative reality filled with energy.',
-      year: 2023,
-      medium: 'Digital Art',
-    },
-  ]);
-
-  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [imagesLoadedCount, setImagesLoadedCount] = useState(0);
+function App() {
+  const [darkMode, setDarkMode] = useState(true);
+  const [randomMeme, setRandomMeme] = useState(memes[0]);
+  const [isFlipping, setIsFlipping] = useState(false);
 
   useEffect(() => {
-    console.log(`Images loaded: ${imagesLoadedCount}/${artworks.length}`);
+    refreshMeme();
+  }, []);
 
-    if (imagesLoadedCount === artworks.length) {
-      console.log('All images loaded, setting isLoading to false');
-      setIsLoading(false);
-    }
-
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn('Loading timeout reached, forcing isLoading to false');
-        setIsLoading(false);
-      }
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [imagesLoadedCount, artworks.length, isLoading]);
-
-  useEffect(() => {
-    if (selectedArtwork) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [selectedArtwork]);
-
-  const handleImageLoad = () => {
-    setImagesLoadedCount((count) => {
-      const newCount = count + 1;
-      console.log(`Image loaded, count: ${newCount}`);
-      return newCount;
-    });
+  const refreshMeme = () => {
+    setIsFlipping(true);
+    setTimeout(() => {
+      const randomIndex = Math.floor(Math.random() * memes.length);
+      setRandomMeme(memes[randomIndex]);
+      setIsFlipping(false);
+    }, 300);
   };
 
-  const handleImageError = (artwork: Artwork, event: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = event.currentTarget;
-    if (target.src !== FALLBACK_IMAGE_PATH) {
-      console.error(`Failed to load image: ${artwork.image}`);
-      target.src = FALLBACK_IMAGE_PATH;
-      target.alt = `The image for "${artwork.title}" could not be loaded. Showing fallback image instead.`;
-    }
-    setImagesLoadedCount((count) => {
-      const newCount = count + 1;
-      console.log(`Image error, count: ${newCount}`);
-      return newCount;
-    });
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 100,
-        damping: 15,
-      },
-    },
-  };
-
-  const modalVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 300,
-        damping: 25,
-      },
-    },
-    exit: {
-      scale: 0.8,
-      opacity: 0,
-      transition: { duration: 0.3 },
-    },
-  };
-
-  const scrollToGallery = () => {
-    const gallerySection = document.getElementById('gallery');
-    if (gallerySection) {
-      gallerySection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  // Add theme toggle function
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
-  };
-
-  // Add theme colors
-  const themeColors = {
-    dark: {
-      background: '#1A1A3A',
-      secondaryBackground: '#2A4066',
-      text: '#FFFFFF',
-      secondaryText: '#D1D5DB',
-      cardBackground: 'from-[#2A4066] to-[#1A1A3A]',
-      modalBackground: 'from-gray-900 to-black',
-      buttonGradient: 'from-[#4A90E2] to-[#5D5FEF]',
-      buttonHover: 'from-[#357ABD] to-[#4A4CBF]',
-      shadow: 'shadow-[#4A90E2]/30',
-    },
-    light: {
-      background: '#F5F7FA',
-      secondaryBackground: '#E4E7EB',
-      text: '#1F2937',
-      secondaryText: '#4B5563',
-      cardBackground: 'from-[#E4E7EB] to-[#F5F7FA]',
-      modalBackground: 'from-white to-gray-100',
-      buttonGradient: 'from-[#3B82F6] to-[#6366F1]',
-      buttonHover: 'from-[#2563EB] to-[#4F46E4]',
-      shadow: 'shadow-gray-400/30',
-    }
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
   };
 
   return (
-    <>
-      <Head>
-        <title>Digital Gallery | Explore Artistic Innovation</title>
-        <meta
-          content="A dynamic digital gallery showcasing innovative artistic expressions in the digital medium."
-          name="description"
-        />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Montserrat:wght@300;400;600&display=swap"
-          rel="stylesheet"
-        />
-        <style jsx global>{`
-          @font-face {
-            font-family: 'Playfair Display';
-            src: url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
-            font-weight: 400 700;
-            font-display: swap;
-          }
-          @font-face {
-            font-family: 'Montserrat';
-            src: url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
-            font-weight: 300 600;
-            font-display: swap;
-          }
-        `}</style>
-      </Head>
-
-      {isLoading ? (
-        <motion.div
-          className={`fixed inset-0 ${theme === 'dark' ? 'bg-[#1A1A3A]' : 'bg-[#F5F7FA]'} flex items-center justify-center z-50 transition-colors duration-500`}
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 0 }}
-          transition={{ duration: 1, delay: 1 }}
-        >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, rotate: 360 }}
-            transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
-            className="w-24 h-24 border-t-4 border-l-4 border-[#FF6B6B] rounded-full"
-          />
-          <motion.h2
-            className="absolute mt-32 text-white text-2xl font-['Playfair_Display']"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            Digital Gallery
-          </motion.h2>
-        </motion.div>
-      ) : (
-        <motion.main 
-          className={`min-h-screen ${theme === 'dark' ? 'bg-[#1A1A3A]' : 'bg-[#F5F7FA]'} font-['Montserrat'] transition-colors duration-500`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Add theme toggle button */}
-          <motion.button
-            onClick={toggleTheme}
-            className="fixed top-4 right-4 z-50 p-2 rounded-full bg-opacity-20 backdrop-blur-sm transition-all duration-500"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+    <div
+      className={`min-h-screen ${
+        darkMode ? "bg-gray-900" : "bg-gray-50"
+      } flex justify-center items-center relative overflow-hidden font-poppins transition-colors duration-500`}
+    >
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-gradient-flow opacity-50"></div>
+      
+      {/* Floating Particles */}
+      <div className="absolute inset-0">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute bg-white rounded-full opacity-20 animate-float"
             style={{
-              backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+              width: `${Math.random() * 8 + 4}px`,
+              height: `${Math.random() * 8 + 4}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${Math.random() * 10 + 5}s`,
             }}
+          ></div>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center p-6">
+        {/* Dark Mode Toggle Button */}
+        <div className="fixed top-4 right-4">
+          <button
+            className={`relative p-3 rounded-full font-semibold text-sm tracking-wide overflow-hidden transition-all duration-300 transform hover:scale-105 focus:outline-none ${
+              darkMode
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+            }`}
+            onClick={toggleDarkMode}
           >
-            {theme === 'dark' ? (
-              <motion.svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-6 w-6 text-white" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </motion.svg>
-            ) : (
-              <motion.svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-6 w-6 text-gray-800" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </motion.svg>
-            )}
-          </motion.button>
+            <span className="relative z-10 flex items-center justify-center w-6 h-6">
+              {darkMode ? (
+                <Sun className="w-5 h-5 animate-spin-slow" />
+              ) : (
+                <Moon className="w-5 h-5 animate-pulse" />
+              )}
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+          </button>
+        </div>
 
-          <section className="relative h-screen overflow-hidden">
-            <motion.div
-              className="absolute inset-0 transition-colors duration-500"
-              style={{
-                background: theme === 'dark' 
-                  ? 'linear-gradient(135deg, #1A1A3A, #2A4066)'
-                  : 'linear-gradient(135deg, #F5F7FA, #E4E7EB)'
-              }}
-              animate={{
-                background: theme === 'dark' 
-                  ? [
-                      'linear-gradient(135deg, #1A1A3A, #2A4066)',
-                      'linear-gradient(135deg, #2A4066, #1A1A3A)',
-                      'linear-gradient(135deg, #1A1A3A, #2C3E50)',
-                      'linear-gradient(135deg, #2C3E50, #1A1A3A)',
-                      'linear-gradient(135deg, #1A1A3A, #2A4066)',
-                    ]
-                  : [
-                      'linear-gradient(135deg, #F5F7FA, #E4E7EB)',
-                      'linear-gradient(135deg, #E4E7EB, #F5F7FA)',
-                      'linear-gradient(135deg, #F5F7FA, #D1D5DB)',
-                      'linear-gradient(135deg, #D1D5DB, #F5F7FA)',
-                      'linear-gradient(135deg, #F5F7FA, #E4E7EB)',
-                    ]
-              }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <motion.div
-                className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[#FF6B6B] opacity-20 blur-3xl"
-                animate={{
-                  x: [0, 30, 0, -30, 0],
-                  y: [0, -30, 0, 30, 0],
-                }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <motion.div
-                className="absolute top-2/3 right-1/4 w-48 h-48 rounded-full bg-[#2A9D8F] opacity-20 blur-3xl"
-                animate={{
-                  x: [0, -20, 0, 20, 0],
-                  y: [0, 20, 0, -20, 0],
-                }}
-                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <motion.div
-                className="absolute bottom-1/4 right-1/3 w-40 h-40 rounded-full bg-[#FF6B6B] opacity-20 blur-3xl"
-                animate={{
-                  x: [0, 25, 0, -25, 0],
-                  y: [0, -25, 0, 25, 0],
-                }}
-                transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </motion.div>
-
-            <div className="relative z-10 container mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
-              <motion.div
-                initial={{ opacity: 0, y: -50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 0.2 }}
-              >
-                <motion.h1 
-                  className={`text-6xl md:text-7xl lg:text-8xl font-['Playfair Display'] font-[700] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-6 tracking-tight leading-[1.2] transition-colors duration-500`}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  Digital Gallery
-                </motion.h1>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 0.5 }}
-              >
-                <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-700'} max-w-3xl mb-12 leading-[1.75] font-['Montserrat'] font-[400]`}>
-                  Explore our curated collection of innovative digital artworks from talented artists
-                  around the world.
-                </p>
-                <motion.button
-                  onClick={scrollToGallery}
-                  className={`px-8 py-3 bg-gradient-to-r ${theme === 'dark' ? 'from-[#4A90E2] to-[#5D5FEF] hover:from-[#357ABD] hover:to-[#4A4CBF]' : 'from-[#3B82F6] to-[#6366F1] hover:from-[#2563EB] hover:to-[#4F46E4]'} text-white rounded-full text-lg font-semibold shadow-lg transition-all duration-300`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  View Gallery
-                </motion.button>
-              </motion.div>
-
-              <motion.div
-                className="absolute bottom-10 left-1/2 transform -translate-x-1/2"
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="cursor-pointer"
-                  onClick={scrollToGallery}
-                >
-                  <path d="M7 13l5 5 5-5"></path>
-                  <path d="M7 7l5 5 5-5"></path>
-                </svg>
-              </motion.div>
-            </div>
-          </section>
-
-          <motion.section 
-            id="gallery" 
-            className={`relative py-20 bg-gradient-to-b ${theme === 'dark' ? 'from-[#1A1A3A] to-[#2A4066]' : 'from-[#F5F7FA] to-[#E4E7EB]'} transition-colors duration-500`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+        {/* Meme Card */}
+        <div
+          className={`relative w-96 sm:w-[28rem] min-h-[12rem] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all duration-500 ${
+            isFlipping ? "animate-flip" : ""
+          } flex items-center justify-center p-6`}
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+          <p
+            className={`text-lg sm:text-xl font-medium text-center tracking-tight ${
+              darkMode ? "text-gray-100" : "text-gray-200"
+            } leading-relaxed`}
           >
-            <div className="container mx-auto px-4">
-              <motion.h2
-                className={`text-4xl md:text-5xl font-['Playfair Display'] font-[600] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-16 text-center leading-[1.3]`}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-              >
-                Featured Artworks
-              </motion.h2>
+            {randomMeme.text}
+          </p>
+        </div>
 
-              <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 md:px-6 lg:px-8"
-                variants={containerVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.1 }}
-              >
-                {artworks.map((artwork) => (
-                  <motion.div
-                    key={artwork.id}
-                    variants={itemVariants}
-                    whileHover={{ y: -10 }}
-                    className={`rounded-xl overflow-hidden bg-gradient-to-br ${theme === 'dark' ? 'from-[#2A4066] to-[#1A1A3A]' : 'from-[#E4E7EB] to-[#F5F7FA]'} shadow-lg transition-all duration-300 hover:shadow-2xl ${theme === 'dark' ? 'hover:shadow-[#4A90E2]/30' : 'hover:shadow-gray-400/30'} transform perspective-1000`}
-                  >
-                    <div
-                      className="group relative aspect-[4/3] overflow-hidden cursor-pointer rounded-xl"
-                      onClick={() => setSelectedArtwork(artwork)}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`Open details for artwork id ${artwork.id}`}
-                    >
-                      <motion.img
-                        src={artwork.image}
-                        alt={artwork.title}
-                        className="object-cover w-full h-full transition-all duration-500 group-hover:scale-105"
-                        onLoad={handleImageLoad}
-                        onError={(e) => handleImageError(artwork, e)}
-                      />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'dark' ? 'from-black/60 via-black/20 to-transparent' : 'from-black/40 via-black/10 to-transparent'} opacity-60 transition-opacity group-hover:opacity-80`} />
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 p-6 text-white transform transition-transform duration-300 group-hover:translate-y-0 translate-y-2"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        <h3 className="text-2xl font-['Playfair Display'] font-[600] mb-2 transform transition-all duration-300 group-hover:scale-105">
-                          {artwork.title}
-                        </h3>
-                        <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-200'} text-lg font-['Montserrat'] font-[400] transform transition-all duration-300 group-hover:text-white`}>{artwork.artist}</p>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-          </motion.section>
+        {/* Refresh Meme Button */}
+        <button
+          className="mt-6 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full font-semibold text-sm tracking-wide shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none"
+          onClick={refreshMeme}
+        >
+          😂 New Meme
+        </button>
+      </div>
 
-          <AnimatePresence>
-            {selectedArtwork && (
-              <motion.div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 transition-colors duration-500 overflow-hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSelectedArtwork(null)}
-              >
-                <motion.div
-                  className={`relative max-w-5xl w-full max-h-[90vh] bg-gradient-to-b ${theme === 'dark' ? 'from-gray-900 to-black' : 'from-white to-gray-100'} rounded-2xl overflow-hidden shadow-2xl ${theme === 'dark' ? 'shadow-purple-900/30' : 'shadow-gray-400/30'} transition-colors duration-500`}
-                  variants={modalVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-                  aria-labelledby="artwork-modal-title"
-                  aria-describedby="artwork-modal-description"
-                  role="dialog"
-                >
-                  <button
-                    className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full ${theme === 'dark' ? 'bg-[#1F1F2A]' : 'bg-gray-200'} backdrop-blur-sm flex items-center justify-center ${theme === 'dark' ? 'text-white' : 'text-gray-800'} hover:${theme === 'dark' ? 'bg-[#2A2A3A]' : 'bg-gray-300'} transition-all`}
-                    onClick={() => setSelectedArtwork(null)}
-                    aria-label="Close artwork details"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
+      {/* Styles */}
+      <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
 
-                  <div className={`flex flex-col md:flex-row gap-8 md:gap-12 p-8 md:p-12 ${theme === 'dark' ? 'bg-[#1F1F2A]' : 'bg-white'} rounded-2xl shadow-2xl ${theme === 'dark' ? 'shadow-[#4A90E2]/20' : 'shadow-gray-400/20'}`}>
-                    <div className="md:w-3/5 relative">
-                      <TransformWrapper
-                        initialScale={1}
-                        minScale={1}
-                        maxScale={3}
-                        wheel={{ wheelDisabled: false }}
-                        panning={{ disabled: false }}
-                        doubleClick={{ disabled: false }}
-                      >
-                        <TransformComponent
-                          wrapperStyle={{
-                            width: '100%',
-                            height: '70vh',
-                            overflow: 'hidden',
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-                          }}
-                        >
-                          <img
-                            src={selectedArtwork.image}
-                            alt={selectedArtwork.title}
-                            className="w-full h-full object-cover"
-                            id="artwork-modal-title"
-                          />
-                        </TransformComponent>
-                      </TransformWrapper>
-                    </div>
-                    <div className="md:w-2/5 p-6 flex flex-col justify-center">
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        id="artwork-modal-description"
-                      >
-                        <h2 className={`text-4xl font-['Playfair Display'] font-[600] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-6 leading-[1.3]`}>
-                          {selectedArtwork.title}
-                        </h2>
-                        <p className={`${theme === 'dark' ? 'text-[#4A90E2]' : 'text-[#3B82F6]'} mb-6`}>By {selectedArtwork.artist}</p>
-                        <div className="mb-6">
-                          <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-700'} mb-8 leading-[1.75] font-['Montserrat'] font-[400]`}>{selectedArtwork.description}</p>
-                          <div className="grid grid-cols-2 gap-6 text-base font-['Montserrat'] font-[400]">
-                            <div>
-                              <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-600'} font-['Montserrat'] font-[400]`}>Year</p>
-                              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-['Montserrat'] font-[400]`}>{selectedArtwork.year}</p>
-                            </div>
-                            <div>
-                              <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-600'} font-['Montserrat'] font-[400]`}>Medium</p>
-                              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-['Montserrat'] font-[400]`}>{selectedArtwork.medium}</p>
-                            </div>
-                          </div>
-                        </div>
-                        <motion.button
-                          className={`px-8 py-3 bg-gradient-to-r ${theme === 'dark' ? 'from-[#4A90E2] to-[#5D5FEF] hover:from-[#357ABD] hover:to-[#4A4CBF]' : 'from-[#3B82F6] to-[#6366F1] hover:from-[#2563EB] hover:to-[#4F46E4]'} text-white rounded-xl font-semibold transition-all duration-300`}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setSelectedArtwork(null)}
-                        >
-                          Explore More
-                        </motion.button>
-                      </motion.div>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.main>
-      )}
-    </>
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
+
+        @keyframes gradient-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .animate-gradient-flow {
+          background-size: 200% 200%;
+          animation: gradient-flow 8s ease infinite;
+        }
+
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+          100% { transform: translateY(0px); }
+        }
+
+        .animate-float {
+          animation: float linear infinite;
+        }
+
+        @keyframes flip {
+          0% { transform: perspective(600px) rotateY(0deg); }
+          50% { transform: perspective(600px) rotateY(180deg); }
+          100% { transform: perspective(600px) rotateY(360deg); }
+        }
+
+        .animate-flip {
+          animation: flip 0.6s ease-in-out;
+        }
+
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 10s linear infinite;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+
+        .animate-pulse {
+          animation: pulse 2s ease-in-out infinite;
+        }
+      `}</style>
+    </div>
   );
-};
+}
 
-export default DigitalGallery;
+export default App;
