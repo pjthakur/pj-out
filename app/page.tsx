@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { faker } from '@faker-js/faker';
 import { motion } from 'framer-motion';
 import { toast, Toaster } from 'sonner';
+import { Inter } from 'next/font/google';
 import {
   UserPlusIcon,
   AcademicCapIcon,
@@ -15,6 +16,8 @@ import {
   SunIcon,
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
+
+const inter = Inter({ subsets: ['latin'] });
 
 interface Mentor {
   id: string;
@@ -95,6 +98,7 @@ export default function Home() {
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -125,6 +129,18 @@ export default function Home() {
     // }
   }
   }, [theme]);
+
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    function handleClick(e: MouseEvent) {
+      const menu = document.getElementById('profile-menu');
+      if (menu && !menu.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showProfileMenu]);
 
   const handleRegister = (type: 'student' | 'mentor') => {
     setRegisterType(type);
@@ -264,8 +280,24 @@ export default function Home() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  const handleEndSession = () => {
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+      {
+        loading: 'Ending session...',
+        success: () => {
+          setSelectedMentor(null);
+          setMessages([]);
+          setCurrentView('mentors');
+          return 'Session ended!';
+        },
+        error: 'Failed to end session. Please try again.',
+      }
+    );
+  };
+
   return (
-    <div className={`min-h-screen ${
+    <div className={`min-h-screen ${inter.className} ${
       theme === 'dark' 
         ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
         : 'bg-gradient-to-br from-slate-50 to-white'
@@ -277,20 +309,6 @@ export default function Home() {
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
       } shadow-sm`}>
         <div className="flex items-center gap-2">
-          {/* {currentView !== 'home' && (
-            <button 
-              onClick={() => setCurrentView('home')}
-              className={`p-2 rounded-full ${
-                theme === 'dark' 
-                  ? 'hover:bg-gray-700' 
-                  : 'hover:bg-gray-100'
-              } transition-colors`}
-            >
-              <ArrowLeftIcon className={`h-5 w-5 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`} />
-            </button>
-          )} */}
           <div className="flex items-center">
             <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-8 h-8 rounded-md flex items-center justify-center text-white font-bold">M</div>
             <h1 className={`text-xl md:text-2xl font-bold ml-2 bg-gradient-to-r ${
@@ -302,34 +320,7 @@ export default function Home() {
             </h1>
           </div>
         </div>
-        
         <div className="flex items-center gap-4">
-          {currentUser && (
-            <>
-              <div className="flex items-center gap-2">
-                <img 
-                  src={currentUser.avatar} 
-                  alt={currentUser.name} 
-                  className="w-8 h-8 rounded-full object-cover border-2 border-purple-500"
-                />
-                <span className={`text-sm font-medium hidden md:block ${
-                  theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                }`}>
-                  {currentUser.name}
-                </span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className={`text-sm py-1 px-3 rounded-md ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                } transition-colors`}
-              >
-                Logout
-              </button>
-            </>
-          )}
           <button 
             onClick={toggleTheme}
             className={`p-2 rounded-full ${
@@ -344,6 +335,39 @@ export default function Home() {
               <MoonIcon className="h-5 w-5 text-gray-600" />
             )}
           </button>
+          {currentUser && (
+            <>
+              <div className="relative flex items-center gap-2">
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  className="w-8 h-8 rounded-full object-cover border-2 border-purple-500 cursor-pointer"
+                  onClick={() => setShowProfileMenu((v) => !v)}
+                />
+                <span className={`text-sm font-medium hidden md:block ${
+                  theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                }`}>
+                  {currentUser.name}
+                </span>
+                {showProfileMenu && (
+                  <div
+                    id="profile-menu"
+                    className={`absolute right-0 top-12 z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg py-2 px-4 min-w-[120px] animate-fadeIn`}
+                  >
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full text-left text-sm py-2 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -518,6 +542,17 @@ export default function Home() {
           <div className={`max-w-2xl mx-auto ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           } rounded-xl shadow-lg p-8 mt-8`}>
+            <button
+              onClick={() => {
+                setCurrentView('home');
+                setRegisterType(null);
+              }}
+              className={`mb-6 flex items-center gap-2 text-sm transition-colors
+                ${theme === 'dark' ? 'text-gray-300 hover:text-indigo-400' : 'text-indigo-600 hover:text-indigo-800'}`}
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+              Back
+            </button>
             <h2 className={`text-2xl md:text-3xl font-bold mb-6 ${
               theme === 'dark' ? 'text-white' : 'text-gray-800'
             }`}>
@@ -759,9 +794,9 @@ export default function Home() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className={`${
                     theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                  } rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all`}
+                  } rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col h-full`}
                 >
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col h-full">
                     <div className="flex items-center mb-4">
                       <img 
                         src={mentor.avatar} 
@@ -803,36 +838,37 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
-                    <div className="sticky bottom-4">
-                    <div className={`flex justify-between items-center pt-4 border-t ${
-                      theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
-                    }`}>
-                      <div className={`text-xl font-bold ${
-                        theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                    <div className="mt-auto">
+                      <div className={`flex justify-between items-center pt-4 border-t ${
+                        theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
                       }`}>
-                        ${mentor.hourlyRate}/hr
+                        <div className={`text-xl font-bold ${
+                          theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                        }`}>
+                          ${mentor.hourlyRate}/hr
+                        </div>
+                        
+                        <button
+                          onClick={() => handleInitiateChat(mentor)}
+                          disabled={mentor.chatting >= 3}
+                          className={`px-4 py-2 rounded-lg font-medium shadow-sm ${
+                            mentor.chatting >= 3
+                              ? theme === 'dark'
+                                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                          } transition-colors`}
+                        >
+                          {mentor.chatting >= 3 ? 'Unavailable' : 'Book Session'}
+                        </button>
                       </div>
-                      
-                      <button
-                        onClick={() => handleInitiateChat(mentor)}
-                        disabled={mentor.chatting >= 3}
-                        className={`px-4 py-2 rounded-lg font-medium shadow-sm ${
-                          mentor.chatting >= 3
-                            ? theme === 'dark'
-                              ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        } transition-colors`}
-                      >
-                        {mentor.chatting >= 3 ? 'Unavailable' : 'Book Session'}
-                      </button>
-                    </div>
-                    
-                    {mentor.chatting >= 3 && (
-                      <p className="text-xs text-red-500 mt-2 text-center">
-                        This mentor is currently at full capacity
+                      <p className="text-xs mt-2 text-center" style={{ minHeight: '18px' }}>
+                        {mentor.chatting >= 3 ? (
+                          <span className="text-red-500">This mentor is currently at full capacity</span>
+                        ) : (
+                          <span className="invisible">This mentor is currently at full capacity</span>
+                        )}
                       </p>
-                    )}
                     </div>
                   </div>
                 </motion.div>
@@ -842,12 +878,12 @@ export default function Home() {
         )}
         
         {currentView === 'chat' && selectedMentor && (
-          <div className={`max-w-4xl mx-auto ${
+          <div className={`w-full max-w-4xl mx-auto ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           } rounded-xl shadow-lg overflow-hidden`}>
             <div className={`border-b ${
               theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-            } p-4 flex items-center`}>
+            } p-4 flex items-center relative`}>
               <img 
                 src={selectedMentor.avatar} 
                 alt={selectedMentor.name} 
@@ -861,18 +897,24 @@ export default function Home() {
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>{selectedMentor.company}</p>
               </div>
-              <div className="ml-auto flex items-center">
-                <span className={`${
+              <div className="ml-auto flex items-center gap-2">
+                <span className={`$${
                   theme === 'dark'
                     ? 'bg-green-900/30 text-green-300'
                     : 'bg-green-100 text-green-800'
                 } text-xs px-3 py-1 rounded-full`}>
                   Active Session
                 </span>
+                <button
+                  onClick={handleEndSession}
+                  className="ml-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                >
+                  End Session
+                </button>
               </div>
             </div>
             
-            <div className="h-[500px] overflow-y-auto p-6 flex flex-col gap-4">
+            <div className="h-[500px] sm:h-[500px] h-[60vh] overflow-y-auto p-2 sm:p-6 flex flex-col gap-4">
               {messages.map((msg) => {
                 const isFromMentor = msg.senderId === selectedMentor.id;
                 
