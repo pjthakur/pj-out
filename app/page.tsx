@@ -527,8 +527,9 @@ const AppContext = createContext<AppContextType>({
 
 // Helper function to preserve base URL when navigating
 const getFullPath = (query?:string[][] | Record<string, string> | string | URLSearchParams) => {
-  if (typeof window === 'undefined') return '';
+  // Get the current pathname (includes the full base URL path)
   const currentPath = window.location.pathname;
+  // Create query string from the query object
   const queryString = new URLSearchParams(query).toString();
   return `${currentPath}?${queryString}`;
 };
