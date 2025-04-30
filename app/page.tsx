@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Head from 'next/head';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
+// Add theme type
+type Theme = 'dark' | 'light';
+
 interface Artwork {
   id: number;
   image: string;
@@ -49,6 +52,7 @@ const Typography = {
 const FALLBACK_IMAGE_PATH = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMWEzZiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBVbmF2YWlsYWJsZTwvdGV4dD48L3N2Zz4=';
 
 const DigitalGallery = () => {
+  const [theme, setTheme] = useState<Theme>('dark');
   const [artworks, setArtworks] = useState<Artwork[]>([
     {
       id: 1,
@@ -198,6 +202,37 @@ const DigitalGallery = () => {
     }
   };
 
+  // Add theme toggle function
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  // Add theme colors
+  const themeColors = {
+    dark: {
+      background: '#1A1A3A',
+      secondaryBackground: '#2A4066',
+      text: '#FFFFFF',
+      secondaryText: '#D1D5DB',
+      cardBackground: 'from-[#2A4066] to-[#1A1A3A]',
+      modalBackground: 'from-gray-900 to-black',
+      buttonGradient: 'from-[#4A90E2] to-[#5D5FEF]',
+      buttonHover: 'from-[#357ABD] to-[#4A4CBF]',
+      shadow: 'shadow-[#4A90E2]/30',
+    },
+    light: {
+      background: '#F5F7FA',
+      secondaryBackground: '#E4E7EB',
+      text: '#1F2937',
+      secondaryText: '#4B5563',
+      cardBackground: 'from-[#E4E7EB] to-[#F5F7FA]',
+      modalBackground: 'from-white to-gray-100',
+      buttonGradient: 'from-[#3B82F6] to-[#6366F1]',
+      buttonHover: 'from-[#2563EB] to-[#4F46E4]',
+      shadow: 'shadow-gray-400/30',
+    }
+  };
+
   return (
     <>
       <Head>
@@ -230,7 +265,7 @@ const DigitalGallery = () => {
 
       {isLoading ? (
         <motion.div
-          className="fixed inset-0 bg-[#1A1A3A] flex items-center justify-center z-50"
+          className={`fixed inset-0 ${theme === 'dark' ? 'bg-[#1A1A3A]' : 'bg-[#F5F7FA]'} flex items-center justify-center z-50 transition-colors duration-500`}
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
           transition={{ duration: 1, delay: 1 }}
@@ -251,18 +286,75 @@ const DigitalGallery = () => {
           </motion.h2>
         </motion.div>
       ) : (
-        <main className="min-h-screen bg-[#1A1A3A] font-['Montserrat']">
+        <motion.main 
+          className={`min-h-screen ${theme === 'dark' ? 'bg-[#1A1A3A]' : 'bg-[#F5F7FA]'} font-['Montserrat'] transition-colors duration-500`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Add theme toggle button */}
+          <motion.button
+            onClick={toggleTheme}
+            className="fixed top-4 right-4 z-50 p-2 rounded-full bg-opacity-20 backdrop-blur-sm transition-all duration-500"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            {theme === 'dark' ? (
+              <motion.svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-6 w-6 text-white" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+                initial={{ rotate: 0 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </motion.svg>
+            ) : (
+              <motion.svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-6 w-6 text-gray-800" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+                initial={{ rotate: 0 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </motion.svg>
+            )}
+          </motion.button>
+
           <section className="relative h-screen overflow-hidden">
             <motion.div
-              className="absolute inset-0 bg-[#1A1A3A]"
+              className="absolute inset-0 transition-colors duration-500"
+              style={{
+                background: theme === 'dark' 
+                  ? 'linear-gradient(135deg, #1A1A3A, #2A4066)'
+                  : 'linear-gradient(135deg, #F5F7FA, #E4E7EB)'
+              }}
               animate={{
-                background: [
-                  'linear-gradient(135deg, #1A1A3A, #2A4066)',
-                  'linear-gradient(135deg, #2A4066, #1A1A3A)',
-                  'linear-gradient(135deg, #1A1A3A, #2C3E50)',
-                  'linear-gradient(135deg, #2C3E50, #1A1A3A)',
-                  'linear-gradient(135deg, #1A1A3A, #2A4066)',
-                ],
+                background: theme === 'dark' 
+                  ? [
+                      'linear-gradient(135deg, #1A1A3A, #2A4066)',
+                      'linear-gradient(135deg, #2A4066, #1A1A3A)',
+                      'linear-gradient(135deg, #1A1A3A, #2C3E50)',
+                      'linear-gradient(135deg, #2C3E50, #1A1A3A)',
+                      'linear-gradient(135deg, #1A1A3A, #2A4066)',
+                    ]
+                  : [
+                      'linear-gradient(135deg, #F5F7FA, #E4E7EB)',
+                      'linear-gradient(135deg, #E4E7EB, #F5F7FA)',
+                      'linear-gradient(135deg, #F5F7FA, #D1D5DB)',
+                      'linear-gradient(135deg, #D1D5DB, #F5F7FA)',
+                      'linear-gradient(135deg, #F5F7FA, #E4E7EB)',
+                    ]
               }}
               transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -298,22 +390,27 @@ const DigitalGallery = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, delay: 0.2 }}
               >
-                <h1 className="text-6xl md:text-7xl lg:text-8xl font-['Playfair Display'] font-[700] text-white mb-6 tracking-tight leading-[1.2]">
+                <motion.h1 
+                  className={`text-6xl md:text-7xl lg:text-8xl font-['Playfair Display'] font-[700] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-6 tracking-tight leading-[1.2] transition-colors duration-500`}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
                   Digital Gallery
-                </h1>
+                </motion.h1>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, delay: 0.5 }}
               >
-                <p className="text-xl md:text-2xl text-[#D1D5DB] max-w-3xl mb-12 leading-[1.75] font-['Montserrat'] font-[400]">
+                <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-700'} max-w-3xl mb-12 leading-[1.75] font-['Montserrat'] font-[400]`}>
                   Explore our curated collection of innovative digital artworks from talented artists
                   around the world.
                 </p>
                 <motion.button
                   onClick={scrollToGallery}
-                  className="px-8 py-3 bg-gradient-to-r from-[#4A90E2] to-[#5D5FEF] text-white rounded-full text-lg font-semibold hover:from-[#357ABD] hover:to-[#4A4CBF] shadow-lg transition-all duration-300"
+                  className={`px-8 py-3 bg-gradient-to-r ${theme === 'dark' ? 'from-[#4A90E2] to-[#5D5FEF] hover:from-[#357ABD] hover:to-[#4A4CBF]' : 'from-[#3B82F6] to-[#6366F1] hover:from-[#2563EB] hover:to-[#4F46E4]'} text-white rounded-full text-lg font-semibold shadow-lg transition-all duration-300`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -345,10 +442,16 @@ const DigitalGallery = () => {
             </div>
           </section>
 
-          <section id="gallery" className="relative py-20 bg-gradient-to-b from-[#1A1A3A] to-[#2A4066]">
+          <motion.section 
+            id="gallery" 
+            className={`relative py-20 bg-gradient-to-b ${theme === 'dark' ? 'from-[#1A1A3A] to-[#2A4066]' : 'from-[#F5F7FA] to-[#E4E7EB]'} transition-colors duration-500`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="container mx-auto px-4">
               <motion.h2
-                className="text-4xl md:text-5xl font-['Playfair Display'] font-[600] text-white mb-16 text-center leading-[1.3]"
+                className={`text-4xl md:text-5xl font-['Playfair Display'] font-[600] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-16 text-center leading-[1.3]`}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -369,7 +472,7 @@ const DigitalGallery = () => {
                     key={artwork.id}
                     variants={itemVariants}
                     whileHover={{ y: -10 }}
-                    className="rounded-xl overflow-hidden bg-gradient-to-br from-[#2A4066] to-[#1A1A3A] shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-[#4A90E2]/30 transform perspective-1000"
+                    className={`rounded-xl overflow-hidden bg-gradient-to-br ${theme === 'dark' ? 'from-[#2A4066] to-[#1A1A3A]' : 'from-[#E4E7EB] to-[#F5F7FA]'} shadow-lg transition-all duration-300 hover:shadow-2xl ${theme === 'dark' ? 'hover:shadow-[#4A90E2]/30' : 'hover:shadow-gray-400/30'} transform perspective-1000`}
                   >
                     <div
                       className="group relative aspect-[4/3] overflow-hidden cursor-pointer rounded-xl"
@@ -385,7 +488,7 @@ const DigitalGallery = () => {
                         onLoad={handleImageLoad}
                         onError={(e) => handleImageError(artwork, e)}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-60 transition-opacity group-hover:opacity-80" />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'dark' ? 'from-black/60 via-black/20 to-transparent' : 'from-black/40 via-black/10 to-transparent'} opacity-60 transition-opacity group-hover:opacity-80`} />
                       <motion.div
                         className="absolute bottom-0 left-0 right-0 p-6 text-white transform transition-transform duration-300 group-hover:translate-y-0 translate-y-2"
                         initial={{ opacity: 0, y: 20 }}
@@ -395,26 +498,26 @@ const DigitalGallery = () => {
                         <h3 className="text-2xl font-['Playfair Display'] font-[600] mb-2 transform transition-all duration-300 group-hover:scale-105">
                           {artwork.title}
                         </h3>
-                        <p className="text-[#D1D5DB] text-lg font-['Montserrat'] font-[400] transform transition-all duration-300 group-hover:text-white">{artwork.artist}</p>
+                        <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-200'} text-lg font-['Montserrat'] font-[400] transform transition-all duration-300 group-hover:text-white`}>{artwork.artist}</p>
                       </motion.div>
                     </div>
                   </motion.div>
                 ))}
               </motion.div>
             </div>
-          </section>
+          </motion.section>
 
           <AnimatePresence>
             {selectedArtwork && (
               <motion.div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 transition-colors duration-500"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedArtwork(null)}
               >
                 <motion.div
-                  className="relative max-w-5xl w-full max-h-[90vh] bg-gradient-to-b from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/30"
+                  className={`relative max-w-5xl w-full max-h-[90vh] bg-gradient-to-b ${theme === 'dark' ? 'from-gray-900 to-black' : 'from-white to-gray-100'} rounded-2xl overflow-hidden shadow-2xl ${theme === 'dark' ? 'shadow-purple-900/30' : 'shadow-gray-400/30'} transition-colors duration-500`}
                   variants={modalVariants}
                   initial="hidden"
                   animate="visible"
@@ -425,7 +528,7 @@ const DigitalGallery = () => {
                   role="dialog"
                 >
                   <button
-                    className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-[#1F1F2A] backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#2A2A3A] transition-all"
+                    className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full ${theme === 'dark' ? 'bg-[#1F1F2A]' : 'bg-gray-200'} backdrop-blur-sm flex items-center justify-center ${theme === 'dark' ? 'text-white' : 'text-gray-800'} hover:${theme === 'dark' ? 'bg-[#2A2A3A]' : 'bg-gray-300'} transition-all`}
                     onClick={() => setSelectedArtwork(null)}
                     aria-label="Close artwork details"
                   >
@@ -445,7 +548,7 @@ const DigitalGallery = () => {
                     </svg>
                   </button>
 
-                  <div className="flex flex-col md:flex-row gap-8 md:gap-12 p-8 md:p-12 bg-[#1F1F2A] rounded-2xl shadow-2xl shadow-[#4A90E2]/20">
+                  <div className={`flex flex-col md:flex-row gap-8 md:gap-12 p-8 md:p-12 ${theme === 'dark' ? 'bg-[#1F1F2A]' : 'bg-white'} rounded-2xl shadow-2xl ${theme === 'dark' ? 'shadow-[#4A90E2]/20' : 'shadow-gray-400/20'}`}>
                     <div className="md:w-3/5 relative">
                       <TransformWrapper
                         initialScale={1}
@@ -480,25 +583,25 @@ const DigitalGallery = () => {
                         transition={{ delay: 0.3 }}
                         id="artwork-modal-description"
                       >
-                        <h2 className="text-4xl font-['Playfair Display'] font-[600] text-white mb-6 leading-[1.3]">
+                        <h2 className={`text-4xl font-['Playfair Display'] font-[600] ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-6 leading-[1.3]`}>
                           {selectedArtwork.title}
                         </h2>
-                        <p className="text-[#4A90E2] mb-6">By {selectedArtwork.artist}</p>
+                        <p className={`${theme === 'dark' ? 'text-[#4A90E2]' : 'text-[#3B82F6]'} mb-6`}>By {selectedArtwork.artist}</p>
                         <div className="mb-6">
-                          <p className="text-[#D1D5DB] mb-8 leading-[1.75] font-['Montserrat'] font-[400]">{selectedArtwork.description}</p>
+                          <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-700'} mb-8 leading-[1.75] font-['Montserrat'] font-[400]`}>{selectedArtwork.description}</p>
                           <div className="grid grid-cols-2 gap-6 text-base font-['Montserrat'] font-[400]">
                             <div>
-                              <p className="text-[#D1D5DB] font-['Montserrat'] font-[400]">Year</p>
-                              <p className="text-white font-['Montserrat'] font-[400]">{selectedArtwork.year}</p>
+                              <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-600'} font-['Montserrat'] font-[400]`}>Year</p>
+                              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-['Montserrat'] font-[400]`}>{selectedArtwork.year}</p>
                             </div>
                             <div>
-                              <p className="text-[#D1D5DB] font-['Montserrat'] font-[400]">Medium</p>
-                              <p className="text-white font-['Montserrat'] font-[400]">{selectedArtwork.medium}</p>
+                              <p className={`${theme === 'dark' ? 'text-[#D1D5DB]' : 'text-gray-600'} font-['Montserrat'] font-[400]`}>Medium</p>
+                              <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-['Montserrat'] font-[400]`}>{selectedArtwork.medium}</p>
                             </div>
                           </div>
                         </div>
                         <motion.button
-                          className="px-8 py-3 bg-gradient-to-r from-[#4A90E2] to-[#5D5FEF] text-white rounded-xl font-semibold hover:from-[#357ABD] hover:to-[#4A4CBF] transition-all duration-300"
+                          className={`px-8 py-3 bg-gradient-to-r ${theme === 'dark' ? 'from-[#4A90E2] to-[#5D5FEF] hover:from-[#357ABD] hover:to-[#4A4CBF]' : 'from-[#3B82F6] to-[#6366F1] hover:from-[#2563EB] hover:to-[#4F46E4]'} text-white rounded-xl font-semibold transition-all duration-300`}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => setSelectedArtwork(null)}
@@ -512,7 +615,7 @@ const DigitalGallery = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </main>
+        </motion.main>
       )}
     </>
   );
