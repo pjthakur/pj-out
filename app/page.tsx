@@ -132,6 +132,18 @@ const DigitalGallery = () => {
     return () => clearTimeout(timeout);
   }, [imagesLoadedCount, artworks.length, isLoading]);
 
+  useEffect(() => {
+    if (selectedArtwork) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedArtwork]);
+
   const handleImageLoad = () => {
     setImagesLoadedCount((count) => {
       const newCount = count + 1;
@@ -510,7 +522,7 @@ const DigitalGallery = () => {
           <AnimatePresence>
             {selectedArtwork && (
               <motion.div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 transition-colors duration-500"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 transition-colors duration-500 overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
