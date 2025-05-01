@@ -1,716 +1,572 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { faker } from '@faker-js/faker';
-import { FaStar, FaRegStar, FaStarHalfAlt, FaSearch, FaShoppingCart } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
-// Types
-interface FoodItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  ratings: number[];
-  ratingByCurrentUser: number | null;
+interface Ball {
+  id: number;
+  x: number;
+  y: number;
+  radius: 15;
+  vx: number;
+  vy: number;
+  color: string;
+  glitterPoints: { x: number; y: number; alpha: number; size: number }[];
+  glitterTimer: number;
 }
 
-interface Restaurant {
-  ratingByCurrentUser: number | null;
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  ratings: number[];
-  menu: FoodItem[];
+interface Settings {
+  elasticity: number;
+  friction: number;
 }
 
-interface Order {
-  restaurantId: string;
-  restaurantName: string;
-  items: {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-  }[];
-}
+export default function BallSimulation() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [inclinedHeight, setInclinedHeight] = useState<number>(300);
+  const [balls, setBalls] = useState<Ball[]>([]);
+  const [settings, setSettings] = useState<Settings>({
+    elasticity: 1.0,
+    friction: 0.0,
+  });
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [settingsPosition, setSettingsPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+  const [isDraggingSlider, setIsDraggingSlider] = useState<boolean>(false);
+  const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 });
+  const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const ballIdCounterRef = useRef<number>(0);
+  const animationRef = useRef<number>(0);
+  const g = 10;
+  const SCALE = 30;
+  const [titleHovered, setTitleHovered] = useState<boolean>(false);
 
-const restaurantImages = [
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1661883237884-263e8de8869b?q=80&w=2689&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://images.unsplash.com/photo-1647109063447-e01ab743ee8f?q=80&w=2532&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://images.unsplash.com/photo-1613946069412-38f7f1ff0b65?q=80&w=2535&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://images.unsplash.com/photo-1613946069412-38f7f1ff0b65?q=80&w=2535&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1676310055316-d73c9d5eeb51?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1676310055316-d73c9d5eeb51?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1676310055316-d73c9d5eeb51?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1676310055316-d73c9d5eeb51?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://plus.unsplash.com/premium_photo-1671394138398-fe1ce5e5b03b?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-"https://images.unsplash.com/photo-1623800330578-2cd67efaec75?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-]
+  useEffect(() => {
+    setWindowSize({width: window.innerWidth,
+  height: window.innerHeight
+    });
+  }, []);
 
-// Generate fake data
-const generateFakeData = (): Restaurant[] => {
-  const cuisines = ['Italian', 'Japanese', 'Mexican', 'Indian', 'American', 'Thai', 'French', 'Chinese'];
+  const getRandomColor = () => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#073B4C', '#F4A261'];
+    // const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#073B4C', '#F4A261'. '#FF1654', '#FF6F61', '#D9BF77', '#ACD8AA', '#FFE156', '#6A0572', '#AB83A1'];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button === 0) {
+      const rect = canvasRef.current!.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (isPointOnInclinedPlane(x, y)) {return;
+      }
+      
+      const newBall: Ball = {
+        id: ballIdCounterRef.current++,
+        x,
+        y,
+        radius: 15,
+        vx: 0,
+        vy: 0,
+        color: getRandomColor(),
+        glitterPoints: Array(3).fill(0).map(() => createGlitterPoint({ x, y, radius: 15 } as Ball)),
+        glitterTimer: 0
+      };
+      
+      setBalls(prev => [...prev, newBall]);
+    }
+  };
+
+  const handleRightClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const isSmallScreen = window.innerWidth < 768; // md breakpoint
+    if (isSmallScreen) {
+      setSettingsPosition({ 
+        x: window.innerWidth / 2, 
+        y: window.innerHeight / 2 
+      });
+    } else {
+      setSettingsPosition({ x: e.clientX, y: e.clientY });
+    }
+    setShowSettings(true);
+  };
+
+  const isPointOnInclinedPlane = (x: number, y: number) => {
+    if (!canvasRef.current) return false;
+    
+    const canvas = canvasRef.current;
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    const planeY = height - (inclinedHeight * (1 - x / width));
+    
+    return y >= planeY - 5;
+  };
+
+  const handleSliderMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDraggingSlider) {
+      const containerRect = e.currentTarget.getBoundingClientRect();
+      const newHeight = Math.max(0, Math.min(containerRect.height - 10, containerRect.height - (e.clientY - containerRect.top)));
+      setInclinedHeight(newHeight);
+    }
+  };
+
+  const handleSliderMouseUp = () => {
+    setIsDraggingSlider(false);
+  };
+
+  const handleSettingsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowSettings(false);
+  };
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d')!;
+    
+    const resizeCanvas = () => {
+      canvas.width = windowSize.width;
+      canvas.height = windowSize.height;
+    };
+    
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    resizeCanvas();
+    
+    const updatePhysics = () => {
+      if (!canvas) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      drawGrid(ctx, canvas.width, canvas.height);
+      
+      drawInclinedPlane(ctx, canvas.width, canvas.height, inclinedHeight);
+      
+      setBalls(prevBalls => {
+        const updatedBalls = prevBalls.map(ball => {
+          let newVy = ball.vy + (g / SCALE);
+          
+          let newX = ball.x + ball.vx;
+          let newY = ball.y + newVy;
+          let newVx = ball.vx;
+          
+          const slope = inclinedHeight / canvas.width;
+          const planeYAtX = canvas.height - (inclinedHeight * (1 - newX / canvas.width));
+          // const planeYAtX = canvas.height - (inclinedHeight * (1/ canvas.width));
+          
+          if (newY + ball.radius > planeYAtX) {
+            const normalX = -slope;
+            const normalY = 1;
+            const normalLength = Math.sqrt(normalX**2 + normalY**2);
+            
+            const nx = normalX / normalLength;
+            const ny = normalY / normalLength;
+            
+            const dotProduct = newVx * nx + newVy * ny;
+            
+            newVx = newVx - 2 * dotProduct * nx * settings.elasticity;
+            newVy = newVy - 2 * dotProduct * ny * settings.elasticity;
+            
+            const tangentX = ny;
+            const tangentY = -nx;
+            const tangentDot = newVx * tangentX + newVy * tangentY;
+            const frictionFactor = 1 - settings.friction;
+            
+            newVx = newVx - (1 - frictionFactor) * tangentDot * tangentX;
+            newVy = newVy - (1 - frictionFactor) * tangentDot * tangentY;
+            
+            const penetration = (newY + ball.radius) - planeYAtX;
+            newY = newY - penetration;
+          }
+          
+          if (newX - ball.radius < 0) {
+            newX = ball.radius;
+            newVx = -newVx * settings.elasticity;
+          }
+          
+          if (newX + ball.radius > canvas.width) {
+            newX = canvas.width - ball.radius;
+            newVx = -newVx * settings.elasticity;
+          }
+          
+          if (newY - ball.radius < 0) {
+            newY = ball.radius;
+            newVy = -newVy * settings.elasticity;
+          }
+          
+          return {
+            ...ball,
+            x: newX,
+            y: newY,
+            vx: newVx,
+            vy: newVy,
+            glitterPoints: updateGlitterPoints(ball),
+            glitterTimer: ball.glitterTimer + 1
+          };
+        });
+        
+        return updatedBalls;
+      });
+      
+      balls.forEach(ball => {
+        // Draw the base ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.closePath();
+        
+        // Draw glitter points
+        ball.glitterPoints.forEach(glitter => {
+          ctx.beginPath();
+          ctx.arc(
+            ball.x + glitter.x, 
+            ball.y + glitter.y, 
+            glitter.size, 
+            0, 
+            Math.PI * 2
+          );
+          ctx.fillStyle = `rgba(255, 255, 255, ${glitter.alpha})`;
+          ctx.fill();
+          ctx.closePath();
+        });
+        
+        // Optionally add a shimmer effect based on the ball's movement
+        if (Math.abs(ball.vx) > 1 || Math.abs(ball.vy) > 1) {
+          ctx.beginPath();
+          const gradientSize = ball.radius * 1.5;
+          const gradient = ctx.createRadialGradient(
+            ball.x, ball.y, ball.radius * 0.2,
+            ball.x, ball.y, gradientSize
+          );
+          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+          gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          
+          ctx.arc(ball.x, ball.y, gradientSize, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+          ctx.closePath();
+        }
+      });
+      
+      animationRef.current = requestAnimationFrame(updatePhysics);
+    };
+    
+    animationRef.current = requestAnimationFrame(updatePhysics);
+    
+    return () => {
+      cancelAnimationFrame(animationRef.current);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [balls, inclinedHeight, settings, windowSize]);
   
-  return Array.from({ length: 12 }, () => {
-    const cuisineType = faker.helpers.arrayElement(cuisines);
+  const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+    ctx.lineWidth = 0.5;
+    
+    for (let x = 0; x <= width; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    
+    for (let y = height; y >= 0; y -= 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+      
+      const heightValue = height - y;
+      if (heightValue > 0) {
+        ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
+        const textWidth = ctx.measureText(heightValue.toString()).width + 10;
+        ctx.fillRect(22, y - 9, textWidth, 18);
+        
+        ctx.font = '12px Arial';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(heightValue.toString(), 27, y);
+      }
+    }
+    
+    ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+    ctx.lineWidth = 2;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, height - 20);
+    ctx.lineTo(width, height - 20);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(20, height);
+    ctx.lineTo(20, 0);
+    ctx.stroke();
+    
+    ctx.save();
+    ctx.translate(10, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText('Height (pixels)', 0, 0);
+    ctx.restore();
+    
+    ctx.restore();
+  };
+  
+  const drawInclinedPlane = (ctx: CanvasRenderingContext2D, width: number, height: number, planeHeight: number) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    ctx.lineTo(0, height - planeHeight);
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    
+    const gradient = ctx.createLinearGradient(0, height - planeHeight, width, height);
+    gradient.addColorStop(0, '#3a86ff');
+    gradient.addColorStop(1, '#8338ec');
+    
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 20) {
+      const planeYAtX = height - (planeHeight * (1 - x / width));
+      ctx.beginPath();
+      ctx.moveTo(x, planeYAtX);
+      ctx.lineTo(x + 10, height - (planeHeight * (1 - (x + 10) / width)));
+      ctx.stroke();
+    }
+    
+    const slope = inclinedHeight / width;
+    const angleRadians = Math.atan(slope);
+    const angleDegrees = angleRadians * (180 / Math.PI);
+    
+    ctx.beginPath();
+    const arcRadius = 50;
+    ctx.arc(width, height, arcRadius, Math.PI, Math.PI + angleRadians, false);
+    ctx.strokeStyle = '#ffdd00';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.font = 'bold 16px Arial';
+    ctx.fillStyle = '#ffdd00';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${angleDegrees.toFixed(1)}°`, width - 60, height - 10);
+    
+    ctx.beginPath();
+    ctx.arc(width, height, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffdd00';
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
+  // Add helper functions for glitter effect
+  const createGlitterPoint = (ball: Ball) => {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * ball.radius * 0.8;
     
     return {
-      id: faker.string.uuid(),
-      name: `${faker.company.name()} ${cuisineType} Restaurant`,
-      description: faker.company.catchPhrase(),
-      image: faker.helpers.arrayElement(restaurantImages),
-      ratings: Array.from({ length: faker.number.int({ min: 5, max: 30 }) }, () => 
-        faker.number.float({ min: 1, max: 5 })
-      ),
-      ratingByCurrentUser: null,
-      menu: Array.from({ length: faker.number.int({ min: 8, max: 15 }) }, () => ({
-        id: faker.string.uuid(),
-        name: faker.lorem.words(3),
-        description: faker.lorem.sentence(),
-        price: parseFloat(faker.commerce.price({ min: 5, max: 30 })),
-        image: faker.helpers.arrayElement(restaurantImages),
-        ratings: Array.from({ length: faker.number.int({ min: 0, max: 20 }) }, () => 
-          faker.number.float({ min: 1, max: 5 })
-        ),
-        ratingByCurrentUser: null
-      }))
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+      alpha: 0.6 + Math.random() * 0.4,
+      size: 1 + Math.random() * 2
     };
-  });
-};
-
-// Helper function to calculate average rating
-const calculateAverage = (ratings: number[]): number => {
-  if (ratings.length === 0) return 0;
-  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
-};
-
-// Star rating component
-const StarRating = ({ rating, onRatingChange = null, size = "text-xl", interactive = false }: 
-  { rating: number; interactive?:boolean; onRatingChange?: ((rating: number) => void) | null, size?: string }) => {
-  const [hoveredRating, setHoveredRating] = useState<number | null>(null);
-
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    let isFilled;
-    if(interactive) {
-    isFilled = hoveredRating !== null ? i <= hoveredRating : i <= rating;
-    }
-    else {
-      isFilled = i <= rating;
-    }
-
-    console.log("🚀 ~ isFilled:", i,isFilled)
-    stars.push(
-      <FaStar
-        key={i}
-        className={`${size} ${onRatingChange ? 'cursor-pointer' : ''} ${isFilled ? 'text-yellow-500' : 'text-gray-300'}`}
-        onMouseEnter={() => setHoveredRating(i)}
-        onMouseLeave={() => setHoveredRating(null)}
-        onClick={() => onRatingChange && onRatingChange(i)}
-      />
-    );
-  }
-
-  return <div className="flex">{stars}</div>;
-};
-
-export default function Home() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  console.log("🚀 ~ Home ~ selectedRestaurant restaurants:", restaurants)
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
-  console.log("🚀 ~ Home ~ selectedRestaurant:", selectedRestaurant)
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
-  const [cart, setCart] = useState<Order[]>([]);
-  const [showCart, setShowCart] = useState<boolean>(false);
-  const [showOrderSuccess, setShowOrderSuccess] = useState<boolean>(false);
-  const [notification, setNotification] = useState<string | null>(null);
-  const [menuSearchQuery, setMenuSearchQuery] = useState<string>('');
-
-  useEffect(() => {
-    // Generate fake data on component mount
-    const data = generateFakeData();
-    setRestaurants(data);
-    setFilteredRestaurants(data);
-  }, []);
-
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
-  const [ratedRestaurants, setRatedRestaurants] = useState<Record<string,number>>({});
-  const [ratedMenuItems, setRatedMenuItems] = useState<Record<string,number>>({});
-
-  const handleRateRestaurant = (restaurantId: string, newRating: number) => {
-    setRestaurants(current => {
-      return current.map(restaurant => {
-        if (restaurant.id === restaurantId) {
-          let updatedRatings = [...restaurant.ratings];
-          if (restaurant.ratingByCurrentUser) {
-            // Replace previous rating
-            const idx = updatedRatings.findIndex(r => r === restaurant.ratingByCurrentUser);
-            if (idx !== -1) updatedRatings[idx] = newRating;
-          } else {
-            updatedRatings.push(newRating);
-          }
-          const updatedRestaurant = {
-            ...restaurant,
-            ratingByCurrentUser: newRating,
-            ratings: updatedRatings
-          };
-          // If this is the selected restaurant, update it too
-          if (selectedRestaurant && selectedRestaurant.id === restaurantId) {
-            setSelectedRestaurant(updatedRestaurant);
-          }
-          return updatedRestaurant;
-        }
-        return restaurant;
-      });
-    });
-    setNotification('Thank you for your review!');
-    setTimeout(() => setNotification(null), 2500);
   };
-
-  const handleRateMenuItem = (restaurantId: string, menuItemId: string, newRating: number) => {
-    setRestaurants(current => {
-      return current.map(restaurant => {
-        if (restaurant.id === restaurantId) {
-          const updatedMenu = restaurant.menu.map(item => {
-            if (item.id === menuItemId) {
-              if(ratedMenuItems[menuItemId]) {
-                const updatedRatings = item.ratings;
-                for (let i = 0; i < updatedRatings.length; i++) {
-                  if (updatedRatings[i] === ratedMenuItems[menuItemId]) {
-                    updatedRatings[i] = newRating;
-                    break;
-                  }
-                }
-                setRatedMenuItems(prev => ({ ...prev, [menuItemId]: newRating }));
-                return {
-                  ...item,
-                  ratings: [...updatedRatings],
-                  ratingByCurrentUser: newRating
-                };
-              }
-              setRatedMenuItems(prev => ({ ...prev, [menuItemId]: newRating }));
-              return {
-                ...item,
-                ratings: [...item.ratings, newRating],
-                ratingByCurrentUser: newRating
-              };
-            }
-            return item;
-          });
-
-          setSelectedRestaurant({
-            ...restaurant,
-            menu: updatedMenu,
-          });
-          
-          return {
-            ...restaurant,
-            menu: updatedMenu
-          };
-        }
-        return restaurant;
-      });
-    });
-    setNotification('Thank you for reviewing this dish!');
-    setTimeout(() => setNotification(null), 2500);
-  };
-
-  const addToCart = (restaurant: Restaurant, item: FoodItem) => {
-    setCart(currentCart => {
-      // Check if the restaurant already exists in the cart
-      const existingOrderIndex = currentCart.findIndex(order => order.restaurantId === restaurant.id);
+  
+  const updateGlitterPoints = (ball: Ball) => {
+    // Update existing glitter points
+    let updatedPoints = ball.glitterPoints
+      .map(point => ({ ...point, alpha: point.alpha - 0.05 }))
+      .filter(point => point.alpha > 0);
       
-      if (existingOrderIndex >= 0) {
-        // Restaurant exists in cart, check if the item exists
-        const existingOrder = currentCart[existingOrderIndex];
-        const existingItemIndex = existingOrder.items.findIndex(orderItem => orderItem.id === item.id);
-        
-        if (existingItemIndex >= 0) {
-          // Item exists, increment quantity
-          const updatedItems = [...existingOrder.items];
-          updatedItems[existingItemIndex] = {
-            ...updatedItems[existingItemIndex],
-            quantity: updatedItems[existingItemIndex].quantity + 1
-          };
-          
-          const updatedOrder = {
-            ...existingOrder,
-            items: updatedItems
-          };
-          
-          return [
-            ...currentCart.slice(0, existingOrderIndex),
-            updatedOrder,
-            ...currentCart.slice(existingOrderIndex + 1)
-          ];
-        } else {
-          // Item doesn't exist, add it to the order
-          const updatedOrder = {
-            ...existingOrder,
-            items: [
-              ...existingOrder.items,
-              {
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: 1
-              }
-            ]
-          };
-          
-          return [
-            ...currentCart.slice(0, existingOrderIndex),
-            updatedOrder,
-            ...currentCart.slice(existingOrderIndex + 1)
-          ];
-        }
-      } else {
-        // Restaurant doesn't exist in cart, add new order
-        return [
-          ...currentCart,
-          {
-            restaurantId: restaurant.id,
-            restaurantName: restaurant.name,
-            items: [
-              {
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: 1
-              }
-            ]
-          }
-        ];
-      }
-    });
-    setNotification('Added to cart!');
-    setTimeout(() => setNotification(null), 2000);
-  };
-
-  const removeFromCart = (restaurantId: string, itemId: string) => {
-    setCart(currentCart => {
-      const updatedCart = currentCart.map(order => {
-        if (order.restaurantId === restaurantId) {
-          const updatedItems = order.items
-            .map(item => {
-              if (item.id === itemId) {
-                return {
-                  ...item,
-                  quantity: item.quantity - 1
-                };
-              }
-              return item;
-            })
-            .filter(item => item.quantity > 0);
-          
-          return {
-            ...order,
-            items: updatedItems
-          };
-        }
-        return order;
-      }).filter(order => order.items.length > 0);
-      
-      return updatedCart;
-    });
-  };
-
-  const getTotalCartItems = () => {
-    return cart.reduce((total, order) => 
-      total + order.items.reduce((orderTotal, item) => orderTotal + item.quantity, 0), 0);
-  };
-
-  const getTotalCartPrice = () => {
-    return cart.reduce((total, order) => 
-      total + order.items.reduce((orderTotal, item) => orderTotal + (item.price * item.quantity), 0), 0);
-  };
-
-  const placeOrder = () => {
-    setShowOrderSuccess(true);
-    setCart([]);
-    setTimeout(() => {
-      setShowOrderSuccess(false);
-      setShowCart(false);
-    }, 3000);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    if (!selectedRestaurant) {
-      setSearchQuery(value);
-      if (value) {
-        const filtered = restaurants.filter(restaurant => 
-          restaurant.name.toLowerCase().includes(value.toLowerCase())
-        );
-        setFilteredRestaurants(filtered);
-      } else {
-        setFilteredRestaurants(restaurants);
-      }
-    } else {
-      setMenuSearchQuery(value);
+    // Add new glitter points at random intervals
+    if (Math.random() < 0.3 || ball.glitterPoints.length < 5) {
+      updatedPoints.push(createGlitterPoint(ball));
     }
+    
+    return updatedPoints;
   };
-
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo (no link, no click) */}
-            <h1
-              className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer select-none"
-              onClick={() => {
-                setSelectedRestaurant(null);
-                setSearchQuery('');
-                setFilteredRestaurants(restaurants);
-                setMenuSearchQuery('');
-              }}
-            >
-              FoodFinder
-            </h1>
-            <button 
-              onClick={() => setShowCart(true)}
-              className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-5 rounded-lg transition-colors cursor-pointer"
-            >
-              <FaShoppingCart className="mr-2" />
-              <span className="font-medium">Cart ({getTotalCartItems()})</span>
-            </button>
-          </div>
-          <div className="mt-6">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={selectedRestaurant ? "Search for dish..." : "Search for restaurant..."}
-                value={selectedRestaurant ? menuSearchQuery : searchQuery}
-                onChange={handleChange}
-                className="w-full py-3 px-5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-base"
-              />
-              <FaSearch className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
+    <div 
+      className="relative h-screen w-screen overflow-hidden bg-gray-900"
+      onMouseMove={isDraggingSlider ? handleSliderMouseMove : undefined}
+      onMouseUp={isDraggingSlider ? handleSliderMouseUp : undefined}
+      onMouseLeave={isDraggingSlider ? handleSliderMouseUp : undefined}
+    >
+      <canvas 
+        ref={canvasRef}
+        onClick={handleCanvasClick}
+        onContextMenu={handleRightClick}
+        className="block"
+      />
+      
+      {/* Animated Heading */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 select-none">
+        <div 
+          className={`bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent bg-clip-text font-bold text-4xl md:text-5xl lg:text-6xl text-center px-4 py-2 transition-all duration-500 ease-in-out ${titleHovered ? 'scale-105' : ''}`}
+          onMouseEnter={() => setTitleHovered(true)}
+          onMouseLeave={() => setTitleHovered(false)}
+          style={{
+            textShadow: '0 0 15px rgba(62, 87, 255, 0.4)',
+            letterSpacing: '0.05em',
+          }}
+        >
+          Physics Playground
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto p-4">
-        {selectedRestaurant ? (
-          <div className="space-y-6">
-            {/* Restaurant Details */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
-              <div className="md:flex">
-                <img 
-                  src={selectedRestaurant.image} 
-                  alt={selectedRestaurant.name}
-                  className="w-full md:w-1/2 h-64 md:h-96 object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
+        <div className="text-center text-gray-300 text-sm md:text-base mt-1 italic opacity-80">
+          Explore inclined plane dynamics with glittering balls
+        </div>
+        
+        {/* Animated underline */}
+        <div className="relative h-1 mt-2 mx-auto rounded-full overflow-hidden" style={{ width: '80%' }}>
+          <div 
+            className="absolute h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-700 ease-in-out"
+            style={{ 
+              width: titleHovered ? '100%' : '30%',
+              filter: 'blur(0.5px)',
+              boxShadow: '0 0 8px rgba(66, 153, 225, 0.6)'
+            }}
+          ></div>
+        </div>
+      </div>
+      
+      <div className="absolute left-4 bottom-4 bg-gray-800 p-4 rounded-lg shadow-lg text-white">
+        <h3 className="text-lg font-bold mb-2">Inclined Plane Height</h3>
+        <div className="flex items-center">
+          <input 
+            type="range" 
+            min="0" 
+            max={windowSize.height} 
+            value={inclinedHeight} 
+            onChange={(e) => setInclinedHeight(parseInt(e.target.value))}
+            className="w-48"
+          />
+          <span className="ml-2">{Math.round(inclinedHeight)}px</span>
+        </div>
+        <button 
+          onClick={() => setBalls([])}
+          className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
+        >
+          Clear All Balls
+        </button>
+      </div>
+      
+      {showSettings && (
+        <div 
+          className="absolute bg-gray-800 p-4 rounded-lg shadow-lg text-white"
+          style={{ 
+            left: `${settingsPosition.x}px`, 
+            top: `${settingsPosition.y}px`,
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '90vw',
+            width: '300px',
+            zIndex: 50
+          }}
+        >
+          <h3 className="text-lg font-bold mb-2">Physics Settings</h3>
+          <form onSubmit={handleSettingsSubmit}>
+            <div className="mb-3">
+              <label className="block mb-1">
+                Elasticity (0-1):
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05"
+                  value={settings.elasticity} 
+                  onChange={(e) => setSettings({...settings, elasticity: parseFloat(e.target.value)})}
+                  className="w-full mt-1"
                 />
-                
-                <div className="p-6 md:w-1/2">
-                  <h2 className="text-2xl font-bold mb-2">{selectedRestaurant.name}</h2>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{selectedRestaurant.description}</p>
-                  
-                  <div className="flex items-center mb-4">
-                    <div className="flex items-center gap-1 mt-2">
-                      <StarRating rating={calculateAverage(selectedRestaurant.ratings)} size="text-base" />
-                      <span className="ml-2 text-sm text-gray-500 flex items-center" style={{lineHeight: '1'}}>
-                        ({calculateAverage(selectedRestaurant.ratings).toFixed(1)}/5)
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Rate this restaurant:</p>
-                    <StarRating
-                      rating={selectedRestaurant.ratingByCurrentUser || 0}
-                      onRatingChange={(rating) => handleRateRestaurant(selectedRestaurant.id, rating)}
-                      size="text-xl"
-                      interactive={true}
-                    />
-                  </div>
-                </div>
-              </div>
+                <span className="text-sm">{settings.elasticity.toFixed(2)}</span>
+              </label>
             </div>
             
-            {/* Menu */}
-            <div>
-              <h3 className="text-xl font-bold mb-4">Menu</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(menuSearchQuery
-                  ? selectedRestaurant.menu.filter(item =>
-                      item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-                      item.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
-                    )
-                  : selectedRestaurant.menu
-                ).map((item) => (
-                  <motion.div
-                    key={item.id}
-                    className="flex flex-col bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors h-full"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 30 }}
-                    transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
-                  >
-                    <img 
-                      src={item.image} 
-                      alt={item.name}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <div className="flex flex-col flex-1 p-4">
-                      <div className="flex justify-between items-start">
-                        <h4 className="text-lg font-semibold mb-2">{item.name}</h4>
-                        <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                          ${item.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{item.description}</p>
-                      <div className="mt-auto flex items-end justify-between pt-2">
-                        <div className="flex items-center gap-1">
-                          <StarRating rating={calculateAverage(item.ratings)} size="text-base" />
-                          <span className="ml-2 text-sm text-gray-500 flex items-center" style={{lineHeight: '1'}}>
-                            ({calculateAverage(item.ratings).toFixed(1)}/5)
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500">{item.ratings.length} ratings</span>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-3 border-t border-gray-100 dark:border-gray-700">
-                      <p className="text-sm text-gray-600">Rate this dish:</p>
-                      <StarRating
-                        interactive={true}
-                        rating={item.ratingByCurrentUser || 0}
-                        onRatingChange={(rating) => handleRateMenuItem(selectedRestaurant.id, item.id, rating)}
-                      />
-                      <button
-                        onClick={() => addToCart(selectedRestaurant, item)}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors cursor-pointer"
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+            <div className="mb-3">
+              <label className="block mb-1">
+                Friction (0-1):
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05"
+                  value={settings.friction} 
+                  onChange={(e) => setSettings({...settings, friction: parseFloat(e.target.value)})}
+                  className="w-full mt-1"
+                />
+                <span className="text-sm">{settings.friction.toFixed(2)}</span>
+              </label>
             </div>
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Popular Restaurants</h2>
             
-            {filteredRestaurants.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-lg text-gray-600">No restaurants found matching your search.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredRestaurants.map((restaurant) => (
-                  <motion.div
-                    key={restaurant.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors cursor-pointer flex flex-col h-full"
-                    onClick={() => setSelectedRestaurant(restaurant)}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 30 }}
-                    transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
-                  >
-                    <div className="relative">
-                      <img 
-                        src={restaurant.image} 
-                        alt={restaurant.name}
-                        className="w-full h-48 object-cover rounded-t-lg"
-                      />
-                    </div>
-                    <div className="flex flex-col flex-1 p-4">
-                      <h3 className="text-lg font-semibold mb-2">{restaurant.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">{restaurant.description}</p>
-                      <div className="mt-auto flex items-end justify-between pt-2">
-                        <div className="flex items-center gap-1">
-                          <StarRating rating={calculateAverage(restaurant.ratings)} size="text-base" />
-                          <span className="ml-2 text-sm text-gray-500 flex items-center" style={{lineHeight: '1'}}>
-                            ({calculateAverage(restaurant.ratings).toFixed(1)}/5)
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500">{restaurant.menu.length} items</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      {/* Shopping Cart Modal */}
-      <AnimatePresence>
-        {showCart && (
-          <motion.div
-            className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-700"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold">Your Cart</h2>
-                  <button 
-                    onClick={() => setShowCart(false)}
-                    className="text-xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
-                  >
-                    &times;
-                  </button>
-                </div>
-                
-                {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-lg text-gray-600 mb-4">Your cart is empty</p>
-                    <button 
-                      onClick={() => setShowCart(false)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-lg transition-colors cursor-pointer"
-                    >
-                      Browse Restaurants
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {cart.map((order) => (
-                      <div key={order.restaurantId} className="mb-6">
-                        <h3 className="text-lg font-semibold mb-3">{order.restaurantName}</h3>
-                        
-                        {order.items.map((item) => (
-                          <div key={item.id} className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-sm text-gray-500">${item.price.toFixed(2)} x {item.quantity}</p>
-                            </div>
-                            
-                            <div className="flex items-center">
-                              <span className="font-semibold mr-4">${(item.price * item.quantity).toFixed(2)}</span>
-                              <div className="flex items-center space-x-2">
-                                <button 
-                                  onClick={() => removeFromCart(order.restaurantId, item.id)}
-                                  className="text-gray-500 hover:text-red-500 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                                >
-                                  −
-                                </button>
-                                <span className="mx-2">{item.quantity}</span>
-                                <button 
-                                  onClick={() => addToCart(
-                                    restaurants.find(r => r.id === order.restaurantId)!, 
-                                    restaurants.find(r => r.id === order.restaurantId)!.menu.find(m => m.id === item.id)!
-                                  )}
-                                  className="text-gray-500 hover:text-green-500 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                    
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="text-lg font-semibold">Total:</span>
-                        <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                          ${getTotalCartPrice().toFixed(2)}
-                        </span>
-                      </div>
-                      
-                      <button 
-                        onClick={placeOrder}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium text-lg transition-colors cursor-pointer"
-                      >
-                        Place Order
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Order Success Message */}
-      {showOrderSuccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center max-w-md border border-gray-100 dark:border-gray-700">
-            <svg className="mx-auto h-12 w-12 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <h3 className="text-xl font-bold mb-2">Order Placed Successfully!</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-              Thank you for your order. Your food is being prepared.
-            </p>
-            <button 
-              onClick={() => {
-                setShowOrderSuccess(false);
-                setShowCart(false);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-lg transition-colors cursor-pointer"
-            >
-              Continue Browsing
-            </button>
-          </div>
+            <div className="flex justify-end">
+              <button 
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+              >
+                Apply
+              </button>
+            </div>
+          </form>
         </div>
       )}
-
-      {/* Notification Toast */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50 transition-all"
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.4 }}
-          >
-            {notification}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Footer */}
-      <footer className="mt-12 bg-white dark:bg-gray-800 py-6 border-t border-gray-100 dark:border-gray-700">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} FoodFinder. All rights reserved.
-          </p>
+      
+      <div className="absolute top-4 right-0 z-20">
+        <button 
+          className="md:hidden flex absolute right-4 items-center justify-center w-10 h-10 bg-gray-800 bg-opacity-75 rounded-full text-white shadow-lg hover:bg-opacity-90 transition-all duration-300"
+          onClick={() => setShowInstructions(!showInstructions)}
+          aria-label="Show instructions"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+        
+        <div 
+          className={`
+            bg-gray-800 bg-opacity-90 p-4 rounded-lg shadow-lg text-white max-w-xs
+            transition-all duration-300 ease-in-out
+            ${showInstructions ? 'opacity-100 translate-y-0' : 'md:opacity-100 md:translate-y-0 opacity-0 -translate-y-4 pointer-events-none md:pointer-events-auto'}
+          `}
+          style={{ 
+            backdropFilter: 'blur(8px)',
+            zIndex: 30
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-bold">Instructions</h3>
+            <button 
+              onClick={() => setShowInstructions(false)}
+              className="md:hidden text-gray-300 hover:text-white"
+              aria-label="Close instructions"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Left-click to drop a ball</li>
+            <li>Right-click to adjust physics settings</li>
+            <li>Use the slider to adjust inclined plane height</li>
+          </ul>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
