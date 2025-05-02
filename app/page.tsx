@@ -1543,22 +1543,6 @@ const [upvotedReplies, setUpvotedReplies] = useState(new Map());
                     Crisis Hotlines
                   </a>
                 </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    Self-Help Tools
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    Meditation Library
-                  </a>
-                </li>
               </ul>
             </div>
             <div>
@@ -1572,22 +1556,6 @@ const [upvotedReplies, setUpvotedReplies] = useState(new Map());
                     className="text-base text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
                   >
                     About Us
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    Our Mission
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    Privacy Policy
                   </a>
                 </li>
                 <li>
