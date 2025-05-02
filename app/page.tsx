@@ -1,572 +1,690 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { faker } from '@faker-js/faker';
+import ReactECharts from 'echarts-for-react';
 
-interface Ball {
-  id: number;
-  x: number;
-  y: number;
-  radius: 15;
-  vx: number;
-  vy: number;
-  color: string;
-  glitterPoints: { x: number; y: number; alpha: number; size: number }[];
-  glitterTimer: number;
+interface Employee {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  team: string;
+  pullRequests: PullRequestData[];
 }
 
-interface Settings {
-  elasticity: number;
-  friction: number;
+interface Team {
+  id: string;
+  name: string;
+  manager: string;
+  employees: Employee[];
 }
 
-export default function BallSimulation() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [inclinedHeight, setInclinedHeight] = useState<number>(300);
-  const [balls, setBalls] = useState<Ball[]>([]);
-  const [settings, setSettings] = useState<Settings>({
-    elasticity: 1.0,
-    friction: 0.0,
-  });
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [settingsPosition, setSettingsPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
-  const [isDraggingSlider, setIsDraggingSlider] = useState<boolean>(false);
-  const [windowSize, setWindowSize] = useState({ width: 1000, height: 800 });
-  const [showInstructions, setShowInstructions] = useState<boolean>(false);
-  const ballIdCounterRef = useRef<number>(0);
-  const animationRef = useRef<number>(0);
-  const g = 10;
-  const SCALE = 30;
-  const [titleHovered, setTitleHovered] = useState<boolean>(false);
+interface PullRequestData {
+  week: string; // Format: 'Week X'
+  count: number;
+}
 
-  useEffect(() => {
-    setWindowSize({width: window.innerWidth,
-  height: window.innerHeight
-    });
-  }, []);
+interface Note {
+  employeeId: string;
+  content: string;
+  timestamp: number;
+}
 
-  const getRandomColor = () => {
-    const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#073B4C', '#F4A261'];
-    // const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#073B4C', '#F4A261'. '#FF1654', '#FF6F61', '#D9BF77', '#ACD8AA', '#FFE156', '#6A0572', '#AB83A1'];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
+const colorPalettes = {
+  line: {
+    color: '#36A2EB',
+    areaColor: 'rgba(54, 162, 235, 0.2)'
+  },
+  bar: {
+    colors: [
+      '#36A2EB',
+      '#FF6384',
+      '#4BC0C0',
+      '#FF9F40',
+      '#9966FF'
+    ]
+  }
+};
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button === 0) {
-      const rect = canvasRef.current!.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      if (isPointOnInclinedPlane(x, y)) {return;
-      }
-      
-      const newBall: Ball = {
-        id: ballIdCounterRef.current++,
-        x,
-        y,
-        radius: 15,
-        vx: 0,
-        vy: 0,
-        color: getRandomColor(),
-        glitterPoints: Array(3).fill(0).map(() => createGlitterPoint({ x, y, radius: 15 } as Ball)),
-        glitterTimer: 0
-      };
-      
-      setBalls(prev => [...prev, newBall]);
-    }
-  };
+const generatePullRequests = (weekCount: number): PullRequestData[] => {
+  return Array.from({ length: weekCount }, (_, i) => ({
+    week: `Week ${i + 1}`,
+    count: faker.number.int({ min: 0, max: 20 })
+  }));
+};
 
-  const handleRightClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const isSmallScreen = window.innerWidth < 768; // md breakpoint
-    if (isSmallScreen) {
-      setSettingsPosition({ 
-        x: window.innerWidth / 2, 
-        y: window.innerHeight / 2 
-      });
-    } else {
-      setSettingsPosition({ x: e.clientX, y: e.clientY });
-    }
-    setShowSettings(true);
-  };
-
-  const isPointOnInclinedPlane = (x: number, y: number) => {
-    if (!canvasRef.current) return false;
-    
-    const canvas = canvasRef.current;
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    const planeY = height - (inclinedHeight * (1 - x / width));
-    
-    return y >= planeY - 5;
-  };
-
-  const handleSliderMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDraggingSlider) {
-      const containerRect = e.currentTarget.getBoundingClientRect();
-      const newHeight = Math.max(0, Math.min(containerRect.height - 10, containerRect.height - (e.clientY - containerRect.top)));
-      setInclinedHeight(newHeight);
-    }
-  };
-
-  const handleSliderMouseUp = () => {
-    setIsDraggingSlider(false);
-  };
-
-  const handleSettingsSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowSettings(false);
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d')!;
-    
-    const resizeCanvas = () => {
-      canvas.width = windowSize.width;
-      canvas.height = windowSize.height;
-    };
-    
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    };
-    
-    window.addEventListener('resize', handleResize);
-    resizeCanvas();
-    
-    const updatePhysics = () => {
-      if (!canvas) return;
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      drawGrid(ctx, canvas.width, canvas.height);
-      
-      drawInclinedPlane(ctx, canvas.width, canvas.height, inclinedHeight);
-      
-      setBalls(prevBalls => {
-        const updatedBalls = prevBalls.map(ball => {
-          let newVy = ball.vy + (g / SCALE);
-          
-          let newX = ball.x + ball.vx;
-          let newY = ball.y + newVy;
-          let newVx = ball.vx;
-          
-          const slope = inclinedHeight / canvas.width;
-          const planeYAtX = canvas.height - (inclinedHeight * (1 - newX / canvas.width));
-          // const planeYAtX = canvas.height - (inclinedHeight * (1/ canvas.width));
-          
-          if (newY + ball.radius > planeYAtX) {
-            const normalX = -slope;
-            const normalY = 1;
-            const normalLength = Math.sqrt(normalX**2 + normalY**2);
-            
-            const nx = normalX / normalLength;
-            const ny = normalY / normalLength;
-            
-            const dotProduct = newVx * nx + newVy * ny;
-            
-            newVx = newVx - 2 * dotProduct * nx * settings.elasticity;
-            newVy = newVy - 2 * dotProduct * ny * settings.elasticity;
-            
-            const tangentX = ny;
-            const tangentY = -nx;
-            const tangentDot = newVx * tangentX + newVy * tangentY;
-            const frictionFactor = 1 - settings.friction;
-            
-            newVx = newVx - (1 - frictionFactor) * tangentDot * tangentX;
-            newVy = newVy - (1 - frictionFactor) * tangentDot * tangentY;
-            
-            const penetration = (newY + ball.radius) - planeYAtX;
-            newY = newY - penetration;
-          }
-          
-          if (newX - ball.radius < 0) {
-            newX = ball.radius;
-            newVx = -newVx * settings.elasticity;
-          }
-          
-          if (newX + ball.radius > canvas.width) {
-            newX = canvas.width - ball.radius;
-            newVx = -newVx * settings.elasticity;
-          }
-          
-          if (newY - ball.radius < 0) {
-            newY = ball.radius;
-            newVy = -newVy * settings.elasticity;
-          }
-          
-          return {
-            ...ball,
-            x: newX,
-            y: newY,
-            vx: newVx,
-            vy: newVy,
-            glitterPoints: updateGlitterPoints(ball),
-            glitterTimer: ball.glitterTimer + 1
-          };
-        });
-        
-        return updatedBalls;
-      });
-      
-      balls.forEach(ball => {
-        // Draw the base ball
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-        ctx.fillStyle = ball.color;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.closePath();
-        
-        // Draw glitter points
-        ball.glitterPoints.forEach(glitter => {
-          ctx.beginPath();
-          ctx.arc(
-            ball.x + glitter.x, 
-            ball.y + glitter.y, 
-            glitter.size, 
-            0, 
-            Math.PI * 2
-          );
-          ctx.fillStyle = `rgba(255, 255, 255, ${glitter.alpha})`;
-          ctx.fill();
-          ctx.closePath();
-        });
-        
-        // Optionally add a shimmer effect based on the ball's movement
-        if (Math.abs(ball.vx) > 1 || Math.abs(ball.vy) > 1) {
-          ctx.beginPath();
-          const gradientSize = ball.radius * 1.5;
-          const gradient = ctx.createRadialGradient(
-            ball.x, ball.y, ball.radius * 0.2,
-            ball.x, ball.y, gradientSize
-          );
-          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-          gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          
-          ctx.arc(ball.x, ball.y, gradientSize, 0, Math.PI * 2);
-          ctx.fillStyle = gradient;
-          ctx.fill();
-          ctx.closePath();
-        }
-      });
-      
-      animationRef.current = requestAnimationFrame(updatePhysics);
-    };
-    
-    animationRef.current = requestAnimationFrame(updatePhysics);
-    
-    return () => {
-      cancelAnimationFrame(animationRef.current);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [balls, inclinedHeight, settings, windowSize]);
-  
-  const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
-    ctx.lineWidth = 0.5;
-    
-    for (let x = 0; x <= width; x += 50) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    
-    for (let y = height; y >= 0; y -= 50) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-      
-      const heightValue = height - y;
-      if (heightValue > 0) {
-        ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
-        const textWidth = ctx.measureText(heightValue.toString()).width + 10;
-        ctx.fillRect(22, y - 9, textWidth, 18);
-        
-        ctx.font = '12px Arial';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(heightValue.toString(), 27, y);
-      }
-    }
-    
-    ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-    ctx.lineWidth = 2;
-    
-    ctx.beginPath();
-    ctx.moveTo(0, height - 20);
-    ctx.lineTo(width, height - 20);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(20, height);
-    ctx.lineTo(20, 0);
-    ctx.stroke();
-    
-    ctx.save();
-    ctx.translate(10, height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.font = 'bold 14px Arial';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.textAlign = 'center';
-    ctx.fillText('Height (pixels)', 0, 0);
-    ctx.restore();
-    
-    ctx.restore();
-  };
-  
-  const drawInclinedPlane = (ctx: CanvasRenderingContext2D, width: number, height: number, planeHeight: number) => {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(0, height);
-    ctx.lineTo(0, height - planeHeight);
-    ctx.lineTo(width, height);
-    ctx.closePath();
-    
-    const gradient = ctx.createLinearGradient(0, height - planeHeight, width, height);
-    gradient.addColorStop(0, '#3a86ff');
-    gradient.addColorStop(1, '#8338ec');
-    
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 20) {
-      const planeYAtX = height - (planeHeight * (1 - x / width));
-      ctx.beginPath();
-      ctx.moveTo(x, planeYAtX);
-      ctx.lineTo(x + 10, height - (planeHeight * (1 - (x + 10) / width)));
-      ctx.stroke();
-    }
-    
-    const slope = inclinedHeight / width;
-    const angleRadians = Math.atan(slope);
-    const angleDegrees = angleRadians * (180 / Math.PI);
-    
-    ctx.beginPath();
-    const arcRadius = 50;
-    ctx.arc(width, height, arcRadius, Math.PI, Math.PI + angleRadians, false);
-    ctx.strokeStyle = '#ffdd00';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    ctx.font = 'bold 16px Arial';
-    ctx.fillStyle = '#ffdd00';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${angleDegrees.toFixed(1)}°`, width - 60, height - 10);
-    
-    ctx.beginPath();
-    ctx.arc(width, height, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffdd00';
-    ctx.fill();
-    
-    ctx.restore();
-  };
-
-  // Add helper functions for glitter effect
-  const createGlitterPoint = (ball: Ball) => {
-    const angle = Math.random() * Math.PI * 2;
-    const distance = Math.random() * ball.radius * 0.8;
+const generateEmployees = (count: number, teamName: string): Employee[] => {
+  return Array.from({ length: count }, () => {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
     
     return {
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-      alpha: 0.6 + Math.random() * 0.4,
-      size: 1 + Math.random() * 2
+      id: faker.string.uuid(),
+      name: `${firstName} ${lastName}`,
+      avatar: faker.image.avatar(),
+      role: faker.person.jobTitle(),
+      team: teamName,
+      pullRequests: generatePullRequests(12) // 12 weeks of data
     };
-  };
+  });
+};
+
+const generateTeams = (): Team[] => {
+  const teamNames = ['Frontend', 'Backend', 'DevOps', 'QA', 'Design'];
   
-  const updateGlitterPoints = (ball: Ball) => {
-    // Update existing glitter points
-    let updatedPoints = ball.glitterPoints
-      .map(point => ({ ...point, alpha: point.alpha - 0.05 }))
-      .filter(point => point.alpha > 0);
-      
-    // Add new glitter points at random intervals
-    if (Math.random() < 0.3 || ball.glitterPoints.length < 5) {
-      updatedPoints.push(createGlitterPoint(ball));
+  return teamNames.map(name => {
+    const managerFirstName = faker.person.firstName();
+    const managerLastName = faker.person.lastName();
+    
+    return {
+      id: faker.string.uuid(),
+      name,
+      manager: `${managerFirstName} ${managerLastName}`,
+      employees: generateEmployees(faker.number.int({ min: 3, max: 8 }), name)
+    };
+  });
+};
+
+export default function PerformaWeekly() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [timeRange, setTimeRange] = useState<number>(12); 
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [currentNote, setCurrentNote] = useState('');
+
+  useEffect(() => {
+    const generatedTeams = generateTeams();
+    setTeams(generatedTeams);
+    setSelectedTeam(generatedTeams[0]);
+    
+    const savedDarkMode = localStorage.getItem('performaDarkMode');
+    if (savedDarkMode) {setIsDarkMode(savedDarkMode === 'true');
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(prefersDark);
     }
     
-    return updatedPoints;
+    const savedNotes = localStorage.getItem('performaNotes');
+    if (savedNotes) {
+      setNotes(JSON.parse(savedNotes));
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    localStorage.setItem('performaDarkMode', String(newMode));
+    
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
+  const saveNote = () => {
+    if (!selectedEmployee || !currentNote.trim()) return;
+    const newNote: Note = {
+      employeeId: selectedEmployee.id,
+      content: currentNote,
+      timestamp: Date.now()
+    };
+    const updatedNotes = [...notes, newNote];
+    setNotes(updatedNotes);
+    localStorage.setItem('performaNotes', JSON.stringify(updatedNotes));
+    setCurrentNote('');
+  };
+
+  const getCurrentEmployeeNote = useMemo(() => {
+    if (!selectedEmployee) return '';
+    const note = notes.find(note => note.employeeId === selectedEmployee.id);
+    return note?.content || '';
+  }, [selectedEmployee, notes]);
+
+  useEffect(() => {
+    setCurrentNote(getCurrentEmployeeNote);
+  }, [selectedEmployee, getCurrentEmployeeNote]);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const filteredEmployees = useMemo(() => {
+    if (!selectedTeam) return [];
+    
+    return selectedTeam.employees.filter(employee => 
+      employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.role.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [selectedTeam, searchQuery]);
+
+  const prepareChartData = (data: PullRequestData[], type: 'line' | 'bar') => {
+    const limitedData = data.slice(0, timeRange);
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: limitedData.map(d => d.week),
+        axisLine: {
+          lineStyle: {
+            color: isDarkMode ? '#fff' : '#333'
+          }
+        },
+        axisLabel: {
+          color: isDarkMode ? '#ccc' : '#333'
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: {
+          lineStyle: {
+            color: isDarkMode ? '#fff' : '#333'
+          }
+        },
+        axisLabel: {
+          color: isDarkMode ? '#ccc' : '#333'
+        },
+        splitLine: {
+          lineStyle: {
+            color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+          }
+        }
+      },
+      series: [{
+        name: selectedEmployee ? `${selectedEmployee.name}'s Pull Requests` : `${selectedTeam?.name} Team Pull Requests`,
+        type: type,
+        data: limitedData.map(d => d.count),
+        itemStyle: {
+          color: type === 'line' 
+            ? colorPalettes.line.color 
+            : (params: any) => colorPalettes.bar.colors[params.dataIndex % colorPalettes.bar.colors.length]
+        },
+        areaStyle: type === 'line' ? {
+          color: colorPalettes.line.areaColor
+        } : undefined,
+        smooth: type === 'line',
+        barWidth: type === 'bar' ? '60%' : undefined
+      }]
+    };
+
+    return option;
+  };
+
+  const getTeamPullRequesData = (): PullRequestData[] => {
+    if (!selectedTeam) return [];
+    
+    const teamData: PullRequestData[] = Array.from({ length: 12 }, (_, i) => ({week: `Week ${i + 1}`,
+      count: 0
+    }));
+    
+    selectedTeam.employees.forEach(employee => {
+      employee.pullRequests.forEach((pr, index) => {
+        teamData[index].count += pr.count;
+      });
+    });
+
+    // employees.forEach(employee => {
+    //   employee.pullRequests.forEach((pr, index) => {
+    //     teamData[index].count += pr.count;
+    //   });
+    // });
+    
+    return teamData;
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          color: isDarkMode ? '#fff' : '#333',
+          font: {
+            family: 'Inter, system-ui, sans-serif',
+            size: 14
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: selectedEmployee 
+          ? `${selectedEmployee.name}'s Pull Requests (Last ${timeRange} Weeks)` 
+          : `${selectedTeam?.name} Team Pull Requests (Last ${timeRange} Weeks)`,
+        color: isDarkMode ? '#fff' : '#333',
+        font: {
+          family: 'Inter, system-ui, sans-serif',
+          size: 18,
+          weight: 'bold' as const
+        }
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          color: isDarkMode ? '#ccc' : '#333'
+        }
+      },
+      y: {
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          color: isDarkMode ? '#ccc' : '#333',
+          precision: 0
+        },
+        beginAtZero: true
+      }
+    },
+  };
+
+  const teamStats = useMemo(() => {
+    if (!selectedTeam) return { totalPRs: 0, avgPRs: 0, topPerformer: null };
+    
+    const teamData = getTeamPullRequesData();
+    const totalPRs = teamData.reduce((sum, week) => sum + week.count, 0);
+    const avgPRs = totalPRs / selectedTeam.employees.length;
+    
+    let topPerformer = { id: '', name: '', total: 0 };
+    selectedTeam.employees.forEach(employee => {
+      const employeeTotal = employee.pullRequests.reduce((sum, pr) => sum + pr.count, 0);
+    if (employeeTotal > topPerformer.total) {topPerformer = { id: employee.id, name: employee.name, total: employeeTotal };}
+    });
+    
+    return { totalPRs, avgPRs, topPerformer };
+  }, [selectedTeam]);
+
+  const currentChartData = selectedEmployee 
+    ? prepareChartData(selectedEmployee.pullRequests, chartType)
+    : prepareChartData(getTeamPullRequesData(), chartType);
+
+  const employeeNotes = useMemo(() => {
+    if (!selectedEmployee) return [];
+    return notes.filter(note => note.employeeId === selectedEmployee.id).sort((a, b) => a.timestamp - b.timestamp);
+  }, [selectedEmployee, notes]);
+
   return (
-    <div 
-      className="relative h-screen w-screen overflow-hidden bg-gray-900"
-      onMouseMove={isDraggingSlider ? handleSliderMouseMove : undefined}
-      onMouseUp={isDraggingSlider ? handleSliderMouseUp : undefined}
-      onMouseLeave={isDraggingSlider ? handleSliderMouseUp : undefined}
-    >
-      <canvas 
-        ref={canvasRef}
-        onClick={handleCanvasClick}
-        onContextMenu={handleRightClick}
-        className="block"
-      />
-      
-      {/* Animated Heading */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 select-none">
-        <div 
-          className={`bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent bg-clip-text font-bold text-4xl md:text-5xl lg:text-6xl text-center px-4 py-2 transition-all duration-500 ease-in-out ${titleHovered ? 'scale-105' : ''}`}
-          onMouseEnter={() => setTitleHovered(true)}
-          onMouseLeave={() => setTitleHovered(false)}
-          style={{
-            textShadow: '0 0 15px rgba(62, 87, 255, 0.4)',
-            letterSpacing: '0.05em',
-          }}
-        >
-          Physics Playground
-        </div>
-        <div className="text-center text-gray-300 text-sm md:text-base mt-1 italic opacity-80">
-          Explore inclined plane dynamics with glittering balls
-        </div>
-        
-        {/* Animated underline */}
-        <div className="relative h-1 mt-2 mx-auto rounded-full overflow-hidden" style={{ width: '80%' }}>
-          <div 
-            className="absolute h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-700 ease-in-out"
-            style={{ 
-              width: titleHovered ? '100%' : '30%',
-              filter: 'blur(0.5px)',
-              boxShadow: '0 0 8px rgba(66, 153, 225, 0.6)'
-            }}
-          ></div>
-        </div>
-      </div>
-      
-      <div className="absolute left-4 bottom-4 bg-gray-800 p-4 rounded-lg shadow-lg text-white">
-        <h3 className="text-lg font-bold mb-2">Inclined Plane Height</h3>
-        <div className="flex items-center">
-          <input 
-            type="range" 
-            min="0" 
-            max={windowSize.height} 
-            value={inclinedHeight} 
-            onChange={(e) => setInclinedHeight(parseInt(e.target.value))}
-            className="w-48"
-          />
-          <span className="ml-2">{Math.round(inclinedHeight)}px</span>
-        </div>
-        <button 
-          onClick={() => setBalls([])}
-          className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-        >
-          Clear All Balls
-        </button>
-      </div>
-      
-      {showSettings && (
-        <div 
-          className="absolute bg-gray-800 p-4 rounded-lg shadow-lg text-white"
-          style={{ 
-            left: `${settingsPosition.x}px`, 
-            top: `${settingsPosition.y}px`,
-            transform: 'translate(-50%, -50%)',
-            maxWidth: '90vw',
-            width: '300px',
-            zIndex: 50
-          }}
-        >
-          <h3 className="text-lg font-bold mb-2">Physics Settings</h3>
-          <form onSubmit={handleSettingsSubmit}>
-            <div className="mb-3">
-              <label className="block mb-1">
-                Elasticity (0-1):
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={settings.elasticity} 
-                  onChange={(e) => setSettings({...settings, elasticity: parseFloat(e.target.value)})}
-                  className="w-full mt-1"
-                />
-                <span className="text-sm">{settings.elasticity.toFixed(2)}</span>
-              </label>
-            </div>
-            
-            <div className="mb-3">
-              <label className="block mb-1">
-                Friction (0-1):
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={settings.friction} 
-                  onChange={(e) => setSettings({...settings, friction: parseFloat(e.target.value)})}
-                  className="w-full mt-1"
-                />
-                <span className="text-sm">{settings.friction.toFixed(2)}</span>
-              </label>
-            </div>
-            
-            <div className="flex justify-end">
-              <button 
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+    <main className={`min-h-screen flex flex-col transition-colors duration-300 relative ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+      {isDarkMode && (
+        <div className="fixed inset-0 bg-gray-900 z-0"></div>
+      )}
+      <div className="relative z-10">
+        <div className={`sticky top-0 z-10 shadow-md border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="container mx-auto px-4 py-4 flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:items-center sm:gap-4">
+            {/* Top row: logo left, dark mode toggle right (mobile and desktop) */}
+            <div className="flex flex-row justify-between items-center sm:col-span-3">
+              <div className="flex flex-row items-center gap-2">
+                <svg className={`h-8 w-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0L1 7v10l11 7 11-7V7L12 0zm-1 12H7V8h4v4zm6 0h-4V8h4v4z" />
+                </svg>
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Performa Weekly
+                </h1>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-full focus:outline-none ${
+                  isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+                }`}
               >
-                Apply
+                {isDarkMode ? (
+                  <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
               </button>
             </div>
-          </form>
-        </div>
-      )}
-      
-      <div className="absolute top-4 right-0 z-20">
-        <button 
-          className="md:hidden flex absolute right-4 items-center justify-center w-10 h-10 bg-gray-800 bg-opacity-75 rounded-full text-white shadow-lg hover:bg-opacity-90 transition-all duration-300"
-          onClick={() => setShowInstructions(!showInstructions)}
-          aria-label="Show instructions"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        
-        <div 
-          className={`
-            bg-gray-800 bg-opacity-90 p-4 rounded-lg shadow-lg text-white max-w-xs
-            transition-all duration-300 ease-in-out
-            ${showInstructions ? 'opacity-100 translate-y-0' : 'md:opacity-100 md:translate-y-0 opacity-0 -translate-y-4 pointer-events-none md:pointer-events-auto'}
-          `}
-          style={{ 
-            backdropFilter: 'blur(8px)',
-            zIndex: 30
-          }}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-bold">Instructions</h3>
-            <button 
-              onClick={() => setShowInstructions(false)}
-              className="md:hidden text-gray-300 hover:text-white"
-              aria-label="Close instructions"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+            {/* Second row: team select/search, full width on mobile, centered on desktop */}
+            <div className="w-full flex justify-center sm:col-span-3">
+              <div className="relative w-full max-w-xs">
+                <select
+                  className={`appearance-none border rounded-md py-2 pl-3 pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 w-full ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-200' : 'bg-gray-100 border-gray-300 text-gray-800'
+                  }`}
+                  value={selectedTeam?.id || ''}
+                  onChange={(e) => {
+                    const team = teams.find(t => t.id === e.target.value);
+                    setSelectedTeam(team || null);
+                    setSelectedEmployee(null);
+                  }}
+                >
+                  {teams.map(team => (
+                    <option key={team.id} value={team.id}>{team.name} Team</option>
+                  ))}
+                </select>
+                <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
           </div>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Left-click to drop a ball</li>
-            <li>Right-click to adjust physics settings</li>
-            <li>Use the slider to adjust inclined plane height</li>
-          </ul>
+        </div>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h2 className={`text-xl font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+              {selectedTeam ? `${selectedTeam.name} Team` : 'Team'} Performance Dashboard
+            </h2>
+            <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+              Manager: {selectedTeam?.manager || 'Not Selected'}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className={`border rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Total Pull Requests</h3>
+                <span className={`p-2 rounded-full ${isDarkMode ? 'text-blue-400 bg-blue-900/30' : 'text-blue-600 bg-blue-100'}`}>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6h.1a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </span>
+              </div>
+              <div className="text-sm dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>{teamStats.totalPRs}</div>
+              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Last {timeRange} weeks</p>
+            </div>
+            
+            <div className={`border rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Avg Pull Requests</h3>
+                <span className={`p-2 rounded-full ${isDarkMode ? 'text-green-400 bg-green-900/30' : 'text-green-600 bg-green-100'}`}>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </span>
+              </div>
+              <div className="text-sm dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>{teamStats.avgPRs.toFixed(1)}</div>
+              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Per employee</p>
+            </div>
+            
+            <div className={`border rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Top Performer</h3>
+                <span className={`p-2 rounded-full ${isDarkMode ? 'text-purple-400 bg-purple-900/30' : 'text-purple-600 bg-purple-100'}`}>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </span>
+              </div>
+              <div className="text-xl font-semibold truncate dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>{teamStats.topPerformer?.name || 'N/A'}</div>
+              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {teamStats.topPerformer ? `${teamStats.topPerformer.total} Pull Requests` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="inline-flex rounded-md shadow-sm">
+                <button
+                  className={`px-4 py-2 rounded-l-lg text-sm font-medium focus:z-10 focus:outline-none ${
+                    chartType === 'line' 
+                      ? 'bg-blue-600 text-white' 
+                      : `${isDarkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-100'}`
+                  }`}
+                  onClick={() => setChartType('line')}
+                >
+                  Line Chart
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-r-lg text-sm font-medium focus:z-10 focus:outline-none ${
+                    chartType === 'bar' 
+                      ? 'bg-blue-600 text-white' 
+                      : `${isDarkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-100'}`
+                  }`}
+                  onClick={() => setChartType('bar')}
+                >
+                  Bar Chart
+                </button>
+              </div>
+              
+              <div className="flex items-center">
+                <label className={`mr-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Time Range:</label>
+                <select
+                  className={`border rounded-md text-sm py-1 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-800'
+                  }`}
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(parseInt(e.target.value))}
+                >
+                  <option value="4">4 Weeks</option>
+                  <option value="8">8 Weeks</option>
+                  <option value="12">12 Weeks</option>
+                </select>
+              </div>
+            </div>
+            
+            {selectedEmployee && (
+              <button
+                className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                onClick={() => setSelectedEmployee(null)}
+              >
+                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Return to Team View
+              </button>
+            )}
+          </div>
+          <div className={`${isDarkMode ? "bg-black/30 backdrop-blur-md border border-gray-700/60" : "bg-white border border-gray-200"} rounded-xl shadow-lg p-6 mb-8`}>
+            <div className="h-80">
+              <ReactECharts
+                option={prepareChartData(
+                  selectedEmployee ? selectedEmployee.pullRequests : getTeamPullRequesData(),
+                  chartType
+                )}
+                style={{ height: '100%', width: '100%' }}
+                theme={isDarkMode ? 'dark' : 'light'}
+              />
+            </div>
+          </div>
+
+          {/* Synchronized height wrapper for both columns */}
+          <div className="flex flex-col lg:flex-row gap-8 max-h-[450px] h-[450px]">
+            <div className="w-full lg:w-2/3 h-full max-h-full">
+              <div className={`rounded-xl shadow-lg p-6 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} h-full max-h-full flex flex-col`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>Team Members</h3>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search employees..."
+                      className={`pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full ${
+                        isDarkMode ? 'bg-gray-700 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-800'
+                      }`}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="overflow-auto max-h-full h-full flex-1">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <tr>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Employee
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Role
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Pull Requests
+                        </th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      {filteredEmployees.map(employee => {
+                        const totalPRs = employee.pullRequests
+                          .slice(0, timeRange)
+                          .reduce((sum, pr) => sum + pr.count, 0);
+                        
+                        return (
+                          <tr 
+                            key={employee.id}
+                            className={`${
+                              selectedEmployee?.id === employee.id 
+                                ? isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'
+                                : ''
+                            } ${
+                              isDarkMode 
+                                ? 'hover:bg-gray-700' 
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 rounded-full overflow-hidden">
+                                  <img src={employee.avatar} alt={employee.name} className="h-full w-full object-cover" />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>
+                                    {employee.name}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-700 dark:text-gray-400">{employee.role}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>{totalPRs}</div>
+                              <div className="text-xs text-gray-700 dark:text-gray-400">Last {timeRange} weeks</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                                onClick={() => setSelectedEmployee(employee)}
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      
+                      {filteredEmployees.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            No employees match your search.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            {/* Notes Section */}
+            <div className="w-full lg:w-1/3 h-full max-h-full flex-1">
+              <div className={`rounded-xl shadow-lg p-6 h-full border ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} h-full max-h-full flex flex-col`}>
+                <h3 className="text-lg font-semibold dark:text-white mb-4" style={{ color: isDarkMode ? undefined : '#111' }}>
+                  {selectedEmployee ? `Notes for ${selectedEmployee.name}` : 'Select an employee to add notes'}
+                </h3>
+                {selectedEmployee ? (
+                  <>
+                    {/* Comment stack */}
+                    <div className="flex flex-col gap-4 mb-4 h-full max-h-full overflow-y-auto pr-2 flex-1">
+                      {employeeNotes.length === 0 && (
+                        <div className="text-gray-400 text-sm text-center">No notes yet. Add the first note!</div>
+                      )}
+                      {employeeNotes.map((note, idx) => (
+                        <div
+                          key={note.timestamp}
+                          className="flex items-start gap-3 animate-fadeIn"
+                          style={{ animationDelay: `${idx * 60}ms` }}
+                        >
+                          <div className="h-9 w-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            {/* Manager generic avatar SVG */}
+                            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-7 w-7">
+                              <circle cx="20" cy="20" r="20" fill="#2563eb" />
+                              <circle cx="20" cy="16" r="7" fill="#fff" />
+                              <ellipse cx="20" cy="30" rx="10" ry="6" fill="#fff" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-xs dark:text-white" style={{ color: isDarkMode ? undefined : '#111' }}>Manager (Me)</span>
+                              <span className="text-xs text-gray-400">{new Date(note.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm mt-1 dark:text-gray-200 whitespace-pre-line" style={{ color: isDarkMode ? undefined : '#111' }}>{note.content}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Add new note */}
+                    <textarea
+                      className={`w-full p-3 border rounded-lg min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="Add a note about this employee..."
+                      value={currentNote}
+                      onChange={(e) => setCurrentNote(e.target.value)}
+                    ></textarea>
+                    <div className="flex justify-end mt-3">
+                      <button
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md shadow-sm"
+                        onClick={saveNote}
+                      >
+                        Add Note
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-500 dark:text-gray-400">
+                    <svg className="h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <p>Select an employee to view and add notes</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
