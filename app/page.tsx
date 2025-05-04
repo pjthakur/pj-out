@@ -1,699 +1,645 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
-import * as THREE from 'three';
-import { FaCube, FaCircle, FaSun, FaMoon, FaQuestion, FaDownload } from 'react-icons/fa';
-import { Md3dRotation, MdShapeLine } from 'react-icons/md';
+import { Montserrat } from 'next/font/google';
+import { useState, useEffect } from "react";
+import { faker } from "@faker-js/faker";
+import {
+  Menu,
+  X,
+  Edit2,
+  Save,
+  Eye,
+  Send,
+  Copy,
+  ExternalLink,
+  FileText,
+  Code,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
+import { Toaster, toast } from 'sonner';
 
-interface Object3D {
+const montserrat = Montserrat({ subsets: ['latin'] });
+
+interface DocPage {
   id: string;
-  type: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: [number, number, number];
-  color: string;
+  title: string;
+  category: string;
+  content: string;
+  lastUpdated: Date;
 }
 
-function Shape({ type, position, color, id, onSelect, onDragStart, onDragEnd, onPositionChange, onRotationChange }: {
-  type: string;
-  position: [number, number, number];
-  color: string;
+const generateFakeData = (): DocPage[] => {
+  const categories = [
+    "Authentication",
+    "Users",
+    "Products",
+    "Orders",
+    "Analytics",
+    "Webhooks",
+  ];
+
+  return Array.from({ length: 20 }, (_, i) => {
+    const category = categories[Math.floor(Math.random() * categories.length)];
+
+    const content = `# ${faker.commerce.productName()} API
+
+## Overview
+
+This endpoint allows you to manage ${category.toLowerCase()} in your application.
+
+\`\`\`typescript
+interface ${category.slice(0, -1)} {
   id: string;
-  onSelect: () => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onPositionChange: (position: [number, number, number]) => void;
-  onRotationChange: (rotation: [number, number, number]) => void;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
-  const [active, setActive] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const { camera, scene, gl } = useThree();
-  const dragPlane = useRef<THREE.Plane>(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
-  const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
-  const mouse = useRef<THREE.Vector2>(new THREE.Vector2());
-  const dragOffset = useRef<THREE.Vector3>(new THREE.Vector3());
-  const intersectionPoint = useRef<THREE.Vector3>(new THREE.Vector3());
-  const lastMousePosition = useRef<THREE.Vector2>(new THREE.Vector2());
+  name: string;
+  created_at: string;
+  updated_at: string;
+  ${faker.lorem.word()}: ${faker.helpers.arrayElement([
+      "string",
+      "number",
+      "boolean",
+      "object",
+    ])};
+  ${faker.lorem.word()}: ${faker.helpers.arrayElement([
+      "string",
+      "number",
+      "boolean",
+      "object",
+    ])};
+}
+\`\`\`
 
-  // Update mesh position when props change
-  useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.position.set(...position);
+## Endpoints
+
+### GET /api/v1/${category.toLowerCase()}
+
+Retrieve a list of all ${category.toLowerCase()}.
+
+**Parameters:**
+
+| Name  | Type   | Description |
+|-------|--------|-------------|
+| page  | number | Page number for pagination |
+| limit | number | Number of results per page |
+| sort  | string | Field to sort by           |
+
+**Example Response:**
+
+\`\`\`json
+{
+  "data": [
+    {
+      "id": "${faker.string.uuid()}",
+      "name": "${faker.person.fullName()}",
+      "created_at": "${faker.date.past().toISOString()}",
+      "updated_at": "${faker.date.recent().toISOString()}"
     }
-  }, [position]);
+  ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "limit": 10
+  }
+}
+\`\`\`
 
-  const updateMousePosition = (event: MouseEvent) => {
-    const rect = gl.domElement.getBoundingClientRect();
-    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  };
+### POST /api/v1/${category.toLowerCase()}
 
-  const handlePointerDown = (event: MouseEvent) => {
-    if (!meshRef.current) return;
+Create a new ${category.slice(0, -1).toLowerCase()}.
 
-    updateMousePosition(event);
-    lastMousePosition.current.copy(mouse.current);
-    raycaster.current.setFromCamera(mouse.current, camera);
+**Request Body:**
 
-    const intersects = raycaster.current.intersectObject(meshRef.current);
-    if (intersects.length > 0) {
-      event.stopPropagation();
+\`\`\`json
+{
+  "name": "string",
+  "${faker.lorem.word()}": "${faker.helpers.arrayElement([
+      "string",
+      "number",
+      "boolean",
+      "object",
+    ])}"
+}
+\`\`\`
 
-      if (event.shiftKey) {
-        // Start Y-axis movement
-        dragPlane.current.setFromNormalAndCoplanarPoint(
-          new THREE.Vector3(1, 0, 0),
-          intersects[0].point
-        );
-      } else if (event.altKey) {
-        // Start rotation
-        setIsRotating(true);
-      } else {
-        // Start XZ movement
-        dragPlane.current.setFromNormalAndCoplanarPoint(
-          new THREE.Vector3(0, 1, 0),
-          intersects[0].point
-        );
-      }
+**Example Response:**
 
-      dragOffset.current.copy(intersects[0].point).sub(meshRef.current.position);
-      setActive(true);
-      onSelect();
-      onDragStart();
-    }
-  };
+\`\`\`json
+{
+  "id": "${faker.string.uuid()}",
+  "name": "New ${category.slice(0, -1)}",
+  "created_at": "${new Date().toISOString()}",
+  "updated_at": "${new Date().toISOString()}"
+}
+\`\`\`
+`;
 
-  const handlePointerMove = (event: MouseEvent) => {
-    if (!active || !meshRef.current) return;
-
-    updateMousePosition(event);
-    raycaster.current.setFromCamera(mouse.current, camera);
-
-    if (isRotating) {
-      // Handle rotation
-      const deltaX = mouse.current.x - lastMousePosition.current.x;
-      const rotationY = meshRef.current.rotation.y + deltaX * 2;
-      meshRef.current.rotation.y = rotationY;
-      onRotationChange([meshRef.current.rotation.x, rotationY, meshRef.current.rotation.z]);
-    } else if (raycaster.current.ray.intersectPlane(dragPlane.current, intersectionPoint.current)) {
-      // Handle movement
-      const newPosition = intersectionPoint.current.sub(dragOffset.current);
-      meshRef.current.position.copy(newPosition);
-      onPositionChange([newPosition.x, newPosition.y, newPosition.z]);
-    }
-
-    lastMousePosition.current.copy(mouse.current);
-  };
-
-  const handlePointerUp = () => {
-    setActive(false);
-    setIsRotating(false);
-    onDragEnd();
-  };
-
-  useEffect(() => {
-    if (active) {
-      window.addEventListener('mousemove', handlePointerMove);
-      window.addEventListener('mouseup', handlePointerUp);
-    } else {
-      window.removeEventListener('mousemove', handlePointerMove);
-      window.removeEventListener('mouseup', handlePointerUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handlePointerMove);
-      window.removeEventListener('mouseup', handlePointerUp);
+    return {
+      id: faker.string.uuid(),
+      title: `${category} API Reference`,
+      category,
+      content,
+      lastUpdated: faker.date.recent(),
     };
-  }, [active, isRotating]);
-
-  return (
-    <mesh
-      ref={meshRef}
-      position={position}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-      onPointerDown={handlePointerDown}
-    >
-      {type === 'cube' && <boxGeometry args={[1, 1, 1]} />}
-      {type === 'sphere' && <sphereGeometry args={[0.5, 32, 32]} />}
-      {type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1, 32]} />}
-      {type === 'cone' && <coneGeometry args={[0.5, 1, 32]} />}
-      {type === 'torus' && <torusGeometry args={[0.5, 0.2, 16, 32]} />}
-      {type === 'torusKnot' && <torusKnotGeometry args={[0.5, 0.2, 100, 16]} />}
-      <meshStandardMaterial
-        color={active ? 'hotpink' : hovered ? 'lightblue' : color}
-        metalness={0.3}
-        roughness={0.4}
-      />
-    </mesh>
-  );
-}
-
-function Scene({ objects, selectedObject, onObjectSelect, onPositionChange, onRotationChange, isDarkMode }: {
-  objects: Object3D[];
-  selectedObject: Object3D | null;
-  onObjectSelect: (obj: Object3D) => void;
-  onPositionChange: (position: [number, number, number]) => void;
-  onRotationChange: (rotation: [number, number, number]) => void;
-  isDarkMode: boolean;
-}) {
-  const controlsRef = useRef<any>(null);
-  const gridRef = useRef<THREE.Group>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const moveSpeed = 0.1;
-  const keys = useRef({
-    w: false,
-    a: false,
-    s: false,
-    d: false,
-    q: false,
-    e: false
   });
+};
+
+export default function Home() {
+  const [docPages, setDocPages] = useState<DocPage[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<DocPage | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState("");
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() in keys.current) {
-        keys.current[e.key.toLowerCase() as keyof typeof keys.current] = true;
+    const data = generateFakeData();
+    setDocPages(data);
+    if (data.length > 0) {
+      setSelectedPage(data[0]);
+    }
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (prefersDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
       }
     };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() in keys.current) {
-        keys.current[e.key.toLowerCase() as keyof typeof keys.current] = false;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
+    
+    mediaQuery.addEventListener('change', handleChange);
+    
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, []);
 
-  useFrame((state) => {
-    if (!gridRef.current) return;
-
-    const { w, a, s, d, q, e } = keys.current;
-    const camera = state.camera;
-
-    // Get camera's forward and right vectors
-    const forward = new THREE.Vector3();
-    const right = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    right.crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
-
-    // Calculate movement based on camera direction
-    const movement = new THREE.Vector3();
-
-    if (w) movement.sub(forward);  // Changed from add to sub
-    if (s) movement.add(forward);  // Changed from sub to add
-    if (a) movement.sub(right);
-    if (d) movement.add(right);
-    if (q) movement.y += moveSpeed;
-    if (e) movement.y -= moveSpeed;
-
-    // Normalize and scale the movement
-    if (movement.length() > 0) {
-      movement.normalize().multiplyScalar(moveSpeed);
-      gridRef.current.position.add(movement);
-    }
-  });
-
-  return (
-    <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[1, 1, 1]} intensity={0.5} />
-      <group ref={gridRef}>
-        <Grid
-          args={[20, 20]}
-          cellSize={1}
-          cellThickness={1}
-          cellColor={isDarkMode ? "#4a4a4a" : "#e5e5e5"}
-          sectionSize={3.3}
-          sectionThickness={1.5}
-          sectionColor={isDarkMode ? "#6b6b6b" : "#d4d4d4"}
-          fadeDistance={50}
-          fadeStrength={1}
-          followCamera={false}
-          infiniteGrid={true}
-        />
-        {objects.map((obj) => (
-          <Shape
-            key={obj.id}
-            type={obj.type}
-            position={obj.position}
-            color={obj.color}
-            id={obj.id}
-            onSelect={() => onObjectSelect(obj)}
-            onDragStart={() => setIsDragging(true)}
-            onDragEnd={() => setIsDragging(false)}
-            onPositionChange={onPositionChange}
-            onRotationChange={onRotationChange}
-          />
-        ))}
-      </group>
-      <OrbitControls
-        ref={controlsRef}
-        makeDefault
-        enableDamping
-        dampingFactor={0.05}
-        rotateSpeed={0.5}
-        enabled={!isDragging}
-        minDistance={5}
-        maxDistance={50}
-      />
-    </>
-  );
-}
-
-function GuideModal({ isOpen, onClose, isDarkMode }: { isOpen: boolean; onClose: () => void; isDarkMode: boolean }) {
-  if (!isOpen) return null;
-
-  const themeClasses = {
-    modal: isDarkMode ? 'bg-gray-800/90' : 'bg-white/90',
-    title: isDarkMode ? 'text-gray-100' : 'text-gray-900',
-    content: isDarkMode ? 'text-gray-300' : 'text-gray-700',
-    closeButton: isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700',
-    bullet: isDarkMode ? 'bg-gray-400' : 'bg-gray-600'
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className={`relative w-full max-w-2xl mx-4 p-6 rounded-2xl shadow-2xl ${themeClasses.modal} transition-all duration-300`}>
-        <button
-          onClick={onClose}
-          className={`absolute top-4 right-4 text-xl ${themeClasses.closeButton} transition-colors duration-200`}
-        >
-          ✕
-        </button>
-        <h2 className={`text-2xl font-bold mb-6 ${themeClasses.title}`}>Quick Guide</h2>
-        <div className={`space-y-6 ${themeClasses.content}`}>
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Camera Controls</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Right-click + drag to rotate view</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Scroll to zoom in/out</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Movement Controls</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>WASD: Move in the direction you're looking</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>QE: Move up and down</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Object Controls</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Click & drag: Move object in XZ plane</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Shift + drag: Move object in Y axis</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Alt + drag: Rotate object</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Object Properties</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Select an object to edit its properties</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`w-2 h-2 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Use the input fields to adjust position, rotation, and scale</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function ThreeDEditor() {
-  const [objects, setObjects] = useState<Object3D[]>([]);
-  const [selectedObject, setSelectedObject] = useState<Object3D | null>(null);
-  const [showGuide, setShowGuide] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [inputValues, setInputValues] = useState({
-    positionX: '0',
-    positionY: '0',
-    positionZ: '0',
-    rotationY: '0',
-    scale: '1'
-  });
-
-  // Update input values when selected object changes
-  useEffect(() => {
-    if (selectedObject) {
-      setInputValues({
-        positionX: selectedObject.position[0].toString(),
-        positionY: selectedObject.position[1].toString(),
-        positionZ: selectedObject.position[2].toString(),
-        rotationY: selectedObject.rotation[1].toString(),
-        scale: selectedObject.scale[0].toString()
+  const handleEdit = () => {
+    if (selectedPage) {
+      setEditedContent(selectedPage.content);
+      setIsEditing(true);
+      
+      toast.info('Editing document', {
+        description: 'You can now edit the document content.',
+        icon: <Edit2 size={18} />,
       });
     }
-  }, [selectedObject]);
-
-  const addObject = (type: string) => {
-    const colors = {
-      cube: '#4CAF50',
-      sphere: '#2196F3',
-      cylinder: '#FF9800',
-      cone: '#9C27B0',
-      torus: '#E91E63',
-      torusKnot: '#00BCD4',
-      octahedron: '#FF5722'
-    };
-
-    const newObject: Object3D = {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: colors[type as keyof typeof colors] || '#FFFFFF',
-    };
-    setObjects([...objects, newObject]);
   };
 
-  const updateObject = (id: string, updates: Partial<Object3D>) => {
-    setObjects(prevObjects =>
-      prevObjects.map(obj => {
-        if (obj.id === id) {
-          return { ...obj, ...updates };
-        }
-        return obj;
-      })
-    );
-  };
+  const handleSave = () => {
+    if (selectedPage) {
+      const updatedPages = docPages.map((page) =>
+        page.id === selectedPage.id
+          ? { ...page, content: editedContent, lastUpdated: new Date() }
+          : page
+      );
 
-  const handleInputChange = (field: string, value: string) => {
-    if (!selectedObject) return;
-
-    setInputValues(prev => ({ ...prev, [field]: value }));
-
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return;
-
-    switch (field) {
-      case 'positionX':
-        updateObject(selectedObject.id, {
-          position: [numValue, selectedObject.position[1], selectedObject.position[2]]
-        });
-        break;
-      case 'positionY':
-        updateObject(selectedObject.id, {
-          position: [selectedObject.position[0], numValue, selectedObject.position[2]]
-        });
-        break;
-      case 'positionZ':
-        updateObject(selectedObject.id, {
-          position: [selectedObject.position[0], selectedObject.position[1], numValue]
-        });
-        break;
-      case 'rotationY':
-        updateObject(selectedObject.id, {
-          rotation: [selectedObject.rotation[0], numValue, selectedObject.rotation[2]]
-        });
-        break;
-      case 'scale':
-        updateObject(selectedObject.id, {
-          scale: [numValue, numValue, numValue]
-        });
-        break;
+      setDocPages(updatedPages);
+      setSelectedPage({
+        ...selectedPage,
+        content: editedContent,
+        lastUpdated: new Date(),
+      });
+      setIsEditing(false);
+      setDeployedUrl(null);
+      
+      toast.success('Documentation saved successfully!', {
+        description: 'Changes have been saved to the document.',
+        duration: 3000,
+      });
     }
   };
 
-  const handlePositionChange = (position: [number, number, number]) => {
-    if (!selectedObject) return;
-    setInputValues(prev => ({
-      ...prev,
-      positionX: position[0].toFixed(2),
-      positionY: position[1].toFixed(2),
-      positionZ: position[2].toFixed(2)
-    }));
-    updateObject(selectedObject.id, { position });
+  const handleDeploy = () => {
+    toast.loading('Deploying documentation...', {
+      description: 'Please wait while we publish your changes.',
+      id: 'deploy-toast',
+    });
+    
+    setTimeout(() => {
+      const fakeDeployUrl = `https://docs.${faker.internet.domainName()}/${selectedPage?.category
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`;
+      setDeployedUrl(fakeDeployUrl);
+      
+      toast.dismiss('deploy-toast');
+      toast.success('Deployment successful!', {
+        description: 'Your documentation has been published.',
+        action: {
+          label: 'View',
+          onClick: () => window.open(fakeDeployUrl, '_blank'),
+        },
+      });
+    }, 1500);
   };
 
-  const handleRotationChange = (rotation: [number, number, number]) => {
-    if (!selectedObject) return;
-    setInputValues(prev => ({
-      ...prev,
-      rotationY: rotation[1].toFixed(2)
-    }));
-    updateObject(selectedObject.id, { rotation });
-  };
-
-  const exportScene = () => {
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png', 1.0);
-      link.download = '3d-scene.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const shapeIcons = {
-    cube: <FaCube className="w-5 h-5" />,
-    sphere: <FaCircle className="w-5 h-5" />,
-    cylinder: <MdShapeLine className="w-5 h-5" />,
-    cone: <Md3dRotation className="w-5 h-5" />,
-    torus: <FaCircle className="w-5 h-5" />,
-    torusKnot: <Md3dRotation className="w-5 h-5" />
-  };
-
-  const themeClasses = {
-    container: isDarkMode
-      ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white'
-      : 'bg-gradient-to-br from-[#f8f8f8] to-[#f0f0f0] text-[#242424]',
-    sidebar: isDarkMode
-      ? 'bg-gray-800/80 backdrop-blur-sm'
-      : 'bg-white/80 backdrop-blur-sm border-r border-[#e6e6e6]',
-    title: isDarkMode
-      ? 'text-gray-100'
-      : 'text-[#242424]',
-    subtitle: isDarkMode
-      ? 'text-gray-300'
-      : 'text-[#404040]',
-    button: isDarkMode
-      ? 'bg-gray-700/90 hover:bg-gray-600 shadow-lg shadow-gray-500/20'
-      : 'bg-[#03a87c]/10 hover:bg-[#03a87c]/20 text-[#03a87c] shadow-lg shadow-[#03a87c]/10',
-    input: isDarkMode
-      ? 'bg-gray-700/50 focus:ring-gray-500 border-gray-600'
-      : 'bg-white border border-[#e6e6e6] focus:ring-[#03a87c]',
-    instructions: isDarkMode
-      ? 'bg-gray-700/50 border-gray-600'
-      : 'bg-white/50 border border-[#e6e6e6]',
-    controls: isDarkMode
-      ? 'bg-gray-800/80 backdrop-blur-sm border-gray-700'
-      : 'bg-white/80 backdrop-blur-sm border border-[#e6e6e6]',
-    exportButton: isDarkMode
-      ? 'bg-emerald-500/90 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
-      : 'bg-[#03a87c] hover:bg-[#028a6b] shadow-lg shadow-[#03a87c]/20',
-    card: isDarkMode
-      ? 'bg-gray-700/50 border-gray-600'
-      : 'bg-white/50 border border-[#e6e6e6]',
-    bullet: isDarkMode
-      ? 'bg-gray-400'
-      : 'bg-[#03a87c]',
-    logo: isDarkMode
-      ? 'text-gray-100'
-      : 'text-[#03a87c]'
-  };
+  const pagesByCategory = docPages.reduce<Record<string, DocPage[]>>(
+    (acc, page) => {
+      if (!acc[page.category]) {
+        acc[page.category] = [];
+      }
+      acc[page.category].push(page);
+      return acc;
+    },
+    {}
+  );
 
   return (
-    <div className={`flex h-screen ${themeClasses.container} transition-colors duration-300`}>
-      {/* Guide Button - Moved to top right */}
-      <button
-        onClick={() => setShowGuide(true)}
-        className={`fixed top-4 right-4 px-4 py-2 rounded-lg transition-all duration-300 ${themeClasses.button} hover:scale-105 cursor-pointer flex items-center gap-2`}
-      >
-        <FaQuestion className="w-4 h-4" />
-        Guide
-      </button>
-
-      {/* Sidebar */}
-      <div className={`w-80 p-6 flex flex-col ${themeClasses.sidebar} transition-colors duration-300`}>
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className={`text-2xl font-bold ${themeClasses.logo} transition-colors duration-300 flex items-center gap-2`}>
-              <span className="text-3xl">3D</span>
-              <span className="font-light">Editor</span>
-            </h2>
-            <p className="text-sm text-gray-400">Create and manipulate 3D objects</p>
-          </div>
-          {/* Theme Toggle Switch */}
-          <div className="relative">
-            <input
-              type="checkbox"
-              id="theme-toggle"
-              className="sr-only"
-              checked={isDarkMode}
-              onChange={() => setIsDarkMode(!isDarkMode)}
-            />
-            <label
-              htmlFor="theme-toggle"
-              className={`relative inline-flex items-center h-6 rounded-full w-11 cursor-pointer transition-colors duration-300 ${isDarkMode ? 'bg-gray-700' : 'bg-[#03a87c]/20'
-                }`}
+    <div className={`min-h-screen ${montserrat.className}`}>
+      <Toaster position="top-right" expand={false} richColors closeButton />
+      <div className="flex flex-col dark:bg-gray-900 dark:text-white min-h-screen">
+        <header className="sticky top-0 z-30 w-full px-4 md:px-6 py-4 bg-white shadow-md dark:bg-gray-800 flex justify-between items-center">
+          <div className="flex items-center">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden mr-4 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <span
-                className={`inline-block w-4 h-4 transform rounded-full transition-transform duration-300 ${isDarkMode ? 'translate-x-6 bg-gray-300' : 'translate-x-1 bg-[#03a87c]'
-                  }`}
-              />
-              <span className="absolute left-1.5 top-1.5 text-xs">
-                {isDarkMode ? <FaMoon className="w-3 h-3" /> : <FaSun className="w-3 h-3" />}
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="flex items-center">
+              <span className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold">
+                A
               </span>
-            </label>
+              <h1 className="ml-2 text-xl font-bold">API Docs</h1>
+            </div>
           </div>
-        </div>
+        </header>
 
-        <div className="mb-8">
-          <h3 className={`text-lg font-semibold mb-4 ${themeClasses.subtitle}`}>Add Objects</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {['cube', 'sphere', 'cylinder', 'cone', 'torus', 'torusKnot'].map((type) => (
-              <button
-                key={type}
-                onClick={() => addObject(type)}
-                className={`p-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${themeClasses.button} hover:scale-105 cursor-pointer`}
-              >
-                {shapeIcons[type as keyof typeof shapeIcons]}
-                <span className="text-sm capitalize">{type}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {selectedObject && (
-          <div className="mt-6">
-            <h3 className={`text-lg font-semibold mb-4 ${themeClasses.subtitle}`}>Properties</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm mb-2 font-medium">Position</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['X', 'Y', 'Z'].map((axis) => (
-                    <div key={axis}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={inputValues[`position${axis}` as keyof typeof inputValues]}
-                        onChange={(e) => handleInputChange(`position${axis}`, e.target.value)}
-                        className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 ${themeClasses.input} transition-colors duration-300 cursor-text`}
-                        placeholder={axis}
-                      />
+        <div className="flex flex-1 overflow-hidden">
+          {isMounted && (
+            <AnimatePresence>
+              {(menuOpen ||
+                (typeof window !== "undefined" &&
+                  window.innerWidth >= 768)) && (
+                <motion.div
+                  initial={{ x: -300, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -300, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`${
+                    menuOpen ? "block" : "hidden"
+                  } md:block w-64 lg:w-72 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto flex-shrink-0 fixed md:static inset-y-0 left-0 pt-16 md:pt-0 z-20`}
+                >
+                  <div className="p-4">
+                    <div className="mb-4">
+                      <h2 className="text-lg font-bold text-gray-950 dark:text-white">
+                        API DOCUMENTATION
+                      </h2>
                     </div>
-                  ))}
+                    <nav className="space-y-6">
+                      {Object.entries(pagesByCategory).map(
+                        ([category, pages]) => (
+                          <div key={category} className="space-y-2">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                              {category}
+                            </h3>
+                            <ul className="space-y-1">
+                              {pages.map((page, index) => (
+                                <motion.li 
+                                  key={page.id}
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPage(page);
+                                      setIsEditing(false);
+                                      setMenuOpen(false);
+                                      
+                                      toast.info(`Viewing ${page.title}`, {
+                                        description: 'Document loaded successfully',
+                                        icon: <FileText size={16} />,
+                                        duration: 2000,
+                                      });
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-200 ${
+                                      selectedPage?.id === page.id 
+                                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                        : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    }`}
+                                  >
+                                    {page.title}
+                                  </button>
+                                </motion.li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    </nav>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-4">
+            {selectedPage && (
+              <motion.div
+                key={selectedPage.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="max-w-4xl mx-auto"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold">
+                      {selectedPage.title}
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Last updated:{" "}
+                      {selectedPage.lastUpdated.toLocaleDateString()} at{" "}
+                      {selectedPage.lastUpdated.toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <div className="mt-4 md:mt-0 flex space-x-3">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                        >
+                          <X size={18} className="mr-1" /> Cancel
+                        </button>
+                        <button
+                          onClick={handleSave}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
+                        >
+                          <Save size={18} className="mr-1" /> Save
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleEdit}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                      >
+                        <Edit2 size={18} className="mr-1" /> Edit
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm mb-2 font-medium">Rotation Y</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={inputValues.rotationY}
-                  onChange={(e) => handleInputChange('rotationY', e.target.value)}
-                  className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 ${themeClasses.input} transition-colors duration-300 cursor-text`}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-2 font-medium">Scale</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={inputValues.scale}
-                  onChange={(e) => handleInputChange('scale', e.target.value)}
-                  className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 ${themeClasses.input} transition-colors duration-300 cursor-text`}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Main canvas */}
-      <div className="flex-1 relative">
-        <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
-          <Scene
-            objects={objects}
-            selectedObject={selectedObject}
-            onObjectSelect={setSelectedObject}
-            onPositionChange={handlePositionChange}
-            onRotationChange={handleRotationChange}
-            isDarkMode={isDarkMode}
-          />
-        </Canvas>
+                {isEditing ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-4"
+                  >
+                    <textarea
+                      value={editedContent}
+                      onChange={(e) => setEditedContent(e.target.value)}
+                      className="w-full h-[500px] p-4 border border-gray-300 dark:border-gray-700 rounded-md font-mono text-sm bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                  >
+                    <style jsx global>{`
+                      .prose {
+                        max-width: none;
+                        color: #374151;
+                      }
+                      .dark .prose {
+                        color: #e5e7eb;
+                      }
+                      
+                      /* Headings */
+                      .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+                        font-weight: 700;
+                        line-height: 1.25;
+                        margin-top: 1.5em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h1 {
+                        font-size: 2em;
+                        margin-top: 0;
+                      }
+                      .prose h2 {
+                        font-size: 1.5em;
+                      }
+                      .prose h3 {
+                        font-size: 1.25em;
+                      }
+                      
+                      /* Tables */
+                      .prose table {
+                        border-collapse: collapse;
+                        width: 100%;
+                        margin: 1.5em 0;
+                      }
+                      .prose table th,
+                      .prose table td {
+                        border: 1px solid #e5e7eb;
+                        padding: 0.75rem;
+                        text-align: left;
+                      }
+                      .prose th {
+                        background-color: #f9fafb;
+                        font-weight: 600;
+                      }
+                      .dark .prose th {
+                        background-color: #374151;
+                        border-color: #4b5563;
+                      }
+                      .dark .prose td,
+                      .dark .prose th {
+                        border-color: #4b5563;
+                      }
+                      
+                      /* Code blocks */
+                      .prose code {
+                        font-family: monospace;
+                        font-size: 0.9em;
+                        padding: 0.2em 0.4em;
+                        border-radius: 3px;
+                        background-color: #f3f4f6;
+                      }
+                      .dark .prose code {
+                        background-color:rgb(0, 0, 0);
+                      }
+                      .prose pre {
+                        background-color:rgb(0, 0, 0);
+                        border-radius: 0.375rem;
+                        overflow-x: auto;
+                        padding: 1rem;
+                        margin: 1.5em 0;
+                      }
+                      .dark .prose pre {
+                        background-color: rgb(0, 0, 0);
+                      }
+                      .prose pre code {
+                        background-color: transparent;
+                        border-radius: 0;
+                        padding: 0;
+                        font-size: 0.9em;
+                        color: inherit;
+                      }
+                      
+                      /* Lists */
+                      .prose ul, .prose ol {
+                        margin: 1.25em 0;
+                        padding-left: 1.625em;
+                      }
+                      .prose li {
+                        margin: 0.5em 0;
+                      }
+                      .prose ul {
+                        list-style-type: disc;
+                      }
+                      .prose ol {
+                        list-style-type: decimal;
+                      }
+                      
+                      /* Blockquotes */
+                      .prose blockquote {
+                        border-left: 4px solid #e5e7eb;
+                        padding-left: 1rem;
+                        font-style: italic;
+                        margin: 1.5em 0;
+                        color: #6b7280;
+                      }
+                      .dark .prose blockquote {
+                        border-color: #4b5563;
+                        color: #9ca3af;
+                      }
+                      
+                      /* Strong and emphasis */
+                      .prose strong {
+                        font-weight: 700;
+                      }
+                      .prose em {
+                        font-style: italic;
+                      }
+                    `}</style>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]} 
+                      rehypePlugins={[rehypeHighlight]}
+                      components={{
+                        code({inline, className, children, ...props}: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return !inline && match ? (
+                            <pre className={`language-${match[1]}`}>
+                              <code className={`language-${match[1]}`} {...props}>
+                                {children}
+                              </code>
+                            </pre>
+                          ) : (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}
+                    >
+                      {selectedPage.content}
+                    </ReactMarkdown>
+                  </motion.div>
+                )}
 
-        <div className="absolute bottom-4 right-4 space-y-2">
-          <div className={`p-4 rounded-xl shadow-lg ${themeClasses.controls} transition-colors duration-300`}>
-            <p className="text-sm font-semibold mb-3">Controls</p>
-            <div className="text-xs space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${themeClasses.bullet}`}></span>
-                <p>WASD: Move view</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${themeClasses.bullet}`}></span>
-                <p>QE: Move up/down</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Right-click: Rotate view</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Shift + Drag: Move Y-axis</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${themeClasses.bullet}`}></span>
-                <p>Alt + Drag: Rotate object</p>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={exportScene}
-            className={`text-white px-4 py-2 rounded-xl transition-all duration-300 ${themeClasses.exportButton} hover:scale-105 cursor-pointer flex items-center gap-2`}
-          >
-            <FaDownload className="w-4 h-4" />
-            Export Scene
-          </button>
+                <AnimatePresence>
+                  {deployedUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="mt-6 p-4 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded-md"
+                    >
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-green-500"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                            Successfully deployed!
+                          </h3>
+                          <div className="mt-2 flex items-center">
+                            <input
+                              readOnly
+                              value={deployedUrl}
+                              className="flex-1 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-l-md focus:outline-none"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(deployedUrl);
+                              }}
+                              className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-700 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                              title="Copy to clipboard"
+                            >
+                              <Copy size={16} />
+                            </button>
+                            <a
+                              href={deployedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                              title="Open in new tab"
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <motion.div 
+                  className="flex justify-end mt-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <button
+                    onClick={handleDeploy}
+                    disabled={isEditing}
+                    className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium flex items-center group ${
+                      isEditing 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:bg-green-700'
+                    }`}
+                  >
+                    <Send size={18} className={`mr-2 ${!isEditing && 'group-hover:translate-x-1'} transition-transform`} /> 
+                    Deploy changes
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </main>
         </div>
       </div>
-
-      <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} isDarkMode={isDarkMode} />
     </div>
   );
 }
