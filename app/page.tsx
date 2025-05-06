@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Inter, Space_Grotesk } from "next/font/google"
 import Head from "next/head"
 import dynamic from 'next/dynamic'
-import { ActionMeta, SingleValue } from 'react-select'
+import { SingleValue } from 'react-select'
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,16 +22,21 @@ type RequestTypeOption = {
   label: string;
 }
 
-const Select = dynamic(() => import('react-select'), {
+const Select = dynamic(() => import('react-select').then(mod => mod.default), {
   ssr: false,
   loading: () => (
-    <select className="w-32 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-md px-3 py-2">
-      <option value="GET">GET</option>
-    </select>
+    <div className="w-32">
+      <select 
+        className="w-full border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        disabled
+      >
+        <option value="GET">GET</option>
+      </select>
+    </div>
   )
 }) as React.ComponentType<any>
 
-const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
+const Toast = ({ message, onClose, type = 'success' }: { message: string; onClose: () => void; type?: 'success' | 'error' }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -44,19 +49,34 @@ const Toast = ({ message, onClose }: { message: string; onClose: () => void }) =
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out animate-slide-up">
         <div className="flex items-center p-4">
           <div className="flex-shrink-0">
-            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-purple-600 dark:text-purple-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
+            <div className={`w-8 h-8 rounded-full ${type === 'success' ? 'bg-purple-100 dark:bg-purple-900' : 'bg-red-100 dark:bg-red-900'} flex items-center justify-center`}>
+              {type === 'success' ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-5 w-5 ${type === 'success' ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-red-600 dark:text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
             </div>
           </div>
           <div className="ml-3">
@@ -83,8 +103,8 @@ const Toast = ({ message, onClose }: { message: string; onClose: () => void }) =
             </svg>
           </button>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 h-1">
-          <div className="bg-purple-600 h-1 w-full animate-progress"></div>
+        <div className={`w-full ${type === 'success' ? 'bg-gray-200 dark:bg-gray-700' : 'bg-red-200 dark:bg-red-700'} h-1`}>
+          <div className={`${type === 'success' ? 'bg-purple-600' : 'bg-red-600'} h-1 w-full animate-progress`}></div>
         </div>
       </div>
     </div>
@@ -148,6 +168,8 @@ export default function ApiPlayground() {
   const responseRef = useRef<HTMLDivElement>(null)
   const responseDataRef = useRef<HTMLPreElement>(null)
   const [showToast, setShowToast] = useState(false)
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [toastMessage, setToastMessage] = useState('')
 
   const requestTypeOptions: RequestTypeOption[] = [
     { value: 'GET', label: 'GET' },
@@ -327,9 +349,17 @@ export default function ApiPlayground() {
     if (responseDataRef.current && response.data) {
       const textToCopy = typeof response.data === "object" ? formatJSON(response.data) : String(response.data)
       navigator.clipboard.writeText(textToCopy).then(() => {
+        setToastType('success')
+        setToastMessage('Copied to clipboard!')
         setShowToast(true)
       })
     }
+  }
+
+  const handleHeaderButtonClick = () => {
+    setToastType('error')
+    setToastMessage('This Section is not available yet!')
+    setShowToast(true)
   }
 
   const exampleApis = [
@@ -339,8 +369,8 @@ export default function ApiPlayground() {
       method: "GET",
     },
     {
-      name: "List public APIs",
-      url: "https://api.publicapis.org/entries",
+      name: "List all posts",
+      url: "https://jsonplaceholder.typicode.com/posts",
       method: "GET",
     },
     {
@@ -359,10 +389,6 @@ export default function ApiPlayground() {
     } else {
       setBody("")
     }
-  }
-
-  const handleHeaderButtonClick = () => {
-    setShowToast(true)
   }
 
   return (
@@ -797,11 +823,14 @@ Authorization: Bearer token"
                     </div>
                   ) : response.status ? (
                     <div className="space-y-4 animate-fade-in">
-                      <div className="flex items-center gap-3">
-                        <span style={{ color: getStatusColor(response.status) }} className="text-2xl font-bold">
-                          {response.status}
-                        </span>
-                        <span style={{ color: isDarkMode ? '#e5e7eb' : '#4b5563' }}>{response.statusText}</span>
+                      <div>
+                        <h3 style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="text-sm font-medium mb-2">Status</h3>
+                        <div className="flex items-center gap-3">
+                          <span style={{ color: getStatusColor(response.status) }} className="text-2xl font-bold">
+                            {response.status}
+                          </span>
+                          <span style={{ color: isDarkMode ? '#e5e7eb' : '#4b5563' }}>{response.statusText}</span>
+                        </div>
                       </div>
 
                       {response.headers && Object.keys(response.headers).length > 0 && (
@@ -1023,8 +1052,9 @@ Authorization: Bearer token"
       {/* Toast Notification */}
       {showToast && (
         <Toast
-          message="Copied to clipboard!"
+          message={toastMessage}
           onClose={() => setShowToast(false)}
+          type={toastType}
         />
       )}
     </div>
