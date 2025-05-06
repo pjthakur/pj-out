@@ -1,972 +1,626 @@
 'use client'
-import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
-interface Bubble {
-  id: number;
-  x: number;
-  y: number;
-  radius: number;
-  color: string;
-  speed: number;
-  isBomb?: boolean;
+import { useState, useEffect } from 'react'
+import Head from 'next/head'
+import { motion } from 'framer-motion'
+import { Eye, X, ChevronDown, Search, Sliders, Heart, Share2, Instagram, Twitter, Facebook } from 'lucide-react'
+
+
+
+interface Project {
+  id: number
+  title: string
+    author: string
+  category: string
+  image: string  
+             likes: number
+  views: number
+date: string
 }
 
-interface Droplet {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  velocityX: number;
-  velocityY: number;
-  opacity: number;
-}
 
-interface Confetti {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  rotation: number;
-  rotationSpeed: number;
-  velocityX: number;
-  velocityY: number;
-  opacity: number;
-  shape: 'circle' | 'square' | 'triangle';
-}
+type SortOption = 'recommended' | 'recent' | 'popular'
+type FilterCategory = 'all' | 'illustration' | 'branding' | 'web' | 'photography'
 
-interface Star {
-  id: number;
-  left: string;
-  top: string;
-  width: string;
-  height: string;
-  animationDuration: number;
-  animationDelay: number;
-}
+export default function Home() {
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [sortOption, setSortOption] = useState<SortOption>('recommended')
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all')
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  const [displayedProjects, setDisplayedProjects] = useState<Project[]>([])
+  const [likedProjects, setLikedProjects] = useState<number[]>([])
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSubscribe, setShowSubscribe] = useState(false);
 
-interface Cloud {
-  id: number;
-  left: string;
-  top: string;
-  width: string;
-  height: string;
-  animationDuration: number;
-  animationDelay: number;
-}
 
-interface BackgroundBalloon {
-  id: number;
-  left: string;
-  bottom: string;
-  size: number;
-  color: string;
-  animationDuration: number;
-  animationDelay: number;
-}
+  const allProjects: Project[] = [
+    {
+      id: 1,
+      title: "PSI Microbes",
+      author: "Chragi Frei",
+      category: "illustration",
+      image: "https://www.psi.ch/sites/default/files/styles/primer_full_xl/public/2020-09/5232_3-20_cover.jpg.webp?itok=wTctCPs6",
+      likes: 119,
+      views: 525,
+      date: "2025-03-15"
+    },
+    {
+      id: 2,
+      title: "Taitung Art  ",
+      author: "Bo-Wei Wang",
+      category: "branding",
+      image: "https://www.eastcoast-nsa.gov.tw/content/images/2019-static/punch-taitung-01.jpg",
+      likes: 169,
+      views: 2200,
+      date: "2025-04-01"
+    },
+    {
+      id: 3,
+      title: "Identity Design",
+      author: "Junyoup Bong",
+      category: "branding",
+      image: "https://5.imimg.com/data5/SELLER/Default/2021/1/MZ/HI/UI/10388100/branding-identity-design-services.jpg",
+      likes: 35,
+      views: 156,
+      date: "2025-02-28"
+    },
+    {
+      id: 4,
+      title: "Botanical Elegance",
+      author: "Maria Chen",
+      category: "photography",
+      image: "https://walltrend.com/cdn/shop/files/botanical-elegance-wallpaper-b919-187436.jpg?v=1728003826&width=1780",
+      likes: 87,
+      views: 432,
+      date: "202Exhibition5-03-22"
+    },
+    {
+      id: 5,
+      title: "Tech Minimal",
+      author: "James Wright",
+      category: "web",
+      image: "https://img.freepik.com/free-vector/flat-design-minimal-technology-landing-page_23-2149123973.jpg?semt=ais_hybrid&w=740",
+      likes: 142,
+      views: 893,
+      date: "2025-04-10"
+    },
+    {
+      id: 6,
+      title: "Urban Perspective",
+      author: "Sarah Johnson",
+      category: "photography",
+      image: "https://imgproxy.domestika.org/unsafe/w:1200/rs:fill/plain/src://blog-post-open-graph-covers/000/005/107/5107-original.jpg?1709920814",
+      likes: 55,
+      views: 310,
+      date: "2025-03-05"
+    },
+    {
+      id: 7,
+      title: "Neon Dreams",
+      author: "Alex Wong",
+      category: "illustration",
+      image: "https://mir-s3-cdn-cf.behance.net/project_modules/max_1200/f58f0975005653.5c406bee2a803.jpg",
+      likes: 203,
+      views: 1240,
+      date: "2025-04-15"
+    },
+    {
+      id: 8,
+      title: "Modern Architecture",
+      author: "Emma Davis",
+      category: "photography",
+      image: "https://api.gharpedia.com/wp-content/uploads/2019/02/Heydar-Aliyev-Cultural-Centre-by-Zaha-Hadid-01-0101070001.jpg",
+      likes: 78,
+      views: 420,
+      date: "2025-03-30"
+    },
+    {
+      id: 9,
+      title: "Digital Landscapes",
+      author: "Marcus Lee",
+      category: "illustration",
+      image: "https://blog.icons8.com/wp-content/uploads/2020/02/digital-illustration-brian-edward-miller.jpg",
+      likes: 164,
+      views: 890,
+      date: "2025-04-08"
+    }
+  ]
 
-export default function BubbleGame() {
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [droplets, setDroplets] = useState<Droplet[]>([]);
-  const [confetti, setConfetti] = useState<Confetti[]>([]);
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: 800, height: 600 });
-  const [poppingBubbles, setPoppingBubbles] = useState<number[]>([]);
-  const [isClient, setIsClient] = useState(false);
-  const [highScore, setHighScore] = useState(0);
-  const [difficultyLevel, setDifficultyLevel] = useState(1);
-  const [bombExploding, setBombExploding] = useState<number | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [stars, setStars] = useState<Star[]>([]);
-  const [clouds, setClouds] = useState<Cloud[]>([]);
-  const [backgroundBalloons, setBackgroundBalloons] = useState<BackgroundBalloon[]>([]);
-
-  const gameConfig = useRef({
-    baseSpeed: 2,
-    speedMultiplier: 0.5,
-    spawnRate: 1000,
-    maxBubbles: 10,
-    bombChance: 0.15,
-  });
-
-  const confettiIdCounter = useRef(0);
 
   useEffect(() => {
-    setIsClient(true);
+    let filtered = [...allProjects];
 
-    setWindowSize({
-      width: window.innerWidth,
-      height: window.innerHeight,
-    });
-
-    const savedHighScore = localStorage.getItem('bubblePopHighScore');
-    if (savedHighScore) {
-      setHighScore(parseInt(savedHighScore));
+   
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(project => project.category === filterCategory);
     }
 
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (score > 0) {
-      const newLevel = Math.floor(score / 10) + 1;
-
-      if (newLevel !== difficultyLevel) {
-        setDifficultyLevel(newLevel);
-
-        gameConfig.current = {
-          baseSpeed: 2 + (newLevel * 0.5),
-          speedMultiplier: 0.5 + (newLevel * 0.1),
-          spawnRate: Math.max(300, 1000 - (newLevel * 70)),
-          maxBubbles: 10 + newLevel,
-          bombChance: Math.min(0.2, 0.15 + (newLevel * 0.01)),
-        };
-      }
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter(project =>
+        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.author.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-  }, [score, difficultyLevel]);
 
-  useEffect(() => {
-    if (score > highScore) {
-      setHighScore(score);
-      localStorage.setItem('bubblePopHighScore', score.toString());
+
+    switch (sortOption) {
+      case 'recent':
+        filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        break;
+      case 'popular':
+        filtered.sort((a, b) => b.likes - a.likes);
+        break;
+      case 'recommended':
+      default:
+   
+        filtered.sort((a, b) => {
+          const popularityA = a.likes * 0.7 + a.views * 0.3;
+          const popularityB = b.likes * 0.7 + b.views * 0.3;
+          return popularityB - popularityA;
+        });
     }
-  }, [score, highScore]);
 
-  useEffect(() => {
-    if (!isClient) return;
+    setDisplayedProjects(filtered);
+  }, [filterCategory, sortOption, searchQuery]);
 
-    const generatedStars: Star[] = Array.from({ length: 15 }).map((_, index) => ({
-      id: index,
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      width: `${10 + Math.random() * 15}px`,
-      height: `${10 + Math.random() * 15}px`,
-      animationDuration: 3 + Math.random() * 5,
-      animationDelay: Math.random() * 5,
-    }));
-
-    const generatedClouds: Cloud[] = Array.from({ length: 5 }).map((_, index) => ({
-        id: index,
-        left: `${Math.random() * 100}%`,
-        top: `${10 + Math.random() * 80}%`,
-        width: `${100 + Math.random() * 150}px`,
-        height: `${50 + Math.random() * 40}px`,
-        animationDuration: 20 + Math.random() * 40,
-        animationDelay: Math.random() * 10,
-    }));
-
-    const generatedBalloons: BackgroundBalloon[] = Array.from({ length: 8 }).map((_, index) => {
-      const size = 40 + Math.random() * 60;
-      return {
-        id: index,
-        left: `${Math.random() * 100}%`,
-        bottom: `-${size * 1.5}px`,
-        size: size,
-        color: `hsl(${Math.random() * 360}, 80%, 70%)`,
-        animationDuration: 15 + Math.random() * 20,
-        animationDelay: Math.random() * 10,
-      };
-    });
-
-    setStars(generatedStars);
-    setClouds(generatedClouds);
-    setBackgroundBalloons(generatedBalloons);
-
-  }, [isClient]);
-
-  const createBubble = () => {
-    const radius = Math.random() * 20 + 30;
-    const speed = gameConfig.current.baseSpeed * (Math.random() * 0.4 + 0.8) * gameConfig.current.speedMultiplier;
-    const isBomb = Math.random() < gameConfig.current.bombChance;
-    const margin = 8;
+  const getCategoryLabel = (category: FilterCategory): string => {
     return {
-      id: Date.now() + Math.random(),
-      x: Math.random() * (windowSize.width - radius * 2 - margin * 2) + radius + margin,
-      y: windowSize.height + radius,
-      radius: radius,
-      color: isBomb ? 'rgba(0, 0, 0, 0.8)' : `rgba(${Math.floor(Math.random() * 155 + 100)}, ${Math.floor(Math.random() * 155 + 100)}, ${Math.floor(Math.random() * 255)}, 0.5)`,
-      speed: speed,
-      isBomb: isBomb,
-    };
-  };
-
-  const createDroplets = (bubble: Bubble, count: number, isBombExplosion: boolean = false) => {
-    const newDroplets: Droplet[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 5 + (isBombExplosion ? 5 : 2);
-      const size = Math.random() * (bubble.radius / (isBombExplosion ? 2 : 3)) + (bubble.radius / (isBombExplosion ? 4 : 6));
-
-      newDroplets.push({
-        id: Date.now() + Math.random(),
-        x: bubble.x + Math.cos(angle) * (bubble.radius / (isBombExplosion ? 1 : 2)),
-        y: bubble.y + Math.sin(angle) * (bubble.radius / (isBombExplosion ? 1 : 2)),
-        size: size,
-        color: isBombExplosion ?
-          `rgba(${220 + Math.floor(Math.random() * 35)}, ${Math.floor(Math.random() * 100)}, ${Math.floor(Math.random() * 30)}, 0.8)` :
-          bubble.color,
-        velocityX: Math.cos(angle) * speed * (isBombExplosion ? 1.5 : 1),
-        velocityY: Math.sin(angle) * speed * (isBombExplosion ? 1.5 : 1) - (isBombExplosion ? 0 : 1),
-        opacity: 1
-      });
-    }
-
-    return newDroplets;
-  };
-
-  const createConfetti = (x: number, y: number, count: number, isBombExplosion: boolean = false) => {
-    const newConfetti: Confetti[] = [];
-    const shapes: ('circle' | 'square' | 'triangle')[] = ['circle', 'square', 'triangle'];
-    const colors = isBombExplosion ?
-      ['#FF4D00', '#FF6347', '#FF0000', '#8B0000', '#B22222', '#000000'] :
-      ['#FF4D89', '#FFD700', '#00BFFF', '#7CFC00', '#FF6347', '#9370DB'];
-
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 5 + (isBombExplosion ? 6 : 3);
-      const size = Math.random() * 8 + (isBombExplosion ? 6 : 4);
-      const newId = confettiIdCounter.current++;
-      newConfetti.push({
-        id: newId, 
-        x,
-        y,
-        size,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * 360,
-        rotationSpeed: (Math.random() - 0.5) * (isBombExplosion ? 15 : 10),
-        velocityX: Math.cos(angle) * speed * (Math.random() + 0.5) * (isBombExplosion ? 1.5 : 1),
-        velocityY: Math.sin(angle) * speed * (isBombExplosion ? 1.5 : 1) - (isBombExplosion ? 1 : 2),
-        opacity: 1,
-        shape: shapes[Math.floor(Math.random() * shapes.length)]
-      });
-    }
-
-    return newConfetti;
-  };
-
-   useEffect(() => {
-    if (!isClient || !gameStarted || gameOver) return;
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setIsPaused(prev => !prev);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isClient, gameStarted, gameOver]);
-
-  useEffect(() => {
-    if (!isClient || !gameStarted || gameOver || isPaused) return;
-
-    setBubbles(prev => [...prev, createBubble()]);
-
-    const spawnInterval = setInterval(() => {
-      setBubbles(prev => {
-        if (prev.length >= gameConfig.current.maxBubbles) return prev;
-        return [...prev, createBubble()];
-      });
-    }, gameConfig.current.spawnRate);
-
-    const moveInterval = setInterval(() => {
-      setBubbles(prev => {
-        if (prev.length === 0) return prev;
-
-        return prev
-          .map(b => ({ ...b, y: b.y - b.speed }))
-          .filter(b => b.y + b.radius > 0);
-      });
-
-      setDroplets(prev => {
-        if (prev.length === 0) return prev;
-
-        return prev
-          .map(d => ({
-            ...d,
-            x: d.x + d.velocityX,
-            y: d.y + d.velocityY,
-            velocityY: d.velocityY + 0.2,
-            opacity: d.opacity - 0.02
-          }))
-          .filter(d => d.opacity > 0);
-      });
-
-      setConfetti(prev => {
-        if (prev.length === 0) return prev;
-
-        return prev
-          .map(c => ({
-            ...c,
-            x: c.x + c.velocityX,
-            y: c.y + c.velocityY,
-            velocityY: c.velocityY + 0.1,
-            rotation: c.rotation + c.rotationSpeed,
-            opacity: c.opacity - 0.01
-          }))
-          .filter(c => c.opacity > 0);
-      });
-    }, 16);
-
-    const checkGameOverInterval = setInterval(() => {
-      setBubbles(prev => {
-        const anyNormalBubbleReachedTop = prev.some(
-          bubble => !bubble.isBomb && bubble.y - bubble.radius <= 0
-        );
-
-        if (anyNormalBubbleReachedTop && gameStarted) {
-          setGameOver(true);
-        }
-
-        return prev;
-      });
-    }, 300);
-
-    return () => {
-      clearInterval(spawnInterval);
-      clearInterval(moveInterval);
-      clearInterval(checkGameOverInterval);
-    };
-  }, [gameStarted, gameOver, isClient, isPaused]);
-
-  const handleBubbleClick = (bubble: Bubble) => {
-    if (isPaused || gameOver || !gameStarted) return;
-    setPoppingBubbles(prev => [...prev, bubble.id]);
-
-    if (bubble.isBomb) {
-      setBombExploding(bubble.id);
-      const bombDroplets = createDroplets(bubble, Math.floor(bubble.radius) + 15, true);
-      setDroplets(prev => [...prev, ...bombDroplets]);
-
-      const bombConfetti = createConfetti(bubble.x, bubble.y, Math.floor(bubble.radius) + 15, true);
-      setConfetti(prev => [...prev, ...bombConfetti]);
-
-      setTimeout(() => {
-        setGameOver(true);
-      }, 500);
-    } else {
-      const newDroplets = createDroplets(bubble, Math.floor(bubble.radius / 3) + 5);
-      setDroplets(prev => [...prev, ...newDroplets]);
-
-      const newConfetti = createConfetti(bubble.x, bubble.y, Math.floor(bubble.radius / 2) + 5);
-      setConfetti(prev => [...prev, ...newConfetti]);
-
-      setTimeout(() => {
-        setBubbles(prev => prev.filter(b => b.id !== bubble.id));
-        setPoppingBubbles(prev => prev.filter(bubbleId => bubbleId !== bubble.id));
-        setScore(prev => prev + 1);
-      }, 150);
-    }
-  };
-
-  const handleBackgroundClick = () => {
-    if (gameStarted && !gameOver && !isPaused) {
-      setGameOver(true);
-    }
-  };
-
-  const handleRestart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setGameStarted(true);
-    setGameOver(false);
-    setIsPaused(false);
-    setScore(0);
-    setBubbles([]);
-    setDroplets([]);
-    setConfetti([]);
-    setPoppingBubbles([]);
-    setBombExploding(null);
-    setDifficultyLevel(1);
-    confettiIdCounter.current = 0;
-    gameConfig.current = {
-      baseSpeed: 2,
-      speedMultiplier: 0.5,
-      spawnRate: 1000,
-      maxBubbles: 10,
-      bombChance: 0.15,
-    };
-  };
-
-  if (!isClient) {
-    return (
-      <div className="h-screen w-screen bg-gradient-to-b from-purple-400 to-pink-500 flex items-center justify-center">
-        <div className="text-2xl font-bold text-white">Loading...</div>
-      </div>
-    );
+      'all': 'All Creative Fields',
+      'illustration': 'Illustration',
+      'branding': 'Branding',
+      'web': 'Web Design',
+      'photography': 'Photography'
+    }[category]
   }
 
+  const getSortLabel = (sort: SortOption): string => {
+    return {
+      'recommended': 'Recommended',
+      'recent': 'Most Recent',
+      'popular': 'Most Popular'
+    }[sort]
+  }
+
+
+  const handleLike = (projectId: number) => {
+    setDisplayedProjects((prev) =>
+      prev.map((proj) => {
+        if (proj.id === projectId) {
+          const isLiked = likedProjects.includes(projectId)
+          return { ...proj, likes: proj.likes + (isLiked ? -1 : 1) }
+        }
+        return proj
+      })
+    )
+    setLikedProjects((prev) =>
+      prev.includes(projectId)
+        ? prev.filter((id) => id !== projectId)
+        : [...prev, projectId]
+    )
+  }
+
+  const handleShare = (project: Project) => {
+    const shareUrl = typeof window !== "undefined"
+      ? `${window.location.origin}?project=${project.id}`
+      : '';
+    const shareData = {
+      title: project.title,
+      text: `Check out this project: ${project.title} by ${project.author}`,
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      alert("Project link copied to clipboard!");
+    } else {
+      alert("Sharing is not supported on this device.");
+    }
+  };
+
   return (
-    <div
-      className="relative overflow-hidden"
-      onClick={handleBackgroundClick}
-      style={{
-        width: '100vw',
-        height: '100vh',
-        background: "linear-gradient(135deg, #FF9F80, #FF6B6B, #7F7FD5)",
-        backgroundSize: "400% 400%",
-        animation: "gradient 15s ease infinite",
-      }}
-    >
-      <div className="topbar-unified">
-        <div className="stats-group">
-          <div className="stat-glass">Score: {score}</div>
-          {gameStarted && !gameOver && <div className="stat-glass">Level: {difficultyLevel}</div>}
-          <div className="stat-glass">High Score: {highScore}</div>
-        </div>
-        {gameStarted && !gameOver && (
-          <div className="buttons-group">
-            {!isPaused && (
-              <motion.button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPaused(!isPaused);
-                }}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.98 }}
-                className="modern-btn"
-              >
-                Pause
-              </motion.button>
-            )}
-            <motion.button
-              onClick={(e) => {
-                e.stopPropagation();
-                setGameOver(true);
-              }}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.98 }}
-              className={`modern-btn${isPaused ? ' opacity-60 cursor-not-allowed' : ''}`}
-              disabled={isPaused}
-            >
-              End Game
-            </motion.button>
-          </div>
-        )}
-      </div>
-
-      <AnimatePresence>
-        {isPaused && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50"
-            onClick={(e) => {
-                e.stopPropagation();
-                setIsPaused(false);
-              }}
-          >
-            <div className="gameover-card flex flex-col items-center justify-center gap-6" style={{ minWidth: '260px' }}>
-              <div className="text-4xl font-extrabold bg-gradient-to-r from-pink-300 via-yellow-200 to-pink-400 bg-clip-text text-transparent tracking-wide drop-shadow-lg" style={{ letterSpacing: '0.01em' }}>
-                PAUSED
-              </div>
-              <motion.button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPaused(false);
-                }}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.98 }}
-                className="modern-btn text-xl px-10 py-4 mt-2"
-                style={{ zIndex: 50 }}
-              >
-                Resume
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {stars.map((star) => (
-          <div
-            key={`star-${star.id}`}
-            className="absolute"
-            style={{
-              width: star.width,
-              height: star.height,
-              left: star.left,
-              top: star.top,
-              opacity: 0.6,
-              animation: `twinkle ${star.animationDuration}s linear infinite ${star.animationDelay}s`,
-            }}
-          >
-            <svg viewBox="0 0 24 24" fill="white">
-              <path d="M12 2l2.5 7h7l-5.5 4.5 2 7-6-4.5-6 4.5 2-7-5.5-4.5h7z" />
-            </svg>
-          </div>
-        ))}
-
-        {clouds.map((cloud) => (
-          <div
-            key={`cloud-${cloud.id}`}
-            className="absolute rounded-full bg-white/10"
-            style={{
-              width: cloud.width,
-              height: cloud.height,
-              left: cloud.left,
-              top: cloud.top,
-              animation: `floatCloud ${cloud.animationDuration}s linear infinite ${cloud.animationDelay}s`,
-              opacity: 0.2,
-              borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
-              boxShadow: '0 0 20px rgba(255,255,255,0.2) inset',
-            }}
-          />
-        ))}
-
-        {backgroundBalloons.map((balloon) => (
-          <div
-            key={`balloon-bg-${balloon.id}`}
-            className="absolute opacity-10"
-            style={{
-              left: balloon.left,
-              bottom: balloon.bottom,
-              animation: `floatBalloon ${balloon.animationDuration}s linear infinite ${balloon.animationDelay}s`,
-            }}
-          >
-            <div
-              style={{
-                width: `${balloon.size}px`,
-                height: `${balloon.size * 1.2}px`,
-                background: balloon.color,
-                borderRadius: '50% 50% 50% 50% / 55% 55% 45% 45%',
-                position: 'relative',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '-15px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '2px',
-                  height: '40px',
-                  background: 'rgba(255,255,255,0.5)',
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {!gameStarted && (
-        <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 bg-black/40 text-white z-50 backdrop-blur-sm">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, y: [0, -10, 0] }}
-            transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }}
-            className="text-6xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-pink-400"
-          >
-            Balloon Pop!
-          </motion.div>
-          <p className="text-lg mb-2 text-pink-100">Pop the balloons before they reach the top!</p>
-          <p className="text-md mb-2 text-pink-200">Careful - clicking outside a balloon ends the game!</p>
-          <p className="text-md mb-6 text-red-300 font-semibold">Watch out for<span className="text-black bg-white/70 px-2 py-1 rounded-md mx-1 font-bold">bomb</span>balloons!</p>
-
-          {highScore > 0 && (
-            <div className="text-xl font-semibold mb-4 text-yellow-300">High Score: {highScore}</div>
-          )}
-
-          <motion.button
-            onClick={handleRestart}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.98 }}
-            className="modern-btn text-lg px-10 py-4"
-          >
-            Start Game
-          </motion.button>
-          <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-white/60 pointer-events-none">
-            © 2025 Ballon Pop. All Rights Reserved
-          </div>
-        </div>
-      )}
-
-      <AnimatePresence>
-        {confetti.map((c) => {
-          let shapeElement;
-
-          switch(c.shape) {
-            case 'circle':
-              shapeElement = <div className="w-full h-full rounded-full" style={{ background: c.color }} />;
-              break;
-            case 'square':
-              shapeElement = <div className="w-full h-full" style={{ background: c.color }} />;
-              break;
-            case 'triangle':
-              shapeElement = (
-                <div
-                  className="w-full h-full"
-                  style={{
-                    background: c.color,
-                    clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
-                  }}
-                />
-              );
-              break;
-          }
-
-          return (
-            <motion.div
-              key={c.id}
-              className="absolute pointer-events-none"
-              style={{
-                left: c.x,
-                top: c.y,
-                width: c.size,
-                height: c.size,
-                opacity: c.opacity,
-                transform: `rotate(${c.rotation}deg)`,
-              }}
-            >
-              {shapeElement}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {bubbles.map((bubble) => (
-          <motion.div
-            key={bubble.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleBubbleClick(bubble);
-            }}
-            className="absolute rounded-full cursor-pointer"
-            style={{
-              left: bubble.x - bubble.radius,
-              top: bubble.y - bubble.radius,
-              width: bubble.radius * 2,
-              height: bubble.radius * 2,
-              backdropFilter: 'blur(2px)',
-              border: bubble.isBomb
-                ? '2px solid rgba(255,80,80,0.8)'
-                : '1px solid rgba(255,255,255,0.6)',
-              background: poppingBubbles.includes(bubble.id)
-                ? 'transparent'
-                : bubble.isBomb
-                  ? `radial-gradient(circle at 30% 30%, rgba(40, 40, 40, 0.9), rgba(0, 0, 0, 0.8))`
-                  : `radial-gradient(circle at 30% 30%, ${bubble.color.replace('0.5', '0.8')}, ${bubble.color.replace('0.5', '0.3')})`,
-              boxShadow: poppingBubbles.includes(bubble.id)
-                ? 'none'
-                : bubble.isBomb
-                  ? '0 0 15px rgba(255,0,0,0.4), 0 0 5px rgba(255,0,0,0.2) inset'
-                  : `0 0 15px ${bubble.color.replace('0.5', '0.6')}, 0 0 5px ${bubble.color.replace('0.5', '0.3')} inset`,
-            }}
-            initial={{ scale: 0 }}
-            animate={
-              poppingBubbles.includes(bubble.id)
-                ? bubble.isBomb && bombExploding === bubble.id
-                  ? {
-                      scale: [1, 1.5, 0],
-                      opacity: [1, 0.9, 0],
-                    }
-                  : {
-                      scale: [1, 1.2, 0],
-                      opacity: [1, 0.8, 0],
-                    }
-                : {
-                    scale: 1,
-                    opacity: 1,
-                }
+    <>
+      <Head>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <style>
+          {`
+            body {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              background: #f8fafc;
+              color: #222;
+              color-scheme: light; /* Force light mode */
             }
-            exit={{ scale: 0 }}
-            transition={{
-              duration: poppingBubbles.includes(bubble.id)
-                ? bubble.isBomb && bombExploding === bubble.id ? 0.5 : 0.15
-                : 0.3,
-              ease: poppingBubbles.includes(bubble.id) ? "easeOut" : "easeInOut"
-            }}
-            whileHover={{ scale: 1.05 }}
-          >
-            {!poppingBubbles.includes(bubble.id) && (
-              <div
-                className="absolute bottom-0 left-1/2 transform -translate-x-1/2"
-                style={{
-                  width: '2px',
-                  height: `${bubble.radius * 0.7}px`,
-                  background: bubble.isBomb ? 'rgba(255,80,80,0.7)' : 'rgba(255,255,255,0.6)',
-                  transform: 'translate(-50%, 100%)',
-                  borderRadius: '2px',
-                }}
+            html {
+              color-scheme: light; /* Force light mode */
+            }
+            .glass-card {
+              background: #fff; /* No transparency */
+              backdrop-filter: none;
+              -webkit-backdrop-filter: none;
+              border: 1px solid #f1f1f1;
+            }
+            .glass-nav {
+              background: #000 !important; /* Black background */
+              color: #fff !important;      /* White text for contrast */
+              border-bottom: 1px solid #000; /* Black border */
+              backdrop-filter: none;
+              -webkit-backdrop-filter: none;
+            }
+            .glass-modal {
+              background: #fff; /* No transparency */
+              backdrop-filter: none;
+              -webkit-backdrop-filter: none;
+              border: 1px solid #f1f1f1;
+            }
+            .newsletter-input {
+              background: #fff;
+              backdrop-filter: none;
+              -webkit-backdrop-filter: none;
+              border: 1px solid #e5e7eb;
+              color: #222;
+            }
+          `}
+        </style>
+      </Head>
+
+      <main className="min-h-screen bg-gradient-to-br from-pink-50 to-gray-100">
+        <header className="glass-nav sticky  w-full border-b border-gray-300">
+          <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="flex items-center w-full md:w-auto justify-between md:justify-start">
+              <div className="text-3xl font-bold mr-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Bē</div>
+    <nav className="hidden md:block"></nav>
+            </div>
+            <div className="relative w-full max-w-xl mx-0 md:mx-4 mb-3 md:mb-0">
+              <input
+                type="text"
+                placeholder="Search the creative world at work"
+                          value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full py-3 px-10 bg-white border border-gray-200 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
-            )}
-
-            {!poppingBubbles.includes(bubble.id) && bubble.isBomb && (
-              <>
-                <div
-                  className="absolute"
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    top: '10%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(255,80,80,0.9)',
-                    borderRadius: '50%',
-                    boxShadow: '0 0 8px rgba(255,50,50,0.8)',
-                    animation: 'pulseFuse 0.8s infinite alternate'
-                  }}
-                />
-                <div
-                  className="absolute"
-                  style={{
-                    width: '4px',
-                    height: '12px',
-                    top: '2%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(150,150,150,0.8)',
-                    borderRadius: '2px'
-                  }}
-                />
-              </>
-            )}
-
-            {!poppingBubbles.includes(bubble.id) && !bubble.isBomb && (
-              <div
-                className="absolute rounded-full"
-                style={{
-                  width: '40%',
-                  height: '40%',
-                  top: '15%',
-                  left: '15%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)',
-                  transform: 'rotate(-45deg)',
-                }}
-              />
-            )}
-
-            {!poppingBubbles.includes(bubble.id) && bubble.isBomb && (
-              <div
-                className="absolute"
-                style={{
-                  width: '60%',
-                  height: '60%',
-                  top: '20%',
-                  left: '20%',
-                  opacity: 0.6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                <Search className="h-5 w-5 text-gray-400" />
+        </div>
+            </div>
+            <div className="flex items-center w-full md:w-auto justify-end">
+              <button
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full px-6 py-2.5 text-sm font-medium shadow-md hover:shadow-lg transition-shadow w-full  md:w-auto"
+                onClick={() => {
+                  document.getElementById('subscribe')?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
-                <svg viewBox="0 0 24 24" width="100%" height="100%" fill="white">
-                  <path d="M12 2c.5 0 .9.4.9.9V5h1.1c.5 0 .9.4.9.9s-.4.9-.9.9H13v1.8a7 7 0 1 1-4 0V6.8h-1c-.5 0-.9-.4-.9-.9s.4-.9.9-.9h1.1V2.9c0-.5.4-.9.9-.9zm-2 5.4V8c0 .5.4.9.9.9s.9-.4.9-.9V7.4a5.1 5.1 0 1 0-1.8 0z"/>
+                Stay Updated !
+                     </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-200/60 mt-2">
+          <div className="relative z-30 mb-4 md:mb-0">
+            <button 
+                      className="flex items-center py-2.5 px-6 bg-white/80 shadow-sm border border-gray-200/60 rounded-full text-sm"
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+            >
+              <Sliders className="h-4 w-4 mr-2" />
+              <span>Filter: {getCategoryLabel(filterCategory)}</span>
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </button>
+            
+            {showFilterMenu && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute left-0 top-full mt-2 w-56 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+              >
+                <div className="py-1">
+                  {(['all', 'illustration', 'branding', 'web', 'photography'] as FilterCategory[]).map((category) => (
+                    <button
+                      key={category}
+                      className={`block px-4 py-2.5 text-sm w-full text-left hover:bg-gray-100/80 ${filterCategory === category ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
+                      onClick={() => {
+                        setFilterCategory(category)
+                        setShowFilterMenu(false)
+                      }}
+                    >
+                      {getCategoryLabel(category)}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+          
+          <div className="relative z-30">
+            <button 
+              className="flex items-center py-2.5 px-6 bg-white/80 shadow-sm border border-gray-200/60 rounded-full text-sm"
+                       onClick={() => setShowSortMenu(!showSortMenu)}
+            >
+              <span>Sort: {getSortLabel(sortOption)}</span>
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </button>
+            
+            {showSortMenu && (
+                     <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute right-0 top-full mt-2 w-48 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+              >
+                <div className="py-1">
+                  {(['recommended', 'recent', 'popular'] as SortOption[]).map((sort) => (
+                    <button
+                               key={sort}
+                      className={`block px-4 py-2.5 text-sm w-full text-left hover:bg-gray-100/80 ${sortOption === sort ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
+                      onClick={() => {
+                        setSortOption(sort)
+setShowSortMenu(false)
+                      }}
+                    >
+                      {getSortLabel(sort)}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-8">
+          {displayedProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="text-gray-400 mb-4">
+<svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="currentColor"/>
                 </svg>
               </div>
-            )}
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {droplets.map((droplet) => (
-          <motion.div
-            key={droplet.id}
-            className="absolute rounded-full"
-            style={{
-              left: droplet.x - droplet.size / 2,
-              top: droplet.y - droplet.size / 2,
-              width: droplet.size,
-              height: droplet.size,
-              background: droplet.color.replace('0.5', '0.8'),
-              boxShadow: `0 0 3px ${droplet.color}`,
-              opacity: droplet.opacity,
-            }}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-          />
-        ))}
-      </AnimatePresence>
-
-      {gameOver && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white z-50 backdrop-blur-md">
-          <motion.div
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="gameover-card flex flex-col items-center justify-center"
-          >
-            <div className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-pink-300 via-yellow-200 to-pink-400 bg-clip-text text-transparent drop-shadow-lg" style={{ letterSpacing: '0.01em' }}>Game Over!</div>
-            <div className="text-lg font-medium mb-1 text-white/80">Your Score:</div>
-            <div className="text-3xl font-bold mb-4 text-white drop-shadow-sm flex items-center gap-2">
-              {score}
-              {score >= highScore && score > 0 && (
-                <span className="ml-2 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-300 to-pink-300 text-pink-900 shadow-md animate-pulse">New High!</span>
-              )}
+              <h3 className="text-xl font-medium text-gray-700">No projects found</h3>
+              <p className="text-gray-500 mt-2">Try changing your filter or search criteria</p>
             </div>
-            {bombExploding !== null && (
-              <div className="text-base mb-3 text-red-300 font-semibold">Boom! You popped a bomb balloon!</div>
-            )}
-            <motion.button
-              onClick={handleRestart}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.98 }}
-              className="modern-btn text-lg px-10 py-4 mt-2"
-            >
-              Play Again
-            </motion.button>
-          </motion.div>
-          <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-white/60 pointer-events-none">
-            © 2025 Ballon Pop. All Rights Reserved
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {displayedProjects.map((project) => (
+                <motion.div 
+                  key={project.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="glass-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                  onClick={() => setSelectedProject(project)}
+                >
+                  <div className="relative h-64 md:h-72 lg:h-80 w-full bg-gradient-to-br from-gray-900 to-gray-800">
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="object-cover w-full h-full"
+                      style={{ borderRadius: 'inherit' }}
+                      onError={e => { e.currentTarget.style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-full px-6 py-2.5 text-white font-medium">
+                        View Project
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg leading-tight text-gray-800">{project.title}</h3>
+                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{project.category}</span>
+                    </div>
+                    <p className="text-gray-600 text-sm">{project.author}</p>
+<div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center text-gray-500 text-sm  space-x-4">
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation()
+                            handleLike(project.id)
+     }}
+                          className={`flex items-center transition-colors focus:outline-none ${likedProjects.includes(project.id) ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                          aria-label={likedProjects.includes(project.id) ? "Dislike" : "Like"}
+                        >
+                          <motion.span
+                            animate={likedProjects.includes(project.id) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex"
+                          >
+                            <Heart fill={likedProjects.includes(project.id) ? "#ef4444" : "none"} className="h-4 w-4 mr-0.5" />
+                          </motion.span>
+                          <span>{project.likes.toLocaleString()}</span>
+                        </button>
+<div className="flex items-center">
+                          < Eye className="h-9 w-5 mr-1" />
+                          <span>{project.views.toLocaleString()}</span>
+                        </div>
+ </div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(project.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+           </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
 
-      <style jsx global>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
+        <section
+          id="subscribe"
+          className="py-16 bg-gradient-to-r from-blue-600 to-purple-600 mt-16"
+        >
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto text-center">
+  <h2 className="text-3xl font-bold text-white mb-6">Stay Inspired</h2>
+              <p className="text-blue-100 mb-8">Join our newsletter and get the latest creative trends, inspiration, and featured projects delivered to your inbox.</p>
+              
+              <div className="flex flex-col md:flex-row gap-3 justify-center">
+                <input 
+                  type="email"
+                  placeholder="Your email address"
+                  className="newsletter-input px-6 py-3 rounded-full text-white placeholder:text-blue-200 focus:outline-none focus:ring-2 focus:ring-white/30 md:w-96"
+                />
+                <button
+ className="bg-white text-blue-600 font-medium px-8 py-3 rounded-full hover:bg-opacity-90 transition-opacity shadow-lg"
+                  onClick={() => alert('Thanks for subscription')}
+                >
+                  Subscribe
+  </button>
+              </div>
+  </div>
+          </div>
+        </section>
 
-        @keyframes floatBalloon {
-          0% { transform: translateY(0px) rotate(-2deg); }
-          50% { transform: translateY(-20px) rotate(2deg); }
-          100% { transform: translateY(0px) rotate(-2deg); }
-        }
+        <footer className="bg-gray-900 text-gray-300">
+          <div className="container mx-auto px-4 py-12 flex flex-col items-center">
+            <div className="flex flex-col items-center">
+              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Bē</h3>
+              <p className="text-gray-400 mb-4 text-center">A platform to showcase and discover amazing creative work and talent from around the world.</p>
+              <div className="flex space-x-4 mb-4">
+                <a href="www.instagram.com/demo" target ="_blank"  className="text-gray-400 hover:text-white">
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a href="www.x.com/demo" target ="_blank"  className="text-gray-400 hover:text-white">
+                  <Twitter className="h-5 w-5" />
+                </a>
+                <a href="www.facebook.com/demo" target ="_blank" className="text-gray-400 hover:text-white">
+                  <Facebook className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+            <div className="border-t border-gray-800 mt-12 pt-6 w-full flex justify-center">
+              <p className="text-gray-500 text-center">© 2025 Be Creative Network. All rights reserved.</p>
+ </div>
+          </div>
+        </footer>
 
-        @keyframes floatCloud {
-           0% { transform: translateX(0px); }
-           50% { transform: translateX(15px); }
-           100% { transform: translateX(0px); }
-        }
+        {selectedProject && (
+                 <div
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-y-auto"
+ onClick={() => setSelectedProject(null)}
+          >
+            <div
+              className="rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className=" glass-nav p-5 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">{selectedProject.title}</h2>
+                <button
+                  onClick={() => setSelectedProject(null)}
+                  className="p-2 rounded-full hover:bg-gray-100/80 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
 
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.4; transform: scale(0.9); }
-          50% { opacity: 0.8; transform: scale(1.1); }
-        }
+              <div className="p-5">
+                <div className="relative w-full h-96 md:h-[550px] bg-gray-100 mb-8 rounded-xl overflow-hidden flex items-center justify-center">
+                  <img
+                    src={selectedProject.image}
+                    alt={selectedProject.title}
+                    className="object-cover w-full h-full"
+                    style={{ borderRadius: 'inherit' }}
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
 
-        @keyframes pulseFuse {
-           0% { box-shadow: 0 0 6px rgba(255,50,50,0.6); }
-           100% { box-shadow: 0 0 12px rgba(255,100,100,1); }
-        }
+<div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-8 border-b border-gray-200/60">
+                  <div className="flex items-center mb-4 md:mb-0">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 mr-4 flex items-center justify-center text-white font-bold">
+                      {selectedProject.author.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{selectedProject.author}</p>
+                      <p className="text-sm text-gray-500">Creative Designer • {selectedProject.category}</p>
+                    </div>
+                  </div>
 
-        .modern-btn {
-          background: rgba(255,255,255,0.10);
-          color: #fff;
-          border: 1.5px solid rgba(255,255,255,0.18);
-          border-radius: 9999px;
-          box-shadow: 0 2px 12px 0 rgba(127,127,213,0.10), 0 1.5px 6px 0 rgba(255,128,191,0.10);
-          padding: 0.7rem 2.2rem;
-          font-size: 1.08rem;
-          font-weight: 500;
-          letter-spacing: 0.02em;
-          transition: all 0.16s cubic-bezier(.4,2,.6,1);
-          outline: none;
-          cursor: pointer;
-          position: relative;
-          backdrop-filter: blur(8px);
-        }
-        .modern-btn:hover, .modern-btn:focus {
-          background: rgba(255,255,255,0.18);
-          box-shadow: 0 4px 18px 0 #ffd6fa33, 0 2px 8px 0 #7f7fd533;
-          filter: brightness(1.08) saturate(1.08);
-        }
-        .modern-btn:active {
-          filter: brightness(0.98) saturate(1.05);
-        }
-        .stat-glass {
-          background: rgba(255,255,255,0.13);
-          border: 1.5px solid rgba(255,255,255,0.18);
-          border-radius: 1.5rem;
-          box-shadow: 0 2px 12px 0 rgba(127,127,213,0.10);
-          padding: 0.6rem 1.6rem;
-          color: #fff;
-          font-size: 1.15rem;
-          font-weight: 700;
-          letter-spacing: 0.01em;
-          backdrop-filter: blur(10px);
-          text-shadow: 0 1px 4px #7f7fd5cc;
-        }
-        .gameover-card {
-          background: linear-gradient(120deg, rgba(127,127,213,0.22) 0%, rgba(255,128,191,0.18) 100%);
-          border-radius: 1.5rem;
-          box-shadow: 0 8px 40px 0 #7f7fd5cc, 0 2px 12px 0 #ff80bf33;
-          border: 1.5px solid rgba(255,255,255,0.22);
-          min-width: 320px;
-          max-width: 92vw;
-          padding: 2.5rem 2.5rem 2rem 2.5rem;
-          backdrop-filter: blur(22px) saturate(1.3);
-          margin: 0 auto;
-          text-align: center;
-          transition: background 0.3s;
-        }
-        .topbar-unified {
-          display: flex;
-          flex-wrap: wrap;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.4rem;
-          width: 100vw;
-          position: absolute;
-          top: 1rem;
-          left: 0;
-          z-index: 10;
-          padding: 0 0.2rem;
-        }
-        .stats-group {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 0.25rem;
-        }
-        .buttons-group {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 0.25rem;
-          margin-top: 0.25rem;
-        }
-        @media (max-width: 639px) {
-          .stat-glass {
-            font-size: 0.85rem;
-            padding: 0.28rem 0.6rem;
-          }
-          .modern-btn {
-            font-size: 0.85rem;
-            padding: 0.28rem 0.6rem;
-          }
-        }
-        @media (min-width: 640px) {
-          .topbar-unified {
-            flex-direction: row;
-            justify-content: space-between;
-            padding: 0 2rem;
-          }
-          .stats-group {
-            gap: 1rem;
-            justify-content: flex-start;
-          }
-          .buttons-group {
-            gap: 1rem;
-            margin-top: 0;
-          }
-          .stat-glass {
-            font-size: 1.15rem;
-            padding: 0.6rem 1.6rem;
-          }
-          .modern-btn {
-            font-size: 1.08rem;
-            padding: 0.7rem 2.2rem;
-          }
-        }
-      `}</style>
+                  <div className="flex items-center space-x-6">
+           <button
+                      type="button"
+                      onClick={() => handleLike(selectedProject.id)}
+                              className={`flex items-center transition-colors   focus:outline-none ${likedProjects.includes(selectedProject.id) ? 'text-red-500' : 'text-gray-600 hover:text-red-500'}`}
+                      aria-label={likedProjects.includes(selectedProject.id) ? "Dislike" : "Like"}
+                    >
+                      <motion.span
+                        animate={likedProjects.includes(selectedProject.id) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex"
+                      >
+                        <Heart fill={likedProjects.includes(selectedProject.id) ? "#ef4444" : "none"} className="h-5 w-5 mr-2" />
+                      </motion.span>
+                      <span>{selectedProject.likes.toLocaleString()}</span>
+                           </button>
+                    <button className="flex items-center text-gray-600 hover:text-blue-600 transition-colors">
+                      <Eye className="h-5 w-5 mr-2" />
+                      <span>{selectedProject.views.toLocaleString()}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShare(selectedProject)}
+                      className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      <Share2 className="h-5 w-5 mr-2" />
+    <span>Share</span>
+                    </button>
     </div>
-  );
+                </div>
+
+                <div className="prose max-w-none text-gray-700">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-4">About this project</h3>
+                  <p>
+                    This is a project description for {selectedProject.title}. The author would typically provide details 
+                    about their creative process, techniques used, and the context of the project.
+                  </p>
+                  <p>
+                    Created by {selectedProject.author}, this project showcases innovative design concepts and creative 
+                    techniques. The work represents a unique perspective in the field of {selectedProject.category} design 
+                    and has gathered significant attention from the creative community.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSubscribe && (
+<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setShowSubscribe(false)}>
+            <div
+              className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-xl relative"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
+                onClick={() => setShowSubscribe(false)}
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Stay Inspired</h2>
+              <p className="text-gray-500 mb-6 text-center">
+                Join our newsletter and get the latest creative trends, inspiration, and featured projects delivered to your inbox.
+              </p>
+              <div className="flex flex-col md:flex-row gap-3 justify-center">
+ <input
+                  type="email"
+                  placeholder="Your email address"
+                  className="newsletter-input px-6 py-3 rounded-full text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:w-72"
+                />
+                <button
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium px-8 py-3 rounded-full hover:bg-opacity-90 transition-opacity shadow-lg"
+                  onClick={() => alert('Thanks for subscription')}
+                >
+                  Subscribe
+                                 </button>
+              </div>
+    </div>
+          </div>
+        )}
+      </main>
+    </>
+  )
 }
