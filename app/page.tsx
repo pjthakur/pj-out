@@ -61,13 +61,6 @@ const TypographyPlayground: React.FC = () => {
     { name: "Playfair Display", value: "'Playfair Display', Georgia, serif" },
     { name: "Source Code Pro", value: "'Source Code Pro', monospace" },
     { name: "Montserrat", value: "'Montserrat', system-ui, sans-serif" },
-    { name: "Georgia", value: "Georgia, serif" },
-    { name: "Helvetica Now", value: "'Helvetica Now', Helvetica, Arial, sans-serif" },
-    { name: "Crimson Pro", value: "'Crimson Pro', Times New Roman, serif" },
-    { name: "Satoshi", value: "'Satoshi', system-ui, sans-serif" },
-    { name: "DM Serif", value: "'DM Serif', Georgia, serif" },
-    { name: "Mona Sans", value: "'Mona Sans', system-ui, sans-serif" },
-    { name: "Neue Montreal", value: "'Neue Montreal', Helvetica, sans-serif" },
   ];
 
   const textShadowPresets = [
@@ -926,9 +919,6 @@ text-shadow: ${settings.textShadow};
                     {accessibilityScore}
                   </span>
                 </button>
-                <div className={`absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap transition-opacity duration-200 pointer-events-none ${showAccessibilityScore ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`}>
-                  Show accessibility score
-                </div>
               </div>
             </div>
           </div>
@@ -1988,6 +1978,9 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
                       {responsivePreview}
                     </span>
                   )}
+                  {/* Font size and line height badges */}
+                  <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ml-2 ${darkMode ? 'bg-gray-700/80 text-gray-100' : 'bg-gray-100 text-gray-700'}`}>{leftSettings.fontSize}px</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ml-1 ${darkMode ? 'bg-gray-700/80 text-gray-100' : 'bg-gray-100 text-gray-700'}`}>{parseFloat(leftSettings.lineHeight.toFixed(1))}</span>
                 </h2>
                 <div className="flex items-center gap-2">
                   <div className={`text-xs px-2 py-0.5 rounded-full ${
@@ -2035,19 +2028,6 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
                 className="preview-panel relative"
               >
                 {text || "Enter some text to preview..."}
-                
-                <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-70">
-                  <div className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
-                    darkMode ? 'bg-gray-700/80' : 'bg-white/80 backdrop-blur-sm shadow-sm'
-                  }`}>
-                    {leftSettings.fontSize}px
-                  </div>
-                  <div className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
-                    darkMode ? 'bg-gray-700/80' : 'bg-white/80 backdrop-blur-sm shadow-sm'
-                  }`}>
-                    {parseFloat(leftSettings.lineHeight.toFixed(1))}
-                  </div>
-                </div>
               </div>
               
               {showCSS && (
@@ -2080,6 +2060,9 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
                       {responsivePreview}
                     </span>
                   )}
+                  {/* Font size and line height badges for Preview 2 */}
+                  <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ml-2 ${darkMode ? 'bg-gray-700/80 text-gray-100' : 'bg-gray-100 text-gray-700'}`}>{rightSettings.fontSize}px</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ml-1 ${darkMode ? 'bg-gray-700/80 text-gray-100' : 'bg-gray-100 text-gray-700'}`}>{parseFloat(rightSettings.lineHeight.toFixed(1))}</span>
                 </h2>
                 <div className="flex items-center gap-2">
                   <div className={`text-xs px-2 py-0.5 rounded-full ${
@@ -2127,19 +2110,6 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
                 className="preview-panel relative"
               >
                 {text || "Enter some text to preview..."}
-                
-                <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-70">
-                  <div className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
-                    darkMode ? 'bg-gray-700/80' : 'bg-white/80 backdrop-blur-sm shadow-sm'
-                  }`}>
-                    {rightSettings.fontSize}px
-                  </div>
-                  <div className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
-                    darkMode ? 'bg-gray-700/80' : 'bg-white/80 backdrop-blur-sm shadow-sm'
-                  }`}>
-                    {parseFloat(rightSettings.lineHeight.toFixed(1))}
-                  </div>
-                </div>
               </div>
               
               {showCSS && (
@@ -2185,62 +2155,70 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
             </div>
           </div>
           
-          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 relative ${isComparing ? 'comparison-grid' : ''}`}>
-            <div
-              style={{
-                fontFamily: leftSettings.fontFamily,
-                fontSize: `${leftSettings.fontSize}px`,
-                lineHeight: leftSettings.lineHeight,
-                letterSpacing: `${leftSettings.letterSpacing}px`,
-                fontWeight: leftSettings.fontWeight,
-                textAlign: leftSettings.textAlign as any,
-                color: leftSettings.textColor,
-                backgroundColor: leftSettings.backgroundColor,
-                textTransform: leftSettings.textTransform as any,
-                fontStyle: leftSettings.fontStyle as any,
-                textDecoration: leftSettings.textDecoration as any,
-                textShadow: leftSettings.textShadow,
-                padding: '20px',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.3s ease'
-              }}
-              className={`comparison-panel relative ${isComparing ? 'comparison-element' : ''}`}
-            >
-              {text || "Enter some text to preview..."}
-              {isComparing && (
-                <div className="absolute top-2 left-2 text-xs font-medium px-2 py-1 bg-black/30 backdrop-blur-sm text-white rounded-lg">
-                  Panel 1
-                </div>
-              )}
+          <div className={`grid grid-cols-2 gap-4 items-stretch relative ${isComparing ? 'comparison-grid' : ''}`}>
+            <div className={`rounded-2xl shadow-lg border-2 transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}
+                 style={{height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+              <div
+                style={{
+                  fontFamily: leftSettings.fontFamily,
+                  fontSize: `${leftSettings.fontSize}px`,
+                  lineHeight: leftSettings.lineHeight,
+                  letterSpacing: `${leftSettings.letterSpacing}px`,
+                  fontWeight: leftSettings.fontWeight,
+                  textAlign: leftSettings.textAlign as any,
+                  color: leftSettings.textColor,
+                  backgroundColor: leftSettings.backgroundColor,
+                  textTransform: leftSettings.textTransform as any,
+                  fontStyle: leftSettings.fontStyle as any,
+                  textDecoration: leftSettings.textDecoration as any,
+                  textShadow: leftSettings.textShadow,
+                  padding: '20px',
+                  borderRadius: '0.75rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.3s ease',
+                  height: '100%'
+                }}
+                className={`comparison-panel relative flex flex-col justify-center h-full ${isComparing ? 'comparison-element' : ''}`}
+              >
+                {text || "Enter some text to preview..."}
+                {isComparing && (
+                  <div className="absolute top-2 left-2 text-xs font-medium px-2 py-1 bg-black/30 backdrop-blur-sm text-white rounded-lg">
+                    Panel 1
+                  </div>
+                )}
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: rightSettings.fontFamily,
-                fontSize: `${rightSettings.fontSize}px`,
-                lineHeight: rightSettings.lineHeight,
-                letterSpacing: `${rightSettings.letterSpacing}px`,
-                fontWeight: rightSettings.fontWeight,
-                textAlign: rightSettings.textAlign as any,
-                color: rightSettings.textColor,
-                backgroundColor: rightSettings.backgroundColor,
-                textTransform: rightSettings.textTransform as any,
-                fontStyle: rightSettings.fontStyle as any,
-                textDecoration: rightSettings.textDecoration as any,
-                textShadow: rightSettings.textShadow,
-                padding: '20px',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.3s ease'
-              }}
-              className={`comparison-panel relative ${isComparing ? 'comparison-element' : ''}`}
-            >
-              {text || "Enter some text to preview..."}
-              {isComparing && (
-                <div className="absolute top-2 left-2 text-xs font-medium px-2 py-1 bg-black/30 backdrop-blur-sm text-white rounded-lg">
-                  Panel 2
-                </div>
-              )}
+            <div className={`rounded-2xl shadow-lg border-2 transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}
+                 style={{height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+              <div
+                style={{
+                  fontFamily: rightSettings.fontFamily,
+                  fontSize: `${rightSettings.fontSize}px`,
+                  lineHeight: rightSettings.lineHeight,
+                  letterSpacing: `${rightSettings.letterSpacing}px`,
+                  fontWeight: rightSettings.fontWeight,
+                  textAlign: rightSettings.textAlign as any,
+                  color: rightSettings.textColor,
+                  backgroundColor: rightSettings.backgroundColor,
+                  textTransform: rightSettings.textTransform as any,
+                  fontStyle: rightSettings.fontStyle as any,
+                  textDecoration: rightSettings.textDecoration as any,
+                  textShadow: rightSettings.textShadow,
+                  padding: '20px',
+                  borderRadius: '0.75rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.3s ease',
+                  height: '100%'
+                }}
+                className={`comparison-panel relative flex flex-col justify-center h-full ${isComparing ? 'comparison-element' : ''}`}
+              >
+                {text || "Enter some text to preview..."}
+                {isComparing && (
+                  <div className="absolute top-2 left-2 text-xs font-medium px-2 py-1 bg-black/30 backdrop-blur-sm text-white rounded-lg">
+                    Panel 2
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -2250,54 +2228,58 @@ className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 tr
             darkMode ? 'border-purple-800/20' : 'border-purple-100'
           }`}>
             <h3 className="text-sm font-medium mb-2">Typography Comparison</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div>
-                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Font Size</div>
-                <div className="font-medium mt-1 flex justify-between">
-                  <span>{leftSettings.fontSize}px</span>
-                  <span className={`${
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Font Size Box */}
+              <div className={`rounded-xl shadow-md border-2 px-4 py-3 flex flex-col items-center transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}>
+                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs md:text-sm font-medium mb-1`}>Font Size</div>
+                <div className="flex gap-2 items-end">
+                  <span className="text-2xl md:text-3xl font-bold">{leftSettings.fontSize}px</span>
+                  <span className={`text-base md:text-lg font-medium ${
                     leftSettings.fontSize !== rightSettings.fontSize 
                       ? (darkMode ? 'text-indigo-300' : 'text-indigo-500') 
-                      : ''
+                      : (darkMode ? 'text-gray-400' : 'text-gray-400')
                   }`}>
                     {leftSettings.fontSize === rightSettings.fontSize ? 'Same' : `vs ${rightSettings.fontSize}px`}
                   </span>
                 </div>
               </div>
-              <div>
-                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Line Height</div>
-                <div className="font-medium mt-1 flex justify-between">
-                  <span>{leftSettings.lineHeight}</span>
-                  <span className={`${
+              {/* Line Height Box */}
+              <div className={`rounded-xl shadow-md border-2 px-4 py-3 flex flex-col items-center transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}>
+                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs md:text-sm font-medium mb-1`}>Line Height</div>
+                <div className="flex gap-2 items-end">
+                  <span className="text-2xl md:text-3xl font-bold">{leftSettings.lineHeight}</span>
+                  <span className={`text-base md:text-lg font-medium ${
                     leftSettings.lineHeight !== rightSettings.lineHeight 
                       ? (darkMode ? 'text-indigo-300' : 'text-indigo-500') 
-                      : ''
+                      : (darkMode ? 'text-gray-400' : 'text-gray-400')
                   }`}>
                     {leftSettings.lineHeight === rightSettings.lineHeight ? 'Same' : `vs ${rightSettings.lineHeight}`}
                   </span>
                 </div>
               </div>
-              <div>
-                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Font Weight</div>
-                <div className="font-medium mt-1 flex justify-between">
-                  <span>{leftSettings.fontWeight}</span>
-                  <span className={`${
+              {/* Font Weight Box */}
+              <div className={`rounded-xl shadow-md border-2 px-4 py-3 flex flex-col items-center transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}>
+                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs md:text-sm font-medium mb-1`}>Font Weight</div>
+                <div className="flex gap-2 items-end">
+                  <span className="text-2xl md:text-3xl font-bold">{leftSettings.fontWeight}</span>
+                  <span className={`text-base md:text-lg font-medium ${
                     leftSettings.fontWeight !== rightSettings.fontWeight 
                       ? (darkMode ? 'text-indigo-300' : 'text-indigo-500') 
-                      : ''
+                      : (darkMode ? 'text-gray-400' : 'text-gray-400')
                   }`}>
                     {leftSettings.fontWeight === rightSettings.fontWeight ? 'Same' : `vs ${rightSettings.fontWeight}`}
                   </span>
                 </div>
               </div>
-              <div>
-                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Letter Spacing</div>
-                <div className="font-medium mt-1 flex justify-between">
-                  <span>{leftSettings.letterSpacing}px</span>
-                  <span className={`${
+              {/* Letter Spacing Box */}
+              <div className={`rounded-xl shadow-md border-2 px-4 py-3 flex flex-col items-center transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white via-blue-50 to-purple-50 border-gray-200'}`}>
+                <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs md:text-sm font-medium mb-1`}>Letter Spacing</div>
+                <div className="flex gap-2 items-end">
+                  <span className="text-2xl md:text-3xl font-bold">{leftSettings.letterSpacing}px</span>
+                  <span className={`text-base md:text-lg font-medium ${
                     leftSettings.letterSpacing !== rightSettings.letterSpacing 
                       ? (darkMode ? 'text-indigo-300' : 'text-indigo-500') 
-                      : ''
+                      : (darkMode ? 'text-gray-400' : 'text-gray-400')
                   }`}>
                     {leftSettings.letterSpacing === rightSettings.letterSpacing ? 'Same' : `vs ${rightSettings.letterSpacing}px`}
                   </span>

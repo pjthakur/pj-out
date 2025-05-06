@@ -61,13 +61,6 @@ const TypographyPlayground: React.FC = () => {
     { name: "Playfair Display", value: "'Playfair Display', Georgia, serif" },
     { name: "Source Code Pro", value: "'Source Code Pro', monospace" },
     { name: "Montserrat", value: "'Montserrat', system-ui, sans-serif" },
-    { name: "Georgia", value: "Georgia, serif" },
-    { name: "Helvetica Now", value: "'Helvetica Now', Helvetica, Arial, sans-serif" },
-    { name: "Crimson Pro", value: "'Crimson Pro', Times New Roman, serif" },
-    { name: "Satoshi", value: "'Satoshi', system-ui, sans-serif" },
-    { name: "DM Serif", value: "'DM Serif', Georgia, serif" },
-    { name: "Mona Sans", value: "'Mona Sans', system-ui, sans-serif" },
-    { name: "Neue Montreal", value: "'Neue Montreal', Helvetica, sans-serif" },
   ];
 
   const textShadowPresets = [
