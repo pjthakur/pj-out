@@ -1,1062 +1,890 @@
 "use client"
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Inter, Space_Grotesk } from "next/font/google"
-import Head from "next/head"
-import dynamic from 'next/dynamic'
-import { SingleValue } from 'react-select'
+import {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  type HTMLAttributes,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react"
+import {
+  AlertCircle,
+  CheckCircle,
+  Trophy,
+  Clock,
+  Zap,
+  Brain,
+  Sparkles,
+  ArrowRight,
+  HelpCircle,
+  XCircle,
+  Play,
+  Home,
+  Lightbulb,
+} from "lucide-react"
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: '--font-inter',
-})
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: '--font-space-grotesk',
-})
-
-type RequestTypeOption = {
-  value: string;
-  label: string;
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(" ")
 }
 
-const Select = dynamic(() => import('react-select').then(mod => mod.default), {
-  ssr: false,
-  loading: () => (
-    <div className="w-32">
-      <select 
-        className="w-full border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-        disabled
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "default" | "outline" | "ghost" | "link"
+  size?: "default" | "sm" | "lg" | "icon"
+  children: ReactNode
+}
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = "default", size = "default", children, disabled, ...props }, ref) => {
+    return (
+      <button
+        className={cn(
+          "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+          variant === "default" && "bg-purple-600 text-white hover:bg-purple-700",
+          variant === "outline" && "border border-gray-300 hover:bg-gray-100",
+          variant === "ghost" && "hover:bg-gray-100",
+          variant === "link" && "underline-offset-4 hover:underline text-purple-600",
+          size === "default" && "h-10 py-2 px-4",
+          size === "sm" && "h-9 px-3 rounded-md",
+          size === "lg" && "h-11 px-8 rounded-md",
+          size === "icon" && "h-10 w-10",
+          className,
+        )}
+        ref={ref}
+        disabled={disabled}
+        {...props}
       >
-        <option value="GET">GET</option>
-      </select>
-    </div>
-  )
-}) as React.ComponentType<any>
+        {children}
+      </button>
+    )
+  },
+)
+Button.displayName = "Button"
 
-const Toast = ({ message, onClose, type = 'success' }: { message: string; onClose: () => void; type?: 'success' | 'error' }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
 
+const Input = forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out animate-slide-up">
-        <div className="flex items-center p-4">
-          <div className="flex-shrink-0">
-            <div className={`w-8 h-8 rounded-full ${type === 'success' ? 'bg-purple-100 dark:bg-purple-900' : 'bg-red-100 dark:bg-red-900'} flex items-center justify-center`}>
-              {type === 'success' ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`h-5 w-5 ${type === 'success' ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-red-600 dark:text-red-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-            </div>
-          </div>
-          <div className="ml-3">
-            <p className="text-sm font-space-grotesk font-medium text-gray-900 dark:text-white">
-              {message}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="ml-auto -mx-1.5 -my-1.5 bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 inline-flex h-8 w-8"
-          >
-            <span className="sr-only">Close</span>
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className={`w-full ${type === 'success' ? 'bg-gray-200 dark:bg-gray-700' : 'bg-red-200 dark:bg-red-700'} h-1`}>
-          <div className={`${type === 'success' ? 'bg-purple-600' : 'bg-red-600'} h-1 w-full animate-progress`}></div>
-        </div>
-      </div>
-    </div>
-  );
-};
+    <input
+      type={type}
+      className={cn(
+        "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      ref={ref}
+      {...props}
+    />
+  )
+})
+Input.displayName = "Input"
 
-const styles = `
-  @keyframes slide-up {
-    from {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes progress {
-    from {
-      width: 100%;
-    }
-    to {
-      width: 0%;
-    }
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
-  }
-
-  .animate-progress {
-    animation: progress 3s linear forwards;
-  }
-`;
-
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
+interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "secondary" | "destructive" | "outline"
 }
 
-export default function ApiPlayground() {
-  const [url, setUrl] = useState("")
-  const [method, setMethod] = useState("GET")
-  const [headers, setHeaders] = useState("")
-  const [body, setBody] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [response, setResponse] = useState<{
-    status?: number
-    statusText?: string
-    headers?: Record<string, string>
-    data?: any
-    error?: string
-    time?: number
-  }>({})
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isUrlFocused, setIsUrlFocused] = useState(false)
-  const [isHeadersFocused, setIsHeadersFocused] = useState(false)
-  const [isBodyFocused, setIsBodyFocused] = useState(false)
-  const responseRef = useRef<HTMLDivElement>(null)
-  const responseDataRef = useRef<HTMLPreElement>(null)
-  const [showToast, setShowToast] = useState(false)
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
-  const [toastMessage, setToastMessage] = useState('')
+function Badge({ className, variant = "default", ...props }: BadgeProps) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-ring focus:ring-offset-2",
+        variant === "default" && "border-transparent bg-purple-600 text-white",
+        variant === "secondary" && "border-transparent bg-blue-100 text-blue-800",
+        variant === "destructive" && "border-transparent bg-red-100 text-red-800",
+        variant === "outline" && "border-gray-300 text-gray-800",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
-  const requestTypeOptions: RequestTypeOption[] = [
-    { value: 'GET', label: 'GET' },
-    { value: 'POST', label: 'POST' },
-    { value: 'PUT', label: 'PUT' },
-    { value: 'DELETE', label: 'DELETE' },
-    { value: 'PATCH', label: 'PATCH' },
-    { value: 'HEAD', label: 'HEAD' },
-    { value: 'OPTIONS', label: 'OPTIONS' },
-  ]
+interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 
-  const customStyles = {
-    control: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-      borderColor: isDarkMode ? '#1e293b' : '#e5e7eb',
-      color: isDarkMode ? '#f3f4f6' : '#111827',
-      boxShadow: state.isFocused ? `0 0 0 1px ${isDarkMode ? '#8b5cf6' : '#8b5cf6'}` : 'none',
-      '&:hover': {
-        borderColor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
-      },
-    }),
-    option: (base: any, state: any) => ({
-      ...base,
-      backgroundColor: state.isSelected
-        ? (isDarkMode ? '#8b5cf6' : '#8b5cf6')
-        : state.isFocused
-          ? (isDarkMode ? '#1e293b' : '#f3f4f6')
-          : (isDarkMode ? '#0f172a' : '#ffffff'),
-      color: state.isSelected
-        ? 'white'
-        : (isDarkMode ? '#f3f4f6' : '#111827'),
-      '&:active': {
-        backgroundColor: isDarkMode ? '#8b5cf6' : '#8b5cf6',
-      },
-    }),
-    singleValue: (base: any) => ({
-      ...base,
-      color: isDarkMode ? '#f3f4f6' : '#111827',
-    }),
-    menu: (base: any) => ({
-      ...base,
-      backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-      borderColor: isDarkMode ? '#1e293b' : '#e5e7eb',
-    }),
-    input: (base: any) => ({
-      ...base,
-      color: isDarkMode ? '#f3f4f6' : '#111827',
-    }),
+function Card({ className, ...props }: CardProps) {
+  return <div className={cn("rounded-lg border border-gray-200 bg-white shadow-sm", className)} {...props} />
+}
+
+interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
+
+function CardHeader({ className, ...props }: CardHeaderProps) {
+  return <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
+}
+
+interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
+
+function CardTitle({ className, ...props }: CardTitleProps) {
+  return <h3 className={cn("text-2xl font-semibold leading-none tracking-tight text-gray-900", className)} {...props} />
+}
+
+interface CardDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
+
+function CardDescription({ className, ...props }: CardDescriptionProps) {
+  return <p className={cn("text-sm text-gray-500", className)} {...props} />
+}
+
+interface CardContentProps extends HTMLAttributes<HTMLDivElement> {}
+
+function CardContent({ className, ...props }: CardContentProps) {
+  return <div className={cn("p-6 pt-0", className)} {...props} />
+}
+
+const wordBanks = {
+  easy: [
+    "cat",
+    "dog",
+    "sun",
+    "hat",
+    "run",
+    "fun",
+    "map",
+    "pen",
+    "cup",
+    "box",
+    "car",
+    "book",
+    "tree",
+    "fish",
+    "bird",
+    "cake",
+    "door",
+    "star",
+    "ball",
+    "game",
+  ],
+  medium: [
+    "apple",
+    "house",
+    "music",
+    "water",
+    "plant",
+    "beach",
+    "phone",
+    "chair",
+    "table",
+    "light",
+    "paper",
+    "money",
+    "smile",
+    "cloud",
+    "river",
+    "pizza",
+    "movie",
+    "dance",
+    "sleep",
+    "laugh",
+  ],
+  hard: [
+    "elephant",
+    "computer",
+    "mountain",
+    "universe",
+    "knowledge",
+    "beautiful",
+    "adventure",
+    "chocolate",
+    "butterfly",
+    "happiness",
+    "education",
+    "technology",
+    "restaurant",
+    "experience",
+    "celebration",
+    "opportunity",
+    "imagination",
+    "conversation",
+    "environment",
+    "development",
+  ],
+}
+
+const scrambleWord = (word: string): string => {
+  if (word.length <= 3) {
+    if (word.length === 2) {
+      return word[1] + word[0]
+    }
+
+    if (word.length === 3) {
+      return word[1] + word[2] + word[0]
+    }
   }
 
-  const parseHeaders = (headersString: string): Record<string, string> => {
-    if (!headersString.trim()) return {}
+  const characters = word.split("")
+  let scrambled = ""
+  let attempts = 0
+  const maxAttempts = 20
 
-    const result: Record<string, string> = {}
-    const lines = headersString.split("\n")
+  do {
+    const shuffled = [...characters]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
 
-    lines.forEach((line) => {
-      const [key, value] = line.split(":", 2).map((part) => part.trim())
-      if (key && value) {
-        result[key] = value
-      }
+    scrambled = shuffled.join("")
+    attempts++
+
+    if (attempts >= maxAttempts) {
+      return word.split("").reverse().join("")
+    }
+  } while (scrambled === word || !isScrambledEnough(word, scrambled))
+
+  return scrambled
+}
+
+const isScrambledEnough = (original: string, scrambled: string): boolean => {
+  if (original.length <= 4) return original !== scrambled
+
+  let differentPositions = 0
+  for (let i = 0; i < original.length; i++) {
+    if (original[i] !== scrambled[i]) {
+      differentPositions++
+    }
+  }
+
+  return differentPositions >= Math.ceil(original.length / 2)
+}
+
+export default function WordScrambleGame() {
+  const [showWelcome, setShowWelcome] = useState(true)
+
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("easy")
+  const [currentWord, setCurrentWord] = useState("")
+  const [scrambledWord, setScrambledWord] = useState("")
+  const [userInput, setUserInput] = useState("")
+  const [score, setScore] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [bestStreak, setBestStreak] = useState(0)
+  const [highScore, setHighScore] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(30)
+  const [gameActive, setGameActive] = useState(false)
+  const [showHint, setShowHint] = useState(false)
+  const [hintsUsed, setHintsUsed] = useState(0)
+  const [message, setMessage] = useState({ text: "Start a new game to begin!", type: "info" })
+  const [animation, setAnimation] = useState(false)
+  const [usedWords, setUsedWords] = useState<string[]>([])
+  const [changingDifficulty, setChangingDifficulty] = useState(false)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const startNewGame = () => {
+    setShowWelcome(false)
+    const newWord = getRandomWord(difficulty)
+    setCurrentWord(newWord)
+    setScrambledWord(scrambleWord(newWord))
+    setUserInput("")
+    setTimeLeft(difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20)
+    setGameActive(true)
+    setShowHint(false)
+    setHintsUsed(0)
+    setMessage({ text: "Game started! Unscramble the word.", type: "info" })
+    setUsedWords([newWord])
+    setScore(0)
+    setStreak(0)
+    setChangingDifficulty(false)
+
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleTimeUp()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const getRandomWord = (difficulty: "easy" | "medium" | "hard"): string => {
+    const availableWords = wordBanks[difficulty].filter((word) => !usedWords.includes(word))
+
+    if (availableWords.length === 0) {
+      setUsedWords([])
+      return wordBanks[difficulty][Math.floor(Math.random() * wordBanks[difficulty].length)]
+    }
+
+    return availableWords[Math.floor(Math.random() * availableWords.length)]
+  }
+
+  const handleTimeUp = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+
+    const wordWhenTimeRanOut = currentWord
+
+    setGameActive(false)
+    setMessage({
+      text: `Time's up! The word was "${wordWhenTimeRanOut}".`,
+      type: "error",
     })
 
-    return result
+    setStreak(0)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const startNextWord = () => {
+    if (changingDifficulty) return
 
-    if (!url) {
-      setResponse({ error: "Please enter a URL" })
-      return
+    const newWord = getRandomWord(difficulty)
+    setCurrentWord(newWord)
+    setScrambledWord(scrambleWord(newWord))
+    setUserInput("")
+    setTimeLeft(difficulty === "easy" ? 30 : difficulty === "medium" ? 25 : 20)
+    setShowHint(false)
+    setHintsUsed(0)
+    setGameActive(true)
+    setUsedWords((prev) => [...prev, newWord])
+    setMessage({ text: "Unscramble the word!", type: "info" })
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
     }
 
-    setLoading(true)
-    setResponse({})
-
-    const startTime = performance.now()
-
-    try {
-      const parsedHeaders = parseHeaders(headers)
-
-      const options: RequestInit = {
-        method,
-        headers: {
-          ...parsedHeaders,
-          ...(method !== "GET" && method !== "HEAD" && body && !parsedHeaders["Content-Type"]
-            ? { "Content-Type": "application/json" }
-            : {}),
-        },
-      }
-      if (method !== "GET" && method !== "HEAD" && body) {
-        try {
-          const parsedBody = JSON.parse(body)
-          options.body = JSON.stringify(parsedBody)
-        } catch (e) {
-          options.body = body
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleTimeUp()
+          return 0
         }
-      }
-
-      const fetchResponse = await fetch(url, options)
-      const responseHeaders: Record<string, string> = {}
-
-      fetchResponse.headers.forEach((value, key) => {
-        responseHeaders[key] = value
+        return prev - 1
       })
+    }, 1000)
 
-      let data
-      const contentType = fetchResponse.headers.get("content-type") || ""
-
-      if (contentType.includes("application/json")) {
-        data = await fetchResponse.json()
-      } else if (contentType.includes("text/")) {
-        data = await fetchResponse.text()
-      } else {
-        data = `[Binary data: ${contentType}]`
-      }
-
-      const endTime = performance.now()
-
-      setResponse({
-        status: fetchResponse.status,
-        statusText: fetchResponse.statusText,
-        headers: responseHeaders,
-        data,
-        time: Math.round(endTime - startTime),
-      })
-
-      if (responseRef.current) {
-        responseRef.current.scrollIntoView({ behavior: "smooth" })
-      }
-    } catch (error) {
-      const endTime = performance.now()
-      setResponse({
-        error: `Request failed: ${error instanceof Error ? error.message : String(error)}`,
-        time: Math.round(endTime - startTime),
-      })
-    } finally {
-      setLoading(false)
+    if (inputRef.current) {
+      inputRef.current.focus()
     }
   }
 
-  const formatJSON = (data: any): string => {
-    try {
-      return JSON.stringify(data, null, 2)
-    } catch (e) {
-      return String(data)
+  const handleSubmit = () => {
+    if (!gameActive) return
+
+    if (userInput.toLowerCase() === currentWord.toLowerCase()) {
+      handleCorrectAnswer()
+    } else {
+      const wordAtSubmission = currentWord
+
+      setMessage({
+        text: `That's not right. The word was "${wordAtSubmission}".`,
+        type: "error",
+      })
+
+      setStreak(0)
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+
+      setGameActive(false)
+
+      setTimeout(() => {
+        if (!changingDifficulty) {
+          startNextWord()
+        }
+      }, 2000)
     }
   }
 
-  const getStatusColor = (status?: number): string => {
-    if (!status) return "text-gray-500"
-    if (status >= 200 && status < 300) return "text-green-500"
-    if (status >= 300 && status < 400) return "text-blue-500"
-    if (status >= 400 && status < 500) return "text-yellow-500"
-    return "text-red-500"
+  const handleCorrectAnswer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+
+    const difficultyMultiplier = difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3
+    const timeBonus = Math.floor(timeLeft * 0.5)
+    const hintPenalty = hintsUsed * 5
+    const wordPoints = currentWord.length * difficultyMultiplier
+
+    const pointsEarned = Math.max(5, wordPoints + timeBonus - hintPenalty)
+
+    setScore((prev) => prev + pointsEarned)
+    setStreak((prev) => prev + 1)
+    setBestStreak((prev) => Math.max(prev, streak + 1))
+    setHighScore((prev) => Math.max(prev, score + pointsEarned))
+
+    setMessage({
+      text: `Correct! +${pointsEarned} points`,
+      type: "success",
+    })
+
+    setAnimation(true)
+    setTimeout(() => setAnimation(false), 1000)
+
+    setTimeout(() => {
+      if (!changingDifficulty) {
+        startNextWord()
+      }
+    }, 1500)
+  }
+
+  const showWordHint = () => {
+    if (!gameActive || (difficulty === "hard" && hintsUsed > 0)) return
+
+    setShowHint(true)
+    setHintsUsed((prev) => prev + 1)
+  }
+
+  const changeDifficulty = (newDifficulty: "easy" | "medium" | "hard") => {
+    if (difficulty === newDifficulty) return
+
+    setChangingDifficulty(true)
+
+    setDifficulty(newDifficulty)
+
+    if (gameActive) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+
+      setGameActive(false)
+      setMessage({
+        text: `Difficulty changed to ${newDifficulty}. Starting new word...`,
+        type: "info",
+      })
+
+      setTimeout(() => {
+        const newWord = getRandomWord(newDifficulty)
+        setCurrentWord(newWord)
+        setScrambledWord(scrambleWord(newWord))
+        setUserInput("")
+        setTimeLeft(newDifficulty === "easy" ? 30 : newDifficulty === "medium" ? 25 : 20)
+        setShowHint(false)
+        setHintsUsed(0)
+        setGameActive(true)
+        setUsedWords((prev) => [...prev, newWord])
+        setMessage({ text: "Unscramble the word!", type: "info" })
+        setChangingDifficulty(false)
+
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              handleTimeUp()
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        if (inputRef.current) {
+          inputRef.current.focus()
+        }
+      }, 1500)
+    } else {
+      setMessage({
+        text: `Difficulty set to ${newDifficulty}. Start a new game to begin!`,
+        type: "info",
+      })
+      setChangingDifficulty(false)
+    }
   }
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark')
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setIsDarkMode(prefersDark)
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
     }
   }, [])
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode
-    setIsDarkMode(newTheme)
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light')
-  }
-
-  const copyToClipboard = () => {
-    if (responseDataRef.current && response.data) {
-      const textToCopy = typeof response.data === "object" ? formatJSON(response.data) : String(response.data)
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        setToastType('success')
-        setToastMessage('Copied to clipboard!')
-        setShowToast(true)
-      })
-    }
-  }
-
-  const handleHeaderButtonClick = () => {
-    setToastType('error')
-    setToastMessage('This Section is not available yet!')
-    setShowToast(true)
-  }
-
-  const exampleApis = [
-    {
-      name: "Get a post",
-      url: "https://jsonplaceholder.typicode.com/posts/1",
-      method: "GET",
-    },
-    {
-      name: "List all posts",
-      url: "https://jsonplaceholder.typicode.com/posts",
-      method: "GET",
-    },
-    {
-      name: "Create a post",
-      url: "https://jsonplaceholder.typicode.com/posts",
-      method: "POST",
-      body: JSON.stringify({ title: "foo", body: "bar", userId: 1 }, null, 2),
-    },
-  ]
-
-  const loadExample = (example: (typeof exampleApis)[0]) => {
-    setUrl(example.url)
-    setMethod(example.method)
-    if (example.body) {
-      setBody(example.body)
+  const getHintText = () => {
+    if (difficulty === "easy") {
+      return `Starts with "${currentWord[0]}"`
+    } else if (difficulty === "medium") {
+      return `Starts with "${currentWord[0]}" and ends with "${currentWord[currentWord.length - 1]}"`
     } else {
-      setBody("")
+      return `${currentWord.length} letters`
     }
+  }
+
+  const stopGame = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setGameActive(false)
+    setChangingDifficulty(false)
+    setMessage({
+      text: `Game stopped. Your final score: ${score}`,
+      type: "info",
+    })
+  }
+
+  const returnToWelcome = () => {
+    stopGame()
+    setShowWelcome(true)
   }
 
   return (
-    <div
-      className={`${inter.variable} ${spaceGrotesk.variable} font-sans`}
-      style={{
-        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-        color: isDarkMode ? '#f3f4f6' : '#111827',
-        minHeight: '100vh',
-        transition: 'background-color 0.3s, color 0.3s',
-        width: '100%',
-        overflowX: 'hidden'
-      }}
-    >
-      <Head>
-        <title>API Testing Playground</title>
-        <meta name="description" content="A modern API testing playground" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet" />
+      <div className="flex min-h-screen max-h-screen flex-col items-center justify-center p-4 sm:p-6 py-12 sm:py-16 md:py-20 relative overflow-hidden">
+        <div className="fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-900 to-indigo-900"></div>
 
-      <div style={{
-        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-        color: isDarkMode ? '#f3f4f6' : '#111827',
-        width: '100%',
-        maxWidth: '100vw',
-        overflowX: 'hidden'
-      }}>
-        {/* Header */}
-        <header style={{
-          borderBottom: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-          width: '100%',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50
-        }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 rounded-md border-2 border-purple-500 flex items-center justify-center transition-all duration-300 hover:rotate-12">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-purple-500"
-                    >
-                      <path d="M18 10h-4V6" />
-                      <path d="M14 10L21 3" />
-                      <path d="M6 14h4v4" />
-                      <path d="M10 14L3 21" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <h1 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-xl font-space-grotesk font-semibold">API Playground</h1>
-                  <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="text-xs font-inter">Test your APIs with ease</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <nav className="hidden md:flex space-x-6">
-                  <button
-                    onClick={handleHeaderButtonClick}
-                    style={{ color: isDarkMode ? '#f3f4f6' : '#4b5563' }}
-                    className="text-sm font-space-grotesk font-semibold tracking-wide hover:text-purple-500 transition-all duration-200 cursor-pointer hover:scale-105"
-                  >
-                    Documentation
-                  </button>
-                  <button
-                    onClick={handleHeaderButtonClick}
-                    style={{ color: isDarkMode ? '#f3f4f6' : '#4b5563' }}
-                    className="text-sm font-space-grotesk font-semibold tracking-wide hover:text-purple-500 transition-all duration-200 cursor-pointer hover:scale-105"
-                  >
-                    Examples
-                  </button>
-                  <button
-                    onClick={handleHeaderButtonClick}
-                    style={{ color: isDarkMode ? '#f3f4f6' : '#4b5563' }}
-                    className="text-sm font-space-grotesk font-semibold tracking-wide hover:text-purple-500 transition-all duration-200 cursor-pointer hover:scale-105"
-                  >
-                    About
-                  </button>
-                </nav>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/15 transition-colors duration-200 cursor-pointer"
-                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDarkMode ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ color: isDarkMode ? '#f3f4f6' : '#4b5563' }}
-                    >
-                      <circle cx="12" cy="12" r="5"></circle>
-                      <line x1="12" y1="1" x2="12" y2="3"></line>
-                      <line x1="12" y1="21" x2="12" y2="23"></line>
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                      <line x1="1" y1="12" x2="3" y2="12"></line>
-                      <line x1="21" y1="12" x2="23" y2="12"></line>
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ color: isDarkMode ? '#f3f4f6' : '#4b5563' }}
-                    >
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                  )}
-                </button>
-              </div>
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500 rounded-full opacity-10 transform translate-x-1/3 -translate-y-1/3"></div>
+
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500 rounded-full opacity-10 transform -translate-x-1/3 translate-y-1/3"></div>
+
+            <div className="absolute top-1/2 left-1/2 w-[800px] h-[800px] bg-pink-500 rounded-full opacity-5 transform -translate-x-1/2 -translate-y-1/2"></div>
+
+            <div className="absolute inset-0 opacity-5">
+              <div
+                className="absolute w-full h-full"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+                  backgroundSize: "40px 40px",
+                }}
+              ></div>
             </div>
+
+            <div className="absolute inset-0">
+              {Array.from({ length: 50 }).map((_, i) => (
+                <div
+                  key={`dot-${i}`}
+                  className="absolute rounded-full bg-white opacity-20"
+                  style={{
+                    width: `${Math.random() * 4 + 1}px`,
+                    height: `${Math.random() * 4 + 1}px`,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                  }}
+                ></div>
+              ))}
+            </div>
+
+            <div className="absolute top-20 left-20 w-32 h-32 border-2 border-purple-300 opacity-10 rotate-45"></div>
+            <div className="absolute bottom-40 right-20 w-40 h-40 border-2 border-indigo-300 opacity-10 rounded-lg"></div>
+            <div className="absolute top-1/3 right-1/4 w-24 h-24 border-2 border-pink-300 opacity-10 rounded-full"></div>
+
+            <div className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent opacity-10"></div>
+            <div className="absolute top-2/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent opacity-10"></div>
+            <div className="absolute top-3/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent opacity-10"></div>
           </div>
-        </header>
+        </div>
 
-        {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-          <div className="grid gap-8 lg:grid-cols-2 grid-cols-1">
-            {/* Request section */}
-            <section className="order-1 lg:order-none w-full">
-              <div style={{
-                border: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                boxShadow: isDarkMode
-                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)'
-                  : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                transform: 'translateY(0)',
-                transition: 'all 0.3s ease',
-              }}
-                className="rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div style={{
-                  borderBottom: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#f9fafb',
-                }} className="px-6 py-4">
-                  <h2 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-lg font-space-grotesk font-medium">Request</h2>
-                </div>
-                <div className="p-6">
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                      <label htmlFor="url" style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="block text-sm font-medium mb-1">
-                        URL
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <Select
-                          value={requestTypeOptions.find(option => option.value === method)}
-                          onChange={(selectedOption: SingleValue<RequestTypeOption>) => setMethod(selectedOption?.value || 'GET')}
-                          options={requestTypeOptions}
-                          styles={customStyles}
-                          className="w-32 border rounded-md border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          isSearchable={false}
-                          components={{
-                            IndicatorSeparator: () => null
-                          }}
-                        />
-                        <input
-                          id="url"
-                          type="text"
-                          value={url}
-                          onChange={(e) => setUrl(e.target.value)}
-                          onFocus={() => setIsUrlFocused(true)}
-                          onBlur={() => setIsUrlFocused(false)}
-                          placeholder="https://api.example.com/endpoint"
-                          style={{
-                            backgroundColor: isDarkMode ? '#111827' : 'transparent',
-                            color: isDarkMode ? '#f3f4f6' : '#111827'
-                          }}
-                          className="flex-1 px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                        />
-                      </div>
-                    </div>
+        {showWelcome ? (
+          <Card className="w-full max-w-lg shadow-xl backdrop-blur-xl bg-white/90 border-0 transition-all duration-500 hover:shadow-purple-500/20 relative z-10">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-t-lg p-4 sm:p-6">
+              <CardTitle className="text-center text-2xl sm:text-3xl font-bold flex items-center justify-center gap-2 text-white">
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+                Word Scramble
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+              </CardTitle>
+              <CardDescription className="text-center text-white text-base sm:text-lg">
+                Test your vocabulary and unscrambling skills!
+              </CardDescription>
+            </CardHeader>
 
-                    <div>
-                      <label htmlFor="headers" style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="block text-sm font-medium mb-1">
-                        Headers{" "}
-                        <span style={{ color: isDarkMode ? '#cbd5e1' : '#6b7280' }} className="text-xs">
-                          (one per line, format: Key: Value)
-                        </span>
-                      </label>
-                      <div
-                        className={`rounded-md border ${isHeadersFocused ? "border-purple-500 ring-1 ring-purple-500" : "border-gray-300 dark:border-gray-700"} transition-all duration-200`}
-                      >
-                        <textarea
-                          id="headers"
-                          value={headers}
-                          onChange={(e) => setHeaders(e.target.value)}
-                          onFocus={() => setIsHeadersFocused(true)}
-                          onBlur={() => setIsHeadersFocused(false)}
-                          placeholder="Content-Type: application/json
-Authorization: Bearer token"
-                          rows={3}
-                          style={{
-                            backgroundColor: isDarkMode ? '#111827' : 'transparent',
-                            color: isDarkMode ? '#f9fafb' : '#111827'
-                          }}
-                          className="w-full px-3 py-2 rounded-md focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 whitespace-pre-wrap break-words overflow-x-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    {method !== "GET" && method !== "HEAD" && (
-                      <div>
-                        <label htmlFor="body" style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="block text-sm font-medium mb-1">
-                          Body
-                        </label>
-                        <div
-                          className={`rounded-md border ${isBodyFocused ? "border-purple-500 ring-1 ring-purple-500" : "border-gray-300 dark:border-gray-700"} transition-all duration-200`}
-                        >
-                          <textarea
-                            id="body"
-                            value={body}
-                            onChange={(e) => setBody(e.target.value)}
-                            onFocus={() => setIsBodyFocused(true)}
-                            onBlur={() => setIsBodyFocused(false)}
-                            placeholder='{"key": "value"}'
-                            rows={5}
-                            style={{
-                              backgroundColor: isDarkMode ? '#111827' : 'transparent',
-                              color: isDarkMode ? '#f9fafb' : '#111827'
-                            }}
-                            className="w-full px-3 py-2 rounded-md focus:outline-none font-mono text-sm"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-2 px-4 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-purple-600 flex justify-center items-center cursor-pointer"
-                      >
-                        {loading ? (
-                          <>
-                            <svg
-                              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="mr-1 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 10V3L4 14h7v7l9-11h-7z"
-                              />
-                            </svg>
-                            Send Request
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              {/* Example APIs */}
-              <div style={{
-                border: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                boxShadow: isDarkMode
-                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)'
-                  : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                transform: 'translateY(0)',
-                transition: 'all 0.3s ease',
-              }}
-                className="mt-6 rounded-lg overflow-hidden hover:shadow-lg hover:-translate-y-1">
-                <div style={{
-                  borderBottom: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#f9fafb',
-                }} className="px-6 py-3">
-                  <h3 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-sm font-space-grotesk font-medium">Example APIs</h3>
-                </div>
-                <div style={{
-                  borderColor: isDarkMode ? '#1e293b' : '#e5e7eb'
-                }} className="divide-y">
-                  {exampleApis.map((example, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                        borderColor: isDarkMode ? '#1e293b' : '#e5e7eb'
-                      }}
-                      className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150 cursor-pointer flex justify-between items-center"
-                      onClick={() => loadExample(example)}
-                    >
-                      <div>
-                        <p style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-sm font-medium">{example.name}</p>
-                        <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="text-xs mt-1 truncate max-w-xs">{example.url}</p>
-                      </div>
-                      <span
-                        style={{
-                          backgroundColor: example.method === "GET"
-                            ? isDarkMode ? '#064e3b' : '#dcfce7'
-                            : example.method === "POST"
-                              ? isDarkMode ? '#1e3a8a' : '#dbeafe'
-                              : example.method === "PUT"
-                                ? isDarkMode ? '#713f12' : '#fef3c7'
-                                : example.method === "DELETE"
-                                  ? isDarkMode ? '#7f1d1d' : '#fee2e2'
-                                  : isDarkMode ? '#1f2937' : '#f3f4f6',
-                          color: example.method === "GET"
-                            ? isDarkMode ? '#6ee7b7' : '#166534'
-                            : example.method === "POST"
-                              ? isDarkMode ? '#93c5fd' : '#1e40af'
-                              : example.method === "PUT"
-                                ? isDarkMode ? '#fbbf24' : '#92400e'
-                                : example.method === "DELETE"
-                                  ? isDarkMode ? '#fca5a5' : '#991b1b'
-                                  : isDarkMode ? '#f3f4f6' : '#4b5563'
-                        }}
-                        className="text-xs px-2 py-1 rounded-full"
-                      >
-                        {example.method}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Response section */}
-            <section ref={responseRef} className="order-2 lg:order-none w-full">
-              <div style={{
-                border: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                boxShadow: isDarkMode
-                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)'
-                  : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                transform: 'translateY(0)',
-                transition: 'all 0.3s ease',
-              }}
-                className="rounded-lg overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div style={{
-                  borderBottom: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#f9fafb',
-                }} className="px-6 py-4 flex justify-between items-center">
-                  <h2 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-lg font-space-grotesk font-medium">Response</h2>
-                  {response.status && (
-                    <div className="flex items-center space-x-2">
-                      <span style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="text-xs">{response.time}ms</span>
-                      <button
-                        onClick={copyToClipboard}
-                        style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                        className="hover:text-purple-500 transition-colors duration-150 relative cursor-pointer"
-                        title="Copy to clipboard"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6">
-                  {loading ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div style={{
-                        borderColor: isDarkMode ? '#1f2937' : '#d1d5db',
-                        borderTopColor: '#8b5cf6'
-                      }} className="w-10 h-10 border-2 rounded-full animate-spin"></div>
-                      <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="mt-4 text-sm">Waiting for response...</p>
-                    </div>
-                  ) : response.error ? (
-                    <div style={{
-                      backgroundColor: isDarkMode ? '#7f1d1d' : '#fef2f2',
-                      borderColor: isDarkMode ? '#991b1b' : '#fecaca'
-                    }} className="p-4 rounded-md border animate-fade-in">
-                      <p style={{ color: isDarkMode ? '#fca5a5' : '#b91c1c' }}>{response.error}</p>
-                      {response.time && (
-                        <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="mt-2 text-xs">Time: {response.time}ms</p>
-                      )}
-                    </div>
-                  ) : response.status ? (
-                    <div className="space-y-4 animate-fade-in">
-                      <div>
-                        <h3 style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="text-sm font-medium mb-2">Status</h3>
-                        <div className="flex items-center gap-3">
-                          <span style={{ color: getStatusColor(response.status) }} className="text-2xl font-bold">
-                            {response.status}
-                          </span>
-                          <span style={{ color: isDarkMode ? '#e5e7eb' : '#4b5563' }}>{response.statusText}</span>
-                        </div>
-                      </div>
-
-                      {response.headers && Object.keys(response.headers).length > 0 && (
-                        <div className="animate-slide-up" style={{ animationDelay: "100ms" }}>
-                          <h3 style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="text-sm font-medium mb-2">Headers</h3>
-                          <div style={{
-                            border: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                            backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb'
-                          }} className="max-h-40 overflow-y-auto rounded-md p-3">
-                            {Object.entries(response.headers).map(([key, value]) => (
-                              <div key={key} className="text-xs font-mono mb-1">
-                                <span style={{ color: '#8b5cf6' }}>{key}:</span>{" "}
-                                <span style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }}>{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="animate-slide-up" style={{ animationDelay: "200ms" }}>
-                        <h3 style={{ color: isDarkMode ? '#f3f4f6' : '#374151' }} className="text-sm font-medium mb-2">Body</h3>
-                        <pre
-                          ref={responseDataRef}
-                          style={{
-                            border: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-                            backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb',
-                            color: isDarkMode ? '#f3f4f6' : '#374151'
-                          }}
-                          className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md p-3 text-xs font-mono whitespace-pre-wrap"
-                        >
-                          {typeof response.data === "object" ? formatJSON(response.data) : String(response.data)}
-                        </pre>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div style={{
-                        borderColor: isDarkMode ? '#1e293b' : '#e5e7eb'
-                      }} className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-4">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ color: isDarkMode ? '#e5e7eb' : '#d1d5db' }}
-                        >
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="12" y1="8" x2="12" y2="12"></line>
-                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                      </div>
-                      <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}>No response yet</p>
-                      <p style={{ color: isDarkMode ? '#9ca3af' : '#9ca3af' }} className="text-sm mt-1">
-                        Enter a URL and click Send Request
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer style={{
-          borderTop: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`,
-          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-          width: '100%'
-        }} className="mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-md border-2 border-purple-500 flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-purple-500"
-                    >
-                      <path d="M18 10h-4V6" />
-                      <path d="M14 10L21 3" />
-                      <path d="M6 14h4v4" />
-                      <path d="M10 14L3 21" />
-                    </svg>
-                  </div>
+            <CardContent className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500 mt-1 flex-shrink-0" />
                   <div>
-                    <h3 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-lg font-semibold">API Playground</h3>
-                    <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="mt-1 text-sm">
-                      A modern, elegant tool for testing and debugging APIs with ease.
+                    <h3 className="font-bold text-base sm:text-lg text-gray-800">How to Play</h3>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Unscramble the jumbled letters to form a real word. Type your answer and submit before the timer
+                      runs out!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-800">Beat the Clock</h3>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      You have limited time for each word. The faster you solve, the more points you earn!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-800">Score Points</h3>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Earn points for each correct word. Build a streak of correct answers to maximize your score!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-800">Difficulty Levels</h3>
+                    <p className="text-sm sm:text-base text-gray-600">
+                      Choose from three difficulty levels: Easy, Medium, and Hard. Each level offers different word
+                      lengths and time limits.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <h3 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-sm font-semibold mb-4">Resources</h3>
-                <ul className="space-y-3">
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Documentation
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      API References
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      Examples
-                    </a>
-                  </li>
-                </ul>
+              <div className="pt-2 sm:pt-4">
+                <Button
+                  onClick={startNewGame}
+                  className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-base sm:text-lg py-4 sm:py-6 group transition-all duration-300 btn-gradient btn-glow text-white"
+                >
+                  <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  Start Game
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="w-full max-w-md shadow-xl backdrop-blur-xl bg-white/90 border-0 relative z-10">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-t-lg p-3 sm:p-4">
+              <CardTitle className="text-center text-xl sm:text-2xl font-bold text-white">Word Scramble</CardTitle>
+            </CardHeader>
+
+            <CardContent className="p-4 sm:p-6">
+              <div className="mb-4 sm:mb-6">
+                <div className="grid w-full grid-cols-3 p-1 bg-purple-100 rounded-md">
+                  <button
+                    onClick={() => changeDifficulty("easy")}
+                    className={cn(
+                      "text-xs sm:text-sm py-1.5 px-3 rounded-sm font-medium transition-all",
+                      difficulty === "easy"
+                        ? "bg-gradient-to-r from-green-400 to-green-500 text-white shadow-sm"
+                        : "text-gray-600 hover:bg-purple-50",
+                    )}
+                  >
+                    Easy
+                  </button>
+                  <button
+                    onClick={() => changeDifficulty("medium")}
+                    className={cn(
+                      "text-xs sm:text-sm py-1.5 px-3 rounded-sm font-medium transition-all",
+                      difficulty === "medium"
+                        ? "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-sm"
+                        : "text-gray-600 hover:bg-purple-50",
+                    )}
+                  >
+                    Medium
+                  </button>
+                  <button
+                    onClick={() => changeDifficulty("hard")}
+                    className={cn(
+                      "text-xs sm:text-sm py-1.5 px-3 rounded-sm font-medium transition-all",
+                      difficulty === "hard"
+                        ? "bg-gradient-to-r from-red-400 to-red-500 text-white shadow-sm"
+                        : "text-gray-600 hover:bg-purple-50",
+                    )}
+                  >
+                    Hard
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <h3 style={{ color: isDarkMode ? '#f9fafb' : '#111827' }} className="text-sm font-semibold mb-4">Connect</h3>
-                <ul className="space-y-3">
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.239 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                      </svg>
-                      GitHub
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M23.953 4.57a10 10 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
-                      </svg>
-                      Twitter
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                      className="text-sm hover:text-purple-500 transition-colors duration-150 flex items-center cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
-                      </svg>
-                      Discord
-                    </a>
-                  </li>
-                </ul>
+              <div className="flex justify-between items-center mb-4 sm:mb-5 bg-gradient-to-r from-purple-100/50 to-blue-100/50 p-2 sm:p-3 rounded-lg">
+                <div className="flex items-center bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md shadow-sm">
+                  <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 mr-1" />
+                  <span className="font-medium text-sm sm:text-base text-gray-800">{score}</span>
+                </div>
+                <div className="flex items-center bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md shadow-sm">
+                  <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500 mr-1" />
+                  <span className="font-medium text-sm sm:text-base text-gray-800">{streak}</span>
+                </div>
+                <div className="flex items-center bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-md shadow-sm">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 mr-1" />
+                  <span
+                    className={cn(
+                      "font-medium text-sm sm:text-base text-gray-800",
+                      timeLeft < 10 && gameActive && "text-red-500 animate-pulse",
+                    )}
+                  >
+                    {timeLeft}s
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div style={{
-              borderTop: `1px solid ${isDarkMode ? '#1e293b' : '#e5e7eb'}`
-            }} className="mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-              <p style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }} className="text-sm">
-                &copy; {new Date().getFullYear()} API Playground. All rights reserved.
-              </p>
-              <div className="mt-4 md:mt-0 flex space-x-6">
-                <a
-                  href="#"
-                  style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                  className="text-sm hover:text-purple-500 transition-colors duration-150 cursor-pointer"
-                >
-                  Privacy Policy
-                </a>
-                <a
-                  href="#"
-                  style={{ color: isDarkMode ? '#e5e7eb' : '#6b7280' }}
-                  className="text-sm hover:text-purple-500 transition-colors duration-150 cursor-pointer"
-                >
-                  Terms of Service
-                </a>
+              <div
+                className={cn(
+                  "text-center p-5 sm:p-7 mb-4 sm:mb-5 rounded-lg bg-gradient-to-br from-purple-100/80 to-blue-100/80 transition-all duration-500 shadow-lg border border-white/20",
+                  animation && "bg-green-100/80 scale-105 border-green-300/50",
+                )}
+              >
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-wider mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+                  {scrambledWord.toUpperCase()}
+                </h2>
+                {showHint && (
+                  <Badge variant="outline" className="bg-white text-xs sm:text-sm">
+                    <Lightbulb className="h-3 w-3 mr-1 text-yellow-500" />
+                    {getHintText()}
+                  </Badge>
+                )}
               </div>
-            </div>
-          </div>
-        </footer>
+
+              <div className="space-y-4 sm:space-y-5">
+                <div className="flex space-x-2">
+                  <Input
+                    ref={inputRef}
+                    type="text"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    placeholder="Type your answer..."
+                    disabled={!gameActive}
+                    className="flex-1 bg-white border-purple-200 focus:ring-2 focus:ring-purple-400 focus:border-transparent shadow-sm text-sm sm:text-base"
+                    autoComplete="off"
+                  />
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!gameActive || !userInput.trim()}
+                    className="bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 shadow-md btn-gradient text-white"
+                  >
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <Button
+                    onClick={showWordHint}
+                    disabled={!gameActive || showHint || (difficulty === "hard" && hintsUsed > 0)}
+                    variant="outline"
+                    className="flex items-center justify-center gap-1 sm:gap-2 bg-white border-purple-200 hover:bg-purple-50 shadow-sm transition-all text-xs sm:text-sm text-gray-700"
+                  >
+                    <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+                    <span>Hint</span>
+                  </Button>
+
+                  {gameActive ? (
+                    <Button
+                      onClick={stopGame}
+                      disabled={!gameActive}
+                      className="flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 shadow-md btn-gradient text-xs sm:text-sm text-white"
+                    >
+                      <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span>Stop</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={startNextWord}
+                      className="flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 shadow-md btn-gradient text-xs sm:text-sm text-white"
+                    >
+                      <Play className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span>Start</span>
+                    </Button>
+                  )}
+                </div>
+
+                <div
+                  className={cn(
+                    "p-3 sm:p-4 rounded-lg text-center shadow-inner text-xs sm:text-sm",
+                    message.type === "success" && "bg-gradient-to-r from-green-100 to-green-50 text-green-800",
+                    message.type === "error" && "bg-gradient-to-r from-red-100 to-red-50 text-red-800",
+                    message.type === "info" && "bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800",
+                  )}
+                >
+                  {message.type === "success" && <CheckCircle className="inline-block h-3 w-3 sm:h-4 sm:w-4 mr-1" />}
+                  {message.type === "error" && <AlertCircle className="inline-block h-3 w-3 sm:h-4 sm:w-4 mr-1" />}
+                  {message.text}
+                </div>
+              </div>
+
+              <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-2 mb-4 sm:mb-5">
+                  <div className="bg-white p-2 sm:p-3 rounded-md shadow-sm">
+                    <span className="text-gray-500 text-xs sm:text-sm">Best Streak:</span>
+                    <span className="font-bold ml-1 text-xs sm:text-sm text-gray-800">{bestStreak}</span>
+                  </div>
+                  <div className="bg-white p-2 sm:p-3 rounded-md shadow-sm">
+                    <span className="text-gray-500 text-xs sm:text-sm">High Score:</span>
+                    <span className="font-bold ml-1 text-xs sm:text-sm text-gray-800">{highScore}</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={returnToWelcome}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-1 sm:gap-2 bg-white border-purple-200 hover:bg-purple-50 shadow-sm transition-all text-xs sm:text-sm text-gray-700"
+                >
+                  <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Return to Instrucions
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <style jsx global>{`
+          html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Montserrat', sans-serif;
+          }
+          .btn-glow:hover {
+            box-shadow: 0 0 15px rgba(123, 97, 255, 0.5);
+          }
+          
+          .btn-gradient {
+            background-size: 200% auto;
+            transition: 0.5s;
+          }
+          
+          .btn-gradient:hover {
+            background-position: right center;
+          }
+
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+          
+          .animate-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+
+          @media (max-width: 640px) {
+            .text-4xl {
+              font-size: 1.75rem;
+            }
+            .text-3xl {
+              font-size: 1.5rem;
+            }
+            .text-2xl {
+              font-size: 1.25rem;
+            }
+            .text-xl {
+              font-size: 1.125rem;
+            }
+            .text-lg {
+              font-size: 1rem;
+            }
+            .p-4 {
+              padding: 1.25rem;
+            }
+            .p-6 {
+              padding: 1.5rem;
+            }
+            .py-12 {
+              padding-top: 3rem;
+              padding-bottom: 3rem;
+            }
+            .space-y-4 {
+              margin-top: 1.25rem;
+            }
+            .mb-4 {
+              margin-bottom: 1.25rem;
+            }
+          }
+        `}</style>
       </div>
-
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          onClose={() => setShowToast(false)}
-          type={toastType}
-        />
-      )}
-    </div>
+    </>
   )
 }
