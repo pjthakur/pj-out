@@ -72,8 +72,9 @@ interface LeaderboardModalProps {
 
 const Header: React.FC<{ 
     darkMode: boolean,
-    onLeaderboardClick: () => void
-}> = ({ darkMode, onLeaderboardClick }) => {
+    onLeaderboardClick: () => void,
+    onHelpClick: () => void
+}> = ({ darkMode, onLeaderboardClick, onHelpClick }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     
     return (
@@ -100,8 +101,11 @@ const Header: React.FC<{
                             label="Leaderboard" 
                             onLeaderboardClick={onLeaderboardClick}
                         />
-                        <NavLink icon={<Brain className="h-4 w-4 mr-1" />} label="How to Play" />
-                        <NavLink icon={<Compass className="h-4 w-4 mr-1" />} label="Discover" />
+                        <NavLink 
+                            icon={<Brain className="h-4 w-4 mr-1" />} 
+                            label="How to Play" 
+                            onHelpClick={onHelpClick}
+                        />
                     </div>
                     
                     <div className="md:hidden">
@@ -129,8 +133,12 @@ const Header: React.FC<{
                             onLeaderboardClick={onLeaderboardClick}
                             onMenuClose={() => setMenuOpen(false)}
                         />
-                        <MobileNavLink icon={<Brain className="h-4 w-4 mr-2" />} label="How to Play" />
-                        <MobileNavLink icon={<Compass className="h-4 w-4 mr-2" />} label="Discover" />
+                        <MobileNavLink 
+                            icon={<Brain className="h-4 w-4 mr-2" />} 
+                            label="How to Play" 
+                            onHelpClick={onHelpClick}
+                            onMenuClose={() => setMenuOpen(false)}
+                        />
                     </motion.div>
                 )}
             </div>
@@ -143,12 +151,15 @@ const NavLink: React.FC<{
     icon: React.ReactNode, 
     label: string, 
     active?: boolean,
-    onLeaderboardClick?: () => void 
-}> = ({ icon, label, active, onLeaderboardClick }) => {
+    onLeaderboardClick?: () => void,
+    onHelpClick?: () => void
+}> = ({ icon, label, active, onLeaderboardClick, onHelpClick }) => {
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault()
         if (label === "Leaderboard" && onLeaderboardClick) {
             onLeaderboardClick()
+        } else if (label === "How to Play" && onHelpClick) {
+            onHelpClick()
         }
     }
 
@@ -174,12 +185,16 @@ const MobileNavLink: React.FC<{
     label: string, 
     active?: boolean,
     onLeaderboardClick?: () => void,
+    onHelpClick?: () => void,
     onMenuClose?: () => void
-}> = ({ icon, label, active, onLeaderboardClick, onMenuClose }) => {
+}> = ({ icon, label, active, onLeaderboardClick, onHelpClick, onMenuClose }) => {
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault()
         if (label === "Leaderboard") {
             onLeaderboardClick?.()
+            onMenuClose?.()
+        } else if (label === "How to Play") {
+            onHelpClick?.()
             onMenuClose?.()
         }
     }
@@ -1249,7 +1264,11 @@ function WordcraftGame() {
         <div
             className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} font-sans`}
         >
-            <Header darkMode={darkMode} onLeaderboardClick={() => setShowLeaderboard(true)} />
+            <Header 
+                darkMode={darkMode} 
+                onLeaderboardClick={() => setShowLeaderboard(true)}
+                onHelpClick={() => setShowHelp(true)}
+            />
 
             <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <motion.div
@@ -1705,78 +1724,51 @@ function WordcraftGame() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className={`mt-6 sm:mt-8 py-4 px-4 rounded-xl mx-auto text-center ${darkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} shadow-sm`}
+                    className={`mt-6 sm:mt-8 py-8 px-4 sm:px-8 rounded-xl mx-auto text-center ${darkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} shadow-sm`}
                 >
-                    <div className="max-w-6xl mx-auto mb-8 sm:mb-12 text-center">
-                        <p className="mb-2 text-sm sm:text-base">Want to partner with us?</p>
-                        <p className="text-xs sm:text-sm mb-4 text-gray-600 dark:text-gray-400">
-                            If you'd like to learn more about partnering, one of our advisors is excited to help.
-                        </p>
-                        <button
-                            className="bg-gradient-to-r from-purple-500 via-blue-400 to-teal-400
-                 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium
-                 hover:opacity-90 transition"
-                        >
-                            Contact Us
-                        </button>
-                    </div>
-
-                    {/* Links */}
-                    <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-                        {/* Logo */}
-                        <div>
-                            <h2 className="text-2xl sm:text-3xl font-light">
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400">
-                                    Word
-                                </span>{''}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
-                                    Craft.
-                                </span>
-                            </h2>
-                        </div>
-
-                        {/* Partnerships */}
-                        <div>
-                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">Partnerships</h3>
-                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                                <li><a href="#" className="hover:text-teal-400">Investors</a></li>
-                                <li><a href="#" className="hover:text-teal-400">Social Media Marketing</a></li>
-                            </ul>
-                        </div>
-
-                        {/* About */}
-                        <div>
-                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">About</h3>
-                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                                <li><a href="#" className="hover:text-teal-400">Our Why</a></li>
-                                <li><a href="#" className="hover:text-teal-400">Our Work</a></li>
-                                <li><a href="#" className="hover:text-teal-400">Careers</a></li>
-                            </ul>
-                        </div>
-
-                        {/* Support & Social */}
-                        <div>
-                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">Support</h3>
-                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                                <li><a href="#" className="hover:text-teal-400">Support Request</a></li>
-                                <li><a href="#" className="hover:text-teal-400">Contact</a></li>
-                            </ul>
-
-                            <h3 className="text-xs uppercase mb-2 mt-4 sm:mt-6 text-gray-500 dark:text-gray-400">Follow Us</h3>
-                            <div className="flex space-x-3">
-                                <a href="#" className="bg-gradient-to-r from-purple-500 via-blue-400 to-teal-400 p-2 rounded-full hover:opacity-90 transition">
-                                    {/* svg icon */}
-                                </a>
-                                {/* more icons */}
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-left pb-8">
+                            {/* Logo */}
+                            <div className="flex flex-col items-start justify-center h-full">
+                                <h2 className="text-2xl sm:text-3xl font-light mb-2">
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400">
+                                        Word
+                                    </span>{''}
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
+                                        Craft.
+                                    </span>
+                                </h2>
+                            </div>
+                            {/* Partnerships */}
+                            <div className="flex flex-col items-start justify-center h-full">
+                                <h3 className="text-sm sm:text-base uppercase mb-3 text-gray-500 dark:text-gray-400 font-semibold tracking-widest">Partnerships</h3>
+                                <ul className="space-y-1 sm:space-y-2 text-sm sm:text-base">
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Investors</a></li>
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Social Media Marketing</a></li>
+                                </ul>
+                            </div>
+                            {/* About */}
+                            <div className="flex flex-col items-start justify-center h-full">
+                                <h3 className="text-sm sm:text-base uppercase mb-3 text-gray-500 dark:text-gray-400 font-semibold tracking-widest">About</h3>
+                                <ul className="space-y-1 sm:space-y-2 text-sm sm:text-base">
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Our Why</a></li>
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Our Work</a></li>
+                                </ul>
+                            </div>
+                            {/* Support */}
+                            <div className="flex flex-col items-start justify-center h-full">
+                                <h3 className="text-sm sm:text-base uppercase mb-3 text-gray-500 dark:text-gray-400 font-semibold tracking-widest">Support</h3>
+                                <ul className="space-y-1 sm:space-y-2 text-sm sm:text-base">
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Support Request</a></li>
+                                    <li><a href="#" className="hover:text-teal-400 font-medium">Contact</a></li>
+                                </ul>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Copyright */}
-                    <div className="max-w-6xl mx-auto pt-6 sm:pt-8 mt-8 sm:mt-12 border-t border-gray-700 dark:border-gray-600
-                  flex flex-col md:flex-row justify-between items-center text-xs">
-                        <p>©2024 letsone.io. All rights reserved.</p>
-                        <a href="#" className="mt-2 md:mt-0 hover:text-teal-400">Privacy Policy</a>
+                        <hr className="w-full border-t border-gray-700 dark:border-gray-600 mb-4" />
+                        <div className="flex flex-col md:flex-row justify-between items-center text-xs pt-2 pb-1">
+                            <p className="text-gray-400">©2024 letsone.io. All rights reserved.</p>
+                            <a href="#" className="hover:text-teal-400 text-gray-400 mt-2 md:mt-0">Privacy Policy</a>
+                        </div>
                     </div>
                 </motion.div>
             </div>
