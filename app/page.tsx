@@ -1,1028 +1,1802 @@
-"use client";
-
-import { useState, useEffect, FormEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+"use client"
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import confetti from "canvas-confetti"
 import {
-  FiCalendar, FiMapPin, FiClock, FiUser, FiMoon, FiSun,
-  FiMenu, FiX, FiMail, FiPhone, FiCheck, FiAlertCircle,
-  FiGlobe, FiSend, FiAward, FiCoffee, FiMessageCircle,
-  FiUsers, FiBookmark, FiStar, FiHeart, FiBriefcase,
-  FiTwitter, FiLinkedin, FiChevronRight, FiArrowRight, FiLayers, FiLock
-} from "react-icons/fi";
-
-// Color palette
-const colors = {
-  dark: {
-    bg: "#0E1428",
-    card: "#19203A",
-    cardLight: "#222C48",
-    accent: "#FF6B6B", // Coral red
-    accentAlt: "#4ECDC4", // Teal
-    accentLight: "rgba(255, 107, 107, 0.2)",
-    text: "#FFFFFF",
-    textSecondary: "#CCD6F6",
-    textTertiary: "#8892B0",
-    border: "rgba(255, 255, 255, 0.1)"
-  },
-  light: {
-    bg: "#F5F9FF",
-    card: "#FFFFFF",
-    cardLight: "#F0F4FA",
-    accent: "#FF6B6B", // Coral red
-    accentAlt: "#4ECDC4", // Teal
-    accentLight: "rgba(255, 107, 107, 0.1)",
-    text: "#1E293B",
-    textSecondary: "#334155",
-    textTertiary: "#64748B",
-    border: "rgba(0, 0, 0, 0.1)"
-  }
-};
-
-export default function Home() {
-  const [theme, setTheme] = useState("dark");
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Form validation state
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    company: "",
-    ticketType: ""
-  });
-  const [formErrors, setFormErrors] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    ticketType: ""
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [formTouched, setFormTouched] = useState({
-    firstName: false,
-    lastName: false,
-    email: false,
-    ticketType: false
-  });
-
-  // Event details
-  const eventDate = new Date("2025-12-15T09:00:00");
-  const eventName = "TechConf 2025";
-  const eventTagline = "Where Innovation Meets Opportunity";
-  const eventLocation = "Tech Center, San Francisco";
-  const eventDescription = "Join us for the most innovative tech conference of the year, featuring industry leaders, workshops, and networking opportunities!";
-
-  // Toggle theme
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-  };
-
-  // Set theme from localStorage on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme("dark");
-    }
-  }, []);
-
-  // Apply theme class to document
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [theme]);
-
-  // Countdown timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      const difference = eventDate.getTime() - now.getTime();
-
-      if (difference <= 0) {
-        clearInterval(timer);
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        return;
-      }
-
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      setTimeLeft({ days, hours, minutes, seconds });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Schedule data
-  const scheduleData = [
-    { time: "09:00 AM - 09:30 AM", title: "Registration & Breakfast", speaker: "" },
-    { time: "09:30 AM - 09:45 AM", title: "Kickoff and Intros", speaker: "Sarah Johnson" },
-    { time: "09:45 AM - 10:15 AM", title: "Intro to Modern Web Development", speaker: "Michael Chen" },
-    { time: "10:15 AM - 11:15 AM", title: "AI-driven Architecture", speaker: "Elena Rodriguez" },
-    { time: "11:15 AM - 12:15 PM", title: "Cloud Architecture Presentation", speaker: "David Kim" },
-    { time: "12:15 PM - 01:15 PM", title: "Lunch Break", speaker: "" },
-    { time: "01:15 PM - 01:30 PM", title: "Partner Introduction", speaker: "TechConf Team" },
-    { time: "01:30 PM - 03:30 PM", title: "Hands-on Workshop", speaker: "Dev Team" },
-    { time: "03:30 PM - 04:00 PM", title: "Coffee Break", speaker: "" },
-    { time: "04:00 PM - 05:00 PM", title: "Panel Discussion", speaker: "Industry Leaders" },
-    { time: "05:00 PM - 07:00 PM", title: "Networking Reception", speaker: "" },
-  ];
-
-  // Speakers data
-  const speakersData = [
-    {
-      name: "Sarah Thompson",
-      role: "Vice President, AWS Generative Builders",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      bio: "Sarah is the CTO of TechWave, a leading innovator in cloud architecture. With over 15 years of experience in the tech industry, she excels in developing impactful solutions that drive growth and sustainability.",
-    },
-    {
-      name: "Michael Rodriguez",
-      role: "Chief Operations Officer, Apex Automations",
-      image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      bio: "Michael leads the product development team at Apex Automations, a company renowned for its cutting-edge robotic systems. His expertise in AI and robotics has been pivotal in launching groundbreaking products.",
-    },
-    {
-      name: "Sarah Lee",
-      role: "Head of Human Resources, Future Corp",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      bio: "Sarah oversees HR at Future Corp, a sustainability-focused company. With a decade of experience in talent management and organizational development, she is passionate about fostering inclusive workplaces.",
-    },
-  ];
-
-  // Form handling functions
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-
-    // Mark field as touched
-    setFormTouched({
-      ...formTouched,
-      [name]: true
-    });
-
-    // Clear errors when typing
-    if (formErrors[name as keyof typeof formErrors]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: ""
-      });
-    }
-  };
-
-  const validateForm = () => {
-    let isValid = true;
-    const errors = { ...formErrors };
-    const touched = { ...formTouched };
-
-    // Mark all fields as touched on submission
-    Object.keys(touched).forEach(key => {
-      touched[key as keyof typeof touched] = true;
-    });
-    setFormTouched(touched);
-
-    // Validate firstName
-    if (!formData.firstName.trim()) {
-      errors.firstName = "First name is required";
-      isValid = false;
-    }
-
-    // Validate lastName
-    if (!formData.lastName.trim()) {
-      errors.lastName = "Last name is required";
-      isValid = false;
-    }
-
-    // Validate email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-      isValid = false;
-    } else if (!emailRegex.test(formData.email)) {
-      errors.email = "Please enter a valid email";
-      isValid = false;
-    }
-
-    // Validate ticketType
-    if (!formData.ticketType) {
-      errors.ticketType = "Please select a ticket type";
-      isValid = false;
-    }
-
-    setFormErrors(errors);
-    return isValid;
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      setIsSubmitting(true);
-
-      // Simulate API call
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setSubmitSuccess(true);
-
-        // Reset form after success
-        setTimeout(() => {
-          setSubmitSuccess(false);
-          setFormData({
-            firstName: "",
-            lastName: "",
-            email: "",
-            company: "",
-            ticketType: ""
-          });
-          setFormTouched({
-            firstName: false,
-            lastName: false,
-            email: false,
-            ticketType: false
-          });
-        }, 5000);
-      }, 1500);
-    }
-  };
-
-  return (
-    <div className={`min-h-screen ${theme === "dark" ? "bg-[#0E1428] text-white" : "bg-[#F5F9FF] text-[#1E293B]"} font-sans`}>
-      {/* Navigation Bar - inspired by the image */}
-      <nav className={`fixed w-full z-50 ${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} backdrop-blur-sm`}>
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className={`h-8 w-8 rounded-md flex items-center justify-center bg-[#FF6B6B] text-white font-bold`}>
-                TC
-              </div>
-              <span className="text-xl font-bold tracking-tight font-montserrat">TechConf</span>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#about" className="text-sm hover:text-[#FF6B6B] transition-colors">About</a>
-              <a href="#agenda" className="text-sm hover:text-[#FF6B6B] transition-colors">Agenda</a>
-              <a href="#speakers" className="text-sm hover:text-[#FF6B6B] transition-colors">Speakers</a>
-              <a href="#location" className="text-sm hover:text-[#FF6B6B] transition-colors">Location</a>
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className={`p-2 rounded-full ml-2 ${theme === "dark" ? "bg-[#222C48]" : "bg-gray-100"}`}
-                aria-label="Toggle theme"
-              >
-                {theme === "dark" ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
-              </button>
-              <a
-                href="#register"
-                className="px-4 py-2 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white text-sm font-medium transition-colors"
-              >
-                Register now
-              </a>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center gap-4">
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]" : "bg-gray-100"}`}
-                aria-label="Toggle theme"
-              >
-                {theme === "dark" ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
-              </button>
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2"
-                aria-label="Toggle menu"
-              >
-                {isMenuOpen ? <FiX className="h-5 w-5" /> : <FiMenu className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`md:hidden ${theme === "dark" ? "bg-[#19203A]" : "bg-white"} py-4 border-t ${theme === "dark" ? "border-[#222C48]" : "border-gray-200"}`}
-          >
-            <div className="container mx-auto px-6 flex flex-col space-y-4">
-              <a href="#about" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>About</a>
-              <a href="#agenda" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Agenda</a>
-              <a href="#speakers" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Speakers</a>
-              <a href="#location" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Location</a>
-              <a
-                href="#register"
-                className="px-4 py-2 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white text-sm font-medium transition-colors w-fit"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Register now
-              </a>
-            </div>
-          </motion.div>
-        )}
-      </nav>
-
-      {/* Hero Section - Update for light theme */}
-      <section className="relative min-h-screen pt-28 pb-16 px-6 flex items-center">
-        {/* Background Image with Overlay */}
-        <div className={`absolute inset-0 ${theme === "dark"
-          ? "bg-gradient-to-b from-[#0E1428]/80 via-[#0E1428]/90 to-[#0E1428]"
-          : "bg-gradient-to-b from-[#F5F9FF]/20 via-[#F5F9FF]/50 to-[#F5F9FF]"} z-0`}>
-          <img
-            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80"
-            alt="Tech conference background"
-            className={`w-full h-full object-cover opacity-30 mix-blend-overlay`}
-          />
-          {theme === "light" && <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F5F9FF]/30 to-[#F5F9FF]/60 z-10"></div>}
-        </div>
-
-        <div className="container mx-auto relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`text-4xl md:text-6xl font-bold mb-4 tracking-tight ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}
-            >
-              {eventName}
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={`text-xl md:text-2xl mb-8 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}
-            >
-              {eventTagline}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-wrap items-center justify-center gap-6 mb-10"
-            >
-              <div className={`flex items-center gap-2 ${theme === "dark" ? "text-[#CCD6F6] bg-[#19203A]/80" : "text-[#334155] bg-white/80"} px-4 py-2 rounded-full border ${theme === "dark" ? "border-white/10" : "border-black/5"}`}>
-                <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
-                <span>{eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
-              </div>
-              <div className={`flex items-center gap-2 ${theme === "dark" ? "text-[#CCD6F6] bg-[#19203A]/80" : "text-[#334155] bg-white/80"} px-4 py-2 rounded-full border ${theme === "dark" ? "border-white/10" : "border-black/5"}`}>
-                <FiMapPin className="h-5 w-5 text-[#FF6B6B]" />
-                <span>{eventLocation}</span>
-              </div>
-            </motion.div>
-
-            {/* Countdown Timer */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="mb-10"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-xs md:max-w-lg mx-auto">
-                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}> 
-                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.days}</div>
-                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Days</div>
-                </div>
-                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
-                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.hours}</div>
-                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Hours</div>
-                </div>
-                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
-                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.minutes}</div>
-                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Minutes</div>
-                </div>
-                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
-                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.seconds}</div>
-                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Seconds</div>
-                </div>
-              </div>
-              <div className={`text-sm ${theme === "dark" ? "text-[#4ECDC4]" : "text-[#1E293B] font-medium"} mt-4`}>Until the event begins</div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <a
-                href="#register"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white font-medium transition-colors shadow-lg"
-              >
-                Register Now
-                <FiArrowRight className="h-4 w-4" />
-              </a>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
-        <div className="container mx-auto">
-          <div className="mb-12 text-center">
-            <div className={`text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3`}>OVERVIEW</div>
-            <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>About The Event</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {/* Left Column - Overview and Text */}
-            <div>
-              <div className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl h-full`}>
-                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>
-                  This will be an interactive event with a mix of lecture and instructor-led workshops
-                  from AWS experts. Did you know that a Serverless event-driven approach can help
-                  build resilient GenAI applications? In this full day training event, you'll learn how to
-                  build serverless, event-driven applications leveraging cloud-native services such as
-                  Amazon EventBridge, AWS Step Functions, and AWS Lambda.
-                </p>
-
-                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>
-                  Through leveraging serverless or container platforms, these applications can almost
-                  instantly benefit from the scalability, reliability, and cost effectiveness of the cloud.
-                  Early cloud adoption approaches were primarily focused on migrations or greenfield
-                  applications.
-                </p>
-
-                <div className={`flex items-center gap-3 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-8 border-l-4 border-[#FF6B6B] pl-4 py-2`}>
-                  <span className="text-[#4ECDC4] text-xl">💻</span>
-                  <p className="font-medium">Please bring your own laptop</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Info Boxes */}
-            <div className="flex flex-col h-full space-y-8" style={{height: '100%'}}>
-              <div className={`flex-1 flex flex-col justify-start backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl`}>
-                <h3 className={`text-xl font-bold mb-6 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>WHY ATTEND?</h3>
-                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                  Learn how to build cost-efficient and agile applications using event-driven architecture.
-                </p>
-              </div>
-              <div className={`flex-1 flex flex-col justify-start backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl`}>
-                <h3 className={`text-xl font-bold mb-6 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>WHO SHOULD ATTEND?</h3>
-                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                  Technical decision makers: CTOs, engineering leads, solutions architects, developers. Architects and developers that are ready to get hands-on with these services.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Agenda Section */}
-      <section id="agenda" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
-        <div className="container mx-auto">
-          <div className="max-w-5xl mx-auto">
-            <div className="mb-12 text-center">
-              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} border shadow-xl mb-4`}>
-                <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
-              </div>
-              <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Event Agenda</h2>
-              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-3 max-w-lg mx-auto`}>
-                Explore our carefully curated schedule of talks and workshops
-              </p>
-            </div>
-
-            <div className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border mb-8 shadow-xl`}>
-              <div className="flex flex-wrap justify-between items-baseline mb-6">
-                <div className="flex items-center gap-3">
-                  <div className={`${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm p-2 rounded-lg border shadow`}>
-                    <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
-                  </div>
-                  <span className={`text-xl font-semibold ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#1E293B]"}`}>
-                    Monday, December 15, 2025
-                  </span>
-                </div>
-                <div className={`mt-3 md:mt-0 px-3 py-1 rounded-full text-xs font-medium ${theme === "dark" ? "bg-[#222C48]/30 text-[#CCD6F6] border-white/10" : "bg-white/30 text-[#334155] border-white/30"} backdrop-blur-sm border shadow`}>
-                  All times in PST
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {scheduleData.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.05 }}
-                    className="relative"
-                  >
-                    <div className={`p-5 rounded-xl transition-all duration-300 backdrop-blur-md ${item.speaker
-                      ? theme === "dark"
-                        ? "bg-[#222C48]/30 border-white/10"
-                        : "bg-white/30 border-white/30"
-                      : theme === "dark"
-                        ? "bg-[#19203A]/30 border-white/10"
-                        : "bg-white/30 border-white/30"
-                      } border shadow`}>
-                      <div className="grid grid-cols-12 gap-4 items-center">
-                        {/* Time Column */}
-                        <div className="col-span-12 sm:col-span-3 lg:col-span-2">
-                          <div className="flex items-start gap-3">
-                            <div className="w-2 h-2 rounded-full bg-[#FF6B6B] mt-2 hidden sm:block"></div>
-                            <span className="font-mono text-sm text-[#4ECDC4]">{item.time}</span>
-                          </div>
-                        </div>
-
-                        {/* Content Column */}
-                        <div className="col-span-12 sm:col-span-9 lg:col-span-10">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between">
-                            <div>
-                              <h3 className={`font-semibold text-lg ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{item.title}</h3>
-                              {item.speaker && (
-                                <div className="flex items-center gap-2 mt-1">
-                                  <FiUser className="h-4 w-4 text-[#FF6B6B]" />
-                                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} text-sm`}>{item.speaker}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {item.speaker && (
-                              <a 
-                                href="#"
-                                className="mt-3 md:mt-0 text-[#FF6B6B] text-sm flex items-center gap-1 group hover:text-[#FF5252] transition-colors"
-                              >
-                                Session Details
-                                <FiChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                              </a>
-                            )}
-                          </div>
-
-                          {/* For lunch and breaks, add a special indicator */}
-                          {(item.title.includes("Break") || item.title.includes("Lunch")) && (
-                            <div className="mt-2 flex items-center gap-2">
-                              {item.title.includes("Lunch") ? (
-                                <FiCoffee className="text-[#4ECDC4] h-4 w-4" />
-                              ) : (
-                                <FiCoffee className="text-[#FF6B6B] h-4 w-4" />
-                              )}
-                              <span className={`text-sm ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"}`}>
-                                {item.title.includes("Lunch") ? "Food provided for all attendees" : "Refreshments available"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-center">
-              <p className={`${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-sm`}>
-                The schedule is subject to minor changes. All registered attendees will be notified of any updates.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Speakers Section */}
-      <section id="speakers" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
-        <div className="container mx-auto">
-          <div className="mb-16 text-center">
-            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} border shadow-xl mb-4`}>
-              <FiUsers className="h-5 w-5 text-[#FF6B6B]" />
-            </div>
-            <div className="text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3">Speakers</div>
-            <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>The Voices Of The Event</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {speakersData.map((speaker, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl overflow-hidden border shadow-xl`}
-              >
-                <div className="aspect-[3/2] relative overflow-hidden">
-                  <img
-                    src={speaker.image}
-                    alt={speaker.name}
-                    className="object-cover w-full h-full object-center"
-                    style={{
-                      objectPosition: "center 30%"
-                    }}
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${theme === "dark" ? "from-[#19203A]" : "from-white"} to-transparent opacity-70`}></div>
-                </div>
-                <div className="p-6">
-                  <h3 className={`text-xl font-bold mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{speaker.name}</h3>
-                  <p className="text-[#FF6B6B] mb-4 text-sm">{speaker.role}</p>
-                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} text-sm line-clamp-4`}>{speaker.bio}</p>
-
-                  <div className="flex gap-3 mt-5">
-                    <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-[#222C48] transition-colors border shadow`} aria-label="Twitter">
-                      <FiTwitter className="h-4 w-4 text-[#FF6B6B]" />
-                    </a>
-                    <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-[#222C48] transition-colors border shadow`} aria-label="LinkedIn">
-                      <FiLinkedin className="h-4 w-4 text-[#FF6B6B]" />
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Registration and Location Section */}
-      <section className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
-        <div className="container mx-auto">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-12 text-center">
-              <div className="text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3">Join Us</div>
-              <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Register and Visit</h2>
-              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} max-w-2xl mx-auto`}>Secure your spot and find your way to our state-of-the-art venue</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Registration Form */}
-              <div id="register" className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl p-8 border shadow-xl`}>
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#FF6B6B] mb-4">
-                    <FiSend className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Register Now</h3>
-                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-2`}>Secure your spot at the most anticipated tech event of the year</p>
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {submitSuccess ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className={`p-8 rounded-xl text-center ${theme === "dark" ? "bg-[#222C48]/80" : "bg-white/80"} backdrop-blur-md shadow-lg border ${theme === "dark" ? "border-[#4ECDC4]/20" : "border-[#4ECDC4]/30"}`}
-                    >
-                      <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-[#4ECDC4] to-[#4ECDC4]/70 flex items-center justify-center mb-6 shadow-lg">
-                        <FiCheck className="h-10 w-10 text-white" />
-                      </div>
-                      <h3 className={`text-2xl font-bold mb-3 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Registration Successful!</h3>
-                      <p className={`mb-6 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>Thank you for registering for {eventName}. We've sent a confirmation email to <span className="font-medium text-[#4ECDC4]">{formData.email}</span>.</p>
-                      <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${theme === "dark" ? "bg-[#19203A]" : "bg-gray-50"} ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-sm`}>
-                        <FiCalendar className="h-4 w-4" />
-                        <span>We're excited to see you on December 15, 2025!</span>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                          <label htmlFor="firstName" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                            <FiUser className={formErrors.firstName && formTouched.firstName ? "text-red-500" : "text-[#FF6B6B]"} />
-                            First Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            id="firstName"
-                            name="firstName"
-                            value={formData.firstName}
-                            onChange={handleInputChange}
-                            className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.firstName && formTouched.firstName
-                              ? "border-red-500 ring-1 ring-red-500"
-                              : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
-                          />
-                          {formErrors.firstName && formTouched.firstName && (
-                            <motion.p
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
-                            >
-                              <FiAlertCircle className="h-4 w-4" />
-                              {formErrors.firstName}
-                            </motion.p>
-                          )}
-                        </div>
-                        <div>
-                          <label htmlFor="lastName" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                            <FiUser className={formErrors.lastName && formTouched.lastName ? "text-red-500" : "text-[#FF6B6B]"} />
-                            Last Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            id="lastName"
-                            name="lastName"
-                            value={formData.lastName}
-                            onChange={handleInputChange}
-                            className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.lastName && formTouched.lastName
-                              ? "border-red-500 ring-1 ring-red-500"
-                              : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
-                          />
-                          {formErrors.lastName && formTouched.lastName && (
-                            <motion.p
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
-                            >
-                              <FiAlertCircle className="h-4 w-4" />
-                              {formErrors.lastName}
-                            </motion.p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label htmlFor="email" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                          <FiMail className={formErrors.email && formTouched.email ? "text-red-500" : "text-[#FF6B6B]"} />
-                          Email Address <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.email && formTouched.email
-                            ? "border-red-500 ring-1 ring-red-500"
-                            : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
-                        />
-                        {formErrors.email && formTouched.email && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
-                          >
-                            <FiAlertCircle className="h-4 w-4" />
-                            {formErrors.email}
-                          </motion.p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label htmlFor="company" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                          <FiBriefcase className="text-[#FF6B6B]" />
-                          Company/Organization
-                        </label>
-                        <input
-                          type="text"
-                          id="company"
-                          name="company"
-                          value={formData.company}
-                          onChange={handleInputChange}
-                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="ticketType" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
-                          <FiBookmark className={formErrors.ticketType && formTouched.ticketType ? "text-red-500" : "text-[#FF6B6B]"} />
-                          Ticket Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id="ticketType"
-                          name="ticketType"
-                          value={formData.ticketType}
-                          onChange={handleInputChange}
-                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.ticketType && formTouched.ticketType
-                            ? "border-red-500 ring-1 ring-red-500"
-                            : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
-                        >
-                          <option value="">Select ticket type</option>
-                          <option value="standard">Standard Pass ($299)</option>
-                          <option value="premium">Premium Pass ($499)</option>
-                          <option value="vip">VIP Pass ($799)</option>
-                        </select>
-                        {formErrors.ticketType && formTouched.ticketType && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
-                          >
-                            <FiAlertCircle className="h-4 w-4" />
-                            {formErrors.ticketType}
-                          </motion.p>
-                        )}
-                      </div>
-
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="mt-6"
-                      >
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="w-full py-3.5 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-[#FF6B6B] to-[#FF5252] hover:from-[#FF5252] hover:to-[#FF4040] disabled:from-[#FF6B6B]/70 disabled:to-[#FF5252]/70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg"
-                        >
-                          {isSubmitting ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Processing...
-                            </span>
-                          ) : (
-                            <span className="flex items-center justify-center gap-2">
-                              Secure Your Spot
-                              <FiArrowRight className="h-5 w-5" />
-                            </span>
-                          )}
-                        </button>
-                      </motion.div>
-
-                      <div className="pt-2 text-center text-sm text-[#8892B0]">
-                        <p className="flex items-center justify-center gap-2">
-                          <FiLock className="text-[#FF6B6B]" />
-                          Your information is secure and will never be shared with third parties
-                        </p>
-                      </div>
-                    </form>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Location Information */}
-              <div id="location" className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl overflow-hidden border shadow-xl`}>
-                <div className="h-[300px] overflow-hidden">
-                  <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.1034026272367!2d-122.41941608468212!3d37.77492197975918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80858099c824510f%3A0x71f43d5a857f763f!2sMoscone%20Center!5e0!3m2!1sen!2sus!4v1629940433187!5m2!1sen!2sus"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                  ></iframe>
-                </div>
-
-                <div className="p-8">
-                  <h3 className={`text-2xl font-bold mb-6 flex items-center gap-2 font-montserrat ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>
-                    <FiMapPin className="text-[#FF6B6B]" />
-                    Event Venue
-                  </h3>
-
-                  <div className="space-y-6">
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm border shadow`}>
-                        <FiMapPin className="h-5 w-5 text-[#FF6B6B]" />
-                      </div>
-                      <div>
-                        <h4 className={`font-medium mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Address</h4>
-                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>123 Innovation Way</p>
-                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>San Francisco, CA 94103</p>
-                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>United States</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm border shadow`}>
-                        <FiClock className="h-5 w-5 text-[#FF6B6B]" />
-                      </div>
-                      <div>
-                        <h4 className={`font-medium mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Event Hours</h4>
-                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>December 15, 2025</p>
-                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>9:00 AM - 5:00 PM</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 mt-8 w-full">
-                    <a
-                      href="https://maps.google.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#FF6B6B] hover:bg-[#FF5252] text-white transition-colors text-base md:text-lg font-medium"
-                    >
-                      <FiMapPin className="w-6 h-6 md:w-5 md:h-5" />
-                      Get Directions
-                    </a>
-                    <a
-                      href="tel:+11234567890"
-                      className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/30 border-white/10 hover:bg-[#222C48]" : "bg-white/30 border-white/30 hover:bg-gray-200"} transition-colors border shadow text-base md:text-lg font-medium ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}
-                    >
-                      <FiPhone className={`w-6 h-6 md:w-5 md:h-5 ${theme === "dark" ? "text-[#FF6B6B]" : "text-[#FF6B6B]"}`} />
-                      Contact Venue
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className={`py-12 ${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} backdrop-blur-md border-t ${theme === "dark" ? "border-white/10" : "border-black/5"} mt-8`}>
-        <div className="container mx-auto px-6">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-[#FF6B6B] text-white font-bold">
-                  TC
-                </div>
-                <span className={`text-xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>TechConf</span>
-              </div>
-              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>The premier tech conference of 2025. Join us for a day of innovation, learning, and networking.</p>
-              <div className="flex gap-4">
-                <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-${theme === "dark" ? "[#222C48]" : "gray-200"} transition-colors border shadow`}>
-                  <FiTwitter className="h-5 w-5 text-[#FF6B6B]" />
-                </a>
-                <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-${theme === "dark" ? "[#222C48]" : "gray-200"} transition-colors border shadow`}>
-                  <FiLinkedin className="h-5 w-5 text-[#FF6B6B]" />
-                </a>
-              </div>
-            </div>
-
-            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-8">
-              <div>
-                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Quick Links</h3>
-                <ul className="space-y-2">
-                  <li><a href="#about" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>About</a></li>
-                  <li><a href="#agenda" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Agenda</a></li>
-                  <li><a href="#speakers" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Speakers</a></li>
-                  <li><a href="#register" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Register</a></li>
-                  <li><a href="#location" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Location</a></li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Contact</h3>
-                <ul className="space-y-2">
-                  <li className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>info@techconf.event</li>
-                  <li className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>+1 (123) 456-7890</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Legal</h3>
-                <ul className="space-y-2">
-                  <li><a href="#" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Privacy Policy</a></li>
-                  <li><a href="#" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Terms of Service</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className={`border-t ${theme === "dark" ? "border-white/10" : "border-black/5"} mt-12 pt-8 ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-center text-sm`}>
-            <p>© 2025 TechConf. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
-        html, body, * {
-          font-family: 'Montserrat', system-ui, sans-serif !important;
-        }
-        .shadow-neumorph {
-          box-shadow: ${theme === "dark"
-          ? "0 4px 20px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3)"
-          : "0 4px 20px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1)"};
-        }
-        
-        .shadow-neumorph-lg {
-          box-shadow: ${theme === "dark"
-          ? "0 10px 30px rgba(0, 0, 0, 0.5), 0 15px 25px rgba(0, 0, 0, 0.4)"
-          : "0 10px 30px rgba(0, 0, 0, 0.15), 0 15px 25px rgba(0, 0, 0, 0.1)"};
-        }
-        
-        .shadow-neumorph-hover {
-          box-shadow: ${theme === "dark"
-          ? "0 10px 20px rgba(0, 0, 0, 0.6), 0 6px 15px rgba(0, 0, 0, 0.5)"
-          : "0 10px 20px rgba(0, 0, 0, 0.2), 0 6px 15px rgba(0, 0, 0, 0.15)"};
-        }
-        
-        .backdrop-blur-md {
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-        
-        .backdrop-blur-sm {
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-        }
-        
-        html {
-          scroll-behavior: smooth;
-        }
-      `}</style>
-    </div>
-  );
+    Sun,
+    Moon,
+    Lightbulb,
+    Trophy,
+    Search,
+    Clock,
+    Gamepad2,
+    Check,
+    ArrowLeft,
+    HelpCircle,
+    RefreshCw,
+    Sparkles,
+    BookOpen,
+    Brain,
+    Hash,
+    Compass,
+    AlignJustify,
+    Menu
+} from "lucide-react"
+
+// Define types
+type Difficulty = "easy" | "medium" | "hard"
+type GameMode = "regular" | "daily"
+type Direction = "right" | "down"
+
+interface Cell {
+    row: number
+    col: number
 }
+
+interface Clue {
+    id: number
+    clue: string
+    answer: string
+    x: number
+    y: number
+    direction: Direction
+}
+
+interface Word {
+    id: number
+    word: string
+    x: number
+    y: number
+    direction: Direction
+}
+
+interface HighlightedWord {
+    wordId: number
+    cells: Cell[]
+}
+
+interface VictoryScreenProps {
+    onRestart: () => void
+    difficulty: Difficulty
+    foundWords: number
+    solvedClues: number
+    totalWords: number
+    totalClues: number
+}
+
+interface LeaderboardModalProps {
+    onClose: () => void
+    darkMode: boolean
+}
+
+const Header: React.FC<{ 
+    darkMode: boolean,
+    onLeaderboardClick: () => void
+}> = ({ darkMode, onLeaderboardClick }) => {
+    const [menuOpen, setMenuOpen] = useState(false);
+    
+    return (
+        <div className={`w-full ${darkMode ? "bg-gray-800" : "bg-white"} shadow-md`}>
+            <div className="container mx-auto px-4 py-3">
+                <div className="flex items-center justify-between">
+                    {/* Logo */}
+                    <div className="flex items-center space-x-1">
+                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-teal-400 flex items-center justify-center shadow-lg">
+                            <Hash className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-500 to-teal-400 bg-clip-text text-transparent">
+                                Word<span className="font-light">Craft</span>
+                            </h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Puzzle Your Way</p>
+                        </div>
+                    </div>
+                    
+                    <div className="hidden md:flex items-center space-x-6">
+                        <NavLink icon={<BookOpen className="h-4 w-4 mr-1" />} label="Play" active />
+                        <NavLink 
+                            icon={<Trophy className="h-4 w-4 mr-1" />} 
+                            label="Leaderboard" 
+                            onLeaderboardClick={onLeaderboardClick}
+                        />
+                        <NavLink icon={<Brain className="h-4 w-4 mr-1" />} label="How to Play" />
+                        <NavLink icon={<Compass className="h-4 w-4 mr-1" />} label="Discover" />
+                    </div>
+                    
+                    <div className="md:hidden">
+                        <button 
+                            onClick={() => setMenuOpen(!menuOpen)}
+                            className={`p-2 rounded-lg ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+                
+                {/* Mobile Navigation */}
+                {menuOpen && (
+                    <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="md:hidden py-2 space-y-2 mt-2 border-t border-gray-200 dark:border-gray-700"
+                    >
+                        <MobileNavLink icon={<BookOpen className="h-4 w-4 mr-2" />} label="Play" active />
+                        <MobileNavLink 
+                            icon={<Trophy className="h-4 w-4 mr-2" />} 
+                            label="Leaderboard" 
+                            onLeaderboardClick={onLeaderboardClick}
+                            onMenuClose={() => setMenuOpen(false)}
+                        />
+                        <MobileNavLink icon={<Brain className="h-4 w-4 mr-2" />} label="How to Play" />
+                        <MobileNavLink icon={<Compass className="h-4 w-4 mr-2" />} label="Discover" />
+                    </motion.div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// Navigation link component
+const NavLink: React.FC<{ 
+    icon: React.ReactNode, 
+    label: string, 
+    active?: boolean,
+    onLeaderboardClick?: () => void 
+}> = ({ icon, label, active, onLeaderboardClick }) => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        if (label === "Leaderboard" && onLeaderboardClick) {
+            onLeaderboardClick()
+        }
+    }
+
+    return (
+        <a 
+            href="#" 
+            onClick={handleClick}
+            className={`flex items-center text-sm font-medium hover:text-violet-500 transition duration-200 ${
+                active 
+                ? "text-violet-500 dark:text-violet-400" 
+                : "text-gray-600 dark:text-gray-300"
+            }`}
+        >
+            {icon}
+            {label}
+        </a>
+    )
+}
+
+// Mobile Navigation link
+const MobileNavLink: React.FC<{ 
+    icon: React.ReactNode, 
+    label: string, 
+    active?: boolean,
+    onLeaderboardClick?: () => void,
+    onMenuClose?: () => void
+}> = ({ icon, label, active, onLeaderboardClick, onMenuClose }) => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault()
+        if (label === "Leaderboard") {
+            onLeaderboardClick?.()
+            onMenuClose?.()
+        }
+    }
+
+    return (
+        <a 
+            href="#" 
+            onClick={handleClick}
+            className={`flex items-center py-2 px-1 text-sm font-medium ${
+                active 
+                ? "text-violet-500 dark:text-violet-400" 
+                : "text-gray-600 dark:text-gray-300"
+            }`}
+        >
+            {icon}
+            {label}
+        </a>
+    )
+}
+
+const VictoryScreen: React.FC<VictoryScreenProps> = ({
+    onRestart,
+    difficulty,
+    foundWords,
+    solvedClues,
+    totalWords,
+    totalClues,
+}) => {
+    const [score, setScore] = useState(0)
+
+    useEffect(() => {
+        const baseScore = difficulty === "easy" ? 100 : difficulty === "medium" ? 200 : 300
+        const completionScore = (foundWords + solvedClues) * 50
+        setScore(baseScore + completionScore)
+
+        const launchConfetti = () => {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+            })
+        }
+
+        launchConfetti()
+
+        const timer1 = setTimeout(() => {
+            confetti({
+                particleCount: 50,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0 },
+            })
+        }, 300)
+
+        const timer2 = setTimeout(() => {
+            confetti({
+                particleCount: 50,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1 },
+            })
+        }, 600)
+
+        return () => {
+            clearTimeout(timer1)
+            clearTimeout(timer2)
+        }
+    }, [difficulty, foundWords, solvedClues, totalWords, totalClues])
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", duration: 0.6 }}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-8 text-center w-full max-w-md mx-auto shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+                <motion.div
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="mb-2"
+                >
+                    <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-yellow-400 mx-auto" />
+                </motion.div>
+
+                <motion.h2
+                    initial={{ y: -20 }}
+                    animate={{ y: 0 }}
+                    className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-violet-500 to-teal-400 bg-clip-text text-transparent"
+                >
+                    Puzzle Mastered!
+                </motion.h2>
+
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-gray-600 dark:text-gray-300 mb-6"
+                >
+                    Your wordcraft skills are impressive!
+                </motion.p>
+
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-6"
+                >
+                    <div className="text-3xl font-bold mb-2 text-violet-600 dark:text-violet-400">{score}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">POINTS</div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                        <div className="text-left">
+                            <div className="text-gray-500 dark:text-gray-400">Words Found</div>
+                            <div className="font-medium">
+                                {foundWords}/{totalWords}
+                            </div>
+                        </div>
+                        <div className="text-left">
+                            <div className="text-gray-500 dark:text-gray-400">Clues Solved</div>
+                            <div className="font-medium">
+                                {solvedClues}/{totalClues}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <div className="flex flex-col space-y-3">
+                    <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={onRestart}
+                        className="bg-gradient-to-r from-violet-500 to-teal-400 text-white font-medium py-3 px-6 rounded-lg flex items-center justify-center"
+                    >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Play Again
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={onRestart}
+                        className="bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium py-3 px-6 rounded-lg"
+                    >
+                        Back to Menu
+                    </motion.button>
+                </div>
+            </motion.div>
+        </motion.div>
+    )
+}
+
+const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-md mx-auto shadow-xl max-h-[80vh] overflow-y-auto"
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold">How to Play</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="space-y-4 text-gray-700 dark:text-gray-300">
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Game Objective</h3>
+                        <p>Solve all clues and find all hidden words in the grid to complete the puzzle.</p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Solving Clues</h3>
+                        <p>
+                            Read each clue and type your answer in the input field. If correct, the word will be highlighted in the
+                            grid.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Finding Hidden Words</h3>
+                        <p>Hidden words are placed in the grid. Click the "Find" button to reveal them when you spot one.</p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Using Hints</h3>
+                        <p>If you're stuck, click the "Get a Hint" button for help with a random clue or hidden word.</p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Difficulty Levels</h3>
+                        <p>Choose from Easy, Medium, or Hard difficulty levels. Higher difficulties have more words and clues.</p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Daily Challenge</h3>
+                        <p>Play a special daily puzzle that changes every day for an extra challenge!</p>
+                    </div>
+                </div>
+
+                <button
+                    onClick={onClose}
+                    className="w-full mt-6 bg-violet-500 hover:bg-violet-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                    Got it!
+                </button>
+            </motion.div>
+        </motion.div>
+    )
+}
+
+const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, darkMode }) => {
+    // Mock data for top players
+    const topPlayers = [
+        { name: "Alex", score: 1250, rank: 1 },
+        { name: "Sarah", score: 1100, rank: 2 },
+        { name: "Mike", score: 950, rank: 3 }
+    ]
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className={`bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-auto shadow-xl`}
+            >
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <Trophy className="h-6 w-6 text-amber-400" />
+                        Leaderboard
+                    </h2>
+                    <button 
+                        onClick={onClose}
+                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    {topPlayers.map((player) => (
+                        <motion.div
+                            key={player.rank}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: player.rank * 0.1 }}
+                            className={`p-4 rounded-lg flex items-center justify-between ${
+                                darkMode ? "bg-gray-700" : "bg-gray-50"
+                            }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                                    player.rank === 1 
+                                        ? "bg-amber-400 text-gray-900" 
+                                        : player.rank === 2 
+                                        ? "bg-gray-300 text-gray-700" 
+                                        : "bg-amber-700 text-white"
+                                }`}>
+                                    {player.rank}
+                                </div>
+                                <span className="font-medium">{player.name}</span>
+                            </div>
+                            <div className="text-lg font-bold text-violet-500 dark:text-violet-400">
+                                {player.score}
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Play more to climb the ranks!
+                </div>
+            </motion.div>
+        </motion.div>
+    )
+}
+
+const size = 10
+const difficultyLevels: Difficulty[] = ["easy", "medium", "hard"]
+const modes: GameMode[] = ["regular", "daily"]
+
+function WordcraftGame() {
+    const [loading, setLoading] = useState<boolean>(true)
+    const [showWelcome, setShowWelcome] = useState<boolean>(true)
+    const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null)
+    const [gameMode, setGameMode] = useState<GameMode>("regular")
+    const [activeTab, setActiveTab] = useState<GameMode>("regular")
+
+    const [grid, setGrid] = useState<string[][]>([])
+    const [clues, setClues] = useState<Clue[]>([])
+    const [hiddenWords, setHiddenWords] = useState<Word[]>([])
+    const [difficulty, setDifficulty] = useState<Difficulty>("easy")
+    const [hint, setHint] = useState<string | null>(null)
+    const [darkMode, setDarkMode] = useState<boolean>(false)
+    const [selectedCell, setSelectedCell] = useState<Cell | null>(null)
+    const [foundWords, setFoundWords] = useState<number[]>([])
+    const [solvedClues, setSolvedClues] = useState<number[]>([])
+    const [gameStarted, setGameStarted] = useState<boolean>(false)
+    const [highlightedWord, setHighlightedWord] = useState<HighlightedWord | null>(null)
+    const [clueInputs, setClueInputs] = useState<{ [key: number]: string }>({})
+    const [activeSection, setActiveSection] = useState<"clues" | "words" | "grid">("grid")
+    const [showVictory, setShowVictory] = useState<boolean>(false)
+    const [showHelp, setShowHelp] = useState<boolean>(false)
+    const [hintUsed, setHintUsed] = useState<number>(0)
+    const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false)
+
+    const gridRef = useRef<HTMLDivElement>(null)
+    const isMobile = useRef<boolean>(false)
+
+    useEffect(() => {
+        // Check if mobile
+        isMobile.current = window.innerWidth < 768
+
+        // Listen for resize events
+        const handleResize = () => {
+            isMobile.current = window.innerWidth < 768
+        }
+
+        window.addEventListener("resize", handleResize)
+
+        // Simulate loading
+        setTimeout(() => {
+            setLoading(false)
+        }, 1500)
+
+        // Check for saved dark mode preference
+        const savedMode = localStorage.getItem("wordcraftDarkMode")
+        if (savedMode) {
+            setDarkMode(savedMode === "true")
+        } else {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+            setDarkMode(prefersDark)
+        }
+
+        return () => {
+            window.removeEventListener("resize", handleResize)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (selectedDifficulty && !gameStarted) {
+            setDifficulty(selectedDifficulty)
+            setGameStarted(true)
+            setShowWelcome(false)
+        }
+    }, [selectedDifficulty, gameStarted])
+
+    useEffect(() => {
+        localStorage.setItem("wordcraftDarkMode", darkMode.toString())
+        document.body.classList.toggle("dark", darkMode)
+        document.documentElement.classList.toggle("dark", darkMode)
+        document.body.style.transition = "background-color 0.3s ease-in-out"
+        return () => {
+            document.body.style.transition = ""
+        }
+    }, [darkMode])
+
+    const generateGameData = (difficultyLevel: Difficulty) => {
+        // Initialize a properly sized grid
+        const newGrid: string[][] = Array(size)
+            .fill(null)
+            .map(() => Array(size).fill(""))
+
+        let newClues: Clue[] = []
+        let newHiddenWords: Word[] = []
+
+        if (difficultyLevel === "easy") {
+            newClues = [
+                { id: 1, clue: "Flower", answer: "ROSE", x: 1, y: 1, direction: "right" },
+                { id: 2, clue: "Feline pet", answer: "CAT", x: 3, y: 3, direction: "down" },
+                { id: 3, clue: "Fruit", answer: "APPLE", x: 5, y: 0, direction: "down" },
+            ]
+
+            newHiddenWords = [
+                { id: 1, word: "TRAIN", x: 0, y: 0, direction: "right" },
+                { id: 2, word: "BOOK", x: 7, y: 2, direction: "down" },
+            ]
+        } else if (difficultyLevel === "medium") {
+            newClues = [
+                { id: 1, clue: "Capital of France", answer: "PARIS", x: 2, y: 2, direction: "right" },
+                { id: 2, clue: "Computer language", answer: "PYTHON", x: 0, y: 5, direction: "right" },
+                { id: 3, clue: "Planet", answer: "MARS", x: 4, y: 1, direction: "down" },
+                { id: 4, clue: "Musical instrument", answer: "PIANO", x: 7, y: 4, direction: "down" },
+            ]
+
+            newHiddenWords = [
+                { id: 1, word: "COFFEE", x: 1, y: 8, direction: "right" },
+                { id: 2, word: "STAR", x: 5, y: 6, direction: "down" },
+                { id: 3, word: "JUNGLE", x: 3, y: 0, direction: "down" },
+            ]
+        } else if (difficultyLevel === "hard") {
+            newClues = [
+                { id: 1, clue: "Mathematical constant", answer: "PI", x: 1, y: 1, direction: "right" },
+                { id: 2, clue: "Constellation", answer: "ORION", x: 3, y: 0, direction: "down" },
+                { id: 3, clue: "Chemical element", answer: "CARBON", x: 5, y: 5, direction: "right" },
+                { id: 4, clue: "Ancient civilization", answer: "MAYAN", x: 0, y: 6, direction: "right" },
+                { id: 5, clue: "Programming concept", answer: "LOOP", x: 8, y: 2, direction: "down" },
+            ]
+
+            newHiddenWords = [
+                { id: 1, word: "QUANTUM", x: 2, y: 3, direction: "right" },
+                { id: 2, word: "GALAXY", x: 4, y: 7, direction: "right" },
+                { id: 3, word: "PYRAMID", x: 0, y: 0, direction: "down" },
+                { id: 4, word: "ECLIPSE", x: 9, y: 0, direction: "down" },
+            ]
+        }
+
+        // Generate a random grid with letters
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                newGrid[i][j] = String.fromCharCode(Math.floor(Math.random() * 26) + 65)
+            }
+        }
+
+        // Place clues in the grid with proper bounds checking
+        newClues.forEach((clue) => {
+            for (let i = 0; i < clue.answer.length; i++) {
+                if (clue.direction === "right" && clue.x >= 0 && clue.x < size && clue.y + i >= 0 && clue.y + i < size) {
+                    newGrid[clue.x][clue.y + i] = clue.answer[i]
+                } else if (clue.direction === "down" && clue.x + i >= 0 && clue.x + i < size && clue.y >= 0 && clue.y < size) {
+                    newGrid[clue.x + i][clue.y] = clue.answer[i]
+                }
+            }
+        })
+
+        // Place hidden words in the grid with proper bounds checking
+        newHiddenWords.forEach((word) => {
+            for (let i = 0; i < word.word.length; i++) {
+                if (word.direction === "right" && word.x >= 0 && word.x < size && word.y + i >= 0 && word.y + i < size) {
+                    newGrid[word.x][word.y + i] = word.word[i]
+                } else if (word.direction === "down" && word.x + i >= 0 && word.x + i < size && word.y >= 0 && word.y < size) {
+                    newGrid[word.x + i][word.y] = word.word[i]
+                }
+            }
+        })
+
+        setGrid(newGrid)
+        setClues(newClues)
+        setHiddenWords(newHiddenWords)
+        setFoundWords([])
+        setSolvedClues([])
+        setClueInputs({})
+        setHint(null)
+        setHintUsed(0)
+        setActiveSection("grid")
+
+        // Create daily challenge if needed
+        if (gameMode === "daily") {
+            const today = new Date().toISOString().split("T")[0]
+
+            const dailyWords: Word[] = [
+                { id: 100, word: "DAILY", x: 0, y: 4, direction: "right" },
+                { id: 101, word: "CHALLENGE", x: 2, y: 0, direction: "down" },
+                { id: 102, word: "PUZZLE", x: 4, y: 5, direction: "right" },
+            ]
+
+            const dailyClues: Clue[] = [
+                { id: 100, clue: "Today's special", answer: "DAILY", x: 0, y: 4, direction: "right" },
+                { id: 101, clue: "Test of skill", answer: "CHALLENGE", x: 2, y: 0, direction: "down" },
+                { id: 102, clue: "Brain game", answer: "PUZZLE", x: 4, y: 5, direction: "right" },
+            ]
+
+            dailyWords.forEach((word) => {
+                for (let i = 0; i < word.word.length; i++) {
+                    if (word.direction === "right" && word.x >= 0 && word.x < size && word.y + i >= 0 && word.y + i < size) {
+                        newGrid[word.x][word.y + i] = word.word[i]
+                    } else if (
+                        word.direction === "down" &&
+                        word.x + i >= 0 &&
+                        word.x + i < size &&
+                        word.y >= 0 &&
+                        word.y < size
+                    ) {
+                        newGrid[word.x + i][word.y] = word.word[i]
+                    }
+                }
+            })
+
+            // Make sure the grid is fully updated with the daily challenge words
+            setGrid([...newGrid])
+
+            // Add daily challenge special words and clues
+            setHiddenWords([...newHiddenWords, ...dailyWords])
+            setClues([...newClues, ...dailyClues])
+        }
+    }
+
+    useEffect(() => {
+        if (gameStarted) {
+            generateGameData(difficulty)
+        }
+    }, [difficulty, gameStarted, gameMode])
+
+    useEffect(() => {
+        if (
+            gameStarted &&
+            clues.length > 0 &&
+            hiddenWords.length > 0 &&
+            solvedClues.length === clues.length &&
+            foundWords.length === hiddenWords.length
+        ) {
+            // Show victory screen with a slight delay
+            setTimeout(() => {
+                setShowVictory(true)
+            }, 800)
+        }
+    }, [solvedClues, foundWords, clues.length, hiddenWords.length, gameStarted])
+
+    const handleGameRestart = () => {
+        setShowVictory(false)
+        setSelectedDifficulty(null)
+        setGameStarted(false)
+        setShowWelcome(true)
+        setFoundWords([])
+        setSolvedClues([])
+        setClueInputs({})
+        setHint(null)
+        setHintUsed(0)
+    }
+
+    const handleClueInput = (clueId: number, value: string) => {
+        const newClueInputs = { ...clueInputs, [clueId]: value.toUpperCase() }
+        setClueInputs(newClueInputs)
+
+        const clue = clues.find((c) => c.id === clueId)
+        if (clue && value.toUpperCase() === clue.answer) {
+            handleClueCheck(clueId, value.toUpperCase())
+        }
+    }
+
+    const handleClueCheck = (clueId: number, inputAnswer: string) => {
+        const clueIndex = clues.findIndex((clue) => clue.id === clueId)
+
+        if (clueIndex === -1 || solvedClues.includes(clueId)) return
+
+        const clue = clues[clueIndex]
+
+        if (inputAnswer.toUpperCase() === clue.answer) {
+            setSolvedClues([...solvedClues, clueId])
+
+            // Highlight the word in the grid
+            const highlightCells: Cell[] = []
+            for (let i = 0; i < clue.answer.length; i++) {
+                if (clue.direction === "right") {
+                    highlightCells.push({ row: clue.x, col: clue.y + i })
+                } else if (clue.direction === "down") {
+                    highlightCells.push({ row: clue.x + i, col: clue.y })
+                }
+            }
+
+            setHighlightedWord({ wordId: clueId, cells: highlightCells })
+
+            // Small confetti burst for solving a clue
+            confetti({
+                particleCount: 30,
+                spread: 50,
+                origin: { y: 0.7 },
+            })
+
+            setTimeout(() => {
+                setHighlightedWord(null)
+            }, 2000)
+        }
+    }
+
+    const handleHiddenWordFind = (wordId: number) => {
+        if (foundWords.includes(wordId)) return
+
+        const wordIndex = hiddenWords.findIndex((word) => word.id === wordId)
+        if (wordIndex === -1) return
+
+        const word = hiddenWords[wordIndex]
+
+        // Create cells to highlight
+        const highlightCells: Cell[] = []
+        for (let i = 0; i < word.word.length; i++) {
+            if (word.direction === "right") {
+                highlightCells.push({ row: word.x, col: word.y + i })
+            } else if (word.direction === "down") {
+                highlightCells.push({ row: word.x + i, col: word.y })
+            }
+        }
+
+        // Highlight the word
+        setHighlightedWord({ wordId: word.id, cells: highlightCells })
+        setFoundWords([...foundWords, wordId])
+
+        // Small confetti burst for finding a word
+        confetti({
+            particleCount: 30,
+            spread: 50,
+            origin: { y: 0.7 },
+        })
+
+        // Scroll to the grid if not visible
+        if (gridRef.current && activeSection !== "grid") {
+            gridRef.current.scrollIntoView({ behavior: "smooth" })
+            setActiveSection("grid")
+        }
+
+        setTimeout(() => {
+            setHighlightedWord(null)
+        }, 2000)
+    }
+
+    const handleHint = () => {
+        setHintUsed(hintUsed + 1)
+
+        const unsolvedClues = clues.filter((clue) => !solvedClues.includes(clue.id))
+        const unsolvedWords = hiddenWords.filter((word) => !foundWords.includes(word.id))
+
+        if (unsolvedClues.length > 0) {
+            const randomClue = unsolvedClues[Math.floor(Math.random() * unsolvedClues.length)]
+
+            // Generate a more helpful hint
+            let hintText = `For "${randomClue.clue}": `
+
+            // Add the first letter as a hint
+            hintText += `Starts with "${randomClue.answer[0]}"`
+
+            // Add location hint
+            if (randomClue.direction === "right") {
+                hintText += ` and reads from left to right`
+            } else {
+                hintText += ` and reads downward`
+            }
+
+            setHint(hintText)
+
+            // Scroll to the specific clue
+            const clueElement = document.getElementById(`clue-${randomClue.id}`)
+            if (clueElement) {
+                clueElement.scrollIntoView({ behavior: "smooth" })
+                setActiveSection("clues")
+            }
+        } else if (unsolvedWords.length > 0) {
+            const randomWord = unsolvedWords[Math.floor(Math.random() * unsolvedWords.length)]
+
+            // Generate a more helpful hint
+            let hintText = `Look for "${randomWord.word}": `
+
+            // Add specific location information
+            if (randomWord.direction === "right") {
+                hintText += `It reads from left to right starting at row ${randomWord.x + 1}`
+            } else {
+                hintText += `It reads downward starting at row ${randomWord.x + 1}`
+            }
+
+            setHint(hintText)
+
+            // Highlight the first letter of the hidden word
+            setSelectedCell({ row: randomWord.x, col: randomWord.y })
+
+            // Scroll to hidden words section
+            setActiveSection("words")
+        } else {
+            setHint("Great job! You've solved all clues and found all hidden words!")
+
+            confetti({
+                particleCount: 200,
+                spread: 160,
+                origin: { y: 0.6 },
+            })
+        }
+    }
+
+    const handleCellClick = (rowIndex: number, columnIndex: number) => {
+        setSelectedCell({ row: rowIndex, col: columnIndex })
+
+        const cellInfo: string[] = []
+
+        clues.forEach((clue) => {
+            let isPartOfClue = false
+
+            if (clue.direction === "right" && clue.x === rowIndex) {
+                if (columnIndex >= clue.y && columnIndex < clue.y + clue.answer.length) {
+                    isPartOfClue = true
+                }
+            } else if (clue.direction === "down" && clue.y === columnIndex) {
+                if (rowIndex >= clue.x && rowIndex < clue.x + clue.answer.length) {
+                    isPartOfClue = true
+                }
+            }
+
+            if (isPartOfClue && !cellInfo.includes(`Clue: ${clue.clue}`)) {
+                cellInfo.push(`Clue: ${clue.clue}`)
+
+                if (!solvedClues.includes(clue.id)) {
+                    const clueElement = document.getElementById(`clue-${clue.id}`)
+                    if (clueElement) {
+                        setTimeout(() => {
+                            clueElement.scrollIntoView({ behavior: "smooth" })
+                            setActiveSection("clues")
+                        }, 500)
+                    }
+                }
+            }
+        })
+
+        hiddenWords.forEach((word) => {
+            let isPartOfWord = false
+
+            if (word.direction === "right" && word.x === rowIndex) {
+                if (columnIndex >= word.y && columnIndex < word.y + word.word.length) {
+                    isPartOfWord = true
+                }
+            } else if (word.direction === "down" && word.y === columnIndex) {
+                if (rowIndex >= word.x && rowIndex < word.x + word.word.length) {
+                    isPartOfWord = true
+                }
+            }
+
+            if (isPartOfWord && !cellInfo.includes(`Word: ${word.word}`)) {
+                cellInfo.push(`Word: ${word.word}`)
+
+                if (!foundWords.includes(word.id)) {
+                    const wordElement = document.getElementById(`word-${word.id}`)
+                    if (wordElement) {
+                        setTimeout(() => {
+                            wordElement.scrollIntoView({ behavior: "smooth" })
+                            setActiveSection("words")
+                        }, 500)
+                    }
+                }
+            }
+        })
+    }
+
+    const toggleDarkMode = () => {
+        setDarkMode(!darkMode)
+    }
+
+    const startGame = (diffLevel: Difficulty) => {
+        setSelectedDifficulty(diffLevel)
+    }
+
+    const toggleGameMode = (mode: GameMode) => {
+        setGameMode(mode)
+        setActiveTab(mode)
+        setGameStarted(false)
+        setShowWelcome(true)
+    }
+
+    const handleDifficultyChange = () => {
+        setSelectedDifficulty(null)
+        setGameStarted(false)
+        setShowWelcome(true)
+    }
+
+    const renderTabContent = () => {
+        switch (activeSection) {
+            case "grid":
+                return (
+                    <div ref={gridRef} className="aspect-square bg-opacity-10 rounded-lg overflow-hidden mb-4">
+                        <div className="grid grid-cols-10 w-full h-full">
+                            {grid.map((row, rowIndex) =>
+                                row.map((cell, columnIndex) => {
+                                    const isHighlighted = highlightedWord?.cells.some((c) => c.row === rowIndex && c.col === columnIndex)
+
+                                    return (
+                                        <motion.div
+                                            key={rowIndex * size + columnIndex}
+                                            initial={{ opacity: 0 }}
+                                            animate={{
+                                                opacity: 1,
+                                                scale: isHighlighted
+                                                    ? 1.1
+                                                    : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                        ? 1.05
+                                                        : 1,
+                                                backgroundColor: isHighlighted ? "#60a5fa" : undefined,
+                                            }}
+                                            transition={{
+                                                duration: 0.2,
+                                                delay: (rowIndex * size + columnIndex) * 0.001,
+                                            }}
+                                            className={`flex justify-center items-center aspect-square border text-sm md:text-base lg:text-lg font-bold cursor-pointer transition-all ${isHighlighted
+                                                ? "bg-violet-500 text-white z-10"
+                                                : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                    ? "bg-teal-500 text-white z-10"
+                                                    : darkMode
+                                                        ? "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+                                                        : "bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300"
+                                                }`}
+                                            onClick={() => handleCellClick(rowIndex, columnIndex)}
+                                        >
+                                            {cell}
+                                        </motion.div>
+                                    )
+                                }),
+                            )}
+                        </div>
+                    </div>
+                )
+            case "clues":
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className={`p-4 sm:p-6 rounded-lg mb-6 ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                    >
+                        <h3 className="font-bold mb-4 text-xl flex items-center">
+                            <span className="mr-2">Clues</span>
+                            <span className="text-sm bg-violet-500 text-white px-2 py-0.5 rounded-full">
+                                {solvedClues.length}/{clues.length}
+                            </span>
+                        </h3>
+                        <div className="space-y-5">
+                            {clues.map((clue) => (
+                                <motion.div
+                                    id={`clue-${clue.id}`}
+                                    key={clue.id}
+                                    className={`flex flex-col ${solvedClues.includes(clue.id) ? "opacity-60" : ""}`}
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="font-medium">{clue.clue}:</span>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">{clue.answer.length} letters</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <input
+                                            type="text"
+                                            value={solvedClues.includes(clue.id) ? clue.answer : clueInputs[clue.id] || ""}
+                                            onChange={(e) => handleClueInput(clue.id, e.target.value)}
+                                            placeholder={`${clue.answer.length} letters`}
+                                            disabled={solvedClues.includes(clue.id)}
+                                            className={`py-2 sm:py-3 px-2 sm:px-4 border rounded-lg focus:outline-none focus:ring-2 w-full uppercase text-center text-base sm:text-lg ${solvedClues.includes(clue.id)
+                                                ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-300"
+                                                : darkMode
+                                                    ? "bg-gray-800 border-gray-600 text-white focus:ring-violet-500"
+                                                    : "bg-white border-gray-300 text-gray-900 focus:ring-violet-400"
+                                                }`}
+                                            maxLength={clue.answer.length}
+                                        />
+                                        {solvedClues.includes(clue.id) && (
+                                            <span className="ml-2 text-green-500 dark:text-green-400 text-xl">
+                                                <Check />
+                                            </span>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )
+            case "words":
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className={`p-4 sm:p-6 rounded-lg mb-6 ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                    >
+                        <h3 className="font-bold mb-4 text-xl flex items-center">
+                            <span className="mr-2">Hidden Words</span>
+                            <span className="text-sm bg-teal-500 text-white px-2 py-0.5 rounded-full">
+                                {foundWords.length}/{hiddenWords.length}
+                            </span>
+                        </h3>
+                        <div className="space-y-5">
+                            {hiddenWords.map((word) => (
+                                <motion.div
+                                    id={`word-${word.id}`}
+                                    key={word.id}
+                                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 ${foundWords.includes(word.id) ? "opacity-60" : ""}`}
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <span className="font-medium flex items-center">
+                                        <Search className="mr-2 h-4 w-4" />
+                                        Find "{word.word}":
+                                    </span>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        disabled={foundWords.includes(word.id)}
+                                        className={`py-2 px-5 rounded-lg transition-colors ${foundWords.includes(word.id)
+                                            ? "bg-green-500 text-white dark:bg-green-600"
+                                            : darkMode
+                                                ? "bg-teal-600 hover:bg-teal-700 text-white"
+                                                : "bg-teal-500 hover:bg-teal-600 text-white"
+                                            }`}
+                                        onClick={() => handleHiddenWordFind(word.id)}
+                                    >
+                                        {foundWords.includes(word.id) ? "Found!" : "Find"}
+                                    </motion.button>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )
+            default:
+                return null
+        }
+    }
+
+    if (loading) {
+        return (
+            <div
+                className={`min-h-screen flex items-center justify-center ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+            >
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-center p-6"
+                >
+                    <h1 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-violet-500 to-teal-400 bg-clip-text text-transparent">
+                        WordCraft
+                    </h1>
+                    <p className="text-lg sm:text-xl mb-8 text-gray-600 dark:text-gray-300">Setting up your puzzle journey...</p>
+                    <div className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin mx-auto border-violet-500"></div>
+                </motion.div>
+            </div>
+        )
+    }
+
+    if (showWelcome) {
+        return (
+            <div
+                className={`min-h-screen flex flex-col items-center justify-center p-4 ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+            >
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className={`w-full max-w-md rounded-2xl overflow-hidden shadow-xl ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                >
+                    <div className="p-4 sm:p-6">
+                        <div className="flex justify-between items-center">
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => setShowHelp(true)}
+                                className="rounded-full p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                aria-label="Help"
+                            >
+                                <HelpCircle className="h-5 w-5" />
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={toggleDarkMode}
+                                className={`rounded-full p-2 ${darkMode ? "bg-amber-400 text-gray-900" : "bg-violet-500 text-white"}`}
+                                aria-label="Toggle dark mode"
+                            >
+                                {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                            </motion.button>
+                        </div>
+
+                        <div className="text-center my-6 sm:my-8">
+                            <motion.h1
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-violet-500 to-teal-400 bg-clip-text text-transparent mb-4"
+                            >
+                                WordCraft
+                            </motion.h1>
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3 }}
+                                className="text-base sm:text-lg text-gray-600 dark:text-gray-300"
+                            >
+                                Where words come alive in puzzling adventures!
+                            </motion.p>
+                        </div>
+
+                        <div className="mb-6 sm:mb-8">
+                            <div className="flex border-b border-gray-200 dark:border-gray-700">
+                                {modes.map((mode) => (
+                                    <button
+                                        key={mode}
+                                        className={`flex-1 py-2 sm:py-3 px-2 sm:px-4 font-medium transition-colors text-sm sm:text-base ${activeTab === mode
+                                            ? `${darkMode ? "text-violet-400 border-b-2 border-violet-400" : "text-violet-600 border-b-2 border-violet-600"}`
+                                            : `${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`
+                                            }`}
+                                        onClick={() => toggleGameMode(mode)}
+                                    >
+                                        {mode === "regular" ? (
+                                            <span className="flex items-center justify-center">
+                                                <Gamepad2 className="mr-1 sm:mr-2 h-4 w-4" /> Regular Game
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center justify-center">
+                                                <Trophy className="mr-1 sm:mr-2 h-4 w-4" /> Daily Challenge
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mb-6 sm:mb-8">
+                            <h2 className="text-lg sm:text-xl font-bold mb-4 text-center">
+                                {gameMode === "daily" ? "Ready for today's challenge?" : "Choose difficulty level:"}
+                            </h2>
+
+                            <div className={gameMode === "daily" ? "" : "grid grid-cols-1 gap-4"}>
+                                {gameMode === "daily" ? (
+                                    <motion.button
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        className="w-full py-3 sm:py-4 px-4 sm:px-6 rounded-lg font-bold transition-all duration-200 transform bg-gradient-to-r from-violet-500 to-teal-400 text-white shadow-lg"
+                                        onClick={() => startGame("medium")}
+                                    >
+                                        Start Daily Challenge
+                                    </motion.button>
+                                ) : (
+                                    difficultyLevels.map((level) => (
+                                        <motion.button
+                                            key={level}
+                                            whileHover={{ scale: 1.03 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            className={`py-3 sm:py-4 px-4 sm:px-6 rounded-lg font-bold transition-all duration-200 mb-3 shadow-md ${level === "easy"
+                                                ? "bg-green-500 dark:bg-green-600"
+                                                : level === "medium"
+                                                    ? "bg-violet-500 dark:bg-violet-600"
+                                                    : "bg-teal-500 dark:bg-teal-600"
+                                                } text-white`}
+                                            onClick={() => startGame(level)}
+                                        >
+                                            {level.charAt(0).toUpperCase() + level.slice(1)}
+                                        </motion.button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                            <p>Discover hidden words and unlock the mystery!</p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <AnimatePresence>{showHelp && <HelpModal onClose={() => setShowHelp(false)} />}</AnimatePresence>
+            </div>
+        )
+    }
+
+    return (
+        <div
+            className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} font-sans`}
+        >
+            <Header darkMode={darkMode} onLeaderboardClick={() => setShowLeaderboard(true)} />
+
+            <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className={`rounded-2xl overflow-hidden shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                >
+                    <div className="p-3 sm:p-4 md:p-6">
+                        <div className="relative overflow-hidden rounded-xl mb-6">
+                            <div className={`absolute inset-0 opacity-20 ${darkMode ? "bg-violet-900" : "bg-violet-100"}`}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/30 to-teal-400/30"></div>
+                            </div>
+                            
+                            <div className="relative p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center">
+                                <div className="mb-4 sm:mb-0">
+                                    <h2 className="text-xl sm:text-2xl font-bold mb-1">
+                                        {gameMode === "daily" ? (
+                                            <span className="flex items-center">
+                                                <Trophy className="mr-2 h-5 w-5 text-amber-400" /> Today's Special Challenge
+                                            </span>
+                                        ) : (
+                                            <span>Puzzle Adventure</span>
+                                        )}
+                                    </h2>
+                                    <p className="text-sm opacity-80">
+                                        {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} mode • Find words and solve clues
+                                    </p>
+                                    
+                                    <div className="flex mt-2 space-x-4">
+                                        <div className="bg-violet-500/20 dark:bg-violet-500/30 rounded-lg px-3 py-1 text-center">
+                                            <div className="text-sm font-medium text-violet-700 dark:text-violet-300">Clues</div>
+                                            <div className="font-bold">{solvedClues.length}/{clues.length}</div>
+                                        </div>
+                                        
+                                        <div className="bg-teal-500/20 dark:bg-teal-500/30 rounded-lg px-3 py-1 text-center">
+                                            <div className="text-sm font-medium text-teal-700 dark:text-teal-300">Words</div>
+                                            <div className="font-bold">{foundWords.length}/{hiddenWords.length}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setGameStarted(false)
+                                            setShowWelcome(true)
+                                        }}
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium ${darkMode ? "bg-violet-600 hover:bg-violet-700" : "bg-violet-500 hover:bg-violet-600"
+                                            } text-white`}
+                                    >
+                                        New Game
+                                    </button>
+
+                                    <button
+                                        onClick={handleDifficultyChange}
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${darkMode ? "bg-teal-600 hover:bg-teal-700" : "bg-teal-500 hover:bg-teal-600"
+                                            } text-white`}
+                                    >
+                                        Change Difficulty
+                                    </button>
+
+                                    <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={toggleDarkMode}
+                                        className={`rounded-full p-2 ${darkMode ? "bg-amber-400 text-gray-900" : "bg-violet-500 text-white"}`}
+                                        aria-label="Toggle dark mode"
+                                    >
+                                        {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center mb-4">
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className={`py-1.5 sm:py-2 px-3 sm:px-5 rounded-lg font-medium transition-all duration-200 flex items-center gap-1 sm:gap-2 text-sm sm:text-base ${darkMode ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"
+                                    } shadow-md`}
+                                onClick={handleHint}
+                            >
+                                <Lightbulb className="h-3 w-3 sm:h-4 sm:w-4" /> Get a Hint
+                            </motion.button>
+                        </div>
+
+                        <AnimatePresence>
+                            {hint && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className={`p-3 sm:p-4 rounded-lg border-l-4 border-amber-500 mb-4 text-sm sm:text-base ${darkMode ? "bg-amber-900/30" : "bg-amber-50"
+                                        }`}
+                                >
+                                    <div className="flex items-start">
+                                        <Lightbulb className="text-amber-500 mt-1 mr-2 flex-shrink-0 h-4 w-4 sm:h-5 sm:w-5" />
+                                        <div>
+                                            <span className="font-bold text-amber-500 mr-2">Hint:</span>
+                                            <span>{hint}</span>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <div className="sm:hidden">
+                            {/* Grid is always visible */}
+                            <div ref={gridRef} className="aspect-square bg-opacity-10 rounded-lg overflow-hidden mb-4 shadow-md">
+                                <div className="grid grid-cols-10 w-full h-full">
+                                    {grid.map((row, rowIndex) =>
+                                        row.map((cell, columnIndex) => {
+                                            const isHighlighted = highlightedWord?.cells.some(
+                                                (c) => c.row === rowIndex && c.col === columnIndex,
+                                            )
+
+                                            return (
+                                                <motion.div
+                                                    key={rowIndex * size + columnIndex}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{
+                                                        opacity: 1,
+                                                        scale: isHighlighted
+                                                            ? 1.1
+                                                            : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                                ? 1.05
+                                                                : 1,
+                                                        backgroundColor: isHighlighted ? "#8b5cf6" : undefined,
+                                                    }}
+                                                    transition={{
+                                                        duration: 0.2,
+                                                        delay: (rowIndex * size + columnIndex) * 0.001,
+                                                    }}
+                                                    className={`flex justify-center items-center aspect-square border text-xs sm:text-sm font-bold cursor-pointer transition-all ${isHighlighted
+                                                        ? "bg-violet-500 text-white z-10"
+                                                        : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                            ? "bg-teal-500 text-white z-10"
+                                                            : darkMode
+                                                                ? "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+                                                                : "bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300"
+                                                        }`}
+                                                    onClick={() => handleCellClick(rowIndex, columnIndex)}
+                                                >
+                                                    {cell}
+                                                </motion.div>
+                                            )
+                                        }),
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tabs for Clues and Words */}
+                            <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+                                <div className="flex">
+                                    <button
+                                        onClick={() => setActiveSection("clues")}
+                                        className={`flex-1 py-2 px-3 text-center text-sm ${activeSection === "clues"
+                                            ? `font-medium ${darkMode ? "text-violet-400 border-b-2 border-violet-400" : "text-violet-600 border-b-2 border-violet-600"}`
+                                            : `${darkMode ? "text-gray-400" : "text-gray-500"}`
+                                            }`}
+                                    >
+                                        Clues{" "}
+                                        <span className="text-xs bg-violet-500 text-white px-1.5 py-0.5 rounded-full">
+                                            {solvedClues.length}/{clues.length}
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSection("words")}
+                                        className={`flex-1 py-2 px-3 text-center text-sm ${activeSection === "words"
+                                            ? `font-medium ${darkMode ? "text-teal-400 border-b-2 border-teal-400" : "text-teal-600 border-b-2 border-teal-600"}`
+                                            : `${darkMode ? "text-gray-400" : "text-gray-500"}`
+                                            }`}
+                                    >
+                                        Words{" "}
+                                        <span className="text-xs bg-teal-500 text-white px-1.5 py-0.5 rounded-full">
+                                            {foundWords.length}/{hiddenWords.length}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Content for selected tab */}
+                            <div>
+                                {activeSection === "clues" && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className={`p-4 rounded-lg mb-6 ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                                    >
+                                        <div className="space-y-5">
+                                            {clues.map((clue) => (
+                                                <motion.div
+                                                    id={`clue-${clue.id}`}
+                                                    key={clue.id}
+                                                    className={`flex flex-col ${solvedClues.includes(clue.id) ? "opacity-60" : ""}`}
+                                                    initial={{ opacity: 0, y: 5 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                >
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="font-medium text-sm">{clue.clue}:</span>
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                            {clue.answer.length} letters
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <input
+                                                            type="text"
+                                                            value={solvedClues.includes(clue.id) ? clue.answer : clueInputs[clue.id] || ""}
+                                                            onChange={(e) => handleClueInput(clue.id, e.target.value)}
+                                                            placeholder={`${clue.answer.length} letters`}
+                                                            disabled={solvedClues.includes(clue.id)}
+                                                            className={`py-2 px-3 border rounded-lg focus:outline-none focus:ring-2 w-full uppercase text-center text-sm sm:text-base ${solvedClues.includes(clue.id)
+                                                                ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-300"
+                                                                : darkMode
+                                                                    ? "bg-gray-800 border-gray-600 text-white focus:ring-violet-500"
+                                                                    : "bg-white border-gray-300 text-gray-900 focus:ring-violet-400"
+                                                                }`}
+                                                            maxLength={clue.answer.length}
+                                                        />
+                                                        {solvedClues.includes(clue.id) && (
+                                                            <span className="ml-2 text-green-500 dark:text-green-400 text-xl">
+                                                                <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                                {activeSection === "words" && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className={`p-4 rounded-lg mb-6 ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                                    >
+                                        <div className="space-y-4">
+                                            {hiddenWords.map((word) => (
+                                                <motion.div
+                                                    id={`word-${word.id}`}
+                                                    key={word.id}
+                                                    className={`flex flex-col sm:flex-row sm:items-center gap-2 justify-between ${foundWords.includes(word.id) ? "opacity-60" : ""}`}
+                                                    initial={{ opacity: 0, y: 5 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                >
+                                                    <span className="font-medium flex items-center text-sm">
+                                                        <Search className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                                                        Find "{word.word}":
+                                                    </span>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        disabled={foundWords.includes(word.id)}
+                                                        className={`py-1.5 px-4 rounded-lg transition-colors text-sm ${foundWords.includes(word.id)
+                                                            ? "bg-green-500 text-white dark:bg-green-600"
+                                                            : darkMode
+                                                                ? "bg-teal-600 hover:bg-teal-700 text-white"
+                                                                : "bg-teal-500 hover:bg-teal-600 text-white"
+                                                            }`}
+                                                        onClick={() => handleHiddenWordFind(word.id)}
+                                                    >
+                                                        {foundWords.includes(word.id) ? "Found!" : "Find"}
+                                                    </motion.button>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="hidden sm:grid sm:grid-cols-2 gap-6">
+                            <div className="order-1">
+                                {/* Desktop grid */}
+                                <div ref={gridRef} className="aspect-square bg-opacity-10 rounded-lg overflow-hidden mb-4 shadow-md">
+                                    <div className="grid grid-cols-10 w-full h-full">
+                                        {grid.map((row, rowIndex) =>
+                                            row.map((cell, columnIndex) => {
+                                                const isHighlighted = highlightedWord?.cells.some(
+                                                    (c) => c.row === rowIndex && c.col === columnIndex,
+                                                )
+
+                                                return (
+                                                    <motion.div
+                                                        key={rowIndex * size + columnIndex}
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            scale: isHighlighted
+                                                                ? 1.1
+                                                                : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                                    ? 1.05
+                                                                    : 1,
+                                                            backgroundColor: isHighlighted ? "#8b5cf6" : undefined,
+                                                        }}
+                                                        transition={{
+                                                            duration: 0.2,
+                                                            delay: (rowIndex * size + columnIndex) * 0.001,
+                                                        }}
+                                                        className={`flex justify-center items-center aspect-square border text-sm md:text-base lg:text-lg font-bold cursor-pointer transition-all ${isHighlighted
+                                                            ? "bg-violet-500 text-white z-10"
+                                                            : selectedCell && selectedCell.row === rowIndex && selectedCell.col === columnIndex
+                                                                ? "bg-teal-500 text-white z-10"
+                                                                : darkMode
+                                                                    ? "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+                                                                    : "bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300"
+                                                            }`}
+                                                        onClick={() => handleCellClick(rowIndex, columnIndex)}
+                                                    >
+                                                        {cell}
+                                                    </motion.div>
+                                                )
+                                            }),
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-white"} shadow-sm`}>
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center">
+                                            <Clock className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            <span className="text-gray-600 dark:text-gray-300 text-sm">Game Stats</span>
+                                        </div>
+                                        <div className="flex space-x-4">
+                                            <div className="flex items-center">
+                                                <span className="text-xs font-medium bg-violet-500 text-white px-2 py-0.5 rounded-full mr-1">
+                                                    {solvedClues.length}/{clues.length}
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-300 text-sm">Clues</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <span className="text-xs font-medium bg-teal-500 text-white px-2 py-0.5 rounded-full mr-1">
+                                                    {foundWords.length}/{hiddenWords.length}
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-300 text-sm">Words</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="order-2 space-y-6">
+                                {/* Desktop clues section */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className={`p-4 md:p-6 rounded-lg ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                                >
+                                    <h3 className="font-bold mb-4 text-lg md:text-xl flex items-center">
+                                        <span className="mr-2">Clues</span>
+                                        <span className="text-xs bg-violet-500 text-white px-2 py-0.5 rounded-full">
+                                            {solvedClues.length}/{clues.length}
+                                        </span>
+                                    </h3>
+                                    <div className="space-y-5">
+                                        {clues.map((clue) => (
+                                            <motion.div
+                                                id={`clue-${clue.id}`}
+                                                key={clue.id}
+                                                className={`flex flex-col ${solvedClues.includes(clue.id) ? "opacity-60" : ""}`}
+                                                initial={{ opacity: 0, y: 5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="font-medium">{clue.clue}:</span>
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">{clue.answer.length} letters</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <input
+                                                        type="text"
+                                                        value={solvedClues.includes(clue.id) ? clue.answer : clueInputs[clue.id] || ""}
+                                                        onChange={(e) => handleClueInput(clue.id, e.target.value)}
+                                                        placeholder={`${clue.answer.length} letters`}
+                                                        disabled={solvedClues.includes(clue.id)}
+                                                        className={`py-2 px-3 border rounded-lg focus:outline-none focus:ring-2 w-full uppercase text-center ${solvedClues.includes(clue.id)
+                                                            ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-300"
+                                                            : darkMode
+                                                                ? "bg-gray-800 border-gray-600 text-white focus:ring-violet-500"
+                                                                : "bg-white border-gray-300 text-gray-900 focus:ring-violet-400"
+                                                            }`}
+                                                        maxLength={clue.answer.length}
+                                                    />
+                                                    {solvedClues.includes(clue.id) && (
+                                                        <span className="ml-2 text-green-500 dark:text-green-400 text-xl">
+                                                            <Check className="h-5 w-5" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+
+                                {/* Desktop hidden words section */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className={`p-4 md:p-6 rounded-lg ${darkMode ? "bg-gray-800" : "bg-white"} shadow-sm`}
+                                >
+                                    <h3 className="font-bold mb-4 text-lg md:text-xl flex items-center">
+                                        <span className="mr-2">Hidden Words</span>
+                                        <span className="text-xs bg-teal-500 text-white px-2 py-0.5 rounded-full">
+                                            {foundWords.length}/{hiddenWords.length}
+                                        </span>
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {hiddenWords.map((word) => (
+                                            <motion.div
+                                                id={`word-${word.id}`}
+                                                key={word.id}
+                                                className={`flex items-center justify-between ${foundWords.includes(word.id) ? "opacity-60" : ""}`}
+                                                initial={{ opacity: 0, y: 5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <span className="font-medium flex items-center">
+                                                    <Search className="mr-2 h-4 w-4" />
+                                                    Find "{word.word}":
+                                                </span>
+                                                <motion.button
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    disabled={foundWords.includes(word.id)}
+                                                    className={`py-2 px-5 rounded-lg transition-colors ${foundWords.includes(word.id)
+                                                        ? "bg-green-500 text-white dark:bg-green-600"
+                                                        : darkMode
+                                                            ? "bg-teal-600 hover:bg-teal-700 text-white"
+                                                            : "bg-teal-500 hover:bg-teal-600 text-white"
+                                                        }`}
+                                                    onClick={() => handleHiddenWordFind(word.id)}
+                                                >
+                                                    {foundWords.includes(word.id) ? "Found!" : "Find"}
+                                                </motion.button>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Footer */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className={`mt-6 sm:mt-8 py-4 px-4 rounded-xl mx-auto text-center ${darkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} shadow-sm`}
+                >
+                    <div className="max-w-6xl mx-auto mb-8 sm:mb-12 text-center">
+                        <p className="mb-2 text-sm sm:text-base">Want to partner with us?</p>
+                        <p className="text-xs sm:text-sm mb-4 text-gray-600 dark:text-gray-400">
+                            If you'd like to learn more about partnering, one of our advisors is excited to help.
+                        </p>
+                        <button
+                            className="bg-gradient-to-r from-purple-500 via-blue-400 to-teal-400
+                 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium
+                 hover:opacity-90 transition"
+                        >
+                            Contact Us
+                        </button>
+                    </div>
+
+                    {/* Links */}
+                    <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+                        {/* Logo */}
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-light">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-400">
+                                    Word
+                                </span>{''}
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
+                                    Craft.
+                                </span>
+                            </h2>
+                        </div>
+
+                        {/* Partnerships */}
+                        <div>
+                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">Partnerships</h3>
+                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                                <li><a href="#" className="hover:text-teal-400">Investors</a></li>
+                                <li><a href="#" className="hover:text-teal-400">Social Media Marketing</a></li>
+                            </ul>
+                        </div>
+
+                        {/* About */}
+                        <div>
+                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">About</h3>
+                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                                <li><a href="#" className="hover:text-teal-400">Our Why</a></li>
+                                <li><a href="#" className="hover:text-teal-400">Our Work</a></li>
+                                <li><a href="#" className="hover:text-teal-400">Careers</a></li>
+                            </ul>
+                        </div>
+
+                        {/* Support & Social */}
+                        <div>
+                            <h3 className="text-xs uppercase mb-2 sm:mb-4 text-gray-500 dark:text-gray-400">Support</h3>
+                            <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                                <li><a href="#" className="hover:text-teal-400">Support Request</a></li>
+                                <li><a href="#" className="hover:text-teal-400">Contact</a></li>
+                            </ul>
+
+                            <h3 className="text-xs uppercase mb-2 mt-4 sm:mt-6 text-gray-500 dark:text-gray-400">Follow Us</h3>
+                            <div className="flex space-x-3">
+                                <a href="#" className="bg-gradient-to-r from-purple-500 via-blue-400 to-teal-400 p-2 rounded-full hover:opacity-90 transition">
+                                    {/* svg icon */}
+                                </a>
+                                {/* more icons */}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Copyright */}
+                    <div className="max-w-6xl mx-auto pt-6 sm:pt-8 mt-8 sm:mt-12 border-t border-gray-700 dark:border-gray-600
+                  flex flex-col md:flex-row justify-between items-center text-xs">
+                        <p>©2024 letsone.io. All rights reserved.</p>
+                        <a href="#" className="mt-2 md:mt-0 hover:text-teal-400">Privacy Policy</a>
+                    </div>
+                </motion.div>
+            </div>
+
+            <AnimatePresence>
+                {showVictory && (
+                    <VictoryScreen
+                        onRestart={handleGameRestart}
+                        difficulty={difficulty}
+                        foundWords={foundWords.length}
+                        solvedClues={solvedClues.length}
+                        totalWords={hiddenWords.length}
+                        totalClues={clues.length}
+                    />
+                )}
+                {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+                {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} darkMode={darkMode} />}
+            </AnimatePresence>
+        </div>
+    )
+}
+
+export default WordcraftGame
