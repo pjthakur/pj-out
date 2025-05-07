@@ -1,866 +1,1028 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import Head from 'next/head'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, X, ChevronDown, Search, Sliders, Heart, Share2, Instagram, Twitter, Facebook, Sun, Moon } from 'lucide-react'
+import { useState, useEffect, FormEvent } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FiCalendar, FiMapPin, FiClock, FiUser, FiMoon, FiSun,
+  FiMenu, FiX, FiMail, FiPhone, FiCheck, FiAlertCircle,
+  FiGlobe, FiSend, FiAward, FiCoffee, FiMessageCircle,
+  FiUsers, FiBookmark, FiStar, FiHeart, FiBriefcase,
+  FiTwitter, FiLinkedin, FiChevronRight, FiArrowRight, FiLayers, FiLock
+} from "react-icons/fi";
 
-
-
-interface Project {
-  id: number
-  title: string
-    author: string
-  category: string
-  image: string  
-             likes: number
-  views: number
-date: string
-}
-
-
-type SortOption = 'recommended' | 'recent' | 'popular'
-type FilterCategory = 'all' | 'illustration' | 'branding' | 'web' | 'photography'
-type Theme = 'light' | 'dark'
+// Color palette
+const colors = {
+  dark: {
+    bg: "#0E1428",
+    card: "#19203A",
+    cardLight: "#222C48",
+    accent: "#FF6B6B", // Coral red
+    accentAlt: "#4ECDC4", // Teal
+    accentLight: "rgba(255, 107, 107, 0.2)",
+    text: "#FFFFFF",
+    textSecondary: "#CCD6F6",
+    textTertiary: "#8892B0",
+    border: "rgba(255, 255, 255, 0.1)"
+  },
+  light: {
+    bg: "#F5F9FF",
+    card: "#FFFFFF",
+    cardLight: "#F0F4FA",
+    accent: "#FF6B6B", // Coral red
+    accentAlt: "#4ECDC4", // Teal
+    accentLight: "rgba(255, 107, 107, 0.1)",
+    text: "#1E293B",
+    textSecondary: "#334155",
+    textTertiary: "#64748B",
+    border: "rgba(0, 0, 0, 0.1)"
+  }
+};
 
 export default function Home() {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [sortOption, setSortOption] = useState<SortOption>('recommended')
-  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all')
-  const [showFilterMenu, setShowFilterMenu] = useState(false)
-  const [showSortMenu, setShowSortMenu] = useState(false)
-  const [displayedProjects, setDisplayedProjects] = useState<Project[]>([])
-  const [likedProjects, setLikedProjects] = useState<number[]>([])
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSubscribe, setShowSubscribe] = useState(false);
-  const [theme, setTheme] = useState<Theme>('light');
-  const [email, setEmail] = useState('');
+  const [theme, setTheme] = useState("dark");
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Form validation state
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    company: "",
+    ticketType: ""
+  });
+  const [formErrors, setFormErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    ticketType: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [formTouched, setFormTouched] = useState({
+    firstName: false,
+    lastName: false,
+    email: false,
+    ticketType: false
+  });
 
-  const allProjects: Project[] = [
-    {
-      id: 1,
-      title: "PSI Microbes",
-      author: "Chragi Frei",
-      category: "illustration",
-      image: "https://www.psi.ch/sites/default/files/styles/primer_full_xl/public/2020-09/5232_3-20_cover.jpg.webp?itok=wTctCPs6",
-      likes: 119,
-      views: 525,
-      date: "2025-03-15"
-    },
-    {
-      id: 2,
-      title: "Taitung Art  ",
-      author: "Bo-Wei Wang",
-      category: "branding",
-      image: "https://www.eastcoast-nsa.gov.tw/content/images/2019-static/punch-taitung-01.jpg",
-      likes: 169,
-      views: 2200,
-      date: "2025-04-01"
-    },
-    {
-      id: 3,
-      title: "Identity Design",
-      author: "Junyoup Bong",
-      category: "branding",
-      image: "https://5.imimg.com/data5/SELLER/Default/2021/1/MZ/HI/UI/10388100/branding-identity-design-services.jpg",
-      likes: 35,
-      views: 156,
-      date: "2025-02-28"
-    },
-    {
-      id: 4,
-      title: "Botanical Elegance",
-      author: "Maria Chen",
-      category: "photography",
-      image: "https://walltrend.com/cdn/shop/files/botanical-elegance-wallpaper-b919-187436.jpg?v=1728003826&width=1780",
-      likes: 87,
-      views: 432,
-      date: "202Exhibition5-03-22"
-    },
-    {
-      id: 5,
-      title: "Tech Minimal",
-      author: "James Wright",
-      category: "web",
-      image: "https://img.freepik.com/free-vector/flat-design-minimal-technology-landing-page_23-2149123973.jpg?semt=ais_hybrid&w=740",
-      likes: 142,
-      views: 893,
-      date: "2025-04-10"
-    },
-    {
-      id: 6,
-      title: "Urban Perspective",
-      author: "Sarah Johnson",
-      category: "photography",
-      image: "https://imgproxy.domestika.org/unsafe/w:1200/rs:fill/plain/src://blog-post-open-graph-covers/000/005/107/5107-original.jpg?1709920814",
-      likes: 55,
-      views: 310,
-      date: "2025-03-05"
-    },
-    {
-      id: 7,
-      title: "Neon Dreams",
-      author: "Alex Wong",
-      category: "illustration",
-      image: "https://mir-s3-cdn-cf.behance.net/project_modules/max_1200/f58f0975005653.5c406bee2a803.jpg",
-      likes: 203,
-      views: 1240,
-      date: "2025-04-15"
-    },
-    {
-      id: 8,
-      title: "Modern Architecture",
-      author: "Emma Davis",
-      category: "photography",
-      image: "https://api.gharpedia.com/wp-content/uploads/2019/02/Heydar-Aliyev-Cultural-Centre-by-Zaha-Hadid-01-0101070001.jpg",
-      likes: 78,
-      views: 420,
-      date: "2025-03-30"
-    },
-    {
-      id: 9,
-      title: "Digital Landscapes",
-      author: "Marcus Lee",
-      category: "illustration",
-      image: "https://blog.icons8.com/wp-content/uploads/2020/02/digital-illustration-brian-edward-miller.jpg",
-      likes: 164,
-      views: 890,
-      date: "2025-04-08"
-    }
-  ]
+  // Event details
+  const eventDate = new Date("2025-12-15T09:00:00");
+  const eventName = "TechConf 2025";
+  const eventTagline = "Where Innovation Meets Opportunity";
+  const eventLocation = "Tech Center, San Francisco";
+  const eventDescription = "Join us for the most innovative tech conference of the year, featuring industry leaders, workshops, and networking opportunities!";
 
-
-  useEffect(() => {
-    let filtered = [...allProjects];
-
-   
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(project => project.category === filterCategory);
-    }
-
-
-    if (searchQuery.trim() !== '') {
-      filtered = filtered.filter(project =>
-        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.author.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-
-    switch (sortOption) {
-      case 'recent':
-        filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        break;
-      case 'popular':
-        filtered.sort((a, b) => b.likes - a.likes);
-        break;
-      case 'recommended':
-      default:
-   
-        filtered.sort((a, b) => {
-          const popularityA = a.likes * 0.7 + a.views * 0.3;
-          const popularityB = b.likes * 0.7 + b.views * 0.3;
-          return popularityB - popularityA;
-        });
-    }
-
-    setDisplayedProjects(filtered);
-  }, [filterCategory, sortOption, searchQuery]);
-
-  const getCategoryLabel = (category: FilterCategory): string => {
-    return {
-      'all': 'All Creative Fields',
-      'illustration': 'Illustration',
-      'branding': 'Branding',
-      'web': 'Web Design',
-      'photography': 'Photography'
-    }[category]
-  }
-
-  const getSortLabel = (sort: SortOption): string => {
-    return {
-      'recommended': 'Recommended',
-      'recent': 'Most Recent',
-      'popular': 'Most Popular'
-    }[sort]
-  }
-
-
-  const handleLike = (projectId: number) => {
-    setDisplayedProjects((prev) =>
-      prev.map((proj) => {
-        if (proj.id === projectId) {
-          const isLiked = likedProjects.includes(projectId)
-          return { ...proj, likes: proj.likes + (isLiked ? -1 : 1) }
-        }
-        return proj
-      })
-    )
-    setLikedProjects((prev) =>
-      prev.includes(projectId)
-        ? prev.filter((id) => id !== projectId)
-        : [...prev, projectId]
-    )
-  }
-
-  const handleShare = (project: Project) => {
-    const shareUrl = typeof window !== "undefined"
-      ? `${window.location.origin}?project=${project.id}`
-      : '';
-    const shareData = {
-      title: project.title,
-      text: `Check out this project: ${project.title} by ${project.author}`,
-      url: shareUrl,
-    };
-
-    if (navigator.share) {
-      navigator.share(shareData).catch(() => {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl);
-      alert("Project link copied to clipboard!");
-    } else {
-      alert("Sharing is not supported on this device.");
-    }
-  };
-
+  // Toggle theme
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
   };
 
+  // Set theme from localStorage on mount
   useEffect(() => {
-    // Add transition styles to the document
-    const style = document.createElement('style');
-    style.textContent = `
-      * {
-        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 300ms;
-      }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme("dark");
+    }
   }, []);
 
+  // Apply theme class to document
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, [theme]);
 
-  // Initialize smooth scrolling
+  // Countdown timer
   useEffect(() => {
-    // Apply smooth scrolling to the document
-    document.documentElement.style.scrollBehavior = 'smooth';
-    
-    return () => {
-      // Clean up when component unmounts
-      document.documentElement.style.scrollBehavior = '';
-    };
+    const timer = setInterval(() => {
+      const now = new Date();
+      const difference = eventDate.getTime() - now.getTime();
+
+      if (difference <= 0) {
+        clearInterval(timer);
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      setTimeLeft({ days, hours, minutes, seconds });
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  // Smooth scroll to element function
-  const scrollToElement = (elementId: string) => {
-    const element = document.getElementById(elementId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
+  // Schedule data
+  const scheduleData = [
+    { time: "09:00 AM - 09:30 AM", title: "Registration & Breakfast", speaker: "" },
+    { time: "09:30 AM - 09:45 AM", title: "Kickoff and Intros", speaker: "Sarah Johnson" },
+    { time: "09:45 AM - 10:15 AM", title: "Intro to Modern Web Development", speaker: "Michael Chen" },
+    { time: "10:15 AM - 11:15 AM", title: "AI-driven Architecture", speaker: "Elena Rodriguez" },
+    { time: "11:15 AM - 12:15 PM", title: "Cloud Architecture Presentation", speaker: "David Kim" },
+    { time: "12:15 PM - 01:15 PM", title: "Lunch Break", speaker: "" },
+    { time: "01:15 PM - 01:30 PM", title: "Partner Introduction", speaker: "TechConf Team" },
+    { time: "01:30 PM - 03:30 PM", title: "Hands-on Workshop", speaker: "Dev Team" },
+    { time: "03:30 PM - 04:00 PM", title: "Coffee Break", speaker: "" },
+    { time: "04:00 PM - 05:00 PM", title: "Panel Discussion", speaker: "Industry Leaders" },
+    { time: "05:00 PM - 07:00 PM", title: "Networking Reception", speaker: "" },
+  ];
 
-  // Simplified animation variants
-  const fadeInOutVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { duration: 0.3 }
+  // Speakers data
+  const speakersData = [
+    {
+      name: "Sarah Thompson",
+      role: "Vice President, AWS Generative Builders",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      bio: "Sarah is the CTO of TechWave, a leading innovator in cloud architecture. With over 15 years of experience in the tech industry, she excels in developing impactful solutions that drive growth and sustainability.",
     },
-    exit: { 
-      opacity: 0,
-      transition: { duration: 0.2 }
+    {
+      name: "Michael Rodriguez",
+      role: "Chief Operations Officer, Apex Automations",
+      image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      bio: "Michael leads the product development team at Apex Automations, a company renowned for its cutting-edge robotic systems. His expertise in AI and robotics has been pivotal in launching groundbreaking products.",
+    },
+    {
+      name: "Sarah Lee",
+      role: "Head of Human Resources, Future Corp",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      bio: "Sarah oversees HR at Future Corp, a sustainability-focused company. With a decade of experience in talent management and organizational development, she is passionate about fostering inclusive workplaces.",
+    },
+  ];
+
+  // Form handling functions
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+
+    // Mark field as touched
+    setFormTouched({
+      ...formTouched,
+      [name]: true
+    });
+
+    // Clear errors when typing
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ""
+      });
     }
   };
 
-  const handleSubscribe = () => {
-    if (email.trim()) {
-      // Here you would typically send the email to your backend
-      alert('Thanks for subscription!');
-      setEmail(''); // Clear the email input
-    } else {
-      alert('Please enter a valid email address');
+  const validateForm = () => {
+    let isValid = true;
+    const errors = { ...formErrors };
+    const touched = { ...formTouched };
+
+    // Mark all fields as touched on submission
+    Object.keys(touched).forEach(key => {
+      touched[key as keyof typeof touched] = true;
+    });
+    setFormTouched(touched);
+
+    // Validate firstName
+    if (!formData.firstName.trim()) {
+      errors.firstName = "First name is required";
+      isValid = false;
+    }
+
+    // Validate lastName
+    if (!formData.lastName.trim()) {
+      errors.lastName = "Last name is required";
+      isValid = false;
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = "Please enter a valid email";
+      isValid = false;
+    }
+
+    // Validate ticketType
+    if (!formData.ticketType) {
+      errors.ticketType = "Please select a ticket type";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+
+    if (validateForm()) {
+      setIsSubmitting(true);
+
+      // Simulate API call
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setSubmitSuccess(true);
+
+        // Reset form after success
+        setTimeout(() => {
+          setSubmitSuccess(false);
+          setFormData({
+            firstName: "",
+            lastName: "",
+            email: "",
+            company: "",
+            ticketType: ""
+          });
+          setFormTouched({
+            firstName: false,
+            lastName: false,
+            email: false,
+            ticketType: false
+          });
+        }, 5000);
+      }, 1500);
     }
   };
 
   return (
-    <>
-      <Head>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-        <style>
-          {`
-            body {
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-              background: ${theme === 'light' ? '#f8fafc' : '#121212'};
-              color: ${theme === 'light' ? '#222' : '#e4e4e7'};
-              color-scheme: ${theme};
-            }
-            html {
-              color-scheme: ${theme};
-            }
-            .glass-card {
-              background: ${theme === 'light' ? '#fff' : '#1f1f23'};
-              backdrop-filter: none;
-              -webkit-backdrop-filter: none;
-              border: 1px solid ${theme === 'light' ? '#f1f1f1' : '#2d2d33'};
-            }
-            .glass-nav {
-              background: ${theme === 'light' ? '#000' : '#000'} !important;
-              color: #fff !important;
-              border-bottom: 1px solid ${theme === 'light' ? '#000' : '#000'};
-              backdrop-filter: none;
-              -webkit-backdrop-filter: none;
-            }
-            .glass-modal {
-              background: ${theme === 'light' ? '#fff' : '#1f1f23'};
-              backdrop-filter: none;
-              -webkit-backdrop-filter: none;
-              border: 1px solid ${theme === 'light' ? '#f1f1f1' : '#2d2d33'};
-            }
-            .newsletter-input {
-              background: ${theme === 'light' ? '#fff' : '#2d2d33'};
-              backdrop-filter: none;
-              -webkit-backdrop-filter: none;
-              border: 1px solid ${theme === 'light' ? '#e5e7eb' : '#3f3f46'};
-              color: ${theme === 'light' ? '#222' : '#e4e4e7'};
-            }
-            .dark-text {
-              color: ${theme === 'light' ? '#222' : '#e4e4e7'};
-            }
-            .dark-bg {
-              background: ${theme === 'light' ? '#fff' : '#1f1f23'};
-            }
-            .dark-border {
-              border-color: ${theme === 'light' ? '#e5e7eb' : '#3f3f46'};
-            }
-            .dark-hover:hover {
-              background: ${theme === 'light' ? '#f3f4f6' : '#2d2d33'};
-            }
-          `}
-        </style>
-      </Head>
-
-      <motion.main
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className={`min-h-screen ${theme === 'light' ? 'bg-gradient-to-br from-pink-50 to-gray-100' : 'bg-gradient-to-br from-gray-900 to-gray-800'}`}
-      >
-        <header className="glass-nav sticky w-full border-b border-gray-300">
-          <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="flex items-center w-full md:w-auto justify-between md:justify-start">
-              <div className="text-3xl font-bold mr-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Bē</div>
-              <motion.button
-                onClick={toggleTheme}
-                className="p-2.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white shadow-md transition-colors md:hidden"
-                aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={theme}
-                    initial={{ rotate: -180, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 180, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.button>
-              <nav className="hidden md:block"></nav>
-            </div>
-            <div className="relative w-full max-w-xl mx-0 md:mx-4 mb-3 md:mb-0">
-              <input
-                type="text"
-                placeholder="Search the creative world at work"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className={`w-full py-3 px-10 ${theme === 'light' ? 'bg-white border-gray-200 text-gray-800' : 'bg-gray-800 border-gray-700 text-gray-200'} border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
-              />
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                <Search className={`h-5 w-5 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
+    <div className={`min-h-screen ${theme === "dark" ? "bg-[#0E1428] text-white" : "bg-[#F5F9FF] text-[#1E293B]"} font-sans`}>
+      {/* Navigation Bar - inspired by the image */}
+      <nav className={`fixed w-full z-50 ${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} backdrop-blur-sm`}>
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <div className={`h-8 w-8 rounded-md flex items-center justify-center bg-[#FF6B6B] text-white font-bold`}>
+                TC
               </div>
+              <span className="text-xl font-bold tracking-tight font-montserrat">TechConf</span>
             </div>
-            <div className="flex items-center w-full md:w-auto justify-end space-x-3">
-              <motion.button
-                onClick={toggleTheme}
-                className="p-2.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white shadow-md transition-colors hidden md:flex"
-                aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={theme}
-                    initial={{ rotate: -180, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 180, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.button>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#about" className="text-sm hover:text-[#FF6B6B] transition-colors">About</a>
+              <a href="#agenda" className="text-sm hover:text-[#FF6B6B] transition-colors">Agenda</a>
+              <a href="#speakers" className="text-sm hover:text-[#FF6B6B] transition-colors">Speakers</a>
+              <a href="#location" className="text-sm hover:text-[#FF6B6B] transition-colors">Location</a>
               <button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full px-6 py-2.5 text-sm font-medium shadow-md hover:shadow-lg transition-shadow w-full md:w-auto"
-                onClick={() => scrollToElement('subscribe')}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className={`p-2 rounded-full ml-2 ${theme === "dark" ? "bg-[#222C48]" : "bg-gray-100"}`}
+                aria-label="Toggle theme"
               >
-                Stay Updated !
+                {theme === "dark" ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
+              </button>
+              <a
+                href="#register"
+                className="px-4 py-2 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white text-sm font-medium transition-colors"
+              >
+                Register now
+              </a>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center gap-4">
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]" : "bg-gray-100"}`}
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? <FiSun className="h-4 w-4" /> : <FiMoon className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <FiX className="h-5 w-5" /> : <FiMenu className="h-5 w-5" />}
               </button>
             </div>
           </div>
-        </header>
-
-        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-200/60 mt-2 gap-3">
-          <div className="relative z-30 mb-4 md:mb-0 w-full md:w-auto">
-            <button 
-              className={`flex items-center py-2.5 px-6 ${theme === 'light' 
-                ? 'bg-white/80 border-gray-200/60 text-gray-800' 
-                : 'bg-gray-800 border-gray-700 text-gray-200'} shadow-sm border rounded-full text-sm w-full md:w-auto justify-between md:justify-start`}
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-            >
-              <div className="flex items-center">
-                <Sliders className={`h-4 w-4 mr-2 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`} />
-                <span>Filter: {getCategoryLabel(filterCategory)}</span>
-              </div>
-              <ChevronDown className={`h-4 w-4 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`} />
-            </button>
-            
-            {showFilterMenu && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={`absolute left-0 right-0 md:right-auto top-full mt-2 md:w-56 ${theme === 'light' 
-                  ? 'bg-white/90 border-gray-100' 
-                  : 'bg-gray-800 border-gray-700'} backdrop-blur-md rounded-xl shadow-lg border overflow-hidden`}
-              >
-                <div className="py-1">
-                  {(['all', 'illustration', 'branding', 'web', 'photography'] as FilterCategory[]).map((category) => (
-                    <button
-                      key={category}
-                      className={`block px-4 py-2.5 text-sm w-full text-left ${theme === 'light' 
-                        ? 'hover:bg-gray-100/80' 
-                        : 'hover:bg-gray-700'} ${filterCategory === category 
-                          ? 'text-blue-500 font-medium' 
-                          : theme === 'light' ? 'text-gray-700' : 'text-gray-200'}`}
-                      onClick={() => {
-                        setFilterCategory(category)
-                        setShowFilterMenu(false)
-                      }}
-                    >
-                      {getCategoryLabel(category)}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </div>
-          
-          <div className="relative z-30 w-full md:w-auto">
-            <button 
-              className={`flex items-center py-2.5 px-6 ${theme === 'light' 
-                ? 'bg-white/80 border-gray-200/60 text-gray-800' 
-                : 'bg-gray-800 border-gray-700 text-gray-200'} shadow-sm border rounded-full text-sm w-full md:w-auto justify-between md:justify-start`}
-              onClick={() => setShowSortMenu(!showSortMenu)}
-            >
-              <span>Sort: {getSortLabel(sortOption)}</span>
-              <ChevronDown className={`h-4 w-4 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`} />
-            </button>
-            
-            {showSortMenu && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={`absolute left-0 right-0 md:right-0 md:left-auto top-full mt-2 md:w-48 ${theme === 'light' 
-                  ? 'bg-white/90 border-gray-100' 
-                  : 'bg-gray-800 border-gray-700'} backdrop-blur-md rounded-xl shadow-lg border overflow-hidden`}
-              >
-                <div className="py-1">
-                  {(['recommended', 'recent', 'popular'] as SortOption[]).map((sort) => (
-                    <button
-                      key={sort}
-                      className={`block px-4 py-2.5 text-sm w-full text-left ${theme === 'light' 
-                        ? 'hover:bg-gray-100/80' 
-                        : 'hover:bg-gray-700'} ${sortOption === sort 
-                          ? 'text-blue-500 font-medium' 
-                          : theme === 'light' ? 'text-gray-700' : 'text-gray-200'}`}
-                      onClick={() => {
-                        setSortOption(sort)
-                        setShowSortMenu(false)
-                      }}
-                    >
-                      {getSortLabel(sort)}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </div>
         </div>
 
-        <div className="container mx-auto px-4 py-8">
-          {displayedProjects.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16"
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`md:hidden ${theme === "dark" ? "bg-[#19203A]" : "bg-white"} py-4 border-t ${theme === "dark" ? "border-[#222C48]" : "border-gray-200"}`}
+          >
+            <div className="container mx-auto px-6 flex flex-col space-y-4">
+              <a href="#about" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>About</a>
+              <a href="#agenda" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Agenda</a>
+              <a href="#speakers" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Speakers</a>
+              <a href="#location" className="py-2 hover:text-[#FF6B6B] transition-colors" onClick={() => setIsMenuOpen(false)}>Location</a>
+              <a
+                href="#register"
+                className="px-4 py-2 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white text-sm font-medium transition-colors w-fit"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Register now
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </nav>
+
+      {/* Hero Section - Update for light theme */}
+      <section className="relative min-h-screen pt-28 pb-16 px-6 flex items-center">
+        {/* Background Image with Overlay */}
+        <div className={`absolute inset-0 ${theme === "dark"
+          ? "bg-gradient-to-b from-[#0E1428]/80 via-[#0E1428]/90 to-[#0E1428]"
+          : "bg-gradient-to-b from-[#F5F9FF]/20 via-[#F5F9FF]/50 to-[#F5F9FF]"} z-0`}>
+          <img
+            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80"
+            alt="Tech conference background"
+            className={`w-full h-full object-cover opacity-30 mix-blend-overlay`}
+          />
+          {theme === "light" && <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F5F9FF]/30 to-[#F5F9FF]/60 z-10"></div>}
+        </div>
+
+        <div className="container mx-auto relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`text-4xl md:text-6xl font-bold mb-4 tracking-tight ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}
             >
-              <div className={`${theme === 'light' ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-<svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="currentColor"/>
-                </svg>
+              {eventName}
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className={`text-xl md:text-2xl mb-8 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}
+            >
+              {eventTagline}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-wrap items-center justify-center gap-6 mb-10"
+            >
+              <div className={`flex items-center gap-2 ${theme === "dark" ? "text-[#CCD6F6] bg-[#19203A]/80" : "text-[#334155] bg-white/80"} px-4 py-2 rounded-full border ${theme === "dark" ? "border-white/10" : "border-black/5"}`}>
+                <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
+                <span>{eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
               </div>
-              <h3 className={`text-xl font-medium ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>No projects found</h3>
-              <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} mt-2`}>Try changing your filter or search criteria</p>
+              <div className={`flex items-center gap-2 ${theme === "dark" ? "text-[#CCD6F6] bg-[#19203A]/80" : "text-[#334155] bg-white/80"} px-4 py-2 rounded-full border ${theme === "dark" ? "border-white/10" : "border-black/5"}`}>
+                <FiMapPin className="h-5 w-5 text-[#FF6B6B]" />
+                <span>{eventLocation}</span>
+              </div>
             </motion.div>
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+
+            {/* Countdown Timer */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="mb-10"
             >
-              {displayedProjects.map((project) => (
-                <motion.div 
-                  key={project.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="glass-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
-                  onClick={() => setSelectedProject(project)}
-                >
-                  <div className="relative h-64 md:h-72 lg:h-80 w-full bg-gradient-to-br from-gray-900 to-gray-800">
-                    <img
-                      src={project.image}
-                      alt={project.title}
-                      className="object-cover w-full h-full"
-                      style={{ borderRadius: 'inherit' }}
-                      onError={e => { e.currentTarget.style.display = 'none'; }}
-                    />
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      whileHover={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute inset-0 bg-black/40 flex items-center justify-center"
-                    >
-                      <div className="bg-white/20 backdrop-blur-sm rounded-full px-6 py-2.5 text-white font-medium">
-                        View Project
-                      </div>
-                    </motion.div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-xs md:max-w-lg mx-auto">
+                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}> 
+                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.days}</div>
+                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Days</div>
+                </div>
+                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
+                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.hours}</div>
+                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Hours</div>
+                </div>
+                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
+                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.minutes}</div>
+                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Minutes</div>
+                </div>
+                <div className={`${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} p-3 md:p-4 rounded-xl border ${theme === "dark" ? "border-[#FF6B6B]/20" : "border-[#FF6B6B]/10"} backdrop-blur-sm shadow-lg min-w-0`}>
+                  <div className={`text-2xl md:text-5xl font-bold truncate ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{timeLeft.seconds}</div>
+                  <div className={`text-xs md:text-xs ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} uppercase tracking-wider mt-1 truncate`}>Seconds</div>
+                </div>
+              </div>
+              <div className={`text-sm ${theme === "dark" ? "text-[#4ECDC4]" : "text-[#1E293B] font-medium"} mt-4`}>Until the event begins</div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <a
+                href="#register"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-md bg-[#FF6B6B] hover:bg-[#FF5252] text-white font-medium transition-colors shadow-lg"
+              >
+                Register Now
+                <FiArrowRight className="h-4 w-4" />
+              </a>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
+        <div className="container mx-auto">
+          <div className="mb-12 text-center">
+            <div className={`text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3`}>OVERVIEW</div>
+            <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>About The Event</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            {/* Left Column - Overview and Text */}
+            <div>
+              <div className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl h-full`}>
+                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>
+                  This will be an interactive event with a mix of lecture and instructor-led workshops
+                  from AWS experts. Did you know that a Serverless event-driven approach can help
+                  build resilient GenAI applications? In this full day training event, you'll learn how to
+                  build serverless, event-driven applications leveraging cloud-native services such as
+                  Amazon EventBridge, AWS Step Functions, and AWS Lambda.
+                </p>
+
+                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>
+                  Through leveraging serverless or container platforms, these applications can almost
+                  instantly benefit from the scalability, reliability, and cost effectiveness of the cloud.
+                  Early cloud adoption approaches were primarily focused on migrations or greenfield
+                  applications.
+                </p>
+
+                <div className={`flex items-center gap-3 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-8 border-l-4 border-[#FF6B6B] pl-4 py-2`}>
+                  <span className="text-[#4ECDC4] text-xl">💻</span>
+                  <p className="font-medium">Please bring your own laptop</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Info Boxes */}
+            <div className="flex flex-col h-full space-y-8" style={{height: '100%'}}>
+              <div className={`flex-1 flex flex-col justify-start backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl`}>
+                <h3 className={`text-xl font-bold mb-6 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>WHY ATTEND?</h3>
+                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                  Learn how to build cost-efficient and agile applications using event-driven architecture.
+                </p>
+              </div>
+              <div className={`flex-1 flex flex-col justify-start backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border shadow-xl`}>
+                <h3 className={`text-xl font-bold mb-6 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>WHO SHOULD ATTEND?</h3>
+                <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                  Technical decision makers: CTOs, engineering leads, solutions architects, developers. Architects and developers that are ready to get hands-on with these services.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Agenda Section */}
+      <section id="agenda" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
+        <div className="container mx-auto">
+          <div className="max-w-5xl mx-auto">
+            <div className="mb-12 text-center">
+              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} border shadow-xl mb-4`}>
+                <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
+              </div>
+              <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Event Agenda</h2>
+              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-3 max-w-lg mx-auto`}>
+                Explore our carefully curated schedule of talks and workshops
+              </p>
+            </div>
+
+            <div className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} p-8 rounded-2xl border mb-8 shadow-xl`}>
+              <div className="flex flex-wrap justify-between items-baseline mb-6">
+                <div className="flex items-center gap-3">
+                  <div className={`${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm p-2 rounded-lg border shadow`}>
+                    <FiCalendar className="h-5 w-5 text-[#FF6B6B]" />
                   </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className={`font-semibold text-lg leading-tight ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>{project.title}</h3>
-                      <span className={`text-xs px-2 py-1 ${theme === 'light' ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-300'} rounded-full`}>{project.category}</span>
-                    </div>
-                    <p className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-400'} text-sm`}>{project.author}</p>
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center text-gray-500 text-sm space-x-4">
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: 0.9 }}
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleLike(project.id)
-                          }}
-                          className={`flex items-center transition-colors focus:outline-none ${likedProjects.includes(project.id) ? 'text-red-500' : theme === 'light' ? 'text-gray-500 hover:text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-                          aria-label={likedProjects.includes(project.id) ? "Dislike" : "Like"}
-                        >
-                          <motion.span
-                            animate={likedProjects.includes(project.id) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex"
-                          >
-                            <Heart fill={likedProjects.includes(project.id) ? "#ef4444" : "none"} className="h-4 w-4 mr-0.5" />
-                          </motion.span>
-                          <span>{project.likes.toLocaleString()}</span>
-                        </motion.button>
-                        <div className="flex items-center">
-                          <Eye className="h-9 w-5 mr-1" />
-                          <span>{project.views.toLocaleString()}</span>
+                  <span className={`text-xl font-semibold ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#1E293B]"}`}>
+                    Monday, December 15, 2025
+                  </span>
+                </div>
+                <div className={`mt-3 md:mt-0 px-3 py-1 rounded-full text-xs font-medium ${theme === "dark" ? "bg-[#222C48]/30 text-[#CCD6F6] border-white/10" : "bg-white/30 text-[#334155] border-white/30"} backdrop-blur-sm border shadow`}>
+                  All times in PST
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {scheduleData.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.05 }}
+                    className="relative"
+                  >
+                    <div className={`p-5 rounded-xl transition-all duration-300 backdrop-blur-md ${item.speaker
+                      ? theme === "dark"
+                        ? "bg-[#222C48]/30 border-white/10"
+                        : "bg-white/30 border-white/30"
+                      : theme === "dark"
+                        ? "bg-[#19203A]/30 border-white/10"
+                        : "bg-white/30 border-white/30"
+                      } border shadow`}>
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        {/* Time Column */}
+                        <div className="col-span-12 sm:col-span-3 lg:col-span-2">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 rounded-full bg-[#FF6B6B] mt-2 hidden sm:block"></div>
+                            <span className="font-mono text-sm text-[#4ECDC4]">{item.time}</span>
+                          </div>
+                        </div>
+
+                        {/* Content Column */}
+                        <div className="col-span-12 sm:col-span-9 lg:col-span-10">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between">
+                            <div>
+                              <h3 className={`font-semibold text-lg ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{item.title}</h3>
+                              {item.speaker && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <FiUser className="h-4 w-4 text-[#FF6B6B]" />
+                                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} text-sm`}>{item.speaker}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {item.speaker && (
+                              <a 
+                                href="#"
+                                className="mt-3 md:mt-0 text-[#FF6B6B] text-sm flex items-center gap-1 group hover:text-[#FF5252] transition-colors"
+                              >
+                                Session Details
+                                <FiChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                              </a>
+                            )}
+                          </div>
+
+                          {/* For lunch and breaks, add a special indicator */}
+                          {(item.title.includes("Break") || item.title.includes("Lunch")) && (
+                            <div className="mt-2 flex items-center gap-2">
+                              {item.title.includes("Lunch") ? (
+                                <FiCoffee className="text-[#4ECDC4] h-4 w-4" />
+                              ) : (
+                                <FiCoffee className="text-[#FF6B6B] h-4 w-4" />
+                              )}
+                              <span className={`text-sm ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"}`}>
+                                {item.title.includes("Lunch") ? "Food provided for all attendees" : "Refreshments available"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {new Date(project.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className={`${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-sm`}>
+                The schedule is subject to minor changes. All registered attendees will be notified of any updates.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Speakers Section */}
+      <section id="speakers" className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
+        <div className="container mx-auto">
+          <div className="mb-16 text-center">
+            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} border shadow-xl mb-4`}>
+              <FiUsers className="h-5 w-5 text-[#FF6B6B]" />
+            </div>
+            <div className="text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3">Speakers</div>
+            <h2 className={`text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>The Voices Of The Event</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {speakersData.map((speaker, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl overflow-hidden border shadow-xl`}
+              >
+                <div className="aspect-[3/2] relative overflow-hidden">
+                  <img
+                    src={speaker.image}
+                    alt={speaker.name}
+                    className="object-cover w-full h-full object-center"
+                    style={{
+                      objectPosition: "center 30%"
+                    }}
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-t ${theme === "dark" ? "from-[#19203A]" : "from-white"} to-transparent opacity-70`}></div>
+                </div>
+                <div className="p-6">
+                  <h3 className={`text-xl font-bold mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>{speaker.name}</h3>
+                  <p className="text-[#FF6B6B] mb-4 text-sm">{speaker.role}</p>
+                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} text-sm line-clamp-4`}>{speaker.bio}</p>
+
+                  <div className="flex gap-3 mt-5">
+                    <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-[#222C48] transition-colors border shadow`} aria-label="Twitter">
+                      <FiTwitter className="h-4 w-4 text-[#FF6B6B]" />
+                    </a>
+                    <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-[#222C48] transition-colors border shadow`} aria-label="LinkedIn">
+                      <FiLinkedin className="h-4 w-4 text-[#FF6B6B]" />
+                    </a>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Registration and Location Section */}
+      <section className={`py-10 md:py-16 px-4 md:px-6 ${theme === "dark" ? "bg-[#0E1428]" : "bg-[#F5F9FF]"}`}>
+        <div className="container mx-auto">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-12 text-center">
+              <div className="text-[#FF6B6B] uppercase text-sm font-semibold tracking-wider mb-3">Join Us</div>
+              <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Register and Visit</h2>
+              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} max-w-2xl mx-auto`}>Secure your spot and find your way to our state-of-the-art venue</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Registration Form */}
+              <div id="register" className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl p-8 border shadow-xl`}>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#FF6B6B] mb-4">
+                    <FiSend className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Register Now</h3>
+                  <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mt-2`}>Secure your spot at the most anticipated tech event of the year</p>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {submitSuccess ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className={`p-8 rounded-xl text-center ${theme === "dark" ? "bg-[#222C48]/80" : "bg-white/80"} backdrop-blur-md shadow-lg border ${theme === "dark" ? "border-[#4ECDC4]/20" : "border-[#4ECDC4]/30"}`}
+                    >
+                      <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-[#4ECDC4] to-[#4ECDC4]/70 flex items-center justify-center mb-6 shadow-lg">
+                        <FiCheck className="h-10 w-10 text-white" />
+                      </div>
+                      <h3 className={`text-2xl font-bold mb-3 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Registration Successful!</h3>
+                      <p className={`mb-6 ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>Thank you for registering for {eventName}. We've sent a confirmation email to <span className="font-medium text-[#4ECDC4]">{formData.email}</span>.</p>
+                      <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${theme === "dark" ? "bg-[#19203A]" : "bg-gray-50"} ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-sm`}>
+                        <FiCalendar className="h-4 w-4" />
+                        <span>We're excited to see you on December 15, 2025!</span>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label htmlFor="firstName" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                            <FiUser className={formErrors.firstName && formTouched.firstName ? "text-red-500" : "text-[#FF6B6B]"} />
+                            First Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="firstName"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.firstName && formTouched.firstName
+                              ? "border-red-500 ring-1 ring-red-500"
+                              : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
+                          />
+                          {formErrors.firstName && formTouched.firstName && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
+                            >
+                              <FiAlertCircle className="h-4 w-4" />
+                              {formErrors.firstName}
+                            </motion.p>
+                          )}
+                        </div>
+                        <div>
+                          <label htmlFor="lastName" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                            <FiUser className={formErrors.lastName && formTouched.lastName ? "text-red-500" : "text-[#FF6B6B]"} />
+                            Last Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="lastName"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.lastName && formTouched.lastName
+                              ? "border-red-500 ring-1 ring-red-500"
+                              : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
+                          />
+                          {formErrors.lastName && formTouched.lastName && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
+                            >
+                              <FiAlertCircle className="h-4 w-4" />
+                              {formErrors.lastName}
+                            </motion.p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="email" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                          <FiMail className={formErrors.email && formTouched.email ? "text-red-500" : "text-[#FF6B6B]"} />
+                          Email Address <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.email && formTouched.email
+                            ? "border-red-500 ring-1 ring-red-500"
+                            : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
+                        />
+                        {formErrors.email && formTouched.email && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
+                          >
+                            <FiAlertCircle className="h-4 w-4" />
+                            {formErrors.email}
+                          </motion.p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="company" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                          <FiBriefcase className="text-[#FF6B6B]" />
+                          Company/Organization
+                        </label>
+                        <input
+                          type="text"
+                          id="company"
+                          name="company"
+                          value={formData.company}
+                          onChange={handleInputChange}
+                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="ticketType" className={`flex items-center gap-2 mb-2 text-sm font-medium ${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>
+                          <FiBookmark className={formErrors.ticketType && formTouched.ticketType ? "text-red-500" : "text-[#FF6B6B]"} />
+                          Ticket Type <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          id="ticketType"
+                          name="ticketType"
+                          value={formData.ticketType}
+                          onChange={handleInputChange}
+                          className={`w-full p-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/50 text-white" : "bg-white text-[#1E293B]"} backdrop-blur-sm border ${formErrors.ticketType && formTouched.ticketType
+                            ? "border-red-500 ring-1 ring-red-500"
+                            : theme === "dark" ? "border-white/10" : "border-gray-200"} focus:border-[#FF6B6B] focus:outline-none focus:ring-1 focus:ring-[#FF6B6B] transition-all`}
+                        >
+                          <option value="">Select ticket type</option>
+                          <option value="standard">Standard Pass ($299)</option>
+                          <option value="premium">Premium Pass ($499)</option>
+                          <option value="vip">VIP Pass ($799)</option>
+                        </select>
+                        {formErrors.ticketType && formTouched.ticketType && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="text-red-500 mt-2 text-sm flex items-center gap-1.5 font-medium"
+                          >
+                            <FiAlertCircle className="h-4 w-4" />
+                            {formErrors.ticketType}
+                          </motion.p>
+                        )}
+                      </div>
+
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="mt-6"
+                      >
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-3.5 px-6 rounded-lg font-bold text-white bg-gradient-to-r from-[#FF6B6B] to-[#FF5252] hover:from-[#FF5252] hover:to-[#FF4040] disabled:from-[#FF6B6B]/70 disabled:to-[#FF5252]/70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg"
+                        >
+                          {isSubmitting ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Processing...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center gap-2">
+                              Secure Your Spot
+                              <FiArrowRight className="h-5 w-5" />
+                            </span>
+                          )}
+                        </button>
+                      </motion.div>
+
+                      <div className="pt-2 text-center text-sm text-[#8892B0]">
+                        <p className="flex items-center justify-center gap-2">
+                          <FiLock className="text-[#FF6B6B]" />
+                          Your information is secure and will never be shared with third parties
+                        </p>
+                      </div>
+                    </form>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Location Information */}
+              <div id="location" className={`backdrop-blur-md ${theme === "dark" ? "bg-[#19203A]/30 border-white/10" : "bg-white/30 border-white/30"} rounded-2xl overflow-hidden border shadow-xl`}>
+                <div className="h-[300px] overflow-hidden">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.1034026272367!2d-122.41941608468212!3d37.77492197975918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80858099c824510f%3A0x71f43d5a857f763f!2sMoscone%20Center!5e0!3m2!1sen!2sus!4v1629940433187!5m2!1sen!2sus"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                  ></iframe>
+                </div>
+
+                <div className="p-8">
+                  <h3 className={`text-2xl font-bold mb-6 flex items-center gap-2 font-montserrat ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>
+                    <FiMapPin className="text-[#FF6B6B]" />
+                    Event Venue
+                  </h3>
+
+                  <div className="space-y-6">
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm border shadow`}>
+                        <FiMapPin className="h-5 w-5 text-[#FF6B6B]" />
+                      </div>
+                      <div>
+                        <h4 className={`font-medium mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Address</h4>
+                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>123 Innovation Way</p>
+                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>San Francisco, CA 94103</p>
+                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>United States</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm border shadow`}>
+                        <FiClock className="h-5 w-5 text-[#FF6B6B]" />
+                      </div>
+                      <div>
+                        <h4 className={`font-medium mb-1 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Event Hours</h4>
+                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>December 15, 2025</p>
+                        <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>9:00 AM - 5:00 PM</p>
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </div>
 
-        <section
-          id="subscribe"
-          className="py-16 bg-gradient-to-r from-blue-600 to-purple-600 mt-16"
-        >
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-  <h2 className="text-3xl font-bold text-white mb-6">Stay Inspired</h2>
-              <p className="text-blue-100 mb-8">Join our newsletter and get the latest creative trends, inspiration, and featured projects delivered to your inbox.</p>
-              
-              <div className="flex flex-col md:flex-row gap-3 justify-center">
-                <motion.input 
-                  whileFocus={{ scale: 1.02 }}
-                  type="email"
-                  placeholder="Your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`newsletter-input px-6 py-3 rounded-full ${theme === 'light' ? 'text-white placeholder:text-blue-200' : 'text-white placeholder:text-blue-300'} outline-none ring-2 ring-white/30 focus:ring-white/50 md:w-96`}
-                />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-white text-blue-600 font-medium px-8 py-3 rounded-full hover:bg-opacity-90 transition-opacity shadow-lg"
-                  onClick={handleSubscribe}
-                >
-                  Subscribe
-                </motion.button>
+                  <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 mt-8 w-full">
+                    <a
+                      href="https://maps.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#FF6B6B] hover:bg-[#FF5252] text-white transition-colors text-base md:text-lg font-medium"
+                    >
+                      <FiMapPin className="w-6 h-6 md:w-5 md:h-5" />
+                      Get Directions
+                    </a>
+                    <a
+                      href="tel:+11234567890"
+                      className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "bg-[#222C48]/30 border-white/10 hover:bg-[#222C48]" : "bg-white/30 border-white/30 hover:bg-gray-200"} transition-colors border shadow text-base md:text-lg font-medium ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}
+                    >
+                      <FiPhone className={`w-6 h-6 md:w-5 md:h-5 ${theme === "dark" ? "text-[#FF6B6B]" : "text-[#FF6B6B]"}`} />
+                      Contact Venue
+                    </a>
+                  </div>
+                </div>
               </div>
-  </div>
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <footer className={`${theme === 'light' ? 'bg-gray-900' : 'bg-gray-950'} text-gray-300`}>
-          <div className="container mx-auto px-4 py-12 flex flex-col items-center">
-            <div className="flex flex-col items-center">
-              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Bē</h3>
-              <p className="text-gray-400 mb-4 text-center">A platform to showcase and discover amazing creative work and talent from around the world.</p>
-              <div className="flex space-x-4 mb-4">
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <Instagram className="h-5 w-5" />
+      {/* Footer */}
+      <footer className={`py-12 ${theme === "dark" ? "bg-[#19203A]/90" : "bg-white/90"} backdrop-blur-md border-t ${theme === "dark" ? "border-white/10" : "border-black/5"} mt-8`}>
+        <div className="container mx-auto px-6">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-[#FF6B6B] text-white font-bold">
+                  TC
+                </div>
+                <span className={`text-xl font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>TechConf</span>
+              </div>
+              <p className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} mb-6`}>The premier tech conference of 2025. Join us for a day of innovation, learning, and networking.</p>
+              <div className="flex gap-4">
+                <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-${theme === "dark" ? "[#222C48]" : "gray-200"} transition-colors border shadow`}>
+                  <FiTwitter className="h-5 w-5 text-[#FF6B6B]" />
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <Twitter className="h-5 w-5" />
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <Facebook className="h-5 w-5" />
+                <a href="#" className={`p-2 rounded-full ${theme === "dark" ? "bg-[#222C48]/30 border-white/10" : "bg-white/30 border-white/30"} backdrop-blur-sm hover:bg-${theme === "dark" ? "[#222C48]" : "gray-200"} transition-colors border shadow`}>
+                  <FiLinkedin className="h-5 w-5 text-[#FF6B6B]" />
                 </a>
               </div>
             </div>
-            <div className="border-t border-gray-800 mt-12 pt-6 w-full flex justify-center">
-              <p className="text-gray-500 text-center">© 2025 Be Creative Network. All rights reserved.</p>
- </div>
-          </div>
-        </footer>
 
-        <AnimatePresence>
-          {selectedProject && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm"
-              onClick={() => setSelectedProject(null)}
-            >
-              <motion.div
-                variants={fadeInOutVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className={`rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl ${theme === 'light' ? 'bg-white' : 'bg-gray-900'}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="glass-nav p-5 flex justify-between items-center"
-                >
-                  <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
-                    {selectedProject.title}
-                  </h2>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => setSelectedProject(null)}
-                    className={`p-2 rounded-full ${theme === 'light' ? 'hover:bg-gray-100/80' : 'hover:bg-gray-800/80'} transition-colors`}
-                  >
-                    <X className="h-6 w-6" />
-                  </motion.button>
-                </motion.div>
-
-                <div className="p-5">
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                    className="relative w-full h-96 md:h-[550px] bg-gray-100 mb-8 rounded-xl overflow-hidden flex items-center justify-center"
-                  >
-                    <img
-                      src={selectedProject.image}
-                      alt={selectedProject.title}
-                      className="object-cover w-full h-full"
-                      style={{ borderRadius: 'inherit' }}
-                      onError={e => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  </motion.div>
-
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                    className={`flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-8 border-b ${theme === 'light' ? 'border-gray-200/60' : 'border-gray-700/60'}`}
-                  >
-                    <div className="flex items-center mb-4 md:mb-0">
-                      <motion.div 
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ 
-                          type: "spring",
-                          stiffness: 260,
-                          damping: 20,
-                          delay: 0.3
-                        }}
-                        className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 mr-4 flex items-center justify-center text-white font-bold"
-                      >
-                        {selectedProject.author.charAt(0)}
-                      </motion.div>
-                      <div>
-                        <motion.p 
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 }}
-                          className={`font-semibold ${theme === 'light' ? 'text-gray-800' : 'text-gray-200'}`}
-                        >
-                          {selectedProject.author}
-                        </motion.p>
-                        <motion.p 
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 }}
-                          className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}
-                        >
-                          Creative Designer • {selectedProject.category}
-                        </motion.p>
-                      </div>
-                    </div>
-
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.6 }}
-                      className="flex items-center space-x-6"
-                    >
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        type="button"
-                        onClick={() => handleLike(selectedProject.id)}
-                        className={`flex items-center transition-colors focus:outline-none ${likedProjects.includes(selectedProject.id) ? 'text-red-500' : theme === 'light' ? 'text-gray-600 hover:text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-                        aria-label={likedProjects.includes(selectedProject.id) ? "Dislike" : "Like"}
-                      >
-                        <motion.span
-                          animate={likedProjects.includes(selectedProject.id) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex"
-                        >
-                          <Heart fill={likedProjects.includes(selectedProject.id) ? "#ef4444" : "none"} className="h-5 w-5 mr-2" />
-                        </motion.span>
-                        <span>{selectedProject.likes.toLocaleString()}</span>
-                      </motion.button>
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className={`flex items-center ${theme === 'light' ? 'text-gray-600 hover:text-blue-600' : 'text-gray-400 hover:text-blue-500'} transition-colors`}
-                      >
-                        <Eye className="h-5 w-5 mr-2" />
-                        <span>{selectedProject.views.toLocaleString()}</span>
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        type="button"
-                        onClick={() => handleShare(selectedProject)}
-                        className={`flex items-center ${theme === 'light' ? 'text-gray-600 hover:text-blue-600' : 'text-gray-400 hover:text-blue-500'} transition-colors`}
-                      >
-                        <Share2 className="h-5 w-5 mr-2" />
-                        <span>Share</span>
-                      </motion.button>
-                    </motion.div>
-                  </motion.div>
-
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.3 }}
-                    className={`prose max-w-none ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}
-                  >
-                    <h3 className={`text-xl font-semibold ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'} mb-4`}>About this project</h3>
-                    <p>
-                      This is a project description for {selectedProject.title}. The author would typically provide details 
-                      about their creative process, techniques used, and the context of the project.
-                    </p>
-                    <p>
-                      Created by {selectedProject.author}, this project showcases innovative design concepts and creative 
-                      techniques. The work represents a unique perspective in the field of {selectedProject.category} design 
-                      and has gathered significant attention from the creative community.
-                    </p>
-                  </motion.div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {showSubscribe && (
-<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setShowSubscribe(false)}>
-            <div
-              className={`${theme === 'light' ? 'bg-white' : 'bg-gray-900'} rounded-2xl max-w-lg w-full p-8 shadow-xl relative`}
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                className={`absolute top-4 right-4 ${theme === 'light' ? 'text-gray-400 hover:text-gray-700' : 'text-gray-500 hover:text-gray-300'}`}
-                onClick={() => setShowSubscribe(false)}
-              >
-                <X className="h-6 w-6" />
-              </button>
-              <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'} mb-4 text-center`}>Stay Inspired</h2>
-              <p className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} mb-6 text-center`}>
-                Join our newsletter and get the latest creative trends, inspiration, and featured projects delivered to your inbox.
-              </p>
-              <div className="flex flex-col md:flex-row gap-3 justify-center">
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="email"
-                  placeholder="Your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`newsletter-input px-6 py-3 rounded-full ${theme === 'light' ? 'text-gray-800 placeholder:text-gray-400' : 'text-gray-200 placeholder:text-gray-500'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:w-72`}
-                />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium px-8 py-3 rounded-full hover:bg-opacity-90 transition-opacity shadow-lg"
-                  onClick={handleSubscribe}
-                >
-                  Subscribe
-                </motion.button>
+            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-8">
+              <div>
+                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Quick Links</h3>
+                <ul className="space-y-2">
+                  <li><a href="#about" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>About</a></li>
+                  <li><a href="#agenda" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Agenda</a></li>
+                  <li><a href="#speakers" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Speakers</a></li>
+                  <li><a href="#register" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Register</a></li>
+                  <li><a href="#location" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Location</a></li>
+                </ul>
               </div>
-    </div>
+
+              <div>
+                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Contact</h3>
+                <ul className="space-y-2">
+                  <li className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>info@techconf.event</li>
+                  <li className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"}`}>+1 (123) 456-7890</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-[#1E293B]"}`}>Legal</h3>
+                <ul className="space-y-2">
+                  <li><a href="#" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Privacy Policy</a></li>
+                  <li><a href="#" className={`${theme === "dark" ? "text-[#CCD6F6]" : "text-[#334155]"} hover:text-[#FF6B6B] transition-colors`}>Terms of Service</a></li>
+                </ul>
+              </div>
+            </div>
           </div>
-        )}
-      </motion.main>
-    </>
-  )
+
+          <div className={`border-t ${theme === "dark" ? "border-white/10" : "border-black/5"} mt-12 pt-8 ${theme === "dark" ? "text-[#8892B0]" : "text-[#64748B]"} text-center text-sm`}>
+            <p>© 2025 TechConf. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+        html, body, * {
+          font-family: 'Montserrat', system-ui, sans-serif !important;
+        }
+        .shadow-neumorph {
+          box-shadow: ${theme === "dark"
+          ? "0 4px 20px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3)"
+          : "0 4px 20px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1)"};
+        }
+        
+        .shadow-neumorph-lg {
+          box-shadow: ${theme === "dark"
+          ? "0 10px 30px rgba(0, 0, 0, 0.5), 0 15px 25px rgba(0, 0, 0, 0.4)"
+          : "0 10px 30px rgba(0, 0, 0, 0.15), 0 15px 25px rgba(0, 0, 0, 0.1)"};
+        }
+        
+        .shadow-neumorph-hover {
+          box-shadow: ${theme === "dark"
+          ? "0 10px 20px rgba(0, 0, 0, 0.6), 0 6px 15px rgba(0, 0, 0, 0.5)"
+          : "0 10px 20px rgba(0, 0, 0, 0.2), 0 6px 15px rgba(0, 0, 0, 0.15)"};
+        }
+        
+        .backdrop-blur-md {
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+        
+        .backdrop-blur-sm {
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+        
+        html {
+          scroll-behavior: smooth;
+        }
+      `}</style>
+    </div>
+  );
 }
