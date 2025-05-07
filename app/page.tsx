@@ -19,8 +19,6 @@ import {
     BookOpen,
     Brain,
     Hash,
-    Compass,
-    AlignJustify,
     Menu
 } from "lucide-react"
 
@@ -358,53 +356,45 @@ const HelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center dark:bg-black/70 bg-white backdrop-blur-sm p-4"
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-md mx-auto shadow-xl max-h-[80vh] overflow-y-auto"
+                className="bg-gray-100 dark:bg-gray-900 rounded-xl p-4 sm:p-6 w-full max-w-md mx-auto shadow-xl max-h-[80vh] overflow-y-auto"
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">How to Play</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <ArrowLeft className="h-5 w-5" />
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">How to Play</h2>
+                    <button onClick={onClose} className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-black" />
                     </button>
                 </div>
 
-                <div className="space-y-4 text-gray-700 dark:text-gray-300">
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Game Objective</h3>
-                        <p>Solve all clues and find all hidden words in the grid to complete the puzzle.</p>
+                <div className="space-y-4">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Game Objective</h3>
+                        <p className="text-gray-700 dark:text-gray-100">Solve all clues and find all hidden words in the grid to complete the puzzle.</p>
                     </div>
-
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Solving Clues</h3>
-                        <p>
-                            Read each clue and type your answer in the input field. If correct, the word will be highlighted in the
-                            grid.
-                        </p>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Solving Clues</h3>
+                        <p className="text-gray-700 dark:text-gray-100">Read each clue and type your answer in the input field. If correct, the word will be highlighted in the grid.</p>
                     </div>
-
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Finding Hidden Words</h3>
-                        <p>Hidden words are placed in the grid. Click the "Find" button to reveal them when you spot one.</p>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Finding Hidden Words</h3>
+                        <p className="text-gray-700 dark:text-gray-100">Hidden words are placed in the grid. Click the "Find" button to reveal them when you spot one.</p>
                     </div>
-
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Using Hints</h3>
-                        <p>If you're stuck, click the "Get a Hint" button for help with a random clue or hidden word.</p>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Using Hints</h3>
+                        <p className="text-gray-700 dark:text-gray-100">If you're stuck, click the "Get a Hint" button for help with a random clue or hidden word.</p>
                     </div>
-
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Difficulty Levels</h3>
-                        <p>Choose from Easy, Medium, or Hard difficulty levels. Higher difficulties have more words and clues.</p>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Difficulty Levels</h3>
+                        <p className="text-gray-700 dark:text-gray-100">Choose from Easy, Medium, or Hard difficulty levels. Higher difficulties have more words and clues.</p>
                     </div>
-
-                    <div>
-                        <h3 className="font-medium text-lg mb-2 text-violet-600 dark:text-violet-400">Daily Challenge</h3>
-                        <p>Play a special daily puzzle that changes every day for an extra challenge!</p>
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                        <h3 className="font-bold text-lg mb-2 text-violet-700 dark:text-violet-300">Daily Challenge</h3>
+                        <p className="text-gray-700 dark:text-gray-100">Play a special daily puzzle that changes every day for an extra challenge!</p>
                     </div>
                 </div>
 
@@ -438,12 +428,12 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, darkMode }
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className={`bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-auto shadow-xl`}
+                className={`rounded-xl p-6 w-full max-w-md mx-auto shadow-xl ${darkMode ? "bg-gray-900" : "bg-white"}`}
             >
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold flex items-center gap-2">
                         <Trophy className="h-6 w-6 text-amber-400" />
-                        Leaderboard
+                        <span className={darkMode ? "text-white" : ""}>Leaderboard</span>
                     </h2>
                     <button 
                         onClick={onClose}
@@ -461,11 +451,11 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, darkMode }
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: player.rank * 0.1 }}
                             className={`p-4 rounded-lg flex items-center justify-between ${
-                                darkMode ? "bg-gray-700" : "bg-gray-50"
+                                darkMode ? "bg-gray-800" : "bg-gray-50"
                             }`}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-base ${
                                     player.rank === 1 
                                         ? "bg-amber-400 text-gray-900" 
                                         : player.rank === 2 
@@ -474,16 +464,20 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose, darkMode }
                                 }`}>
                                     {player.rank}
                                 </div>
-                                <span className="font-medium">{player.name}</span>
+                                <span className={`font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{player.name}</span>
                             </div>
-                            <div className="text-lg font-bold text-violet-500 dark:text-violet-400">
+                            <div className={`text-lg font-bold ${
+                                player.rank === 1
+                                    ? darkMode ? "text-amber-300" : "text-amber-500"
+                                    : darkMode ? "text-violet-300" : "text-violet-500"
+                            }`}>
                                 {player.score}
                             </div>
                         </motion.div>
                     ))}
                 </div>
 
-                <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                <div className={`mt-6 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     Play more to climb the ranks!
                 </div>
             </motion.div>
@@ -1283,8 +1277,8 @@ function WordcraftGame() {
                                 <div className="absolute inset-0 bg-gradient-to-r from-violet-500/30 to-teal-400/30"></div>
                             </div>
                             
-                            <div className="relative p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center">
-                                <div className="mb-4 sm:mb-0">
+                            <div className="relative p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center sm:items-start">
+                                <div className="mb-4 sm:mb-0 flex flex-col items-center sm:items-start">
                                     <h2 className="text-xl sm:text-2xl font-bold mb-1">
                                         {gameMode === "daily" ? (
                                             <span className="flex items-center">
@@ -1297,45 +1291,38 @@ function WordcraftGame() {
                                     <p className="text-sm opacity-80">
                                         {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} mode • Find words and solve clues
                                     </p>
-                                    
-                                    <div className="flex mt-2 space-x-4">
-                                        <div className="bg-violet-500/20 dark:bg-violet-500/30 rounded-lg px-3 py-1 text-center">
-                                            <div className="text-sm font-medium text-violet-700 dark:text-violet-300">Clues</div>
-                                            <div className="font-bold">{solvedClues.length}/{clues.length}</div>
+                                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 mt-4 sm:mt-2">
+                                        <div className="bg-violet-500 rounded-lg px-4 py-2 text-center">
+                                            <div className="text-sm font-medium text-white">Clues</div>
+                                            <div className="font-bold text-white">{solvedClues.length}/{clues.length}</div>
                                         </div>
-                                        
-                                        <div className="bg-teal-500/20 dark:bg-teal-500/30 rounded-lg px-3 py-1 text-center">
-                                            <div className="text-sm font-medium text-teal-700 dark:text-teal-300">Words</div>
-                                            <div className="font-bold">{foundWords.length}/{hiddenWords.length}</div>
+                                        <div className="bg-teal-500 rounded-lg px-4 py-2 text-center">
+                                            <div className="text-sm font-medium text-white">Words</div>
+                                            <div className="font-bold text-white">{foundWords.length}/{hiddenWords.length}</div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 sm:mt-0 items-center sm:items-end justify-center sm:justify-end">
                                     <button
                                         onClick={() => {
                                             setGameStarted(false)
                                             setShowWelcome(true)
                                         }}
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium ${darkMode ? "bg-violet-600 hover:bg-violet-700" : "bg-violet-500 hover:bg-violet-600"
-                                            } text-white`}
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium w-full sm:w-auto ${darkMode ? "bg-violet-600 hover:bg-violet-700" : "bg-violet-500 hover:bg-violet-600"} text-white`}
                                     >
                                         New Game
                                     </button>
-
                                     <button
                                         onClick={handleDifficultyChange}
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${darkMode ? "bg-teal-600 hover:bg-teal-700" : "bg-teal-500 hover:bg-teal-600"
-                                            } text-white`}
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium w-full sm:w-auto transition-colors ${darkMode ? "bg-teal-600 hover:bg-teal-700" : "bg-teal-500 hover:bg-teal-600"} text-white`}
                                     >
                                         Change Difficulty
                                     </button>
-
                                     <motion.button
                                         whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={toggleDarkMode}
-                                        className={`rounded-full p-2 ${darkMode ? "bg-amber-400 text-gray-900" : "bg-violet-500 text-white"}`}
+                                        className={`rounded-full p-2 w-full sm:w-auto flex justify-center ${darkMode ? "bg-amber-400 text-gray-900" : "bg-violet-500 text-white"}`}
                                         aria-label="Toggle dark mode"
                                     >
                                         {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
