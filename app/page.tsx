@@ -1,2238 +1,1025 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Search,
-  Plus,
-  Star,
-  Copy,
-  Trash2,
-  Edit,
-  Clock,
-  X,
-  Check,
-  ChevronDown,
-  Clipboard,
-  Info,
-  SlidersHorizontal,
-  Eye,
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import type React from "react"
 
-// Define types
-interface Snippet {
-  id: string;
-  title: string;
-  content: string;
-  description?: string;
-  timestamp: number;
-  categoryId: string | null;
-  isFavorite: boolean;
-}
+import { useEffect, useRef, useState } from "react"
+import { Montserrat } from 'next/font/google'
 
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
+// Initialize the Montserrat font
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-montserrat',
+})
 
-// Utility functions
-const generateId = () => Math.random().toString(36).substring(2, 9);
-const formatDate = (timestamp: number) => {
-  const date = new Date(timestamp);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  }).format(date);
-};
+export default function TreeBusiness() {
+  const [activeSection, setActiveSection] = useState("home")
+  const [cartItems, setCartItems] = useState<
+    Array<{ id: number; name: string; price: string; quantity: number; image: string }>
+  >([])
+  const [showCart, setShowCart] = useState(false)
+  const [showNotification, setShowNotification] = useState(false)
+  const [notificationMessage, setNotificationMessage] = useState("")
+  const [quantityToAdd, setQuantityToAdd] = useState<{ [key: number]: number }>({})
+  const [scrolled, setScrolled] = useState(false)
+  const [addedButtons, setAddedButtons] = useState<{ [key: number]: boolean }>({})
 
-// Sample data
-const initialCategories: Category[] = [
-  { id: "cat1", name: "JavaScript", color: "bg-yellow-500" },
-  { id: "cat2", name: "React", color: "bg-blue-500" },
-  { id: "cat3", name: "CSS", color: "bg-pink-500" },
-  { id: "cat4", name: "Node.js", color: "bg-green-500" },
-];
+  const sections = useRef<{ [key: string]: HTMLElement | null }>({
+    home: null,
+    about: null,
+    products: null,
+    reviews: null,
+    contact: null,
+  })
 
-const initialSnippets: Snippet[] = [
-  {
-    id: "snip1",
-    title: "Managing State in React with useState Hook",
-    content: `import { useState } from 'react';
-
-function Example() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div>
-      <p>You clicked {count} times</p>
-      <button onClick={() => setCount(count + 1)}>
-        Click me
-      </button>
-    </div>
-  );
-}`,
-    description:
-      "A full example demonstrating how to manage state using React's useState hook, including a button to increment a counter.",
-    timestamp: Date.now() - 3600000 * 24 * 2,
-    categoryId: "cat2",
-    isFavorite: true,
-  },
-  {
-    id: "snip2",
-    title: "Centering Elements Using CSS Flexbox",
-    content: `.container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.child {
-  width: 200px;
-  height: 100px;
-  background-color: #4CAF50;
-  text-align: center;
-  line-height: 100px;
-  color: white;
-  font-size: 20px;
-}`,
-    description:
-      "CSS snippet to perfectly center an element horizontally and vertically using Flexbox, including full container and child element setup.",
-    timestamp: Date.now() - 3600000 * 12,
-    categoryId: "cat3",
-    isFavorite: false,
-  },
-  {
-    id: "snip5",
-    title: "Fetching Data from an API with async/await in JavaScript",
-    content: `async function fetchData(url) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
-      console.log(data);
-    } catch (error) {
-      console.error('Fetch error:', error);
-    }
+  // Add a helper function to set section refs
+  const setSectionRef = (sectionName: string) => (el: HTMLElement | null) => {
+    sections.current[sectionName] = el
   }
-  
-  fetchData('https://api.example.com/data');`,
-    description:
-      "Demonstrates how to perform an API request using async/await syntax in JavaScript, including basic error handling.",
-    timestamp: Date.now() - 3600000 * 5,
-    categoryId: "cat1",
-    isFavorite: true,
-  },
-  {
-    id: "snip7",
-    title: "Creating a Simple Express.js Server",
-    content: `const express = require('express');
-  const app = express();
-  const PORT = 3000;
-  
-  app.get('/', (req, res) => {
-    res.send('Hello World!');
-  });
-  
-  app.listen(PORT, () => {
-    console.log(\`Server is running on http://localhost:\${PORT}\`);
-  });`,
-    description:
-      "A basic example of setting up an Express.js server in Node.js to handle HTTP GET requests on the root URL.",
-    timestamp: Date.now() - 3600000 * 36,
-    categoryId: "cat4",
-    isFavorite: true,
-  },
-  {
-    id: "snip8",
-    title: "Debouncing Input Events in JavaScript",
-    content: `function debounce(func, delay) {
-    let timeoutId;
-    return function (...args) {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        func.apply(this, args);
-      }, delay);
-    };
-  }
-  
-  const handleInput = debounce((event) => {
-    console.log('Input value:', event.target.value);
-  }, 300);
-  
-  document.getElementById('searchInput').addEventListener('input', handleInput);`,
-    description:
-      "Shows how to debounce input event handling in JavaScript to optimize performance and avoid excessive function calls.",
-    timestamp: Date.now() - 3600000 * 8,
-    categoryId: "cat1",
-    isFavorite: false,
-  },
-];
-
-const ClipboardManager = () => {
-  // States
-  const [snippets, setSnippets] = useState<Snippet[]>(() => {
-    const saved = window.localStorage.getItem("snippets");
-    return saved ? JSON.parse(saved) : initialSnippets;
-  });
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem("categories");
-    return saved ? JSON.parse(saved) : initialCategories;
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentFilter, setCurrentFilter] = useState<string | null>(null);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryColor, setNewCategoryColor] = useState("bg-blue-500");
-  const [activeSnippet, setActiveSnippet] = useState<Snippet | null>(null);
-  const [showInlineCategoryForm, setShowInlineCategoryForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit"); // Add this with other state variables
-  const [editActiveTab, setEditActiveTab] = useState<"edit" | "preview">(
-    "edit"
-  );
-  const [newSnippet, setNewSnippet] = useState<Partial<Snippet>>({
-    title: "",
-    content: "",
-    description: "",
-    categoryId: null,
-    isFavorite: false,
-  });
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return false;
-  });
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Refs
-  const contentRef = useRef<HTMLTextAreaElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem("snippets", JSON.stringify(snippets));
-  }, [snippets]);
 
   useEffect(() => {
-    localStorage.setItem("categories", JSON.stringify(categories));
-  }, [categories]);
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY
 
-  useEffect(() => {
-    localStorage.setItem("darkMode", JSON.stringify(darkMode));
-  }, [darkMode]);
-
-  // Reset copy indicator after 2 seconds
-  useEffect(() => {
-    if (copiedId) {
-      const timer = setTimeout(() => {
-        setCopiedId(null);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [copiedId]);
-
-  // Clear notification after 3 seconds
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => {
-        setNotification(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + F for search
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key === "f" &&
-        !showAddForm &&
-        !showEditForm
-      ) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
+      if (scrollPosition > 50) {
+        setScrolled(true)
+      } else {
+        setScrolled(false)
       }
 
-      // Esc to close modals
-      if (e.key === "Escape") {
-        if (showAddForm) setShowAddForm(false);
-        if (showEditForm) setShowEditForm(false);
-        if (showAddCategory) setShowAddCategory(false);
-      }
+      Object.entries(sections.current).forEach(([key, section]) => {
+        if (!section) return
 
-      // Ctrl/Cmd + N for new snippet
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
-        e.preventDefault();
-        if (!showAddForm && !showEditForm) {
-          setShowAddForm(true);
+        const sectionTop = section.offsetTop
+        const sectionBottom = sectionTop + section.offsetHeight
+
+        if (scrollPosition + 100 >= sectionTop && scrollPosition + 100 < sectionBottom) {
+          setActiveSection(key)
         }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showAddForm, showEditForm, showAddCategory]);
-
-  // Prevent background scrolling when a modal is open
-  useEffect(() => {
-    const isModalOpen = showAddForm || showEditForm || showViewModal || showAddCategory;
-    
-    if (isModalOpen) {
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
-    }
-    
-    return () => {
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, [showAddForm, showEditForm, showViewModal, showAddCategory]);
-
-  // Filter snippets based on search term and selected filters
-  const filteredSnippets = snippets
-    .filter((snippet) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        snippet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        snippet.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (snippet.description &&
-          snippet.description
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
-        (snippet.categoryId &&
-          categories
-            .find((c) => c.id === snippet.categoryId)
-            ?.name.toLowerCase()
-            .includes(searchTerm.toLowerCase()));
-
-      const matchesCategory =
-        currentFilter === null || snippet.categoryId === currentFilter;
-      const matchesFavorites = !showFavoritesOnly || snippet.isFavorite;
-
-      return matchesSearch && matchesCategory && matchesFavorites;
-    })
-    .sort((a, b) => {
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      return b.timestamp - a.timestamp;
-    });
-
-  // Handlers
-  const handleAddSnippet = () => {
-    if (!newSnippet.title || !newSnippet.content) {
-      setNotification({
-        message: "Title and content are required",
-        type: "error",
-      });
-      return;
-    }
-
-    const snippet: Snippet = {
-      id: generateId(),
-      title: newSnippet.title,
-      content: newSnippet.content,
-      description: newSnippet.description || "",
-      timestamp: Date.now(),
-      categoryId: newSnippet.categoryId || null,
-      isFavorite: newSnippet.isFavorite || false,
-    };
-
-    setSnippets([snippet, ...snippets]);
-    setNewSnippet({
-      title: "",
-      content: "",
-      description: "",
-      categoryId: null,
-      isFavorite: false,
-    });
-    setShowAddForm(false);
-    setNotification({ message: "Snippet added successfully", type: "success" });
-  };
-
-  // Add this function with other handlers
-  const handleInlineAddCategory = () => {
-    if (!newCategoryName.trim()) {
-      setNotification({ message: "Category name is required", type: "error" });
-      return;
-    }
-
-    const newCategory = {
-      id: generateId(),
-      name: newCategoryName.trim(),
-      color: newCategoryColor,
-    };
-
-    // Add the new category and select it for the snippet
-    setCategories([...categories, newCategory]);
-    setNewSnippet({
-      ...newSnippet,
-      categoryId: newCategory.id,
-    });
-
-    // Clean up
-    setNewCategoryName("");
-    setNewCategoryColor("bg-blue-500");
-    setShowInlineCategoryForm(false);
-    setNotification({
-      message: "Category added successfully",
-      type: "success",
-    });
-  };
-
-  const handleEditSnippet = () => {
-    if (!activeSnippet || !activeSnippet.title || !activeSnippet.content) {
-      setNotification({
-        message: "Title and content are required",
-        type: "error",
-      });
-      return;
-    }
-
-    setSnippets(
-      snippets.map((s) => (s.id === activeSnippet.id ? activeSnippet : s))
-    );
-    setShowEditForm(false);
-    setActiveSnippet(null);
-    setNotification({
-      message: "Snippet updated successfully",
-      type: "success",
-    });
-  };
-
-  const handleDeleteSnippet = (id: string) => {
-    setSnippets(snippets.filter((s) => s.id !== id));
-    setNotification({
-      message: "Snippet deleted successfully",
-      type: "success",
-    });
-  };
-
-  const handleFavoriteToggle = (id: string) => {
-    setSnippets(
-      snippets.map((s) =>
-        s.id === id ? { ...s, isFavorite: !s.isFavorite } : s
-      )
-    );
-  };
-
-  const handleCopyToClipboard = (content: string, id: string) => {
-    navigator.clipboard
-      .writeText(content)
-      .then(() => {
-        setCopiedId(id);
-        setNotification({ message: "Copied to clipboard", type: "success" });
       })
-      .catch(() => {
-        setNotification({
-          message: "Failed to copy to clipboard",
-          type: "error",
-        });
-      });
-  };
-
-  const handleAddCategory = () => {
-    if (!newCategoryName.trim()) {
-      setNotification({ message: "Category name is required", type: "error" });
-      return;
     }
 
-    const newCategory: Category = {
-      id: generateId(),
-      name: newCategoryName.trim(),
-      color: newCategoryColor,
-    };
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
-    setCategories([...categories, newCategory]);
-    setNewCategoryName("");
-    setNewCategoryColor("bg-blue-500");
-    setShowAddCategory(false);
-    setNotification({
-      message: "Category added successfully",
-      type: "success",
-    });
-  };
-
-  const handleDeleteCategory = (id: string) => {
-    // Update snippets that used this category
-    setSnippets(
-      snippets.map((s) =>
-        s.categoryId === id ? { ...s, categoryId: null } : s
-      )
-    );
-
-    // Remove the category
-    setCategories(categories.filter((c) => c.id !== id));
-
-    // Reset filter if it was set to this category
-    if (currentFilter === id) {
-      setCurrentFilter(null);
+  const scrollToSection = (sectionId: string) => {
+    const section = sections.current[sectionId]
+    if (section) {
+      window.scrollTo({
+        top: section.offsetTop - 80,
+        behavior: "smooth",
+      })
     }
-  };
-
-  const colors = [
-    "bg-red-500",
-    "bg-orange-500",
-    "bg-amber-500",
-    "bg-yellow-500",
-    "bg-lime-500",
-    "bg-green-500",
-    "bg-emerald-500",
-    "bg-teal-500",
-    "bg-cyan-500",
-    "bg-sky-500",
-    "bg-blue-500",
-    "bg-indigo-500",
-    "bg-violet-500",
-    "bg-purple-500",
-    "bg-fuchsia-500",
-    "bg-pink-500",
-    "bg-rose-500",
-  ];
-
-  // Determine theme classes
-  const themeClasses = darkMode
-    ? "bg-gray-900 text-gray-100"
-    : "bg-gray-50 text-gray-900";
-
-  const cardBgClasses = darkMode
-    ? "bg-gray-800 border-gray-700 hover:bg-gray-750"
-    : "bg-white border-gray-200 hover:bg-gray-50";
-
-  const inputBgClasses = darkMode
-    ? "bg-gray-800 border-gray-700 text-gray-200 focus:border-indigo-500"
-    : "bg-white border-gray-300 text-gray-700 focus:border-indigo-500";
-
-  const buttonClasses =
-    "px-4 py-2 rounded-md font-medium transition-colors duration-200 cursor-pointer";
-  const primaryButtonClasses = `${buttonClasses} bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50`;
-  const secondaryButtonClasses = darkMode
-    ? `${buttonClasses} bg-gray-700 text-gray-200 hover:bg-gray-600`
-    : `${buttonClasses} bg-gray-300 text-gray-800 hover:bg-gray-400`;
-
-  const dangerButtonClasses = `${buttonClasses} bg-red-600 text-white hover:bg-red-700`;
-
-  const modalBgClasses = darkMode
-    ? "bg-gray-800 border-gray-700"
-    : "bg-white border-gray-200";
-
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return null;
   }
+
+  const initQuantity = (id: number) => {
+    if (!quantityToAdd[id]) {
+      setQuantityToAdd((prev) => ({ ...prev, [id]: 1 }))
+    }
+  }
+
+  const incrementQuantity = (id: number) => {
+    setQuantityToAdd((prev) => ({ ...prev, [id]: (prev[id] || 1) + 1 }))
+  }
+
+  const decrementQuantity = (id: number) => {
+    if ((quantityToAdd[id] || 1) > 1) {
+      setQuantityToAdd((prev) => ({ ...prev, [id]: prev[id] - 1 }))
+    }
+  }
+
+  const addToCart = (id: number, name: string, price: string, image: string) => {
+    const quantity = quantityToAdd[id] || 1
+
+    setCartItems((prevItems) => {
+      const existingItem = prevItems.find((item) => item.id === id)
+
+      if (existingItem) {
+        return prevItems.map((item) => (item.id === id ? { ...item, quantity: item.quantity + quantity } : item))
+      } else {
+        return [...prevItems, { id, name, price, quantity, image }]
+      }
+    })
+
+    // Set button to "Added" state
+    setAddedButtons(prev => ({ ...prev, [id]: true }))
+    
+    // Reset button after 2 seconds
+    setTimeout(() => {
+      setAddedButtons(prev => ({ ...prev, [id]: false }))
+    }, 2000)
+
+    setQuantityToAdd((prev) => ({ ...prev, [id]: 1 }))
+    showToast(`${quantity} ${name}${quantity > 1 ? "s" : ""} added to cart!`)
+  }
+
+  const removeFromCart = (id: number) => {
+    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id))
+  }
+
+  const getTotalItems = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0)
+  }
+
+  const getTotalPrice = () => {
+    return cartItems
+      .reduce((total, item) => {
+        const price = Number.parseFloat(item.price.replace("$", ""))
+        return total + price * item.quantity
+      }, 0)
+      .toFixed(2)
+  }
+
+  const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      showToast("Your cart is empty! Add some trees before checking out.")
+      return
+    }
+
+    showToast("Thank you for your purchase! Your order has been placed.")
+    setCartItems([])
+    setShowCart(false)
+  }
+
+  const showToast = (message: string) => {
+    setNotificationMessage(message)
+    setShowNotification(true)
+    setTimeout(() => setShowNotification(false), 3000)
+  }
+
+  const handleSubmitMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    const form = e.target as HTMLFormElement
+    const nameInput = form.querySelector('input[placeholder="Your name"]') as HTMLInputElement
+    const emailInput = form.querySelector('input[placeholder="Your email"]') as HTMLInputElement
+    const subjectInput = form.querySelector('input[placeholder="Subject"]') as HTMLInputElement
+    const messageInput = form.querySelector("textarea") as HTMLTextAreaElement
+
+    if (!nameInput.value || !emailInput.value || !subjectInput.value || !messageInput.value) {
+      showToast("Please fill in all fields to send your message")
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(emailInput.value)) {
+      showToast("Please enter a valid email address")
+      return
+    }
+
+    showToast("Message sent successfully!")
+    form.reset()
+  }
+
   return (
-    <div
-      className={`min-h-screen p-4 md:p-6 transition-colors duration-300 ${themeClasses}`}
-      style={{ fontFamily: "var(--font-roboto), sans-serif" }}
-    >
-      {/* Header */}
-      <div className="mx-auto mb-6 max-w-7xl">
-        <div className="flex flex-col items-start justify-between gap-4 mb-6 sm:flex-row sm:items-center">
-          <a href="#">
-            <div className="flex items-center gap-2">
-              <Clipboard className="w-8 h-8 text-indigo-600" />
-              <h1 
-                className="text-2xl font-bold"
-                style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
-              >
-                DevClipboard
-              </h1>
-            </div>
-          </a>
-
-          <div className="flex items-center w-full gap-3 sm:w-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative flex-1 sm:w-64"
-            >
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className="w-4 h-4 text-gray-500" />
-              </div>
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search snippets..."
-                className={`pl-10 pr-4 py-2 w-full rounded-md border ${inputBgClasses} focus:outline-none`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <kbd
-                  className={`hidden sm:flex px-2 py-0.5 text-xs rounded ${
-                    darkMode ? "bg-gray-700" : "bg-gray-200"
-                  }`}
-                >
-                  Ctrl+F
-                </kbd>
-              </div>
-            </motion.div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`${buttonClasses} py-3 ${
-                darkMode
-                  ? "bg-gray-800 text-gray-200"
-                  : "bg-gray-300 text-gray-800"
-              } rounded-md p-2`}
-              onClick={() => setDarkMode(!darkMode)}
-              style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-              aria-label={
-                darkMode ? "Switch to light mode" : "Switch to dark mode"
-              }
-            >
-              {darkMode ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </motion.button>
-
-            <button
-              className="p-3 bg-gray-200 rounded sm:hidden dark:bg-gray-800 cursor-pointer"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <SlidersHorizontal className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile filters */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="mb-4 overflow-hidden sm:hidden"
-            >
-              <div className="flex flex-col gap-3 p-3 border border-gray-200 rounded-md dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">Filters</p>
-                  <button
-                    className="cursor-pointer"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Show Favorites Only</span>
-                  <button
-                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 cursor-pointer ${
-                      showFavoritesOnly
-                        ? "bg-indigo-600"
-                        : "bg-gray-300 dark:bg-gray-700"
-                    }`}
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                  >
-                    <motion.div
-                      initial={false}
-                      animate={{ x: showFavoritesOnly ? 24 : 0 }}
-                      className="w-4 h-4 bg-white rounded-full shadow-md"
-                    />
-                  </button>
-                </div>
-                <div>
-                  <p className="mb-2">Categories</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className={`px-3 py-1 rounded-md text-sm cursor-pointer ${
-                        currentFilter === null
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-300 dark:bg-gray-700"
-                      }`}
-                      onClick={() => setCurrentFilter(null)}
-                      style={{ color: currentFilter === null ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
-                    >
-                      All
-                    </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category.id}
-                        className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 cursor-pointer ${
-                          currentFilter === category.id
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                        onClick={() => setCurrentFilter(category.id)}
-                        style={{ color: currentFilter === category.id ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full ${category.color}`}
-                        ></span>
-                        {category.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="items-center hidden mb-6 space-x-4 sm:flex">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">Categories:</span>
-            <button
-              className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 cursor-pointer ${
-                currentFilter === null
-                  ? "bg-indigo-600 text-white"
-                  : darkMode
-                  ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}
-              onClick={() => setCurrentFilter(null)}
-              style={{ color: currentFilter === null ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
-            >
-              All
-            </button>
-
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 flex items-center gap-1 cursor-pointer ${
-                  currentFilter === category.id
-                    ? "bg-indigo-600 text-white"
-                    : darkMode
-                    ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`}
-                onClick={() => setCurrentFilter(category.id)}
-                style={{ color: currentFilter === category.id ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
-              >
-                <div className={`w-2 h-2 rounded-full ${category.color}`}></div>
-                {category.name}
-              </button>
-            ))}
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`p-1 rounded-md cursor-pointer ${
-                darkMode
-                  ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}
-              onClick={() => setShowAddCategory(true)}
-              title="Add Category"
-              style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-            >
-              <Plus className="w-4 h-4" />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center">
-            <button
-              className="flex items-center space-x-2 text-sm cursor-pointer"
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            >
-              <div
-                className={`w-10 h-5 rounded-full transition-colors duration-200 ${
-                  showFavoritesOnly
-                    ? "bg-indigo-600"
-                    : darkMode
-                    ? "bg-gray-700"
-                    : "bg-gray-300"
-                } relative`}
-              >
-                <motion.div
-                  className="absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow-sm"
-                  animate={{ x: showFavoritesOnly ? 20 : 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              </div>
-              <span>Show Favorites Only</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Hero Section */}
-      <div className="mx-auto max-w-7xl">
-        <div className="relative overflow-hidden mb-8">
-          <div
-            className={`py-8 px-4 sm:px-6 lg:px-8 rounded-xl ${
-              darkMode ? "bg-gray-800" : "bg-indigo-100"
-            }`}
-          >
-            <div className="relative z-10">
-              <div className="flex flex-col md:flex-row md:items-center gap-6 w-full">
-                <div className="flex-1 w-full max-w-full">
-                  <div className="flex items-center mb-4">
-                    <Clipboard className="w-10 h-10 text-indigo-600 mr-3" />
-                    <h1 
-                      className="text-3xl font-bold"
-                      style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
-                    >
-                      DevClipboard
-                    </h1>
-                  </div>
-                  <p
-                    style={{ 
-                      color: darkMode ? '#d1d5db' : '#111827',
-                      fontSize: '1.125rem',
-                      marginBottom: '1.5rem'
-                    }}
-                  >
-                    Your personal library for storing, organizing, and
-                    retrieving code snippets. Save time by reusing your most
-                    valuable code.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`${primaryButtonClasses} flex items-center gap-2 px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800`}
-                      onClick={() => setShowAddForm(true)}
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Add New Snippet</span>
-                    </motion.button>
-                    <div className="hidden md:flex items-center">
-                      <span
-                        className={`mr-2 text-sm ${
-                          darkMode ? "text-gray-400" : "text-indigo-800"
-                        }`}
-                      >
-                        <span>Press</span>{" "}
-                        <kbd
-                          className={`px-2 py-1 text-xs rounded ${
-                            darkMode ? "bg-gray-700" : "bg-indigo-200 text-indigo-900"
-                          }`}
-                        >
-                          Ctrl+N
-                        </kbd>{" "}
-                        <span>
-                          for new snippet
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Abstract decorative background elements */}
-            <div className="absolute top-0 right-0 -mt-20 -mr-20 hidden md:block">
-              <div
-                className={`w-64 h-64 rounded-full ${
-                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/70"
-                }`}
-              ></div>
-            </div>
-            <div className="absolute bottom-0 left-0 -mb-16 -ml-16 hidden md:block">
-              <div
-                className={`w-40 h-40 rounded-full ${
-                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/70"
-                }`}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Main content */}
-      <div className="mx-auto max-w-7xl">
-        {filteredSnippets.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className={`rounded-lg p-10 text-center border ${
-              darkMode ? "border-gray-700" : "border-gray-200"
-            }`}
-          >
-            <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
-              <Clipboard className="w-full h-full" />
-            </div>
-            <h3 className="mb-2 text-lg font-medium">No snippets found</h3>
-            <p
-              className={`${darkMode ? "text-gray-400" : "text-gray-500"} mb-4`}
-            >
-              {searchTerm || currentFilter || showFavoritesOnly
-                ? "No snippets match your current filters"
-                : "Add your first snippet to get started"}
-            </p>
-            <button
-              className={`${primaryButtonClasses}`}
-              onClick={() => {
-                if (searchTerm || currentFilter || showFavoritesOnly) {
-                  setSearchTerm("");
-                  setCurrentFilter(null);
-                  setShowFavoritesOnly(false);
-                } else {
-                  setShowAddForm(true);
-                }
-              }}
-            >
-              {searchTerm || currentFilter || showFavoritesOnly
-                ? "Clear Filters"
-                : "Add Snippet"}
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-          >
-            {filteredSnippets.map((snippet, index) => (
-              <motion.div
-                key={snippet.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`rounded-lg border overflow-hidden shadow-sm hover:shadow-md transition-shadow ${cardBgClasses} flex flex-col h-full`}
-              >
-                <div className="p-4 flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3
-                      onClick={() => {
-                        setActiveSnippet(snippet);
-                        setShowViewModal(true);
-                      }}
-                      className="text-lg font-medium cursor-pointer line-clamp-1"
-                    >
-                      {snippet.title}
-                    </h3>
-                    <div className="flex space-x-1">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleFavoriteToggle(snippet.id)}
-                        className={`p-1 rounded cursor-pointer ${
-                          snippet.isFavorite
-                            ? "text-yellow-500"
-                            : "text-gray-400 hover:text-yellow-500"
-                        }`}
-                        title={
-                          snippet.isFavorite
-                            ? "Remove from favorites"
-                            : "Add to favorites"
-                        }
-                      >
-                        <Star
-                          className="w-5 h-5"
-                          fill={snippet.isFavorite ? "currentColor" : "none"}
-                        />
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center mb-3 space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                    {snippet.categoryId && (
-                      <div className="flex items-center space-x-1">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            categories.find((c) => c.id === snippet.categoryId)
-                              ?.color || "bg-gray-400"
-                          }`}
-                        ></div>
-                        <span>
-                          {categories.find((c) => c.id === snippet.categoryId)
-                            ?.name || "Uncategorized"}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatDate(snippet.timestamp)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex-grow mb-3">
-                    <pre
-                      onClick={() => {
-                        setActiveSnippet(snippet);
-                        setShowViewModal(true);
-                      }}
-                      className={`p-3 rounded overflow-x-auto text-sm cursor-pointer ${
-                        darkMode ? "bg-gray-900" : "bg-gray-100"
-                      } h-36 flex flex-col`}
-                    >
-                      <code className="break-all whitespace-pre-wrap overflow-hidden">
-                        {snippet.content.split("\n").slice(0, 5).join("\n")}
-                        {snippet.content.split("\n").length > 5 && "..."}
-                      </code>
-                    </pre>
-
-                    <div className="h-12 mt-3">
-                      {snippet.description && (
-                        <p 
-                          className="text-sm line-clamp-2"
-                          style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                        >
-                          {snippet.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between mt-auto pt-3">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`flex items-center space-x-1 px-3 py-1 rounded text-sm cursor-pointer ${
-                        copiedId === snippet.id
-                          ? "bg-green-600 text-white"
-                          : darkMode
-                          ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                          : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                      }`}
-                      onClick={() =>
-                        handleCopyToClipboard(snippet.content, snippet.id)
-                      }
-                      style={copiedId === snippet.id ? {} : { color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      {copiedId === snippet.id ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </motion.button>
-
-                    <div className="flex space-x-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-1 text-gray-500 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
-                        onClick={() => {
-                          setActiveSnippet(snippet);
-                          setShowEditForm(true);
-                        }}
-                        title="Edit"
-                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-1 text-gray-500 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
-                        onClick={() => {
-                          setActiveSnippet(snippet);
-                          setShowViewModal(true);
-                        }}
-                        title="View"
-                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-1 text-gray-500 rounded hover:bg-gray-200 hover:text-red-500 dark:hover:bg-gray-700 cursor-pointer"
-                        onClick={() => handleDeleteSnippet(snippet.id)}
-                        title="Delete"
-                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </div>
-
-      {/* Add Snippet Modal */}
-      <AnimatePresence>
-        {showAddForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50 bg-opacity-50 md:p-4"
-            onClick={() => setShowAddForm(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl ${modalBgClasses} p-3 md:p-6`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-3 md:mb-4">
-                <h2 className="text-xl font-bold">Add New Snippet</h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer p-1"
-                  onClick={() => setShowAddForm(false)}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex mb-3 md:mb-4 border-b dark:border-gray-700">
-                <button
-                  className={`px-3 md:px-4 py-2 font-medium cursor-pointer ${
-                    activeTab === "edit"
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                  onClick={() => setActiveTab("edit")}
-                >
-                  Edit
-                </button>
-                <button
-                  className={`px-3 md:px-4 py-2 font-medium cursor-pointer ${
-                    activeTab === "preview"
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                  onClick={() => setActiveTab("preview")}
-                >
-                  Preview
-                </button>
-              </div>
-
-              {activeTab === "edit" ? (
-                <div className="space-y-3 md:space-y-4">
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Title *
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                      value={newSnippet.title}
-                      onChange={(e) =>
-                        setNewSnippet({ ...newSnippet, title: e.target.value })
-                      }
-                      placeholder="E.g., React useEffect Hook"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Content *
-                    </label>
-                    <textarea
-                      ref={contentRef}
-                      className={`w-full p-2 rounded-md border font-mono ${inputBgClasses}`}
-                      rows={5}
-                      value={newSnippet.content}
-                      onChange={(e) =>
-                        setNewSnippet({
-                          ...newSnippet,
-                          content: e.target.value,
-                        })
-                      }
-                      placeholder="Paste your code or text here"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Description (Optional)
-                    </label>
-                    <textarea
-                      className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                      rows={2}
-                      value={newSnippet.description}
-                      onChange={(e) =>
-                        setNewSnippet({
-                          ...newSnippet,
-                          description: e.target.value,
-                        })
-                      }
-                      placeholder="Add a brief description or note"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="w-full md:w-auto">
-                      <label className="block mb-1 text-sm font-medium">
-                        Category
-                      </label>
-                      <div className="relative">
-                        <select
-                          className={`w-full p-2 pr-8 rounded-md border appearance-none ${inputBgClasses}`}
-                          value={newSnippet.categoryId || ""}
-                          onChange={(e) => {
-                            if (e.target.value === "new_category") {
-                              setShowInlineCategoryForm(true);
-                            } else {
-                              setNewSnippet({
-                                ...newSnippet,
-                                categoryId: e.target.value || null,
-                              });
-                            }
-                          }}
-                        >
-                          <option value="">Uncategorized</option>
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                          <option value="new_category">
-                            + Add New Category
-                          </option>
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                          <ChevronDown className="w-4 h-4 text-gray-500" />
-                        </div>
-                      </div>
-
-                      {/* Inline Category Form */}
-                      {showInlineCategoryForm && (
-                        <div className="p-3 mt-2 border rounded-md dark:border-gray-700">
-                          <div className="mb-2">
-                            <label className="block mb-1 text-sm font-medium">
-                              New Category Name
-                            </label>
-                            <input
-                              type="text"
-                              className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                              value={newCategoryName}
-                              onChange={(e) =>
-                                setNewCategoryName(e.target.value)
-                              }
-                              placeholder="E.g., TypeScript"
-                            />
-                          </div>
-                          <div className="mb-2">
-                            <label className="block mb-1 text-sm font-medium">
-                              Color
-                            </label>
-                            <div className="flex flex-wrap gap-1">
-                              {colors.slice(0, 8).map((color) => (
-                                <button
-                                  key={color}
-                                  className={`w-5 h-5 rounded-full cursor-pointer ${color} ${
-                                    newCategoryColor === color
-                                      ? "ring-2 ring-offset-1 ring-indigo-600"
-                                      : ""
-                                  }`}
-                                  onClick={() => setNewCategoryColor(color)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className="px-2 py-1 text-sm bg-gray-200 rounded dark:bg-gray-700 cursor-pointer"
-                              onClick={() => {
-                                setShowInlineCategoryForm(false);
-                                setNewCategoryName("");
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="px-2 py-1 text-sm text-white bg-indigo-600 rounded cursor-pointer"
-                              onClick={() => handleInlineAddCategory()}
-                            >
-                              Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 text-indigo-600 rounded form-checkbox focus:ring-indigo-500"
-                          checked={newSnippet.isFavorite}
-                          onChange={(e) =>
-                            setNewSnippet({
-                              ...newSnippet,
-                              isFavorite: e.target.checked,
-                            })
-                          }
-                        />
-                        <span>Add to Favorites</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2 space-x-3">
-                    <button
-                      className={secondaryButtonClasses}
-                      onClick={() => setShowAddForm(false)}
-                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className={primaryButtonClasses}
-                      onClick={handleAddSnippet}
-                    >
-                      Save Snippet
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* Preview Tab */}
-                  <div
-                    className={`rounded-lg border shadow ${cardBgClasses} p-4`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-medium line-clamp-1">
-                        {newSnippet.title || "Snippet Title"}
-                      </h3>
-                      <div className="flex space-x-1">
-                        {newSnippet.isFavorite && (
-                          <Star
-                            className="w-5 h-5 text-yellow-500"
-                            fill="currentColor"
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center mb-3 space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                      {newSnippet.categoryId && (
-                        <div className="flex items-center space-x-1">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              categories.find(
-                                (c) => c.id === newSnippet.categoryId
-                              )?.color || "bg-gray-400"
-                            }`}
-                          ></div>
-                          <span>
-                            {categories.find(
-                              (c) => c.id === newSnippet.categoryId
-                            )?.name || "Uncategorized"}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatDate(Date.now())}</span>
-                      </div>
-                    </div>
-
-                    <pre
-                      className={`p-3 rounded overflow-x-auto text-sm mb-3 ${
-                        darkMode ? "bg-gray-900" : "bg-gray-100"
-                      }`}
-                    >
-                      <code className="break-all whitespace-pre-wrap">
-                        {newSnippet.content
-                          ? newSnippet.content
-                              .split("\n")
-                              .slice(0, 5)
-                              .join("\n") +
-                            (newSnippet.content.split("\n").length > 5
-                              ? "..."
-                              : "")
-                          : "// Your code will appear here"}
-                      </code>
-                    </pre>
-
-                    {newSnippet.description && (
-                      <p 
-                        className="mb-3 text-sm line-clamp-2"
-                        style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                      >
-                        {newSnippet.description}
-                      </p>
-                    )}
-
-                    <div className="flex justify-between mt-4">
-                      <button className="flex items-center px-3 py-1 space-x-1 text-sm bg-gray-200 rounded dark:bg-gray-700 cursor-pointer">
-                        <Copy className="w-4 h-4" />
-                        <span>Copy</span>
-                      </button>
-
-                      <div className="flex space-x-2">
-                        <Eye className="w-4 h-4 text-gray-500" />
-                        <Edit className="w-4 h-4 text-gray-500" />
-                        <Trash2 className="w-4 h-4 text-gray-500" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-end gap-3 pt-4 md:flex-row">
-                    <button
-                      className={secondaryButtonClasses}
-                      onClick={() => setEditActiveTab("edit")}
-                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      Back to Edit
-                    </button>
-                    <button
-                      className={primaryButtonClasses}
-                      onClick={handleAddSnippet}
-                    >
-                      Save Snippet
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Edit Snippet Modal */}
-      <AnimatePresence>
-        {showEditForm && activeSnippet && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50 bg-opacity-50 md:p-4"
-            onClick={() => setShowEditForm(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-2xl rounded-lg shadow-xl ${modalBgClasses} md:p-6 p-3`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Edit Snippet</h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
-                  onClick={() => setShowEditForm(false)}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex mb-4 border-b dark:border-gray-700">
-                <button
-                  className={`px-4 py-2 font-medium cursor-pointer ${
-                    editActiveTab === "edit"
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                  onClick={() => setEditActiveTab("edit")}
-                >
-                  Edit
-                </button>
-                <button
-                  className={`px-4 py-2 font-medium cursor-pointer ${
-                    editActiveTab === "preview"
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  }`}
-                  onClick={() => setEditActiveTab("preview")}
-                >
-                  Preview
-                </button>
-              </div>
-
-              {editActiveTab === "edit" ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Title *
-                    </label>
-                    <input
-                      type="text"
-                      className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                      value={activeSnippet.title}
-                      onChange={(e) =>
-                        setActiveSnippet({
-                          ...activeSnippet,
-                          title: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Content *
-                    </label>
-                    <textarea
-                      className={`w-full p-2 rounded-md border font-mono ${inputBgClasses}`}
-                      rows={6}
-                      value={activeSnippet.content}
-                      onChange={(e) =>
-                        setActiveSnippet({
-                          ...activeSnippet,
-                          content: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 text-sm font-medium">
-                      Description (Optional)
-                    </label>
-                    <textarea
-                      className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                      rows={2}
-                      value={activeSnippet.description}
-                      onChange={(e) =>
-                        setActiveSnippet({
-                          ...activeSnippet,
-                          description: e.target.value || "",
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <label className="block mb-1 text-sm font-medium">
-                        Category
-                      </label>
-                      <div className="relative">
-                        <select
-                          className={`w-full p-2 pr-8 rounded-md border appearance-none ${inputBgClasses}`}
-                          value={activeSnippet.categoryId || ""}
-                          onChange={(e) =>
-                            setActiveSnippet({
-                              ...activeSnippet,
-                              categoryId: e.target.value || null,
-                            })
-                          }
-                        >
-                          <option value="">Uncategorized</option>
-                          {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                          <ChevronDown className="w-4 h-4 text-gray-500" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 text-indigo-600 rounded form-checkbox focus:ring-indigo-500"
-                          checked={activeSnippet.isFavorite}
-                          onChange={(e) =>
-                            setActiveSnippet({
-                              ...activeSnippet,
-                              isFavorite: e.target.checked,
-                            })
-                          }
-                        />
-                        <span>Add to Favorites</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2 space-x-3">
-                    <button
-                      className={secondaryButtonClasses}
-                      onClick={() => setShowEditForm(false)}
-                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className={primaryButtonClasses}
-                      onClick={handleEditSnippet}
-                    >
-                      Update Snippet
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* Preview Tab */}
-                  <div
-                    className={`rounded-lg border shadow ${cardBgClasses} p-4`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-medium line-clamp-1">
-                        {activeSnippet.title || "Snippet Title"}
-                      </h3>
-                      <div className="flex space-x-1">
-                        {activeSnippet.isFavorite && (
-                          <Star
-                            className="w-5 h-5 text-yellow-500"
-                            fill="currentColor"
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center mb-3 space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                      {activeSnippet.categoryId && (
-                        <div className="flex items-center space-x-1">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              categories.find(
-                                (c) => c.id === activeSnippet.categoryId
-                              )?.color || "bg-gray-400"
-                            }`}
-                          ></div>
-                          <span>
-                            {categories.find(
-                              (c) => c.id === activeSnippet.categoryId
-                            )?.name || "Uncategorized"}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatDate(activeSnippet.timestamp)}</span>
-                      </div>
-                    </div>
-
-                    <pre
-                      className={`p-3 rounded overflow-x-auto text-sm mb-3 ${
-                        darkMode ? "bg-gray-900" : "bg-gray-100"
-                      }`}
-                    >
-                      <code className="break-all whitespace-pre-wrap">
-                        {activeSnippet.content
-                          ? activeSnippet.content
-                              .split("\n")
-                              .slice(0, 5)
-                              .join("\n") +
-                            (activeSnippet.content.split("\n").length > 5
-                              ? "..."
-                              : "")
-                          : "// Your code will appear here"}
-                      </code>
-                    </pre>
-
-                    {activeSnippet.description && (
-                      <div>
-                        <h3 className="mb-1 text-sm font-medium">Description</h3>
-                        <p 
-                          className="text-sm"
-                          style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                        >
-                          {activeSnippet.description}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between mt-4">
-                      <button className="flex items-center px-3 py-1 space-x-1 text-sm bg-gray-200 rounded dark:bg-gray-700 cursor-pointer">
-                        <Copy className="w-4 h-4" />
-                        <span>Copy</span>
-                      </button>
-
-                      <div className="flex space-x-2">
-                        <Eye className="w-4 h-4 text-gray-500" />
-                        <Edit className="w-4 h-4 text-gray-500" />
-                        <Trash2 className="w-4 h-4 text-gray-500" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-end gap-3 pt-4 md:flex-row">
-                    <button
-                      className={secondaryButtonClasses}
-                      onClick={() => setEditActiveTab("edit")}
-                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      Back to Edit
-                    </button>
-                    <button
-                      className={primaryButtonClasses}
-                      onClick={handleEditSnippet}
-                    >
-                      Update Snippet
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* View Snippet Modal */}
-      <AnimatePresence>
-        {showViewModal && activeSnippet && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50 bg-opacity-50 md:p-4"
-            onClick={() => setShowViewModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl ${modalBgClasses} md:p-6 p-3`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">{activeSnippet.title}</h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center mb-3 space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                  {activeSnippet.categoryId && (
-                    <div className="flex items-center space-x-1">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          categories.find(
-                            (c) => c.id === activeSnippet.categoryId
-                          )?.color || "bg-gray-400"
-                        }`}
-                      ></div>
-                      <span>
-                        {categories.find(
-                          (c) => c.id === activeSnippet.categoryId
-                        )?.name || "Uncategorized"}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatDate(activeSnippet.timestamp)}</span>
-                  </div>
-
-                  {activeSnippet.isFavorite && (
-                    <div className="flex items-center space-x-1">
-                      <Star
-                        className="w-3 h-3 text-yellow-500"
-                        fill="currentColor"
-                      />
-                      <span>Favorite</span>
-                    </div>
-                  )}
-                </div>
-
-                {activeSnippet.description && (
-                  <div>
-                    <h3 className="mb-1 text-sm font-medium">Description</h3>
-                    <p 
-                      className="text-sm"
-                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                    >
-                      {activeSnippet.description}
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="mb-1 text-sm font-medium">Code</h3>
-                  <pre
-                    className={`p-3 rounded overflow-x-auto text-sm ${
-                      darkMode ? "bg-gray-900" : "bg-gray-100"
-                    }`}
-                  >
-                    <code className="whitespace-pre-wrap">
-                      {activeSnippet.content}
-                    </code>
-                  </pre>
-                </div>
-
-                <div className="flex justify-between pt-2">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className={`flex items-center space-x-1 px-3 py-1 rounded text-sm cursor-pointer ${
-                      copiedId === activeSnippet.id
-                        ? "bg-green-600 text-white"
-                        : darkMode
-                        ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                        : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                    }`}
-                    onClick={() =>
-                      handleCopyToClipboard(
-                        activeSnippet.content,
-                        activeSnippet.id
-                      )
-                    }
-                    style={copiedId === activeSnippet.id ? {} : { color: darkMode ? '#d1d5db' : '#111827' }}
-                  >
-                    {copiedId === activeSnippet.id ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copy Code</span>
-                      </>
-                    )}
-                  </motion.button>
-
-                  <button
-                    className={secondaryButtonClasses}
-                    onClick={() => setShowViewModal(false)}
-                    style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Category Modal */}
-      <AnimatePresence>
-        {showAddCategory && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50 bg-opacity-50 md:p-4"
-            onClick={() => setShowAddCategory(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-md rounded-lg shadow-xl ${modalBgClasses} md:p-6 p-3`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Add New Category</h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
-                  onClick={() => setShowAddCategory(false)}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Category Name *
-                  </label>
-                  <input
-                    type="text"
-                    className={`w-full p-2 rounded-md border ${inputBgClasses}`}
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="E.g., TypeScript"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Color
-                  </label>
-                  <div className="grid grid-cols-6 gap-4 md:grid-cols-8">
-                    {colors.map((color) => (
-                      <motion.button
-                        key={color}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className={`w-8 h-8 rounded-full cursor-pointer ${color} ${
-                          newCategoryColor === color
-                            ? "ring-1 ring-offset-1 ring-indigo-600"
-                            : ""
-                        }`}
-                        onClick={() => setNewCategoryColor(color)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4 space-x-3">
-                  <button
-                    className={secondaryButtonClasses}
-                    onClick={() => setShowAddCategory(false)}
-                    style={{ color: darkMode ? '#d1d5db' : '#111827' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className={primaryButtonClasses}
-                    onClick={handleAddCategory}
-                  >
-                    Add Category
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Category Modal */}
-      {categories.length > 0 && (
-        <div className="hidden">
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div
-              className={`w-full max-w-md rounded-lg shadow-xl ${modalBgClasses} p-6`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Manage Categories</h2>
-                <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  Delete categories you no longer need. Snippets in deleted
-                  categories will become uncategorized.
-                </p>
-
-                <div className="overflow-y-auto max-h-60">
-                  {categories.map((category) => (
-                    <div
-                      key={category.id}
-                      className="flex items-center justify-between py-2 border-b last:border-b-0 dark:border-gray-700"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className={`w-3 h-3 rounded-full ${category.color}`}
-                        ></div>
-                        <span>{category.name}</span>
-                      </div>
-                      <button
-                        className="text-red-500 hover:text-red-700 cursor-pointer"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-end">
-                  <button className={secondaryButtonClasses}>Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className={`${montserrat.variable} font-sans text-gray-800`}>
+      {showNotification && (
+        <div className="fixed top-24 right-4 bg-[#81a094] text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 animate-fade-in">
+          {notificationMessage}
         </div>
       )}
 
-      {/* Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-4 right-4 md:px-4 px-3 py-3 rounded-md shadow-lg flex items-center space-x-2 ${
-              notification.type === "success"
-                ? "bg-green-600 text-white"
-                : "bg-red-600 text-white"
-            }`}
-          >
-            {notification.type === "success" ? (
-              <Check className="w-5 h-5" />
-            ) : (
-              <X className="w-5 h-5" />
-            )}
-            <span>{notification.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Keyboard shortcuts info */}
-      <div className="fixed hidden bottom-4 left-4 md:block">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`p-2 rounded-full cursor-pointer ${
-            darkMode
-              ? "bg-gray-800 text-gray-400 hover:text-gray-200"
-              : "bg-gray-200 text-gray-600 hover:text-gray-800"
-          }`}
-          title="Keyboard Shortcuts"
-          style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
-        >
-          <Info className="w-5 h-5" />
-          <span className="sr-only">Keyboard Shortcuts</span>
-        </motion.button>
-      </div>
-      <footer
-        className={`mt-8 pt-6 pb-4 ${
-          darkMode ? "bg-gray-850 text-gray-300" : "bg-gray-50 text-gray-600"
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled ? "bg-white shadow-md" : "bg-transparent"
         }`}
       >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* App Info */}
-            <div className="col-span-1 md:col-span-1">
-              <div className="flex items-center mb-3">
-                <Clipboard className="w-6 h-6 text-indigo-600 mr-2" />
-                <h3 
-                  className="text-lg font-semibold"
-                  style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <div
+              className={`text-2xl font-bold font-montserrat transition-colors duration-500 ${
+                scrolled ? "text-[#775b59]" : "text-white"
+              }`}
+            >
+              GreenLeaf Trees
+            </div>
+            <div className="hidden md:flex space-x-8">
+              {Object.keys(sections.current).map((section) => (
+                <button
+                  key={section}
+                  onClick={() => scrollToSection(section)}
+                  className={`capitalize transition-all duration-300 font-montserrat cursor-pointer ${
+                    scrolled
+                      ? activeSection === section
+                        ? "text-[#9ae5e6] font-semibold"
+                        : "text-[#775b59] hover:text-[#9ae5e6]"
+                      : "text-white hover:text-[#9ae5e6] font-semibold"
+                  }`}
                 >
-                  DevClipboard
-                </h3>
-              </div>
-              <p 
-                className="mb-3 text-sm"
-                style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+                  {section}
+                </button>
+              ))}
+              <button
+                onClick={() => setShowCart(!showCart)}
+                className={`relative transition-all duration-300 font-montserrat flex items-center cursor-pointer ${
+                  scrolled ? "text-[#775b59] hover:text-[#9ae5e6]" : "text-white hover:text-[#9ae5e6]"
+                }`}
               >
-                A personal code snippet manager designed for developers to
-                store, organize, and quickly access their most-used code
-                snippets across different programming languages.
-              </p>
-              <p className="text-sm">
-                &copy; {new Date().getFullYear()} DevClipboard. All rights
-                reserved.
-              </p>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-sm font-semibold uppercase mb-3">FEATURES</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button
-                    className="hover:text-indigo-600 transition-colors duration-200"
-                    onClick={() => setShowAddForm(true)}
-                  >
-                    Add Snippet
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="hover:text-indigo-600 transition-colors duration-200"
-                    onClick={() => setShowAddCategory(true)}
-                  >
-                    Manage Categories
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="hover:text-indigo-600 transition-colors duration-200"
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                  >
-                    Toggle Favorites
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="hover:text-indigo-600 transition-colors duration-200"
-                    onClick={() => setDarkMode(!darkMode)}
-                  >
-                    {darkMode ? "Light Mode" : "Dark Mode"}
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            {/* Keyboard Shortcuts */}
-            <div>
-              <h3 className="text-sm font-semibold uppercase mb-3">
-                Keyboard Shortcuts
-              </h3>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center">
-                  <kbd
-                    className={`inline-flex items-center justify-center px-2 py-1 mr-2 text-xs rounded ${
-                      darkMode ? "bg-gray-700" : "bg-gray-200"
-                    }`}
-                  >
-                    Ctrl+N
-                  </kbd>
-                  <span>New Snippet</span>
-                </li>
-                <li className="flex items-center">
-                  <kbd
-                    className={`inline-flex items-center justify-center px-2 py-1 mr-2 text-xs rounded ${
-                      darkMode ? "bg-gray-700" : "bg-gray-200"
-                    }`}
-                  >
-                    Ctrl+F
-                  </kbd>
-                  <span>Search</span>
-                </li>
-                <li className="flex items-center">
-                  <kbd
-                    className={`inline-flex items-center justify-center px-2 py-1 mr-2 text-xs rounded ${
-                      darkMode ? "bg-gray-700" : "bg-gray-200"
-                    }`}
-                  >
-                    Esc
-                  </kbd>
-                  <span>Close Modal</span>
-                </li>
-              </ul>
+                <svg
+                  className="w-5 h-5 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  ></path>
+                </svg>
+                Purchase
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-[#9ae5e6] text-[#775b59] rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
+        </div>
+      </nav>
 
-          {/* Bottom Bar */}
-          <div
-            className={`mt-6 pt-4 border-t ${
-              darkMode ? "border-gray-700" : "border-gray-200"
-            } flex flex-col sm:flex-row justify-between items-center text-sm`}
-          >
-            <p className="mb-3 sm:mb-0">Built with React and Tailwind CSS</p>
-
-            {/* Social Icons - Add your actual links here */}
-            <div className="flex space-x-4">
-              {/* GitHub */}
-              <a
-                href="#"
-                className="hover:text-indigo-600 transition-colors duration-200"
-                aria-label="GitHub"
-              >
+      {showCart && (
+        <div className="fixed top-20 right-4 bg-white rounded-2xl shadow-2xl z-50 w-[380px] overflow-hidden transition-all duration-300 animate-slide-in">
+          <div className="bg-[#775b59] text-white px-6 py-5">
+            <div className="flex justify-between items-center">
+              <h3 className="font-montserrat font-bold text-xl flex items-center">
                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
+                  className="w-6 h-6 mr-3"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-5 h-5"
-                >
-                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-                </svg>
-              </a>
-
-              {/* Twitter/X */}
-              <a
-                href="#"
-                className="hover:text-indigo-600 transition-colors duration-200"
-                aria-label="Twitter"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-5 h-5"
-                >
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
-                </svg>
-              </a>
-
-              {/* LinkedIn */}
-              <a
-                href="#"
-                className="hover:text-indigo-600 transition-colors duration-200"
-                aria-label="LinkedIn"
-              >
-                <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-5 h-5"
                 >
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                  <rect x="2" y="9" width="4" height="12"></rect>
-                  <circle cx="4" cy="4" r="2"></circle>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  ></path>
                 </svg>
-              </a>
-            </div>
-
-            {/* Back to top button */}
-            <div className="mt-3 sm:mt-0 sm:ml-4">
+                Your Cart
+              </h3>
               <button
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className={`flex items-center space-x-1 text-sm ${
-                  darkMode ? "hover:text-indigo-400" : "hover:text-indigo-600"
-                } transition-colors duration-200`}
+                onClick={() => setShowCart(false)}
+                className="bg-[#775b59] bg-opacity-40 p-1.5 rounded-full text-white hover:bg-opacity-60 transition-all cursor-pointer"
               >
-                <span>Back to top</span>
                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
+                  className="w-5 h-5"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <polyline points="18 15 12 9 6 15"></polyline>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
             </div>
+          </div>
+
+          <div className="max-h-[420px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            {cartItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="bg-gray-50 rounded-full p-4 mb-4">
+                  <svg
+                    className="w-12 h-12 text-[#81a094]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                    ></path>
+                  </svg>
+                </div>
+                <p className="text-gray-600 font-medium text-center text-lg">Your cart is empty</p>
+                <p className="text-gray-400 text-center mt-2 mb-6">Add some beautiful trees to get started!</p>
+                <button
+                  onClick={() => {
+                    setShowCart(false)
+                    scrollToSection("products")
+                  }}
+                  className="text-[#775b59] border border-[#775b59] px-5 py-2 rounded-full font-montserrat font-medium hover:bg-[#775b59] hover:text-white transition-all duration-300"
+                >
+                  Browse Trees
+                </button>
+              </div>
+            ) : (
+              <div className="py-3">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
+                    <div className="flex items-start">
+                      <div className="relative w-[72px] h-[72px] overflow-hidden rounded-xl mr-4 flex-shrink-0">
+                        <img
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-montserrat font-semibold text-[#775b59] text-lg">{item.name}</h4>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer ml-2 p-1 rounded-full hover:bg-gray-100"
+                            aria-label="Remove item"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-[#81a094] font-bold text-lg">{item.price}</span>
+                          <div className="flex items-center bg-gray-100 rounded-full overflow-hidden">
+                            <button
+                              onClick={() => {
+                                if (item.quantity > 1) {
+                                  setCartItems(prevItems =>
+                                    prevItems.map(cartItem =>
+                                      cartItem.id === item.id
+                                        ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                                        : cartItem
+                                    )
+                                  )
+                                } else {
+                                  removeFromCart(item.id)
+                                }
+                              }}
+                              className="px-2 py-1 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer flex items-center justify-center"
+                              aria-label="Decrease quantity"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                              </svg>
+                            </button>
+                            <div className="px-3 py-1 font-medium text-gray-700">{item.quantity}</div>
+                            <button
+                              onClick={() => {
+                                setCartItems(prevItems =>
+                                  prevItems.map(cartItem =>
+                                    cartItem.id === item.id
+                                      ? { ...cartItem, quantity: cartItem.quantity + 1 }
+                                      : cartItem
+                                  )
+                                )
+                              }}
+                              className="px-2 py-1 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer flex items-center justify-center"
+                              aria-label="Increase quantity"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {cartItems.length > 0 && (
+            <div className="p-6 bg-white border-t border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <span className="font-montserrat font-bold text-xl text-gray-700">Total:</span>
+                <span className="font-montserrat font-bold text-xl text-[#775b59]">${getTotalPrice()}</span>
+              </div>
+              <button
+                onClick={handleCheckout}
+                className="w-full py-3.5 bg-gradient-to-r from-[#9ae5e6] to-[#81a094] text-[#775b59] font-montserrat font-semibold rounded-xl hover:opacity-90 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-sm"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Checkout
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <section
+        ref={setSectionRef('home')}
+        className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1b4332] via-[#2d6a4f] to-[#40916c] z-0"></div>
+
+        <div className="absolute inset-0 z-10">
+          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#1b4332] to-transparent"></div>
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#1b4332] to-transparent"></div>
+          <div className="absolute left-0 top-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjMWI0MzMyIj48L3JlY3Q+CjxwYXRoIGQ9Ik0wIDVMNSAwWk02IDRMNCA2Wk0tMSAxTDEgLTFaIiBzdHJva2U9IiMyZDZhNGYiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPgo8L3N2Zz4=')] opacity-5"></div>
+        </div>
+
+        <div className="container mx-auto px-6 relative z-20 text-center">
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 font-montserrat drop-shadow-lg">
+            Bring Nature Home
+          </h1>
+          <p className="text-xl md:text-2xl text-white mb-8 max-w-3xl mx-auto drop-shadow-md">
+            Premium trees for your garden, handpicked by experts with over 20 years of experience
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <button
+              onClick={() => scrollToSection("products")}
+              className="px-8 py-3 bg-[#9ae5e6] text-[#775b59] font-montserrat font-semibold rounded-full hover:bg-[#81a094] transition-all duration-300 transform hover:scale-105 cursor-pointer shadow-lg"
+            >
+              Explore Our Trees
+            </button>
+            <button
+              onClick={() => setShowCart(true)}
+              className="px-8 py-3 bg-[#775b59] text-white font-montserrat font-semibold rounded-full hover:bg-[#81a094] transition-all duration-300 transform hover:scale-105 cursor-pointer shadow-lg"
+            >
+              View Cart
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section ref={setSectionRef('about')} className="py-20 bg-[#f9f5f0]">
+        <div className="container mx-auto px-6">
+          <h2 className="text-4xl font-bold text-center mb-16 font-montserrat" style={{ color: "#775b59" }}>
+            Our Journey
+          </h2>
+
+          <div className="relative">
+            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-[#81a094]"></div>
+
+            {[
+              {
+                year: "1998",
+                title: "Our Beginnings",
+                description: "Started as a small family nursery with just 10 varieties of trees.",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    ></path>
+                  </svg>
+                ),
+              },
+              {
+                year: "2005",
+                title: "Expansion",
+                description:
+                  "Expanded our nursery to include over 50 varieties of trees and opened our first retail location.",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    ></path>
+                  </svg>
+                ),
+              },
+              {
+                year: "2012",
+                title: "Sustainability Focus",
+                description: "Implemented eco-friendly growing practices and became certified organic.",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    ></path>
+                  </svg>
+                ),
+              },
+              {
+                year: "2018",
+                title: "Online Store Launch",
+                description: "Launched our online store to serve customers nationwide.",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                    ></path>
+                  </svg>
+                ),
+              },
+              {
+                year: "2023",
+                title: "Today",
+                description: "Now offering over 200 varieties of trees with nationwide delivery and planting services.",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    ></path>
+                  </svg>
+                ),
+              },
+            ].map((item, index) => (
+              <div
+                key={index}
+                className={`relative mb-16 ${index % 2 === 0 ? "md:ml-auto md:mr-[49.8%]" : "md:mr-auto md:ml-[49.8%]"} md:w-[45%] transition-all duration-500 hover:transform hover:translate-y-[-5px]`}
+              >
+                <div className="bg-white p-6 rounded-lg shadow-lg">
+                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-auto md:right-0 md:translate-x-[50%] w-10 h-10 rounded-full bg-[#9ae5e6] border-4 border-white flex items-center justify-center text-[#775b59]">
+                    {item.icon}
+                  </div>
+                  <span className="inline-block px-3 py-1 rounded-full bg-[#81a094] text-white text-sm mb-3 font-montserrat">
+                    {item.year}
+                  </span>
+                  <h3 className="text-xl font-bold mb-2 font-montserrat" style={{ color: "#775b59" }}>
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-600">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section ref={setSectionRef('products')} className="py-20">
+        <div className="container mx-auto px-6">
+          <h2 className="text-4xl font-bold text-center mb-16 font-montserrat" style={{ color: "#775b59" }}>
+            Our Trees
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                id: 1,
+                name: "Sugar Maple",
+                price: "$145",
+                description: "Spectacular fall colors with vibrant orange, red, and yellow foliage.",
+                image: "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?auto=format&fit=crop&w=2069&q=80",
+              },
+              {
+                id: 2,
+                name: "White Oak",
+                price: "$159",
+                description: "Majestic shade tree with excellent strength and longevity.",
+                image: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                id: 3,
+                name: "Weeping Willow",
+                price: "$119",
+                description: "Graceful, cascading branches perfect for waterside planting.",
+                image: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=2070&q=80",
+              },
+              {
+                id: 5,
+                name: "Dogwood",
+                price: "$99",
+                description: "Beautiful spring flowers and attractive fall color.",
+                image: "https://images.unsplash.com/photo-1558694440-03ade9215d7b?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                id: 6,
+                name: "Japanese Maple",
+                price: "$249",
+                description: "Elegant, lacy foliage in stunning red or purple.",
+                image: "https://images.unsplash.com/photo-1440342359743-84fcb8c21f21?auto=format&fit=crop&w=2340&q=80",
+              },
+            ].map((tree) => {
+              initQuantity(tree.id)
+              return (
+                <div
+                  key={tree.id}
+                  className="bg-white rounded-lg overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl transform hover:-translate-y-2"
+                >
+                  <div className="h-64 overflow-hidden">
+                    <img
+                      src={tree.image || "/placeholder.svg"}
+                      alt={tree.name}
+                      className="w-full h-full object-cover transition-all duration-700 hover:scale-110"
+                    />
+                  </div>
+                  <div className="p-6 flex flex-col h-[calc(100%-16rem)]">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xl font-bold font-montserrat" style={{ color: "#775b59" }}>
+                        {tree.name}
+                      </h3>
+                      <span className="text-lg font-bold text-[#81a094]">{tree.price}</span>
+                    </div>
+                    <p className="text-gray-600 mb-4">{tree.description}</p>
+
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center bg-gray-50 rounded-full border border-gray-200 overflow-hidden shadow-sm">
+                          <button
+                            onClick={() => decrementQuantity(tree.id)}
+                            className="px-3 py-2 text-[#775b59] hover:bg-gray-100 transition-colors cursor-pointer flex items-center justify-center"
+                            aria-label="Decrease quantity"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                            </svg>
+                          </button>
+                          <div className="px-4 py-2 font-medium text-[#775b59] min-w-[40px] text-center">
+                            {quantityToAdd[tree.id] || 1}
+                          </div>
+                          <button
+                            onClick={() => incrementQuantity(tree.id)}
+                            className="px-3 py-2 text-[#775b59] hover:bg-gray-100 transition-colors cursor-pointer flex items-center justify-center"
+                            aria-label="Increase quantity"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => addToCart(tree.id, tree.name, tree.price, tree.image)}
+                        className={`w-full py-2 ${
+                          addedButtons[tree.id] 
+                            ? "bg-[#81a094] text-white" 
+                            : "bg-[#9ae5e6] text-[#775b59]"
+                        } font-montserrat font-semibold rounded-lg hover:bg-[#81a094] hover:text-white transition-all duration-300 flex items-center justify-center cursor-pointer`}
+                        disabled={addedButtons[tree.id]}
+                      >
+                        {addedButtons[tree.id] ? (
+                          <>
+                            <svg 
+                              className="w-5 h-5 mr-2" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24" 
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth="2" 
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Added
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-5 h-5 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                              ></path>
+                            </svg>
+                            Add to Cart
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section ref={setSectionRef('reviews')} className="py-20 bg-[#e8f4f4]">
+        <div className="container mx-auto px-6">
+          <h2 className="text-4xl font-bold text-center mb-16 font-montserrat" style={{ color: "#775b59" }}>
+            Customer Reviews
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Sarah Johnson",
+                rating: 5,
+                review:
+                  "The Japanese Maple I purchased is thriving in my garden. The delivery was prompt and the tree was carefully packaged.",
+                image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                name: "Michael Thompson",
+                rating: 5,
+                review:
+                  "Excellent selection and quality. The staff was very knowledgeable and helped me choose the perfect trees for my yard.",
+                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                name: "Emily Rodriguez",
+                rating: 4,
+                review:
+                  "Beautiful White Oak delivered right to my door. It's growing well and looks exactly as described on the website.",
+                image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                name: "David Wilson",
+                rating: 5,
+                review:
+                  "I've been buying trees from GreenLeaf for years. Their quality and customer service are consistently outstanding.",
+                image: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=2344&q=80",
+              },
+              {
+                name: "Jennifer Lee",
+                rating: 5,
+                review:
+                  "The planting service was worth every penny. Professional, efficient, and they even followed up to make sure my trees were doing well.",
+                image: "https://images.unsplash.com/photo-1554151228-14d9def656e4?auto=format&fit=crop&w=2340&q=80",
+              },
+              {
+                name: "Robert Garcia",
+                rating: 4,
+                review:
+                  "Great experience overall. The Dogwood I purchased is beautiful and was delivered in perfect condition.",
+                image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=2340&q=80",
+              },
+            ].map((review, index) => (
+              <div
+                key={index}
+                className="bg-white p-6 rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl"
+              >
+                <div className="flex items-center mb-4">
+                  <img
+                    src={review.image || "/placeholder.svg"}
+                    alt={review.name}
+                    className="w-12 h-12 rounded-full object-cover mr-4"
+                  />
+                  <div>
+                    <h3 className="font-bold font-montserrat" style={{ color: "#775b59" }}>
+                      {review.name}
+                    </h3>
+                    <div className="flex">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <svg
+                          key={i}
+                          className={`w-4 h-4 ${i < review.rating ? "text-yellow-400" : "text-gray-300"} fill-current`}
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-gray-600 italic">"{review.review}"</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section ref={setSectionRef('contact')} className="py-20 bg-[#81a094] text-white">
+        <div className="container mx-auto px-6">
+          <h2 className="text-4xl font-bold text-center mb-16 font-montserrat">Get In Touch</h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="flex flex-col h-full">
+              <h3 className="text-2xl font-bold mb-6 font-montserrat">Contact Information</h3>
+              <div className="space-y-4 mb-8">
+                <p className="flex items-center">
+                  <svg
+                    className="w-6 h-6 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    ></path>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    ></path>
+                  </svg>
+                  123 Forest Lane, Greenville, GA 30222
+                </p>
+                <p className="flex items-center">
+                  <svg
+                    className="w-6 h-6 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    ></path>
+                  </svg>
+                  (555) 123-4567
+                </p>
+                <p className="flex items-center">
+                  <svg
+                    className="w-6 h-6 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                  info@greenleaftrees.com
+                </p>
+                <p className="flex items-center">
+                  <svg
+                    className="w-6 h-6 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                  Mon-Sat: 8am-6pm, Sun: 10am-4pm
+                </p>
+              </div>
+
+              <div className="mt-auto">
+                <img
+                  src="https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&w=2342&q=80"
+                  alt="Our Nursery"
+                  className="rounded-lg shadow-lg w-full h-64 object-cover"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white text-gray-800 rounded-lg shadow-lg p-8">
+              <h3 className="text-2xl font-bold mb-6 font-montserrat" style={{ color: "#775b59" }}>
+                Send Us a Message
+              </h3>
+              <form className="space-y-6" onSubmit={handleSubmitMessage}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-montserrat">Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ae5e6]"
+                      placeholder="Your name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-2 font-montserrat">Email</label>
+                    <input
+                      type="email"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ae5e6]"
+                      placeholder="Your email"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2 font-montserrat">Subject</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ae5e6]"
+                    placeholder="Subject"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2 font-montserrat">Message</label>
+                  <textarea
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ae5e6] h-32"
+                    placeholder="Your message"
+                    required
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-[#9ae5e6] text-[#775b59] font-montserrat font-semibold rounded-lg hover:bg-[#81a094] hover:text-white transition-all duration-300 cursor-pointer"
+                >
+                  Send Message
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-[#775b59] text-white py-8">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="text-2xl font-bold mb-4 md:mb-0 font-montserrat">GreenLeaf Trees</div>
+            <div className="flex space-x-4">
+              {Object.keys(sections.current).map((section) => (
+                <button
+                  key={section}
+                  onClick={() => scrollToSection(section)}
+                  className="capitalize hover:text-[#9ae5e6] transition-all duration-300 font-montserrat cursor-pointer"
+                >
+                  {section}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-white border-opacity-20 mt-6 pt-6 text-center text-sm">
+            © {new Date().getFullYear()} GreenLeaf Trees. All rights reserved.
           </div>
         </div>
       </footer>
     </div>
-  );
-};
-
-const ClipboardMangerWrapper = () => {
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return null;
-  }
-
-  return <ClipboardManager />;
-};
-
-export default ClipboardMangerWrapper;
+  )
+}
