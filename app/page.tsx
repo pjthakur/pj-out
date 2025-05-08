@@ -1,2937 +1,3094 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  MapPin,
-  Search,
-  Plus,
-  Camera,
-  X,
-  Menu,
-  Home,
-  Compass,
-  BookOpen,
-  User,
-  ChevronLeft,
-  Calendar,
-  Tag,
-  ArrowUpRight,
-  Trash2,
-  Loader,
-  Heart,
-  Sun,
-  Moon,
-  Edit,
-  RefreshCw,
-  DollarSign,
-  Bookmark,
-  Star,
-  TrendingUp,
-  Grid,
-  List,
-  Umbrella,
-  LandmarkIcon,
-  Mountain,
-  ArrowRight,
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { NextPage } from "next";
+import Head from "next/head";
+import { Montserrat, Poppins } from "next/font/google";
 
-const DEFAULT_COVERS = [
-  "https://images.unsplash.com/photo-1707343848552-893e05dba6ac?fm=jpg&q=60&w=3000",
-  "https://images.unsplash.com/photo-1530789253388-582c481c54b0?fm=jpg&q=60&w=3000",
-  "https://plus.unsplash.com/premium_photo-1661960937960-1883bf00f480?fm=jpg&q=60&w=3000",
-  "https://plus.unsplash.com/premium_photo-1664908364593-729f67b1a0e4?fm=jpg&q=60&w=3000",
-  "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?fm=jpg&q=60&w=3000",
-  "https://plus.unsplash.com/premium_photo-1661962660197-6c2430fb49a6?fm=jpg&q=60&w=3000",
-];
+const montserrat = Montserrat({
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
-const mockTrips = [
-  {
-    id: 1,
-    title: "Bali Adventure",
-    coverImage:
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?fm=jpg&q=60&w=3000",
-    startDate: "2025-01-15",
-    endDate: "2025-01-28",
-    location: "Bali, Indonesia",
-    favorite: true,
-    entries: [
-      {
-        id: 101,
-        date: "2025-01-16",
-        title: "Rice Terraces Hike",
-        content:
-          "Explored the stunning Tegallalang Rice Terraces today. The views were absolutely breathtaking with layers of green stretching as far as the eye could see.",
-        location: "Tegallalang, Bali",
-        coordinates: { lat: -8.4312, lng: 115.2767 },
-        images: [
-          "https://images.unsplash.com/photo-1621217308295-afe2f0b40a69?fm=jpg&q=60&w=3000",
-          "https://images.unsplash.com/photo-1555400038-63f5ba517a47?fm=jpg&q=60&w=3000",
-        ],
-        tags: ["hiking", "nature", "views"],
-      },
-      {
-        id: 102,
-        date: "2025-01-18",
-        title: "Sacred Monkey Forest",
-        content:
-          "Visited the Sacred Monkey Forest in Ubud. So many playful monkeys everywhere! Had to be careful with my belongings though.",
-        location: "Ubud, Bali",
-        coordinates: { lat: -8.5188, lng: 115.2582 },
-        images: [
-          "https://images.unsplash.com/photo-1565970141923-345a5f05a6e6?fm=jpg&q=60&w=3000",
-        ],
-        tags: ["wildlife", "culture"],
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: "Japan Expedition",
-    coverImage:
-      "https://images.squarespace-cdn.com/content/56569c86e4b0a63eb2b56f75/1705446726772-VFQOKKZDJTT6IRQDMUQX/manuel-cosentino-n--CMLApjfI-unsplash.jpg?format=1500w&content-type=image%2Fjpeg",
-    startDate: "2024-11-03",
-    endDate: "2024-11-17",
-    location: "Tokyo, Japan",
-    favorite: false,
-    entries: [
-      {
-        id: 201,
-        date: "2024-11-05",
-        title: "Shibuya Crossing",
-        content:
-          "Experienced the famous Shibuya Crossing today. The organized chaos of so many people crossing at once was a sight to behold!",
-        location: "Shibuya, Tokyo",
-        coordinates: { lat: 35.6595, lng: 139.7004 },
-        images: [
-          "https://images.unsplash.com/photo-1573456373835-579c408de263?fm=jpg&q=60&w=3000",
-        ],
-        tags: ["city", "crowded", "iconic"],
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "Italian Getaway",
-    coverImage:
-      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?fm=jpg&q=60&w=3000",
-    startDate: "2024-09-10",
-    endDate: "2024-09-20",
-    location: "Rome, Italy",
-    favorite: true,
-    entries: [
-      {
-        id: 301,
-        date: "2024-09-12",
-        title: "Colosseum Visit",
-        content:
-          "Finally saw the magnificent Colosseum in person. The historical significance and architectural marvel left me in awe.",
-        location: "Rome, Italy",
-        coordinates: { lat: 41.8902, lng: 12.4922 },
-        images: [
-          "https://images.unsplash.com/photo-1699012462295-bace478f27bc?fm=jpg&q=60&w=3000",
-          "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?fm=jpg&q=60&w=3000",
-        ],
-        tags: ["history", "architecture"],
-      },
-    ],
-  },
-];
+const poppins = Poppins({
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
-// Popular destinations data
-const destinations = [
-  {
-    id: 1,
-    name: "Bali, Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?fm=jpg&q=60&w=3000",
-    description:
-      "Tropical paradise with stunning beaches, lush rice terraces, and vibrant culture.",
-    category: "beach",
-    averageCost: "$50-100/day",
-    bestTimeToVisit: "April to October",
-    rating: 4.8,
-    trending: true,
-  },
-  {
-    id: 2,
-    name: "Kyoto, Japan",
-    image:
-      "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?fm=jpg&q=60&w=3000",
-    description:
-      "Ancient temples, traditional gardens, and serene bamboo forests.",
-    category: "cultural",
-    averageCost: "$70-150/day",
-    bestTimeToVisit: "March-May and Oct-Nov",
-    rating: 4.9,
-    trending: true,
-  },
-  {
-    id: 3,
-    name: "Santorini, Greece",
-    image:
-      "https://plus.unsplash.com/premium_photo-1661963643348-e95c6387ee8a?fm=jpg&q=60&w=3000",
-    description:
-      "Iconic white buildings with blue domes overlooking the Aegean Sea.",
-    category: "beach",
-    averageCost: "$80-200/day",
-    bestTimeToVisit: "May to October",
-    rating: 4.7,
-    trending: true,
-  },
-  {
-    id: 4,
-    name: "Machu Picchu, Peru",
-    image:
-      "https://images.unsplash.com/photo-1587595431973-160d0d94add1?fm=jpg&q=60&w=3000",
-    description: "Ancient Incan citadel set high in the Andes Mountains.",
-    category: "adventure",
-    averageCost: "$60-120/day",
-    bestTimeToVisit: "May to September",
-    rating: 4.9,
-    trending: false,
-  },
-  {
-    id: 5,
-    name: "Swiss Alps, Switzerland",
-    image:
-      "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?fm=jpg&q=60&w=3000",
-    description:
-      "Breathtaking mountain landscapes perfect for hiking and skiing.",
-    category: "adventure",
-    averageCost: "$100-250/day",
-    bestTimeToVisit: "June to September (summer), December to March (winter)",
-    rating: 4.8,
-    trending: false,
-  },
-  {
-    id: 6,
-    name: "Rome, Italy",
-    image:
-      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?fm=jpg&q=60&w=3000",
-    description: "Ancient ruins, Renaissance art, and incredible cuisine.",
-    category: "cultural",
-    averageCost: "$70-150/day",
-    bestTimeToVisit: "April to May, September to October",
-    rating: 4.6,
-    trending: false,
-  },
-  {
-    id: 7,
-    name: "Marrakech, Morocco",
-    image:
-      "https://images.unsplash.com/photo-1597212618440-806262de4f6b?fm=jpg&q=60&w=3000",
-    description:
-      "Vibrant markets, stunning palaces, and rich cultural heritage.",
-    category: "cultural",
-    averageCost: "$40-100/day",
-    bestTimeToVisit: "March to May, September to November",
-    rating: 4.5,
-    trending: true,
-  },
-  {
-    id: 8,
-    name: "New Zealand",
-    image:
-      "https://images.unsplash.com/photo-1507699622108-4be3abd695ad?fm=jpg&q=60&w=3000",
-    description:
-      "Dramatic landscapes from mountains to beaches, perfect for outdoor activities.",
-    category: "adventure",
-    averageCost: "$70-150/day",
-    bestTimeToVisit: "December to February",
-    rating: 4.8,
-    trending: false,
-  },
-];
-
-// Travel inspiration articles
-const travelArticles = [
-  {
-    id: 1,
-    title: "10 Hidden Beaches You Need to Visit",
-    image:
-      "https://images.unsplash.com/photo-1520454974749-611b7248ffdb?fm=jpg&q=60&w=3000",
-    excerpt: "Discover secluded paradise beaches away from the tourist crowds.",
-    readTime: "5 min read",
-    category: "beach",
-  },
-  {
-    id: 2,
-    title: "Ultimate Guide to Solo Travel",
-    image:
-      "https://images.unsplash.com/photo-1501555088652-021faa106b9b?fm=jpg&q=60&w=3000",
-    excerpt: "Everything you need to know for your first solo adventure.",
-    readTime: "8 min read",
-    category: "tips",
-  },
-  {
-    id: 3,
-    title: "Budget Travel: See More for Less",
-    image:
-      "https://images.unsplash.com/photo-1679678691006-0ad24fecb769?fm=jpg&q=60&w=3000",
-    excerpt:
-      "Smart strategies to maximize your travel budget without sacrificing experiences.",
-    readTime: "6 min read",
-    category: "tips",
-  },
-];
-
-// ─── 1) TYPES ────────────────────────────────────────────────────────────────
-
-interface Entry {
-  id: number;
-  date: string;
-  title: string;
-  content: string;
-  location: string;
-  coordinates: { lat: number; lng: number };
-  images: string[];
-  tags: string[];
+interface Color {
+  hex: string;
+  rgb: [number, number, number];
+  hsl: [number, number, number];
 }
 
-interface Trip {
-  id: number;
-  title: string;
-  coverImage: string;
-  startDate: string;
-  endDate: string;
-  location: string;
-  favorite: boolean;
-  entries: Entry[];
+interface Palette {
+  name: string;
+  colors: Color[];
+  description: string;
 }
 
-type View =
-  | "home"
-  | "trip-detail"
-  | "entry-detail"
-  | "explore"
-  | "journal"
-  | "profile";
-
-interface Notification {
-  show: boolean;
-  message: string;
-  type: "info" | "success" | "error";
+interface SavedPalette extends Palette {
+  id: string;
+  createdAt: number;
 }
 
-// ─── 2) PROPS FOR CHILD COMPONENTS ─────────────────────────────────────────
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16),
+      ]
+    : [0, 0, 0];
+};
 
-interface NavbarItemProps {
-  icon: React.ReactNode;
-  label?: string;
-  isActive?: boolean;
-  onClick: () => void;
-  special?: boolean;
-  minimal?: boolean;
-  darkMode: boolean;
-}
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const toHex = (c: number) => {
+    const hex = Math.max(0, Math.min(255, Math.round(c))).toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
 
-interface HomeViewProps {
-  trips: Trip[];
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  onCreateTrip: () => void;
-  onSelectTrip: (trip: Trip) => void;
-  toggleFavorite: (tripId: number) => void;
-}
+const rgbToHsl = (
+  r: number,
+  g: number,
+  b: number
+): [number, number, number] => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
 
-interface TripDetailViewProps {
-  trip: Trip;
-  onBack: () => void;
-  onSelectEntry: (entry: Entry) => void;
-  onCreateEntry: () => void;
-  onUpdateTrip: (updatedTrip: Trip) => void;
-  onDeleteTrip: (tripId: number) => void;
-  toggleFavorite: (tripId: number) => void;
-  setSelectedEntry: (entry: Entry) => void;
-  setCurrentView: (view: View) => void;
-  setSelectedTrip: (trip: Trip | null) => void;
-}
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0,
+    s = 0,
+    l = (max + min) / 2;
 
-interface EntryDetailViewProps {
-  entry: Entry;
-  onBack: () => void;
-  onUpdate: (updatedEntry: Entry) => void;
-  onDelete: (entryId: number) => void;
-  onPhotoUpload: () => void;
-  onRemovePhoto: (index: number) => void;
-}
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
 
-// Main App Component
-export default function TravelJournalApp() {
-  // State management
-  const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [currentView, setCurrentView] = useState<View>("home");
-  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [notification, setNotification] = useState<Notification>({
-    show: false,
-    message: "",
-    type: "info",
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+};
+
+const hslToRgb = (
+  h: number,
+  s: number,
+  l: number
+): [number, number, number] => {
+  h = h / 360;
+  s = s / 100;
+  l = l / 100;
+  let r, g, b;
+
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+};
+
+const getComplementaryColor = (
+  h: number,
+  s: number,
+  l: number
+): [number, number, number] => {
+  return [(h + 180) % 360, s, l];
+};
+
+const getAnalogousColors = (
+  h: number,
+  s: number,
+  l: number
+): Array<[number, number, number]> => {
+  return [
+    [(h - 30 + 360) % 360, s, l],
+    [h, s, l],
+    [(h + 30) % 360, s, l],
+    [(h + 60) % 360, s, l],
+    [(h - 60 + 360) % 360, s, l],
+  ];
+};
+
+const getTriadicColors = (
+  h: number,
+  s: number,
+  l: number
+): Array<[number, number, number]> => {
+  return [
+    [h, s, l],
+    [(h + 120) % 360, s, l],
+    [(h + 240) % 360, s, l],
+  ];
+};
+
+const getMonochromaticColors = (
+  h: number,
+  s: number,
+  l: number
+): Array<[number, number, number]> => {
+  return [
+    [h, s, Math.min(l + 40, 95)],
+    [h, s, Math.min(l + 20, 85)],
+    [h, s, l],
+    [h, s, Math.max(l - 20, 15)],
+    [h, s, Math.max(l - 40, 5)],
+  ];
+};
+
+const getTetradicColors = (
+  h: number,
+  s: number,
+  l: number
+): Array<[number, number, number]> => {
+  return [
+    [h, s, l],
+    [(h + 90) % 360, s, l],
+    [(h + 180) % 360, s, l],
+    [(h + 270) % 360, s, l],
+  ];
+};
+
+const getRandomHex = (): string => {
+  const letters = "0123456789ABCDEF";
+  let color = "#";
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
+
+const isColorLight = (r: number, g: number, b: number): boolean => {
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 125;
+};
+
+const getContrastRatio = (
+  rgb1: [number, number, number],
+  rgb2: [number, number, number]
+): number => {
+  const getLuminance = (rgb: [number, number, number]) => {
+    const [r, g, b] = rgb.map((val) => {
+      val = val / 255;
+      return val <= 0.03928
+        ? val / 12.92
+        : Math.pow((val + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+
+  const luminance1 = getLuminance(rgb1);
+  const luminance2 = getLuminance(rgb2);
+
+  const brightest = Math.max(luminance1, luminance2);
+  const darkest = Math.min(luminance1, luminance2);
+
+  return (brightest + 0.05) / (darkest + 0.05);
+};
+
+const getColorName = (rgb: [number, number, number]): string => {
+  const [r, g, b] = rgb;
+
+  const colorNames: { [key: string]: [number, number, number] } = {
+    Red: [255, 0, 0],
+    Green: [0, 255, 0],
+    Blue: [0, 0, 255],
+    Yellow: [255, 255, 0],
+    Cyan: [0, 255, 255],
+    Magenta: [255, 0, 255],
+    White: [255, 255, 255],
+    Black: [0, 0, 0],
+    Purple: [128, 0, 128],
+    Orange: [255, 165, 0],
+    Pink: [255, 192, 203],
+    Indigo: [75, 0, 130],
+    Teal: [0, 128, 128],
+    Lavender: [230, 230, 250],
+  };
+
+  let closestColor = "Custom";
+  let minDistance = Number.MAX_VALUE;
+
+  Object.entries(colorNames).forEach(([name, [r2, g2, b2]]) => {
+    const distance = Math.sqrt(
+      Math.pow(r - r2, 2) + Math.pow(g - g2, 2) + Math.pow(b - b2, 2)
+    );
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestColor = name;
+    }
   });
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Mock data for demonstration
+  return minDistance < 150 ? closestColor : "Custom";
+};
+
+const generatePalette = (
+  hsl: [number, number, number],
+  type: string
+): Palette => {
+  let colors: Color[] = [];
+  let hslArray: Array<[number, number, number]> = [];
+  let description = "";
+
+  switch (type.toLowerCase()) {
+    case "complementary":
+      hslArray = [hsl, getComplementaryColor(...hsl)];
+      description =
+        "Colors that are opposite each other on the color wheel, creating strong contrast.";
+      break;
+    case "analogous":
+      hslArray = getAnalogousColors(...hsl);
+      description =
+        "Colors that are adjacent to each other on the color wheel, creating a harmonious and cohesive look.";
+      break;
+    case "triadic":
+      hslArray = getTriadicColors(...hsl);
+      description =
+        "Three colors equally spaced around the color wheel, providing vibrant contrast while maintaining harmony.";
+      break;
+    case "monochromatic":
+      hslArray = getMonochromaticColors(...hsl);
+      description =
+        "Different shades, tones, and tints of a single color, creating a cohesive and sophisticated palette.";
+      break;
+    case "tetradic":
+      hslArray = getTetradicColors(...hsl);
+      description =
+        "Four colors arranged into two complementary pairs, offering rich and balanced color possibilities.";
+      break;
+    default:
+      hslArray = [hsl];
+      description = "A custom color palette.";
+  }
+
+  colors = hslArray.map((hslValues) => {
+    const rgb = hslToRgb(...hslValues);
+    return {
+      hex: rgbToHex(...rgb),
+      rgb,
+      hsl: hslValues,
+    };
+  });
+
+  return {
+    name: type.charAt(0).toUpperCase() + type.slice(1),
+    colors,
+    description,
+  };
+};
+
+const generateHarmonies = (baseHsl: [number, number, number]): Palette[] => {
+  return [
+    generatePalette(baseHsl, "complementary"),
+    generatePalette(baseHsl, "analogous"),
+    generatePalette(baseHsl, "triadic"),
+    generatePalette(baseHsl, "monochromatic"),
+    generatePalette(baseHsl, "tetradic"),
+  ];
+};
+
+const ColorPaletteGenerator: NextPage = () => {
+  const [baseColor, setBaseColor] = useState<string>("#6366f1");
+  const [palettes, setPalettes] = useState<Palette[]>([]);
+  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
+  const [saturation, setSaturation] = useState<number>(80);
+  const [brightness, setBrightness] = useState<number>(50);
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activePalette, setActivePalette] = useState<string>("complementary");
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [exportFormat, setExportFormat] = useState<string>("hex");
+  const [colorHistory, setColorHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [customizing, setCustomizing] = useState<boolean>(false);
+  const [customPalette, setCustomPalette] = useState<Color[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [showSaved, setShowSaved] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<
+    "palettes" | "preview" | "export"
+  >("palettes");
+  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [showColorInfo, setShowColorInfo] = useState<boolean>(false);
+  const [contrastWithWhite, setContrastWithWhite] = useState<number>(1);
+  const [contrastWithBlack, setContrastWithBlack] = useState<number>(1);
+  const [colorName, setColorName] = useState<string>("Custom");
+  const [quickColors, setQuickColors] = useState<string[]>([
+    "#FF0000",
+    "#00FF00",
+    "#0000FF",
+    "#FFFF00",
+    "#FF00FF",
+    "#00FFFF",
+  ]);
+  const [hueAnimation, setHueAnimation] = useState<boolean>(false);
+
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const saturationRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
+  const customNameRef = useRef<HTMLInputElement>(null);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const baseHsl = useMemo(() => {
+    const rgb = hexToRgb(baseColor);
+    return rgbToHsl(...rgb);
+  }, [baseColor]);
+
+  const adjustedBaseHsl = useMemo<[number, number, number]>(() => {
+    return [baseHsl[0], saturation, brightness];
+  }, [baseHsl, saturation, brightness]);
+
   useEffect(() => {
-    // try to load saved trips
-    const stored = localStorage.getItem("trips");
-    if (stored) {
-      setTrips(JSON.parse(stored));
-      setIsLoading(false);
-    } else {
-      // Simulate loading time
-      setTimeout(() => {
-        setTrips(mockTrips);
-        setIsLoading(false);
-      }, 1500);
+    const rgb = hexToRgb(baseColor);
+    const whiteRgb: [number, number, number] = [255, 255, 255];
+    const blackRgb: [number, number, number] = [0, 0, 0];
+
+    setContrastWithWhite(getContrastRatio(rgb, whiteRgb));
+    setContrastWithBlack(getContrastRatio(rgb, blackRgb));
+    setColorName(getColorName(rgb));
+  }, [baseColor]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--icon-color",
+      isDarkMode ? "#a78bfa" : "#6366f1"
+    );
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    const generatedPalettes = generateHarmonies(adjustedBaseHsl);
+    setPalettes(generatedPalettes);
+
+    if (customPalette.length === 0) {
+      const initialColors = Array(5)
+        .fill(null)
+        .map(() => {
+          const randomHex = getRandomHex();
+          const rgb = hexToRgb(randomHex);
+          const hsl = rgbToHsl(...rgb);
+          return { hex: randomHex, rgb, hsl };
+        });
+      setCustomPalette(initialColors);
     }
 
-    // Network status detection
-    const handleOnlineStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener("online", handleOnlineStatus);
-    window.addEventListener("offline", handleOnlineStatus);
+    setIsAnimating(true);
+    const timer = setTimeout(() => setIsAnimating(false), 400);
+    return () => clearTimeout(timer);
+  }, [adjustedBaseHsl, baseColor, saturation, brightness]);
+
+  useEffect(() => {
+    const savedData = localStorage.getItem("savedPalettes");
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setSavedPalettes(parsed);
+      } catch (e) {
+        console.error("Failed to parse saved palettes", e);
+      }
+    }
+
+    const historyData = localStorage.getItem("colorHistory");
+    if (historyData) {
+      try {
+        const parsed = JSON.parse(historyData);
+        setColorHistory(parsed);
+      } catch (e) {
+        console.error("Failed to parse color history", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (hueAnimation) {
+      let hue = 0;
+      interval = setInterval(() => {
+        hue = (hue + 1) % 360;
+        const rgb = hslToRgb(hue, saturation, brightness);
+        setBaseColor(rgbToHex(...rgb));
+      }, 50);
+    }
 
     return () => {
-      window.removeEventListener("online", handleOnlineStatus);
-      window.removeEventListener("offline", handleOnlineStatus);
+      if (interval) clearInterval(interval);
     };
-  }, []);
+  }, [hueAnimation, saturation, brightness]);
 
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("trips", JSON.stringify(trips));
+    if (baseColor && !colorHistory.includes(baseColor)) {
+      const newHistory = [baseColor, ...colorHistory.slice(0, 19)];
+      setColorHistory(newHistory);
+      localStorage.setItem("colorHistory", JSON.stringify(newHistory));
     }
-  }, [trips]);
+  }, [baseColor, colorHistory]);
 
-  // Service worker registration for offline support
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      // This would be the actual implementation in a real app
-      // navigator.serviceWorker.register('/service-worker.js');
+  const handleSaturationChange = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!saturationRef.current) return;
 
-      // For demo purposes we'll just log it
-      console.log(
-        "Service Worker would be registered here for offline support"
-      );
+    const rect = saturationRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    const newSaturation = Math.round(x * 100);
+    const newBrightness = Math.round((1 - y) * 100);
+
+    setSaturation(newSaturation);
+    setBrightness(newBrightness);
+  };
+
+  const handleSaturationMouseDown = () => {
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      if (!saturationRef.current) return;
+
+      const rect = saturationRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+      setSaturation(Math.round(x * 100));
+      setBrightness(Math.round((1 - y) * 100));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleHueChange = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!hueRef.current) return;
+
+    const rect = hueRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+    const newHue = Math.round(x * 360);
+
+    const rgb = hslToRgb(newHue, saturation, brightness);
+    setBaseColor(rgbToHex(...rgb));
+  };
+
+  const handleHueMouseDown = () => {
+    setHueAnimation(false);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      if (!hueRef.current) return;
+
+      const rect = hueRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+      const newHue = Math.round(x * 360);
+      const rgb = hslToRgb(newHue, saturation, brightness);
+      setBaseColor(rgbToHex(...rgb));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const toggleHueAnimation = () => {
+    setHueAnimation(!hueAnimation);
+  };
+
+  const updateCustomColor = (index: number, newColor: string) => {
+    const updatedPalette = [...customPalette];
+    const rgb = hexToRgb(newColor);
+    updatedPalette[index] = {
+      hex: newColor,
+      rgb,
+      hsl: rgbToHsl(...rgb),
+    };
+    setCustomPalette(updatedPalette);
+  };
+
+  const savePalette = () => {
+    const currentPalette = palettes.find(
+      (p) => p.name.toLowerCase() === activePalette
+    );
+    if (!currentPalette) return;
+
+    const name = customNameRef.current?.value || currentPalette.name;
+
+    const newSavedPalette: SavedPalette = {
+      ...currentPalette,
+      name,
+      id: Date.now().toString(),
+      createdAt: Date.now(),
+    };
+
+    const updatedSavedPalettes = [newSavedPalette, ...savedPalettes];
+    setSavedPalettes(updatedSavedPalettes);
+    localStorage.setItem("savedPalettes", JSON.stringify(updatedSavedPalettes));
+
+    showNotification("Palette saved successfully!", "success");
+
+    if (customNameRef.current) {
+      customNameRef.current.value = "";
     }
-  }, []);
-
-  // Handle notification display
-  useEffect(() => {
-    if (notification.show) {
-      const timer = setTimeout(() => {
-        setNotification({ ...notification, show: false });
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
-
-  // Filter trips based on search query
-  const filteredTrips = trips.filter(
-    (trip) =>
-      trip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trip.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trip.entries.some(
-        (entry) =>
-          entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entry.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entry.tags.some((tag) =>
-            tag.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-      )
-  );
-
-  // Create new trip handler
-  const handleCreateTrip = () => {
-    const coverImage =
-      DEFAULT_COVERS[Math.floor(Math.random() * DEFAULT_COVERS.length)];
-
-    const newTrip: Trip = {
-      id: Date.now(),
-      title: "New Trip",
-      coverImage,
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: "",
-      location: "Add location",
-      favorite: false,
-      entries: [],
-    };
-
-    setTrips([newTrip, ...trips]);
-    setSelectedTrip(newTrip);
-    setCurrentView("trip-detail");
-    showNotification("New trip created!", "success");
   };
 
-  // Create new entry handler
-  const handleCreateEntry = () => {
-    if (!selectedTrip) return;
-
-    // Create new entry with geolocation (in a real app would use the browser's geolocation API)
-    const mockCoordinates = { lat: 40.7128, lng: -74.006 }; // New York coordinates as placeholder
-
-    const newEntry = {
-      id: Date.now(),
-      date: new Date().toISOString().split("T")[0],
-      title: "New Entry",
-      content: "",
-      location: "Add location",
-      coordinates: mockCoordinates,
-      images: [],
-      tags: [],
-    };
-
-    const updatedTrip = {
-      ...selectedTrip,
-      entries: [newEntry, ...selectedTrip.entries],
-    };
-
-    setTrips(
-      trips.map((trip) => (trip.id === selectedTrip.id ? updatedTrip : trip))
-    );
-    setSelectedTrip(updatedTrip);
-    setSelectedEntry(newEntry);
-    setCurrentView("entry-detail");
-    showNotification("New entry created!", "success");
+  const deleteSavedPalette = (id: string) => {
+    const updatedPalettes = savedPalettes.filter((p) => p.id !== id);
+    setSavedPalettes(updatedPalettes);
+    localStorage.setItem("savedPalettes", JSON.stringify(updatedPalettes));
+    showNotification("Palette deleted", "info");
   };
 
-  // Toggle favorite status for a trip
-  const toggleFavorite = (tripId: number) => {
-    setTrips(
-      trips.map((trip) =>
-        trip.id === tripId ? { ...trip, favorite: !trip.favorite } : trip
-      )
-    );
+  const loadSavedPalette = (palette: SavedPalette) => {
+    if (palette.colors.length > 0) {
+      const mainColor = palette.colors[0];
+      setBaseColor(mainColor.hex);
+      setSaturation(mainColor.hsl[1]);
+      setBrightness(mainColor.hsl[2]);
+      setActivePalette(palette.name.toLowerCase());
 
-    // Update selected trip if it's the current one
-    if (selectedTrip && selectedTrip.id === tripId) {
-      setSelectedTrip({ ...selectedTrip, favorite: !selectedTrip.favorite });
+      showNotification("Palette loaded", "success");
+      setCurrentView("palettes");
+      setShowSaved(false);
     }
   };
 
-  // Delete trip handler
-  const deleteTrip = (tripId: number) => {
-    setTrips(trips.filter((trip) => trip.id !== tripId));
-
-    if (selectedTrip && selectedTrip.id === tripId) {
-      setSelectedTrip(null);
-      setCurrentView("home");
-    }
-
-    showNotification("Trip deleted!", "success");
-  };
-
-  // Delete entry handler
-  const deleteEntry = (entryId: number) => {
-    if (!selectedTrip) return;
-
-    const updatedEntries = selectedTrip.entries.filter(
-      (entry) => entry.id !== entryId
-    );
-    const updatedTrip = {
-      ...selectedTrip,
-      entries: updatedEntries,
-    };
-
-    setTrips(
-      trips.map((trip) => (trip.id === selectedTrip.id ? updatedTrip : trip))
-    );
-    setSelectedTrip(updatedTrip);
-
-    if (selectedEntry && selectedEntry.id === entryId) {
-      setSelectedEntry(null);
-      setCurrentView("trip-detail");
-    }
-
-    showNotification("Entry deleted!", "success");
-  };
-
-  // Update trip handler
-  const updateTrip = (updatedTrip: Trip) => {
-    setTrips(
-      trips.map((trip) => (trip.id === updatedTrip.id ? updatedTrip : trip))
-    );
-    setSelectedTrip(updatedTrip);
-    showNotification("Trip updated!", "success");
-  };
-
-  // Update entry handler
-  const updateEntry = (updatedEntry: Entry) => {
-    if (!selectedTrip) return;
-
-    const updatedEntries = selectedTrip.entries.map((entry) =>
-      entry.id === updatedEntry.id ? updatedEntry : entry
-    );
-
-    const updatedTrip = {
-      ...selectedTrip,
-      entries: updatedEntries,
-    };
-
-    setTrips(
-      trips.map((trip) => (trip.id === selectedTrip.id ? updatedTrip : trip))
-    );
-    setSelectedTrip(updatedTrip);
-    setSelectedEntry(updatedEntry);
-    showNotification("Entry updated!", "success");
-  };
-
-  // Photo upload handler
-  const handlePhotoUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Process uploaded photo
-  const processPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedEntry) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      const updatedEntry: Entry = {
-        ...selectedEntry,
-        images: [...selectedEntry.images, base64],
-      };
-      updateEntry(updatedEntry);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Remove photo handler
-  const removePhoto = (index: number) => {
-    if (!selectedEntry) return;
-
-    const updatedImages = [...selectedEntry.images];
-    updatedImages.splice(index, 1);
-
-    const updatedEntry = {
-      ...selectedEntry,
-      images: updatedImages,
-    };
-
-    updateEntry(updatedEntry);
-  };
-
-  // Show notification helper
-  const showNotification = (
-    message: string,
-    type: "info" | "success" | "error" = "info"
-  ) => {
-    setNotification({
-      show: true,
-      message,
-      type,
+  const copyToClipboard = (text: string, format: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      showNotification(`${format}: ${text} copied to clipboard!`, "success");
     });
   };
 
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
+  const showNotification = (
+    message: string,
+    type: "success" | "error" | "info"
+  ) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
   };
 
-  // Main renderer - decides which view to show
-  const renderMainContent = () => {
-    switch (currentView) {
-      case "home":
-        return (
-          <HomeView
-            trips={filteredTrips}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onCreateTrip={handleCreateTrip}
-            onSelectTrip={(trip) => {
-              setSelectedTrip(trip);
-              setCurrentView("trip-detail");
-            }}
-            toggleFavorite={toggleFavorite}
-          />
-        );
+  const formatColor = (color: Color): string => {
+    switch (exportFormat) {
+      case "hex":
+        return color.hex;
+      case "rgb":
+        return `rgb(${color.rgb.join(", ")})`;
+      case "rgba":
+        return `rgba(${color.rgb.join(", ")}, 1)`;
+      case "hsl":
+        return `hsl(${color.hsl[0]}, ${color.hsl[1]}%, ${color.hsl[2]}%)`;
+      case "scss":
+        return `$color: ${color.hex};`;
+      case "tailwind":
+        return `colors.${activePalette.toLowerCase()}: "${color.hex}",`;
+      default:
+        return color.hex;
+    }
+  };
 
-      case "trip-detail":
-        return selectedTrip ? (
-          <TripDetailView
-            trip={selectedTrip}
-            onBack={() => setCurrentView("home")}
-            onSelectEntry={(entry) => {
-              setSelectedEntry(entry);
-              setCurrentView("entry-detail");
-            }}
-            onCreateEntry={handleCreateEntry}
-            onUpdateTrip={updateTrip}
-            onDeleteTrip={deleteTrip}
-            toggleFavorite={toggleFavorite}
-            setSelectedEntry={setSelectedEntry}
-            setCurrentView={setCurrentView}
-            setSelectedTrip={setSelectedTrip}
-          />
-        ) : null;
+  const exportPalettes = () => {
+    let exportText = "";
+    const activePaletteObj = palettes.find(
+      (p) => p.name.toLowerCase() === activePalette
+    );
 
-      case "entry-detail":
-        return selectedEntry ? (
-          <EntryDetailView
-            entry={selectedEntry}
-            onBack={() => {
-              setSelectedEntry(null);
-              setCurrentView("trip-detail");
-            }}
-            onUpdate={updateEntry}
-            onDelete={deleteEntry}
-            onPhotoUpload={handlePhotoUpload}
-            onRemovePhoto={removePhoto}
-          />
-        ) : null;
+    if (!activePaletteObj) return;
 
-      case "explore":
-        return <ExploreView />;
+    switch (exportFormat) {
+      case "scss":
+        exportText += `// ${activePaletteObj.name} Palette - SCSS Variables\n\n`;
+        activePaletteObj.colors.forEach((color, index) => {
+          exportText += `$${activePalette.toLowerCase()}-${index + 1}: ${
+            color.hex
+          };\n`;
+        });
+        exportText += `\n// Usage example:\n.element {\n  background-color: $${activePalette.toLowerCase()}-1;\n  color: $${activePalette.toLowerCase()}-2;\n}\n`;
+        break;
 
-      case "journal":
-        return <JournalView trips={trips} />;
+      case "css":
+        exportText += `/* ${activePaletteObj.name} Palette - CSS Variables */\n\n:root {\n`;
+        activePaletteObj.colors.forEach((color, index) => {
+          exportText += `  --${activePalette.toLowerCase()}-${index + 1}: ${
+            color.hex
+          };\n`;
+        });
+        exportText += `}\n\n/* Usage example: */\n.element {\n  background-color: var(--${activePalette.toLowerCase()}-1);\n  color: var(--${activePalette.toLowerCase()}-2);\n}\n`;
+        break;
 
-      case "profile":
-        return <ProfileView />;
+      case "tailwind":
+        exportText += `// ${activePaletteObj.name} Palette - Tailwind Config\n\nmodule.exports = {\n  theme: {\n    extend: {\n      colors: {\n`;
+        activePaletteObj.colors.forEach((color, index) => {
+          exportText += `        '${activePalette.toLowerCase()}-${
+            index + 1
+          }': '${color.hex}',\n`;
+        });
+        exportText += `      }\n    }\n  }\n};\n`;
+        break;
 
       default:
-        return (
-          <HomeView
-            trips={filteredTrips}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onCreateTrip={handleCreateTrip}
-            onSelectTrip={(trip) => {
-              setSelectedTrip(trip);
-              setCurrentView("trip-detail");
-            }}
-            toggleFavorite={toggleFavorite}
-          />
-        );
+        exportText += `// ${activePaletteObj.name} Palette\n\n`;
+        activePaletteObj.colors.forEach((color, index) => {
+          exportText += `Color ${index + 1}: ${
+            color.hex
+          } | RGB(${color.rgb.join(", ")}) | HSL(${color.hsl[0]}, ${
+            color.hsl[1]
+          }%, ${color.hsl[2]}%)\n`;
+        });
     }
+
+    navigator.clipboard.writeText(exportText).then(() => {
+      showNotification("Palette exported to clipboard!", "success");
+    });
+  };
+
+  const filteredPalettes =
+    activeTab === "all"
+      ? palettes
+      : palettes.filter((p) => p.name.toLowerCase() === activeTab);
+
+  const currentPalette =
+    palettes.find((p) => p.name.toLowerCase() === activePalette) || palettes[0];
+
+  const theme = {
+    bg: isDarkMode
+      ? "from-gray-900 via-gray-800 to-gray-900"
+      : "from-gray-50 via-blue-50 to-pink-50",
+    gradientOverlay: isDarkMode
+      ? "bg-gradient-to-br from-purple-900/20 to-indigo-900/20"
+      : "bg-gradient-to-br from-purple-100/30 to-indigo-100/30",
+    card: isDarkMode
+      ? "bg-gray-800/80 backdrop-blur-lg"
+      : "bg-white/80 backdrop-blur-lg",
+    cardBorder: isDarkMode ? "border-gray-700/50" : "border-gray-200/50",
+    text: isDarkMode ? "text-white" : "text-gray-800",
+    subtext: isDarkMode ? "text-gray-300" : "text-gray-600",
+    border: isDarkMode ? "border-gray-700" : "border-gray-200",
+    button: isDarkMode
+      ? "bg-gray-700/80 hover:bg-gray-600/80 backdrop-blur-md"
+      : "bg-gray-200/80 hover:bg-gray-300/80 backdrop-blur-md",
+    buttonText: isDarkMode ? "text-white" : "text-gray-800",
+    activeButton: isDarkMode
+      ? "bg-purple-600/90 hover:bg-purple-700/90 backdrop-blur-md"
+      : "bg-purple-500/90 hover:bg-purple-600/90 backdrop-blur-md",
+    input: isDarkMode
+      ? "bg-gray-700/80 border-gray-600/50 backdrop-blur-md"
+      : "bg-white/80 border-gray-300/50 backdrop-blur-md",
+    shadow: isDarkMode
+      ? "shadow-xl shadow-black/20"
+      : "shadow-xl shadow-black/5",
+    highlight: isDarkMode
+      ? "from-purple-600 to-indigo-600"
+      : "from-purple-500 to-indigo-500",
+    glow: isDarkMode
+      ? "shadow-lg shadow-purple-500/20"
+      : "shadow-lg shadow-purple-500/10",
   };
 
   return (
     <div
-      className={`${
-        darkMode
-          ? "dark bg-slate-900 text-gray-100"
-          : "bg-amber-50 text-gray-800"
-      } min-h-screen flex flex-col transition-colors duration-300`}
-      style={{ fontFamily: "var(--font-roboto), sans-serif" }}
+      className={`${montserrat.className} transition-colors duration-500 ${
+        isDarkMode ? "dark" : ""
+      }`}
     >
-      {/* Offscreen file input for photo uploads */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
-        onChange={processPhoto}
-      />
+      <Head>
+        <title>Spectrum Pro - Modern Color Palette Generator</title>
+        <meta
+          name="description"
+          content="Create professional color palettes for your design projects with Spectrum Pro"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-      {/* Header */}
-      <header
-        className={`${
-          darkMode
-            ? "bg-slate-800 border-slate-700"
-            : "bg-amber-100 border-amber-200"
-        } px-4 py-3 flex items-center justify-between border-b transition-colors duration-300 fixed top-0 left-0 right-0 z-20`}
+      <main
+        className={`min-h-screen bg-gradient-to-br ${theme.bg} transition-colors duration-500 overflow-hidden`}
       >
-        <div className="flex items-center gap-3">
-          {currentView !== "home" && (
-            <button
-              onClick={() => {
-                if (currentView === "entry-detail") {
-                  setCurrentView("trip-detail");
-                  setSelectedEntry(null);
-                } else {
-                  setCurrentView("home");
-                  setSelectedTrip(null);
-                }
-              }}
-              className={`${
-                darkMode
-                  ? "text-gray-200 hover:bg-slate-700"
-                  : "text-amber-900 hover:bg-amber-200"
-              } p-2 rounded-full transition-colors`}
-            >
-              <ChevronLeft size={20} />
-            </button>
-          )}
-          <h1
-            className={`font-bold text-xl ${
-              darkMode ? "text-amber-100" : "text-amber-800"
-            } flex items-center gap-2`}
-          >
-            <Compass
-              className={darkMode ? "text-amber-400" : "text-amber-600"}
-              size={24}
-            />
-            Wanderlust
-          </h1>
-        </div>
-      </header>
-      
-      {/* Add padding to account for fixed header */}
-      <div className="pt-12 md:pt-14"></div>
+        <div className={`${theme.gradientOverlay} min-h-screen`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <header className="mb-8 relative overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-500/20 rounded-full filter blur-3xl opacity-20 -z-10 animate-pulse-slow"></div>
+              <div className="absolute top-10 right-10 w-32 h-32 bg-indigo-500/30 rounded-full filter blur-2xl opacity-20 -z-10 animate-float"></div>
+              <div className="absolute -top-20 -left-20 w-64 h-64 bg-pink-500/20 rounded-full filter blur-3xl opacity-20 -z-10 animate-float-delayed"></div>
 
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className={`fixed inset-0 z-20 ${
-              darkMode ? "bg-black/70" : "bg-black/50"
-            }`}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`${
-                darkMode ? "bg-slate-800" : "bg-amber-100"
-              } w-64 h-full p-4 flex flex-col gap-4`}
-              onClick={(e) => e.stopPropagation()}
-            >
               <div className="flex justify-between items-center">
-                <h2
-                  className={`font-bold text-xl ${
-                    darkMode ? "text-amber-100" : "text-amber-800"
-                  }`}
-                >
-                  Menu
-                </h2>
-                <button onClick={() => setIsMenuOpen(false)}>
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="mt-4"></div>
-              <NavbarItem
-                icon={<Home size={20} />}
-                label="Home"
-                isActive={currentView === "home"}
-                onClick={() => {
-                  setCurrentView("home");
-                  setIsMenuOpen(false);
-                }}
-                darkMode={darkMode}
-              />
-              <NavbarItem
-                icon={<Compass size={20} />}
-                label="Explore"
-                isActive={currentView === "explore"}
-                onClick={() => {
-                  setCurrentView("explore");
-                  setIsMenuOpen(false);
-                }}
-                darkMode={darkMode}
-              />
-              <NavbarItem
-                icon={<BookOpen size={20} />}
-                label="Journal"
-                isActive={currentView === "journal"}
-                onClick={() => {
-                  setCurrentView("journal");
-                  setIsMenuOpen(false);
-                }}
-                darkMode={darkMode}
-              />
-              <NavbarItem
-                icon={<User size={20} />}
-                label="Profile"
-                isActive={currentView === "profile"}
-                onClick={() => {
-                  setCurrentView("profile");
-                  setIsMenuOpen(false);
-                }}
-                darkMode={darkMode}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Content Container */}
-      <div className="flex md:pl-20">
-        {/* Desktop Sidebar Navigation */}
-        <nav
-          className={`${
-            darkMode
-              ? "bg-slate-800 border-slate-700"
-              : "bg-amber-100 border-amber-200"
-          } hidden md:flex flex-col w-20 border-r transition-colors duration-300 fixed left-0 top-[48px] bottom-0 overflow-hidden z-10 pt-6`}
-        >
-          <NavbarItem
-            icon={<Home size={24} />}
-            label="Home"
-            isActive={currentView === "home"}
-            onClick={() => setCurrentView("home")}
-            darkMode={darkMode}
-          />
-          <NavbarItem
-            icon={<Compass size={24} />}
-            label="Explore"
-            isActive={currentView === "explore"}
-            onClick={() => setCurrentView("explore")}
-            darkMode={darkMode}
-          />
-          <NavbarItem
-            icon={<BookOpen size={24} />}
-            label="Journal"
-            isActive={currentView === "journal"}
-            onClick={() => setCurrentView("journal")}
-            darkMode={darkMode}
-          />
-          <NavbarItem
-            icon={<User size={24} />}
-            label="Profile"
-            isActive={currentView === "profile"}
-            onClick={() => setCurrentView("profile")}
-            darkMode={darkMode}
-          />
-        </nav>
-
-        {/* Dynamic Content Area */}
-        <div className="w-full max-h-[calc(100vh-48px)] overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Loader
-                className={`${
-                  darkMode ? "text-amber-400" : "text-amber-600"
-                } animate-spin`}
-                size={48}
-              />
-              <p className="mt-4 font-medium">Loading your adventures...</p>
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentView}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {renderMainContent()}
-              </motion.div>
-            </AnimatePresence>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Navigation for Mobile */}
-      <nav
-        className={`${
-          darkMode
-            ? "bg-slate-800 border-slate-700"
-            : "bg-amber-100 border-amber-200"
-        } md:hidden flex items-center justify-around border-t py-2 transition-colors duration-300 fixed bottom-0 left-0 right-0 z-20`}
-      >
-        <NavbarItem
-          icon={<Home size={24} />}
-          isActive={currentView === "home"}
-          onClick={() => setCurrentView("home")}
-          minimal
-          darkMode={darkMode}
-        />
-        <NavbarItem
-          icon={<Compass size={24} />}
-          isActive={currentView === "explore"}
-          onClick={() => setCurrentView("explore")}
-          minimal
-          darkMode={darkMode}
-        />
-        <NavbarItem
-          icon={<Plus size={28} />}
-          special
-          onClick={handleCreateTrip}
-          darkMode={darkMode}
-        />
-        <NavbarItem
-          icon={<BookOpen size={24} />}
-          isActive={currentView === "journal"}
-          onClick={() => setCurrentView("journal")}
-          minimal
-          darkMode={darkMode}
-        />
-        <NavbarItem
-          icon={<User size={24} />}
-          isActive={currentView === "profile"}
-          onClick={() => setCurrentView("profile")}
-          minimal
-          darkMode={darkMode}
-        />
-      </nav>
-
-      {/* Offline Indicator */}
-      {!isOnline && (
-        <motion.div
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className={`fixed bottom-16 left-0 right-0 ${
-            darkMode ? "bg-red-900 text-white" : "bg-red-500 text-white"
-          } p-2 text-center text-sm`}
-        >
-          You're currently offline. Changes will sync when you reconnect.
-        </motion.div>
-      )}
-
-      {/* Notification Toast */}
-      <AnimatePresence>
-        {notification.show && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className={`fixed top-20 right-4 max-w-xs p-3 rounded shadow-lg 
-            ${
-              notification.type === "success"
-                ? darkMode
-                  ? "bg-green-800 text-green-100"
-                  : "bg-green-500 text-white"
-                : notification.type === "error"
-                ? darkMode
-                  ? "bg-red-800 text-red-100"
-                  : "bg-red-500 text-white"
-                : darkMode
-                ? "bg-blue-800 text-blue-100"
-                : "bg-blue-500 text-white"
-            }`}
-          >
-            {notification.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// Navbar Item Component
-function NavbarItem({
-  icon,
-  label,
-  isActive,
-  onClick,
-  special,
-  minimal,
-  darkMode,
-}: NavbarItemProps) {
-  if (special) {
-    return (
-      <button
-        onClick={onClick}
-        className={`${
-          darkMode
-            ? "bg-amber-500 text-white hover:bg-amber-600"
-            : "bg-amber-600 text-white hover:bg-amber-700"
-        } rounded-full p-3 shadow-lg transition-transform hover:scale-105 transform -translate-y-2`}
-      >
-        {icon}
-      </button>
-    );
-  }
-
-  if (minimal) {
-    return (
-      <button
-        onClick={onClick}
-        className={`p-2 rounded-full transition-colors
-          ${
-            isActive
-              ? darkMode
-                ? "text-amber-400"
-                : "text-amber-800"
-              : darkMode
-              ? "text-gray-400 hover:text-gray-200"
-              : "text-amber-600/70 hover:text-amber-800"
-          }`}
-      >
-        {icon}
-      </button>
-    );
-  }
-
-  return (
-    <motion.button
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center py-5 gap-2 transition-colors
-        ${
-          isActive
-            ? darkMode
-              ? "text-amber-400 border-r-4 border-amber-400"
-              : "text-amber-800 border-r-4 border-amber-600"
-            : darkMode
-            ? "text-gray-400 hover:text-gray-200"
-            : "text-amber-600/70 hover:text-amber-800"
-        }`}
-      whileHover={{ scale: isActive ? 1 : 1.05 }}
-      whileTap={{ scale: 0.95 }}
-    >
-      <div>{icon}</div>
-      {label && <span className="text-xs font-medium">{label}</span>}
-    </motion.button>
-  );
-}
-
-// Home View Component
-function HomeView({
-  trips,
-  searchQuery,
-  setSearchQuery,
-  onCreateTrip,
-  onSelectTrip,
-  toggleFavorite,
-}: HomeViewProps) {
-  const favoriteTrips = trips.filter((trip) => trip.favorite);
-  const recentTrips = [...trips].sort(
-    (a, b) => (new Date(b.startDate) as any) - (new Date(a.startDate) as any)
-  );
-
-  // Card animation variants
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.1,
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    }),
-    hover: { 
-      y: -10,
-      scale: 1.02,
-      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-      transition: { duration: 0.2 }
-    }
-  };
-
-  return (
-    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 overflow-y-auto max-h-screen">
-      {/* Search Bar */}
-      <motion.div 
-        className="relative"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Search
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          size={20}
-        />
-        <input
-          type="text"
-          placeholder="Search your trips and memories..."
-          value={searchQuery || ""}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500  shadow-sm transition-all"
-        />
-      </motion.div>
-
-      {/* Welcome Section */}
-      <motion.section 
-        className="rounded-3xl overflow-hidden relative h-64 md:h-80 group"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <img
-          src="https://images.unsplash.com/photo-1489641024260-20e5cb3ee4aa?fm=jpg&q=60&w=3000"
-          alt="Travel memories"
-          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70 flex flex-col justify-end p-6">
-          <motion.h1 
-            className="text-white text-3xl md:text-4xl font-bold mb-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-          >
-            Your Travel Journey
-          </motion.h1>
-          <motion.p 
-            className="text-amber-100 text-sm md:text-base mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-          >
-            Capture and relive your most precious travel moments
-          </motion.p>
-          <motion.button
-            onClick={onCreateTrip}
-            className="bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-5 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg w-full md:w-auto md:self-start"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.4 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Plus size={20} />
-            Start a New Adventure
-          </motion.button>
-        </div>
-      </motion.section>
-
-      {/* Favorites Section */}
-      {favoriteTrips.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Favorite Journeys</h2>
-            <a href="#see-all">
-              <motion.button 
-                className="text-sm font-medium flex items-center gap-1 text-amber-700"
-                whileHover={{ x: 3 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                See all <ArrowUpRight size={16} />
-              </motion.button>
-            </a>
-          </div>
-
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-            {favoriteTrips.map((trip, index) => (
-              <motion.div
-                key={`favorite-${trip.id}`}
-                className="snap-start rounded-xl overflow-hidden flex-shrink-0 w-64 bg-white shadow-md cursor-pointer"
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                whileHover="hover"
-                custom={index}
-                onClick={() => onSelectTrip(trip)}
-              >
-                <div className="relative h-40">
-                  <img
-                    src={trip.coverImage}
-                    alt={trip.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <motion.button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(trip.id);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-full backdrop-blur-sm"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <Heart
-                      size={18}
-                      fill="#F59E0B"
-                      className="text-amber-500"
-                    />
-                  </motion.button>
-                </div>
-                <div className="p-3">
-                  <h3 className="font-bold text-amber-800 ">{trip.title}</h3>
-                  <div className="flex items-center text-gray-600  text-sm mt-1">
-                    <MapPin size={14} className="mr-1" />
-                    {trip.location}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Recent Trips Grid */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Recent Adventures</h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recentTrips.map((trip, index) => (
-            <motion.div
-              key={`trip-${trip.id}`}
-              className="rounded-xl overflow-hidden bg-white shadow-md cursor-pointer"
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              whileHover="hover"
-              custom={index}
-              onClick={() => onSelectTrip(trip)}
-            >
-              <div className="relative h-48">
-                <img
-                  src={trip.coverImage}
-                  alt={trip.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-0 left-0 right-0 px-3 py-2 bg-gradient-to-b from-black/50 to-transparent">
-                  <div className="text-white text-xs flex items-center">
-                    <Calendar size={12} className="mr-1" />
-                    {trip.startDate} - {trip.endDate || "Ongoing"}
-                  </div>
-                </div>
-                <motion.button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(trip.id);
-                  }}
-                  className="absolute top-2 right-2 p-1.5 bg-white/80/80 rounded-full backdrop-blur-sm"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Heart
-                    size={18}
-                    fill={trip.favorite ? "#F59E0B" : "none"}
-                    className={
-                      trip.favorite ? "text-amber-500" : "text-gray-500 "
-                    }
-                  />
-                </motion.button>
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-lg text-amber-800 ">
-                  {trip.title}
-                </h3>
-                <div className="flex items-center text-gray-600  text-sm mt-1">
-                  <MapPin size={14} className="mr-1" />
-                  {trip.location}
-                </div>
-                <div className="mt-2 text-sm text-gray-500 ">
-                  {trip.entries.length}{" "}
-                  {trip.entries.length === 1 ? "entry" : "entries"}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-
-          {/* Create Trip Card */}
-          <motion.div
-            className="rounded-xl overflow-hidden border-2 border-dashed border-amber-200 flex flex-col items-center justify-center p-6 h-64 cursor-pointer hover:border-amber-400 transition-colors"
-            variants={cardVariants}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ 
-              scale: 1.03, 
-              borderColor: "#F59E0B",
-              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
-            }}
-            whileTap={{ scale: 0.97 }}
-            custom={recentTrips.length}
-            onClick={onCreateTrip}
-          >
-            <motion.div 
-              className="bg-amber-100 rounded-full p-3 mb-4"
-              whileHover={{ rotate: 90, scale: 1.1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            >
-              <Plus size={24} className="text-amber-600" />
-            </motion.div>
-            <h3 className="font-bold text-amber-800  text-center">
-              Create New Trip
-            </h3>
-            <p className="text-gray-500  text-sm text-center mt-2">
-              Start documenting your next adventure
-            </p>
-          </motion.div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// Trip Detail View Component
-function TripDetailView({
-  trip,
-  onBack,
-  onSelectEntry,
-  onCreateEntry,
-  onUpdateTrip,
-  onDeleteTrip,
-  toggleFavorite,
-  setSelectedEntry,
-  setCurrentView,
-  setSelectedTrip,
-}: TripDetailViewProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedTrip, setEditedTrip] = useState(trip);
-
-  const [showEntryModal, setShowEntryModal] = useState(false);
-  const [entryForm, setEntryForm] = useState<Partial<Entry>>({
-    date: new Date().toISOString().split("T")[0],
-    title: "",
-    content: "",
-    location: "",
-    coordinates: { lat: /* default or 0 */ 0, lng: 0 },
-    images: [],
-    tags: [],
-  });
-
-  // Animation variants
-  const entryVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.05,
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    }),
-    hover: { 
-      y: -5,
-      scale: 1.02,
-      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-      transition: { duration: 0.2 }
-    }
-  };
-
-  const handleSave = () => {
-    onUpdateTrip(editedTrip);
-    setIsEditing(false);
-  };
-
-  // Format dates for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Present";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  // Group entries by date
-  const entriesByDate = trip.entries.reduce((groups: any, entry) => {
-    const date = entry.date;
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(entry);
-    return groups;
-  }, {});
-
-  // Sort dates in descending order
-  const sortedDates = Object.keys(entriesByDate).sort(
-    (a, b) => (new Date(b) as any) - (new Date(a) as any)
-  );
-
-  return (
-    <div className="overflow-y-auto max-h-screen pb-20 md:pb-6">
-      {/* Cover Photo and Trip Info */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className={
-          isEditing
-            ? "relative group h-96 md:h-80"
-            : "relative h-64 md:h-80 group"
-        }
-      >
-        <img
-          src={trip.coverImage}
-          alt={trip.title}
-          className="w-full h-full object-cover transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/80">
-          {!isEditing ? (
-            <div className="absolute bottom-0 left-0 w-full p-6 text-white">
-              <div className="flex justify-between items-start">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
-                >
-                  <h1 className="text-3xl font-bold mb-1">{trip.title}</h1>
-                  <div className="flex items-center gap-2 text-amber-100 mb-2">
-                    <MapPin size={16} />
-                    <span>{trip.location}</span>
-                  </div>
-                  <div className="text-sm text-gray-200">
-                    {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
-                  </div>
-                </motion.div>
-                <motion.div 
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3, duration: 0.4 }}
-                >
-                  <motion.button
-                    onClick={() => toggleFavorite(trip.id)}
-                    className="p-2 bg-white/20 rounded-full backdrop-blur-sm"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <Heart
-                      size={20}
-                      fill={trip.favorite ? "#F59E0B" : "none"}
-                      className={
-                        trip.favorite ? "text-amber-500" : "text-white"
-                      }
-                    />
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setIsEditing(true)}
-                    className="py-1.5 px-3 bg-white/20 rounded-lg backdrop-blur-sm text-sm font-medium"
-                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.3)" }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Edit Trip
-                  </motion.button>
-                </motion.div>
-              </div>
-            </div>
-          ) : (
-            <div className="absolute bottom-0 left-0 w-full p-6 text-white">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <input
-                  value={editedTrip.title}
-                  onChange={(e) =>
-                    setEditedTrip({ ...editedTrip, title: e.target.value })
-                  }
-                  placeholder="Trip Title"
-                  className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white placeholder-gray-200 border border-white/30 w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-                <input
-                  value={editedTrip.location}
-                  onChange={(e) =>
-                    setEditedTrip({ ...editedTrip, location: e.target.value })
-                  }
-                  placeholder="Location"
-                  className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white placeholder-gray-200 border border-white/30 w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-                <input
-                  type="date"
-                  value={editedTrip.startDate}
-                  onChange={(e) =>
-                    setEditedTrip({ ...editedTrip, startDate: e.target.value })
-                  }
-                  className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white border border-white/30 w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-                <input
-                  type="date"
-                  value={editedTrip.endDate || ""}
-                  onChange={(e) =>
-                    setEditedTrip({ ...editedTrip, endDate: e.target.value })
-                  }
-                  className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white border border-white/30 w-full focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div className="flex justify-between gap-1 ">
-                <motion.button
-                  onClick={() => setIsEditing(false)}
-                  className="py-2 md:px-4 px-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-medium"
-                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.3)" }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Cancel
-                </motion.button>
-                <div className="flex gap-3">
-                  <motion.button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to delete this trip?"
-                        )
-                      ) {
-                        onDeleteTrip(trip.id);
-                      }
-                    }}
-                    className="py-2 md:px-4 px-2 bg-red-600/80 backdrop-blur-sm rounded-lg text-sm font-medium"
-                    whileHover={{ backgroundColor: "rgba(220, 38, 38, 0.9)" }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Delete Trip
-                  </motion.button>
-                  <motion.button
-                    onClick={handleSave}
-                    className="py-2 md:px-4 px-2 bg-amber-500/90 backdrop-blur-sm rounded-lg text-sm font-medium"
-                    whileHover={{ backgroundColor: "rgba(245, 158, 11, 1)" }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Save Changes
-                  </motion.button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      <AnimatePresence>
-        {showEntryModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowEntryModal(false)}
-          >
-            <motion.div
-              className="bg-white rounded-xl w-full max-w-lg p-0 shadow-2xl transform overflow-hidden"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ type: "spring", damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="bg-amber-50 p-5 border-b border-amber-100">
-                <h2 className="text-xl font-bold text-amber-800 flex items-center gap-2">
-                  <Plus size={20} className="text-amber-600" />
-                  New Journal Entry
-                </h2>
-              </div>
-
-              <div className="p-5 max-h-[80vh] overflow-y-auto">
-                {/* Form sections */}
-                <div className="space-y-5">
-                  {/* Basic Info Section */}
-                  <div className="space-y-3">
-                    {/* Title */}
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700 mb-1 block">
-                        Title
+                <div className="relative z-10">
+                  <h1 className="text-4xl font-bold relative headline-container">
+                    {"Spectrum Pro".split("").map((letter, index) => (
+                      <span
+                        key={index}
+                        className="pro-letter"
+                        style={{
+                          animationDelay: `${index * 0.08}s`,
+                          animationDuration: `${4 + (index % 3) * 0.5}s`,
+                        }}
+                      >
+                        {letter === " " ? "\u00A0" : letter}
                       </span>
-                      <input
-                        value={entryForm.title}
-                        onChange={(e) =>
-                          setEntryForm({ ...entryForm, title: e.target.value })
-                        }
-                        placeholder="What's memorable about this moment?"
-                        className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                      />
-                    </label>
+                    ))}
+                  </h1>
+                  <p className={`${theme.subtext} max-w-2xl`}>
+                    Professional color palette generator for designers
+                  </p>
+                </div>
 
-                    {/* Date and Location in a row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <label className="block">
-                        <span className="text-sm font-medium text-gray-700 mb-1 block">
-                          Date
-                        </span>
-                        <input
-                          type="date"
-                          value={entryForm.date}
-                          onChange={(e) =>
-                            setEntryForm({ ...entryForm, date: e.target.value })
-                          }
-                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                <div className="flex items-center space-x-3 relative z-10">
+                  <button
+                    onClick={toggleTheme}
+                    className={`p-3 rounded-full transition-all ${theme.button} ${theme.shadow} cursor-pointer hover:scale-105 transform`}
+                    aria-label="Toggle theme"
+                  >
+                    {isDarkMode ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                         />
-                      </label>
-                      <label className="block">
-                        <span className="text-sm font-medium text-gray-700 mb-1 block">
-                          Location
-                        </span>
-                        <div className="relative">
-                          <MapPin
-                            size={16}
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
-                          />
-                          <input
-                            value={entryForm.location}
-                            onChange={(e) =>
-                              setEntryForm({
-                                ...entryForm,
-                                location: e.target.value,
-                              })
-                            }
-                            placeholder="Where was this?"
-                            className="w-full border border-gray-300 p-2.5 pl-9 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                          />
-                        </div>
-                      </label>
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setShowSaved(!showSaved)}
+                    className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all ${theme.button} ${theme.buttonText} ${theme.shadow} cursor-pointer hover:scale-105 transform`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                      />
+                    </svg>
+                    <span className="font-medium">Saved</span>
+                    {savedPalettes.length > 0 && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                        {savedPalettes.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex mt-8 border-b border-gray-700/30 items-center justify-between">
+                <div className="flex">
+                  <button
+                    onClick={() => setCurrentView("palettes")}
+                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                      currentView === "palettes"
+                        ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
+                        : `text-gray-400 hover:text-gray-500 `
+                    }`}
+                  >
+                    <span className="flex items-center">
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M7 17C8.65685 17 10 15.6569 10 14C10 12.3431 8.65685 11 7 11C5.34315 11 4 12.3431 4 14C4 15.6569 5.34315 17 7 17Z"
+                          fill="currentColor"
+                        />
+                        <path
+                          d="M17 7C17 8.65685 15.6569 10 14 10C12.3431 10 11 8.65685 11 7C11 5.34315 12.3431 4 14 4C15.6569 4 17 5.34315 17 7Z"
+                          fill="currentColor"
+                        />
+                        <path
+                          d="M17 17C18.6569 17 20 15.6569 20 14C20 12.3431 18.6569 11 17 11C15.3431 11 14 12.3431 14 14C14 15.6569 15.3431 17 17 17Z"
+                          fill="currentColor"
+                        />
+                        <path
+                          d="M7 7C8.65685 7 10 5.65685 10 4C10 2.34315 8.65685 1 7 1C5.34315 1 4 2.34315 4 4C4 5.65685 5.34315 7 7 7Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      Palettes
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setCurrentView("preview")}
+                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                      currentView === "preview"
+                        ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
+                        : `text-gray-400 hover:text-gray-500 $`
+                    }`}
+                  >
+                    <span className="flex items-center">
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect
+                          x="2"
+                          y="3"
+                          width="20"
+                          height="18"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M2 7H22"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <circle cx="5" cy="5" r="1" fill="currentColor" />
+                        <circle cx="9" cy="5" r="1" fill="currentColor" />
+                      </svg>
+                      UI Preview
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setCurrentView("export")}
+                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                      currentView === "export"
+                        ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
+                        : `text-gray-400 hover:text-gray-500`
+                    }`}
+                  >
+                    <span className="flex items-center">
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12 15V3M12 15L8 11M12 15L16 11"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M2 17L2 18C2 19.1046 2.89543 20 4 20L20 20C21.1046 20 22 19.1046 22 18L22 17"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Export
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center">
+                  <button
+                    onClick={savePalette}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] transform cursor-pointer font-medium"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="#fff"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                      />
+                    </svg>
+                    <span>Save Palette</span>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="space-y-6">
+                <div
+                  className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px] relative`}
+                >
+                  <div className="p-5 border-b border-gray-700/30 flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="flex space-x-2 mr-3">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      </div>
+                      <h2 className={`text-xl font-semibold ${theme.text}`}>
+                        Color Picker
+                      </h2>
                     </div>
 
-                    {/* Notes */}
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700 mb-1 block">
-                        Notes
-                      </span>
-                      <textarea
-                        value={entryForm.content}
-                        onChange={(e) =>
-                          setEntryForm({ ...entryForm, content: e.target.value })
-                        }
-                        rows={4}
-                        placeholder="Capture your experience..."
-                        className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none"
-                      />
-                    </label>
+                    <div className="flex space-x-2">
+                      <button
+                        className={`p-2 rounded-lg ${theme.button} hover:scale-105 transform transition-all cursor-pointer`}
+                        onClick={() => setBaseColor(getRandomHex())}
+                        aria-label="Random color"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setShowColorInfo(!showColorInfo)}
+                        className={`p-2 rounded-lg ${theme.button} hover:scale-105 transform transition-all cursor-pointer`}
+                        title="Show color details"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={toggleHueAnimation}
+                        className={`p-2 rounded-lg ${
+                          hueAnimation
+                            ? "bg-purple-600 text-white"
+                            : theme.button
+                        } hover:scale-105 transform transition-all cursor-pointer`}
+                        title={hueAnimation ? "Stop animation" : "Animate hue"}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Tags Section */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Tags
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {(entryForm.tags || []).length} tags
-                      </span>
+                  <div className="p-6 space-y-6">
+                    <div
+                      ref={saturationRef}
+                      className="h-48 rounded-xl w-full relative cursor-pointer shadow-md overflow-hidden"
+                      style={{
+                        background: `linear-gradient(to right, #fff, hsl(${baseHsl[0]}, 100%, 50%))`,
+                      }}
+                      onClick={handleSaturationChange}
+                      onMouseDown={handleSaturationMouseDown}
+                    >
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            "linear-gradient(to top, #000, transparent)",
+                        }}
+                      />
+                      <div
+                        className="absolute w-6 h-6 rounded-full border-2 border-white shadow-lg transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                        style={{
+                          left: `${saturation}%`,
+                          top: `${100 - brightness}%`,
+                          boxShadow:
+                            "0 0 0 2px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 0, 0, 0.3)",
+                        }}
+                      />
+
+                      <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        S: {saturation}%, B: {brightness}%
+                      </div>
                     </div>
-                    <div className="flex mt-1">
-                      <div className="relative flex-1">
-                        <Tag
-                          size={16}
-                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
-                        />
-                        <input
-                          className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                          placeholder="Add a tag"
-                          onKeyDown={(e) => {
-                            if (
-                              e.key === "Enter" &&
-                              e.currentTarget.value.trim()
-                            ) {
-                              setEntryForm({
-                                ...entryForm,
-                                tags: [
-                                  ...(entryForm.tags || []),
-                                  e.currentTarget.value.trim(),
-                                ],
-                              });
-                              e.currentTarget.value = "";
-                              e.preventDefault();
-                            }
+
+                    <div className="relative">
+                      <div
+                        ref={hueRef}
+                        className="h-8 rounded-xl w-full cursor-pointer relative shadow-md border border-white/10 overflow-hidden mt-3"
+                        style={{
+                          background:
+                            "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                        }}
+                        onClick={handleHueChange}
+                        onMouseDown={handleHueMouseDown}
+                      >
+                        <div
+                          className="absolute w-4 h-8 shadow-lg pointer-events-none"
+                          style={{
+                            left: `${(baseHsl[0] / 360) * 100}%`,
+                            transform: "translateX(-50%)",
+                            backgroundColor: "rgba(34, 29, 77, 0.61)",
                           }}
                         />
                       </div>
-                      <motion.button
-                        className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
-                        whileHover={{ backgroundColor: "#b45309" }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          const input = document.querySelector(
-                            'input[placeholder="Add a tag"]'
-                          ) as HTMLInputElement;
-                          const val = input?.value?.trim();
-                          if (val) {
-                            setEntryForm({
-                              ...entryForm,
-                              tags: [...(entryForm.tags || []), val],
-                            });
-                            if (input instanceof HTMLInputElement) {
-                              input.value = "";
-                            }
-                          }
-                        }}
-                      >
-                        Add
-                      </motion.button>
+                      <div className="absolute -top-2 -right-2">
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center cursor-pointer ${
+                            hueAnimation
+                              ? "bg-purple-600 text-white"
+                              : "bg-gray-700/50 text-gray-300"
+                          }`}
+                          onClick={toggleHueAnimation}
+                        >
+                          {hueAnimation ? "◼" : "▶"}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Tags Display */}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {(entryForm.tags || []).length > 0 ? (
-                        (entryForm.tags || []).map((tag, i) => (
-                          <motion.span
-                            key={i}
-                            className="bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm group transition-all hover:bg-amber-100"
-                            whileHover={{ scale: 1.05 }}
+                    {showColorInfo && (
+                      <div
+                        className={`rounded-xl border ${theme.border} p-4 transition-all duration-300 ${theme.card} animate-fade-in`}
+                      >
+                        <h3 className="text-sm font-medium mb-3">
+                          Color Details
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span>HEX:</span>
+                            <span className="font-mono">{baseColor}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>RGB:</span>
+                            <span className="font-mono">
+                              {hexToRgb(baseColor).join(", ")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>HSL:</span>
+                            <span className="font-mono">
+                              {baseHsl[0]}°, {baseHsl[1]}%, {baseHsl[2]}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Name:</span>
+                            <span className="font-medium">{colorName}</span>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-700/30">
+                            <h4 className="text-xs font-medium mb-2">
+                              Accessibility
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center">
+                                  <div className="w-4 h-4 rounded bg-white mr-2"></div>
+                                  <span>Contrast with white:</span>
+                                </div>
+                                <div
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    contrastWithWhite >= 4.5
+                                      ? "bg-green-500/20 text-green-400"
+                                      : "bg-yellow-500/20 text-yellow-400"
+                                  }`}
+                                >
+                                  {contrastWithWhite.toFixed(2)}{" "}
+                                  {contrastWithWhite >= 4.5 ? "✓" : "!"}
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center">
+                                  <div className="w-4 h-4 rounded bg-black mr-2"></div>
+                                  <span>Contrast with black:</span>
+                                </div>
+                                <div
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    contrastWithBlack >= 4.5
+                                      ? "bg-green-500/20 text-green-400"
+                                      : "bg-yellow-500/20 text-yellow-400"
+                                  }`}
+                                >
+                                  {contrastWithBlack.toFixed(2)}{" "}
+                                  {contrastWithBlack >= 4.5 ? "✓" : "!"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px]`}
+                >
+                  <div className="p-5 border-b border-gray-700/30 flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="flex space-x-2 mr-3">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      </div>
+                      <h2 className={`text-xl font-semibold ${theme.text}`}>
+                        Adjust Colors
+                      </h2>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={`p-2 rounded-lg ${theme.button} hover:scale-105 transform transition-all cursor-pointer`}
+                        aria-label="Show color history"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label
+                            className={`text-sm font-medium ${theme.text}`}
                           >
-                            #{tag}
-                            <motion.button
-                              onClick={() => {
-                                setEntryForm({
-                                  ...entryForm,
-                                  tags: (entryForm.tags || []).filter(
-                                    (_, idx) => idx !== i
-                                  ),
-                                });
-                              }}
-                              className="text-amber-600 hover:text-amber-800 rounded-full p-0.5 transition-colors"
-                              whileHover={{ scale: 1.2 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <X size={14} />
-                            </motion.button>
-                          </motion.span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-500 italic">
-                          No tags added yet
-                        </span>
+                            Saturation
+                          </label>
+                          <span className="text-sm text-gray-400 font-medium">
+                            {saturation}%
+                          </span>
+                        </div>
+                        <div className="relative h-2 bg-gray-200/30 rounded-full overflow-hidden group">
+                          <div
+                            className="absolute h-full bg-gradient-to-r from-purple-500 to-indigo-500 group-hover:animate-pulse"
+                            style={{ width: `${saturation}%` }}
+                          ></div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={saturation}
+                            onChange={(e) =>
+                              setSaturation(parseInt(e.target.value))
+                            }
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label
+                            className={`text-sm font-medium ${theme.text}`}
+                          >
+                            Brightness
+                          </label>
+                          <span className="text-sm text-gray-400 font-medium">
+                            {brightness}%
+                          </span>
+                        </div>
+                        <div className="relative h-2 bg-gray-200/30 rounded-full overflow-hidden group">
+                          <div
+                            className="absolute h-full bg-gradient-to-r from-gray-700 to-gray-100 group-hover:animate-pulse"
+                            style={{ width: `${brightness}%` }}
+                          ></div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={brightness}
+                            onChange={(e) =>
+                              setBrightness(parseInt(e.target.value))
+                            }
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {showHistory && colorHistory.length > 0 && (
+                    <div
+                      className={`mt-2 rounded-xl border ${theme.border} p-4 transition-colors duration-300 ${theme.card}`}
+                    >
+                      <h3 className="text-sm font-medium mb-3">
+                        Recently Used Colors
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {colorHistory.map((color, index) => (
+                          <button
+                            key={index}
+                            className="w-8 h-8 rounded-lg transition-all hover:scale-110 focus:outline-none border border-white/20 cursor-pointer shadow-md"
+                            style={{ backgroundColor: color }}
+                            onClick={() => setBaseColor(color)}
+                            aria-label={`Use color ${color}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:hidden space-y-4">
+                  <div
+                    className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px] p-6`}
+                  >
+                    <h2 className={`text-xl font-semibold mb-4 ${theme.text}`}>
+                      Palette Types
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {palettes.map((palette) => (
+                        <button
+                          key={palette.name}
+                          onClick={() =>
+                            setActivePalette(palette.name.toLowerCase())
+                          }
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                            activePalette === palette.name.toLowerCase()
+                              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                              : `${theme.button} ${theme.buttonText}`
+                          } hover:scale-105 transform`}
+                        >
+                          {palette.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-6">
+                {currentView === "palettes" && (
+                  <>
+                    <div
+                      className={`hidden lg:block rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px] p-6`}
+                    >
+                      <h2
+                        className={`text-xl font-semibold mb-4 ${theme.text}`}
+                      >
+                        Palette Types
+                      </h2>
+                      <div className="flex flex-wrap gap-3">
+                        {palettes.map((palette) => (
+                          <button
+                            key={palette.name}
+                            onClick={() =>
+                              setActivePalette(palette.name.toLowerCase())
+                            }
+                            className={`px-5 py-3 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                              activePalette === palette.name.toLowerCase()
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            {palette.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      {currentPalette && (
+                        <div
+                          className={`mt-5 text-sm ${theme.subtext} ${theme.button} ${theme.buttonText} p-4 rounded-xl backdrop-blur-sm`}
+                        >
+                          {currentPalette.description}
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Image Section */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Photos
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {(entryForm.images || []).length} photos
-                      </span>
+                    <div
+                      className={`rounded-2xl overflow-hidden ${theme.shadow} ${
+                        theme.card
+                      } border ${
+                        theme.cardBorder
+                      } transition-all duration-300 transform hover:translate-y-[-2px] ${
+                        isAnimating ? "animate-pulse" : ""
+                      }`}
+                    >
+                      {currentPalette && (
+                        <>
+                          <div className="p-5 border-b border-gray-700/30 flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className="flex space-x-2 mr-3">
+                                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              </div>
+                              <h2
+                                className={`text-xl font-semibold ${theme.text}`}
+                              >
+                                {currentPalette.name} Palette
+                              </h2>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => exportPalettes()}
+                                className={`px-4 py-2 text-sm rounded-lg transition-all ${theme.button} ${theme.buttonText} flex items-center space-x-2 cursor-pointer hover:scale-105 transform`}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                  />
+                                </svg>
+                                <span className="font-medium">Export</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex overflow-hidden group">
+                            {currentPalette.colors.map((color, idx) => (
+                              <div
+                                key={idx}
+                                className="flex-1 transition-all duration-300 cursor-pointer group/color relative"
+                                style={{ backgroundColor: color.hex }}
+                              >
+                                <div className="h-40 lg:h-56 flex items-end p-4 transition-all duration-300 opacity-0 group-hover:opacity-100 bg-gradient-to-t from-black/80 to-transparent">
+                                  <div className="w-full">
+                                    <p
+                                      className={`font-semibold mb-2 text-lg ${
+                                        isColorLight(...color.rgb)
+                                          ? "text-gray-900"
+                                          : "text-white"
+                                      }`}
+                                    >
+                                      {color.hex}
+                                    </p>
+                                    <div className="flex space-x-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyToClipboard(color.hex, "HEX");
+                                        }}
+                                        className="p-2 rounded-lg bg-black/50 text-white backdrop-blur-md hover:bg-black/70 transition-all transform hover:scale-105 cursor-pointer"
+                                        aria-label="Copy hex code"
+                                      >
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          className="h-5 w-5"
+                                          viewBox="0 0 20 20"
+                                          fill="currentColor"
+                                        >
+                                          <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                                          <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setBaseColor(color.hex);
+                                        }}
+                                        className="p-2 rounded-lg bg-black/50 text-white backdrop-blur-md hover:bg-black/70 transition-all transform hover:scale-105 cursor-pointer"
+                                        aria-label="Set as base color"
+                                      >
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          className="h-5 w-5"
+                                          viewBox="0 0 20 20"
+                                          fill="currentColor"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Add animated color label that slides in on hover */}
+                                <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/50 to-transparent transform -translate-y-full opacity-0 group-hover/color:translate-y-0 group-hover/color:opacity-100 transition-all duration-300">
+                                  <p
+                                    className={`text-xs font-medium ${
+                                      isColorLight(...color.rgb)
+                                        ? "text-gray-900"
+                                        : "text-white"
+                                    }`}
+                                  >
+                                    {getColorName(color.rgb)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {currentPalette.colors.map((color, idx) => (
+                              <div
+                                key={idx}
+                                className={`p-4 rounded-xl border ${theme.border} transition-all duration-300 hover:shadow-lg hover:scale-105 transform ${theme.card} group/detail`}
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <div
+                                    className="w-8 h-8 rounded-lg shadow-inner group-hover/detail:scale-110 transition-transform"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  <button
+                                    onClick={() =>
+                                      copyToClipboard(color.hex, "HEX")
+                                    }
+                                    className="text-gray-400 hover:text-gray-300 cursor-pointer p-1.5 hover:bg-gray-700/30 rounded-md transition-colors"
+                                    aria-label="Copy hex code"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-5 w-5"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                                <div className="space-y-1.5 text-xs text-gray-400">
+                                  <p>
+                                    <span className="font-semibold">HEX:</span>{" "}
+                                    {color.hex}
+                                  </p>
+                                  <p>
+                                    <span className="font-semibold">RGB:</span>{" "}
+                                    {color.rgb.join(", ")}
+                                  </p>
+                                  <p>
+                                    <span className="font-semibold">HSL:</span>{" "}
+                                    {color.hsl[0]}°, {color.hsl[1]}%,{" "}
+                                    {color.hsl[2]}%
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
+                  </>
+                )}
 
-                    {/* Image URL Input */}
-                    <div className="flex mt-1">
-                      <div className="relative flex-1">
-                        <Camera
-                          size={16}
-                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
-                        />
-                        <input
-                          className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                          placeholder="https://..."
-                          onKeyDown={(e) => {
-                            if (
-                              e.key === "Enter" &&
-                              e.currentTarget.value.trim()
-                            ) {
-                              setEntryForm({
-                                ...entryForm,
-                                images: [
-                                  ...(entryForm.images || []),
-                                  e.currentTarget.value.trim(),
-                                ],
-                              });
-                              e.currentTarget.value = "";
-                              e.preventDefault();
-                            }
-                          }}
-                        />
-                      </div>
-                      <motion.button
-                        className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
-                        whileHover={{ backgroundColor: "#b45309" }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          const input = document.querySelector('input[placeholder="https://..."]') as HTMLInputElement;
-                          const url = input?.value?.trim();
-                          if (url) {
-                            setEntryForm({
-                              ...entryForm,
-                              images: [...(entryForm.images || []), url],
-                            });
-                            if (input instanceof HTMLInputElement) {
-                              input.value = "";
-                            }
-                          }
-                        }}
-                      >
-                        Add
-                      </motion.button>
-                    </div>
-
-                    {/* File Upload */}
-                    <div className="mt-3">
-                      <motion.label 
-                        className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50/50 hover:bg-gray-100 transition-colors"
-                        whileHover={{ borderColor: "#d97706", backgroundColor: "#fef3c7" }}
-                      >
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <motion.div 
-                            whileHover={{ y: -3 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 10 }}
-                          >
-                            <Camera size={24} className="text-amber-600 mb-2" />
-                          </motion.div>
-                          <p className="text-sm text-gray-600">
-                            Drag & drop photos or click to browse
-                          </p>
+                {currentView === "preview" && (
+                  <div
+                    className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px]`}
+                  >
+                    <div className="p-5 border-b border-gray-700/30 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex space-x-2 mr-3">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
                         </div>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const files = Array.from(e.target.files || []);
-                            files.forEach((file) => {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setEntryForm((form) => ({
-                                  ...form,
-                                  images: [
-                                    ...(form.images || []),
-                                    reader.result as string,
-                                  ],
-                                }));
-                              };
-                              reader.readAsDataURL(file);
-                            });
-                          }}
-                        />
-                      </motion.label>
+                        <h2 className={`text-xl font-semibold ${theme.text}`}>
+                          UI Preview
+                        </h2>
+                      </div>
                     </div>
 
-                    {/* Image Preview */}
-                    {(entryForm.images || []).length > 0 && (
-                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mt-3">
-                        {(entryForm.images || []).map((src, i) => (
-                          <motion.div
-                            key={i}
-                            className="relative group aspect-square overflow-hidden rounded-lg"
-                            whileHover={{ scale: 1.05 }}
+                    {currentPalette && (
+                      <div className="p-6">
+                        <div className="bg-white rounded-xl overflow-hidden shadow-xl">
+                          <div
+                            className="px-6 py-4 flex items-center justify-between relative overflow-hidden"
+                            style={{
+                              backgroundImage: `linear-gradient(to right, ${
+                                currentPalette.colors[0].hex
+                              }, ${
+                                currentPalette.colors.length > 1
+                                  ? currentPalette.colors[1].hex
+                                  : currentPalette.colors[0].hex
+                              })`,
+                              color: isColorLight(
+                                ...currentPalette.colors[0].rgb
+                              )
+                                ? "#000"
+                                : "#fff",
+                            }}
                           >
-                            <img
-                              src={src}
-                              className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <motion.button
-                                className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5"
-                                whileHover={{ scale: 1.2 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => {
-                                  setEntryForm({
-                                    ...entryForm,
-                                    images: (entryForm.images || []).filter(
-                                      (_, idx) => idx !== i
-                                    ),
-                                  });
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full filter blur-xl animate-float"></div>
+                            <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-black/10 rounded-full filter blur-xl animate-float-delayed"></div>
+
+                            <div className="flex items-center space-x-4">
+                              <div className="font-bold text-lg">Designify</div>
+                              <div className="hidden md:flex space-x-2">
+                                <button className="px-4 py-2 rounded-full text-sm bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all cursor-pointer font-medium">
+                                  Dashboard
+                                </button>
+                                <button className="px-4 py-2 rounded-full text-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer font-medium">
+                                  Projects
+                                </button>
+                                <button className="px-4 py-2 rounded-full text-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer font-medium">
+                                  Team
+                                </button>
+                                <button className="px-4 py-2 rounded-full text-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer font-medium">
+                                  Settings
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button className="p-2 rounded-full opacity-80 hover:opacity-100 transition-all hover:bg-white/20 cursor-pointer">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                                </svg>
+                              </button>
+                              <button className="p-2 rounded-full opacity-80 hover:opacity-100 transition-all hover:bg-white/20 cursor-pointer">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                              <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                                JD
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-6 space-y-6 bg-gray-50">
+                            <div className="flex justify-between items-center">
+                              <h1 className="text-2xl font-bold text-gray-800">
+                                Project Dashboard
+                              </h1>
+                              <button
+                                className="px-4 py-2 rounded-lg text-white flex items-center space-x-2 cursor-pointer shadow-lg transition-all hover:scale-105 transform"
+                                style={{
+                                  backgroundImage: `linear-gradient(to right, ${
+                                    currentPalette.colors[0].hex
+                                  }, ${
+                                    currentPalette.colors.length > 1
+                                      ? currentPalette.colors[1].hex
+                                      : currentPalette.colors[0].hex
+                                  })`,
                                 }}
                               >
-                                <Trash2 size={16} />
-                              </motion.button>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                <span className="font-medium">New Project</span>
+                              </button>
                             </div>
-                          </motion.div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] transform">
+                                <div className="text-sm text-gray-500 mb-1 font-medium">
+                                  Total Projects
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                  24
+                                </div>
+                                <div className="mt-2 text-xs text-green-600 flex items-center">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3 mr-1"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span>12% increase</span>
+                                </div>
+                              </div>
+                              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] transform">
+                                <div className="text-sm text-gray-500 mb-1 font-medium">
+                                  Active Tasks
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                  42
+                                </div>
+                                <div className="mt-2 text-xs text-red-600 flex items-center">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3 mr-1"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span>5% decrease</span>
+                                </div>
+                              </div>
+                              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] transform">
+                                <div className="text-sm text-gray-500 mb-1 font-medium">
+                                  Team Members
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                  8
+                                </div>
+                                <div className="mt-2 text-xs text-green-600 flex items-center">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3 mr-1"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span>1 new member</span>
+                                </div>
+                              </div>
+                              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] transform">
+                                <div className="text-sm text-gray-500 mb-1 font-medium">
+                                  Completed
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                  18
+                                </div>
+                                <div className="mt-2 text-xs text-green-600 flex items-center">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3 mr-1"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span>3 this week</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-6">
+                              <h2 className="text-lg font-bold text-gray-800 px-1">
+                                Components Preview
+                              </h2>
+
+                              <div className="space-y-3">
+                                <h3 className="text-sm font-medium text-gray-500 px-1">
+                                  Buttons
+                                </h3>
+                                <div className="flex flex-wrap gap-3">
+                                  <button
+                                    className="px-5 py-2.5 rounded-lg text-white font-medium cursor-pointer shadow-md hover:shadow-lg transition-all hover:scale-105 transform"
+                                    style={{
+                                      backgroundImage: `linear-gradient(to right, ${
+                                        currentPalette.colors[0].hex
+                                      }, ${
+                                        currentPalette.colors.length > 1
+                                          ? currentPalette.colors[1].hex
+                                          : currentPalette.colors[0].hex
+                                      })`,
+                                    }}
+                                  >
+                                    Primary Button
+                                  </button>
+                                  <button
+                                    className="px-5 py-2.5 rounded-lg font-medium cursor-pointer shadow-md hover:shadow-lg transition-all hover:scale-105 transform"
+                                    style={{
+                                      backgroundColor:
+                                        currentPalette.colors.length > 1
+                                          ? currentPalette.colors[1].hex
+                                          : "#ffffff",
+                                      color:
+                                        currentPalette.colors.length > 1 &&
+                                        isColorLight(
+                                          ...currentPalette.colors[1].rgb
+                                        )
+                                          ? "#000000"
+                                          : "#ffffff",
+                                    }}
+                                  >
+                                    Secondary Button
+                                  </button>
+                                  <button
+                                    className="px-5 py-2.5 rounded-lg font-medium bg-white shadow-md hover:shadow-lg transition-all hover:scale-105 transform cursor-pointer"
+                                    style={{
+                                      borderWidth: 1,
+                                      borderColor: currentPalette.colors[0].hex,
+                                      color: currentPalette.colors[0].hex,
+                                    }}
+                                  >
+                                    Outlined Button
+                                  </button>
+                                  <button className="px-5 py-2.5 rounded-lg font-medium bg-gray-100 text-gray-800 shadow-md hover:shadow-lg transition-all hover:scale-105 transform cursor-pointer">
+                                    Default Button
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <h3 className="text-sm font-medium text-gray-500 px-1">
+                                  Cards
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div
+                                    className="p-5 rounded-xl text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] transform"
+                                    style={{
+                                      backgroundImage: `linear-gradient(to bottom right, ${
+                                        currentPalette.colors[0].hex
+                                      }, ${
+                                        currentPalette.colors.length > 1
+                                          ? currentPalette.colors[1].hex
+                                          : currentPalette.colors[0].hex
+                                      })`,
+                                    }}
+                                  >
+                                    <h4 className="font-semibold text-lg mb-2">
+                                      Primary Card
+                                    </h4>
+                                    <p className="text-sm opacity-90">
+                                      This card uses the primary color of your
+                                      palette.
+                                    </p>
+                                    <div className="mt-4 flex justify-end">
+                                      <button className="px-4 py-2 rounded-lg bg-white/20 text-white text-sm backdrop-blur-sm hover:bg-white/30 transition-all hover:scale-105 transform cursor-pointer font-medium">
+                                        Learn More
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div
+                                    className="p-5 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] transform"
+                                    style={{
+                                      backgroundColor:
+                                        currentPalette.colors.length > 1
+                                          ? currentPalette.colors[1].hex
+                                          : "#ffffff",
+                                      color:
+                                        currentPalette.colors.length > 1 &&
+                                        isColorLight(
+                                          ...currentPalette.colors[1].rgb
+                                        )
+                                          ? "#000000"
+                                          : "#ffffff",
+                                    }}
+                                  >
+                                    <h4 className="font-semibold text-lg mb-2">
+                                      Secondary Card
+                                    </h4>
+                                    <p className="text-sm opacity-90">
+                                      This card uses the secondary color of your
+                                      palette.
+                                    </p>
+                                    <div className="mt-4 flex justify-end">
+                                      <button
+                                        className="px-4 py-2 rounded-lg text-sm transition-all hover:scale-105 transform cursor-pointer font-medium"
+                                        style={{
+                                          backgroundColor:
+                                            "rgba(255, 255, 255, 0.2)",
+                                          backdropFilter: "blur(4px)",
+                                          color:
+                                            currentPalette.colors.length > 1 &&
+                                            isColorLight(
+                                              ...currentPalette.colors[1].rgb
+                                            )
+                                              ? "#000000"
+                                              : "#ffffff",
+                                        }}
+                                      >
+                                        Learn More
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div
+                                    className="p-5 rounded-xl bg-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] transform border-2"
+                                    style={{
+                                      borderColor:
+                                        currentPalette.colors.length > 2
+                                          ? currentPalette.colors[2].hex
+                                          : "#e5e7eb",
+                                    }}
+                                  >
+                                    <h4
+                                      className="font-semibold text-lg mb-2"
+                                      style={{
+                                        color:
+                                          currentPalette.colors.length > 2
+                                            ? currentPalette.colors[2].hex
+                                            : "#111827",
+                                      }}
+                                    >
+                                      Accent Card
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                      This card uses the accent color of your
+                                      palette for highlights.
+                                    </p>
+                                    <div className="mt-4 flex justify-end">
+                                      <button
+                                        className="px-4 py-2 rounded-lg text-white text-sm transition-all hover:scale-105 transform cursor-pointer font-medium"
+                                        style={{
+                                          backgroundColor:
+                                            currentPalette.colors.length > 2
+                                              ? currentPalette.colors[2].hex
+                                              : "#111827",
+                                        }}
+                                      >
+                                        Learn More
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <h3 className="text-sm font-medium text-gray-500 px-1">
+                                  Form Elements
+                                </h3>
+                                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-lg">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Input Field
+                                      </label>
+                                      <input
+                                        type="text"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition-all cursor-text shadow-sm"
+                                        placeholder="Enter your text"
+                                        style={{
+                                          borderColor: currentPalette.colors.length > 0 ? currentPalette.colors[0].hex : "rgb(229, 231, 235)",
+                                          outlineColor: currentPalette.colors.length > 0 ? currentPalette.colors[0].hex : "#111827",
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Select Menu
+                                      </label>
+                                      <select className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition-all cursor-pointer appearance-none shadow-sm bg-white">
+                                        <option>Option 1</option>
+                                        <option>Option 2</option>
+                                        <option>Option 3</option>
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                      <input
+                                        type="checkbox"
+                                        className="h-5 w-5 rounded-md cursor-pointer"
+                                        style={{
+                                          accentColor:
+                                            currentPalette.colors[0].hex,
+                                        }}
+                                        defaultChecked
+                                      />
+                                      <label className="text-sm font-medium text-gray-700">
+                                        Checkbox example
+                                      </label>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                      <input
+                                        type="radio"
+                                        className="h-5 w-5 cursor-pointer"
+                                        style={{
+                                          accentColor:
+                                            currentPalette.colors[0].hex,
+                                        }}
+                                        defaultChecked
+                                        name="radio-group"
+                                      />
+                                      <label className="text-sm font-medium text-gray-700">
+                                        Radio button example
+                                      </label>
+                                    </div>
+                                  </div>
+                                  <div className="mt-5">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Progress Bar
+                                    </label>
+                                    <div className="w-full h-3 rounded-full bg-gray-100 overflow-hidden shadow-inner">
+                                      <div
+                                        className="h-full rounded-full transition-all duration-1000 ease-in-out"
+                                        style={{
+                                          width: "60%",
+                                          backgroundImage: `linear-gradient(to right, ${
+                                            currentPalette.colors[0].hex
+                                          }, ${
+                                            currentPalette.colors.length > 1
+                                              ? currentPalette.colors[1].hex
+                                              : currentPalette.colors[0].hex
+                                          })`,
+                                        }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {currentView === "export" && (
+                  <div
+                    className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px]`}
+                  >
+                    <div className="p-5 border-b border-gray-700/30 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex space-x-2 mr-3">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <h2 className={`text-xl font-semibold ${theme.text}`}>
+                          Export Options
+                        </h2>
+                      </div>
+
+                      <button
+                        onClick={exportPalettes}
+                        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-purple-600/90 text-white text-sm hover:bg-purple-700/90 transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                          />
+                        </svg>
+                        <span className="font-medium">Quick Copy</span>
+                      </button>
+                    </div>
+
+                    <div className="p-6 space-y-8">
+                      <div className="space-y-4">
+                        <h3
+                          className={`text-lg font-semibold flex items-center space-x-2 ${theme.text}`}
+                        >
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold mr-2">
+                            1
+                          </span>
+                          Choose Format
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <button
+                            onClick={() => setExportFormat("hex")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "hex"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            HEX
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("rgb")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "rgb"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            RGB
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("rgba")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "rgba"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            RGBA
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("hsl")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "hsl"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            HSL
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("scss")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "scss"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            SCSS
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("css")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "css"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            CSS
+                          </button>
+                          <button
+                            onClick={() => setExportFormat("tailwind")}
+                            className={`px-4 py-3 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                              exportFormat === "tailwind"
+                                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                                : `${theme.button} ${theme.buttonText}`
+                            } hover:scale-105 transform`}
+                          >
+                            Tailwind
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3
+                          className={`text-lg font-semibold flex items-center space-x-2 ${theme.text}`}
+                        >
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold mr-2">
+                            2
+                          </span>
+                          Preview
+                        </h3>
+                        <div
+                          className={`p-5 rounded-xl border ${theme.border} font-mono text-sm overflow-auto max-h-60 ${theme.card} relative group`}
+                        >
+                          {currentPalette && (
+                            <>
+                              {exportFormat === "scss" ? (
+                                <pre className={`${theme.text}`}>
+                                  {`// ${
+                                    currentPalette.name
+                                  } Palette - SCSS Variables\n
+${currentPalette.colors
+  .map((color, i) => `$${activePalette.toLowerCase()}-${i + 1}: ${color.hex};`)
+  .join("\n")}
+                                  
+// Usage example:
+.element {
+  background-color: $${activePalette.toLowerCase()}-1;
+  color: $${activePalette.toLowerCase()}-2;
+}`}
+                                </pre>
+                              ) : exportFormat === "css" ? (
+                                <pre className={`${theme.text}`}>
+                                  {`/* ${
+                                    currentPalette.name
+                                  } Palette - CSS Variables */
+                                  
+:root {
+  ${currentPalette.colors
+    .map(
+      (color, i) => `--${activePalette.toLowerCase()}-${i + 1}: ${color.hex};`
+    )
+    .join("\n  ")}
+}
+
+/* Usage example: */
+.element {
+  background-color: var(--${activePalette.toLowerCase()}-1);
+  color: var(--${activePalette.toLowerCase()}-2);
+}`}
+                                </pre>
+                              ) : exportFormat === "tailwind" ? (
+                                <pre className={`${theme.text}`}>
+                                  {`// ${
+                                    currentPalette.name
+                                  } Palette - Tailwind Config
+                                  
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        ${currentPalette.colors
+          .map(
+            (color, i) =>
+              `'${activePalette.toLowerCase()}-${i + 1}': '${color.hex}',`
+          )
+          .join("\n        ")}
+      }
+    }
+  }
+};`}
+                                </pre>
+                              ) : (
+                                <pre className={`${theme.text}`}>
+                                  {`// ${currentPalette.name} Palette\n
+${currentPalette.colors
+  .map((color, i) => `Color ${i + 1}: ${formatColor(color)}`)
+  .join("\n")}`}
+                                </pre>
+                              )}
+                            </>
+                          )}
+
+                          {/* Copy indicator overlay */}
+                          <div
+                            className="absolute inset-0 bg-purple-600/20 backdrop-blur-sm rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                            onClick={exportPalettes}
+                          >
+                            <div className="bg-white/20 backdrop-blur-md px-3 py-2 rounded-lg text-white font-medium flex items-center space-x-2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <span>Click to Copy</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <button
+                          onClick={exportPalettes}
+                          className="w-full py-3.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] transform cursor-pointer font-medium flex items-center justify-center space-x-2"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                            />
+                          </svg>
+                          <span>Copy to Clipboard</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {showSaved && (
+              <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                <div
+                  className={`w-full max-w-2xl max-h-[80vh] rounded-2xl overflow-hidden ${theme.card} border ${theme.cardBorder} transition-colors duration-300 shadow-2xl`}
+                >
+                  <div className="p-5 border-b border-gray-700/30 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex space-x-2 mr-3">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      </div>
+                      <h2 className={`text-xl font-semibold ${theme.text}`}>
+                        Saved Palettes
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => setShowSaved(false)}
+                      className="text-gray-400 hover:text-gray-300 cursor-pointer hover:bg-gray-700/30 p-2 rounded-lg transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="p-6 overflow-y-auto max-h-[calc(80vh-64px)]">
+                    {savedPalettes.length === 0 ? (
+                      <div className="text-center py-10 bg-gray-800/30 rounded-xl border border-gray-700/30">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-16 w-16 mx-auto text-gray-400 mb-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                          />
+                        </svg>
+                        <p className={`${theme.text} text-lg font-medium`}>
+                          No saved palettes yet
+                        </p>
+                        <p
+                          className={`${theme.subtext} text-sm mt-2 max-w-sm mx-auto`}
+                        >
+                          Create and save your favorite color combinations for
+                          quick access
+                        </p>
+                        <button
+                          onClick={() => setShowSaved(false)}
+                          className="mt-6 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Create New Palette
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-5">
+                       
+
+                        {savedPalettes.map((palette) => (
+                          <div
+                            key={palette.id}
+                            className={`rounded-xl border ${theme.border} overflow-hidden transition-all duration-300 hover:shadow-lg transform ${theme.card} group`}
+                          >
+                            {/* Clearer color preview with larger blocks */}
+                            <div className="h-16 flex border-b border-gray-700/30">
+                              {palette.colors.map((color, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex-1 relative group/color"
+                                  style={{ backgroundColor: color.hex }}
+                                >
+                                  {/* Color hex tooltip on hover */}
+                                  <div className="opacity-0 group-hover/color:opacity-100 absolute bottom-1 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded-md transition-opacity pointer-events-none">
+                                    {color.hex}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="p-4">
+                              {/* Palette info with better spacing */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <h3
+                                    className={`font-medium ${theme.text} text-lg`}
+                                  >
+                                    {palette.name}
+                                  </h3>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {new Date(
+                                      palette.createdAt
+                                    ).toLocaleDateString()}{" "}
+                                    • {palette.colors.length} colors
+                                  </p>
+                                </div>
+
+                              </div>
+
+                              <div className="flex space-x-2 justify-end">
+                                <button
+                                  onClick={() => loadSavedPalette(palette)}
+                                  className="flex items-center px-3 py-1.5 rounded-lg bg-purple-600/90 text-white text-sm hover:bg-purple-700 transition-all transform hover:scale-105 cursor-pointer"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 mr-1.5"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                  </svg>
+                                  <span className="font-medium">Load</span>
+                                </button>
+                                <button
+                                  onClick={() => deleteSavedPalette(palette.id)}
+                                  className="flex items-center px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 hover:text-red-300 transition-all transform hover:scale-105 cursor-pointer"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 mr-1.5"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span className="font-medium">Delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Modal Footer */}
-              <div className="border-t border-gray-200 p-4 flex justify-end gap-3 bg-gray-50">
-                <motion.button
-                  onClick={() => setShowEntryModal(false)}
-                  className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-                  whileHover={{ scale: 1.05, backgroundColor: "#f3f4f6" }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  onClick={() => {
-                    const newEntry: Entry = {
-                      id: Date.now(),
-                      ...(entryForm as Omit<Entry, 'id'>),
-                    };
-                    onUpdateTrip({
-                      ...trip,
-                      entries: [newEntry, ...trip.entries],
-                    });
-                    setShowEntryModal(false);
-                    setSelectedEntry(newEntry);
-                    setCurrentView("entry-detail");
-                  }}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors shadow-sm"
-                  whileHover={{ scale: 1.05, backgroundColor: "#b45309" }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <BookOpen size={18} />
-                  Save Entry
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Entries Section */}
-      <div className="p-4 md:p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Trip Entries</h2>
-          <motion.button
-            onClick={() => setShowEntryModal(true)}
-            className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium flex items-center gap-2"
-            whileHover={{ scale: 1.05, backgroundColor: "#b45309" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Plus size={18} />
-            New Entry
-          </motion.button>
-        </div>
-
-        {trip.entries.length === 0 ? (
-          <motion.div 
-            className="text-center p-6 bg-amber-50 rounded-xl"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="bg-amber-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="text-amber-600" size={24} />
-            </div>
-            <h3 className="font-medium text-amber-800 mb-2">No entries yet</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Start documenting your trip memories by creating your first entry.
-            </p>
-            <motion.button
-              onClick={() => setShowEntryModal(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium inline-flex items-center gap-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Plus size={18} />
-              Create First Entry
-            </motion.button>
-          </motion.div>
-        ) : (
-          <div className="space-y-8">
-            {sortedDates.map((date, dateIndex) => (
-              <motion.div 
-                key={date}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: dateIndex * 0.1 }}
+            {notification && (
+              <div
+                className={`fixed bottom-4 right-4 px-5 py-4 rounded-xl shadow-xl flex items-center space-x-3 max-w-sm backdrop-blur-md animate-fade-in ${
+                  notification.type === "success"
+                    ? "bg-green-600/90 text-white"
+                    : notification.type === "error"
+                    ? "bg-red-600/90 text-white"
+                    : "bg-blue-600/90 text-white"
+                }`}
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <motion.div 
-                    className="bg-amber-100 text-amber-800 rounded-full h-10 w-10 flex items-center justify-center"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ 
-                      type: "spring", 
-                      stiffness: 300, 
-                      damping: 20,
-                      delay: dateIndex * 0.1 + 0.2 
-                    }}
+                {notification.type === "success" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    <Calendar size={18} />
-                  </motion.div>
-                  <h3 className="font-medium">{formatDate(date)}</h3>
-                </div>
-
-                <div className="space-y-4 pl-5 border-l-2 border-amber-200">
-                  {entriesByDate[date].map((entry: Entry, entryIndex: number) => (
-                    <motion.div
-                      key={entry.id}
-                      className="bg-white rounded-xl shadow-sm cursor-pointer p-4"
-                      variants={entryVariants}
-                      initial="hidden"
-                      animate="visible"
-                      whileHover="hover"
-                      custom={entryIndex}
-                      onClick={() => onSelectEntry(entry)}
-                    >
-                      <h4 className="font-bold text-amber-800 mb-2">
-                        {entry.title}
-                      </h4>
-
-                      {entry.images.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto pb-2 mb-3 snap-x">
-                          {entry.images.map((image: string, index: number) => (
-                            <motion.img
-                              key={`img-${index}`}
-                              src={image}
-                              alt={`Photo ${index + 1}`}
-                              className="h-20 w-32 object-cover rounded-lg flex-shrink-0 snap-start"
-                              whileHover={{ scale: 1.05 }}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      <p className="text-gray-600 text-sm line-clamp-2 mb-3">
-                        {entry.content}
-                      </p>
-
-                      <div className="flex items-center text-gray-500 text-xs">
-                        <MapPin size={12} className="mr-1" />
-                        {entry.location}
-                      </div>
-
-                      {entry.tags && entry.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {entry.tags.map((tag: string, index: number) => (
-                            <motion.span
-                              key={`tag-${index}`}
-                              className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full"
-                              whileHover={{ scale: 1.1 }}
-                            >
-                              #{tag}
-                            </motion.span>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Entry Detail View Component
-function EntryDetailView({
-  entry,
-  onBack,
-  onUpdate,
-  onDelete,
-  onPhotoUpload,
-  onRemovePhoto,
-}: EntryDetailViewProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedEntry, setEditedEntry] = useState(entry);
-  const [tagInput, setTagInput] = useState("");
-
-  const handleSave = () => {
-    onUpdate(editedEntry);
-    setIsEditing(false);
-  };
-
-  const addTag = () => {
-    if (tagInput.trim() && !editedEntry.tags.includes(tagInput.trim())) {
-      setEditedEntry({
-        ...editedEntry,
-        tags: [...editedEntry.tags, tagInput.trim()],
-      });
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setEditedEntry({
-      ...editedEntry,
-      tags: editedEntry.tags.filter((tag) => tag !== tagToRemove),
-    });
-  };
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  return (
-    <div className="pb-20 md:pb-6 overflow-y-auto max-h-screen">
-      {!isEditing ? (
-        <>
-          {/* Image Gallery */}
-          {entry.images && entry.images.length > 0 ? (
-            <div className="relative h-64 md:h-80">
-              <div className="flex h-full">
-                {entry.images.map((image, index) => (
-                  <img
-                    key={`gallery-${index}`}
-                    src={image}
-                    alt={`Memory ${index + 1}`}
-                    className={`object-cover ${
-                      entry.images.length === 1 ? "w-full" : "w-1/2"
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-white/20 backdrop-blur-sm rounded-lg py-1.5 px-3 text-white text-sm font-medium"
-                >
-                  Edit Entry
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="h-40 bg-gradient-to-r from-amber-600 to-amber-800   flex items-center justify-center">
-              <div className="text-center text-white">
-                <Camera size={32} className="mx-auto mb-2" />
-                <p>No photos yet</p>
-              </div>
-              <div className="absolute md:bottom-4 bottom-26 right-4 z-10">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-amber-700 flex gap-2 items-center backdrop-blur-sm rounded-lg py-4 px-6 text-white text-sm font-medium"
-                >
-                  <Edit size={20} /> Edit Entry
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Entry Content */}
-          <div className="p-4 md:p-6">
-            <div className="flex items-center text-gray-500  text-sm mb-2">
-              <Calendar size={14} className="mr-1" />
-              {formatDate(entry.date)}
-            </div>
-
-            <h1 className="text-2xl font-bold text-amber-800  mb-2">
-              {entry.title}
-            </h1>
-
-            <div className="flex items-center text-amber-600 mb-6">
-              <MapPin size={16} className="mr-1" />
-              <span>{entry.location}</span>
-            </div>
-
-            <div className="prose max-w-none mb-6">
-              <p>{entry.content}</p>
-            </div>
-
-            {entry.tags && entry.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {entry.tags.map((tag, index) => (
-                  <span
-                    key={`detail-tag-${index}`}
-                    className="bg-amber-100 text-amber-800  px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : notification.type === "error" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    <Tag size={14} />
-                    {tag}
-                  </span>
-                ))}
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                <span className="font-medium">{notification.message}</span>
               </div>
             )}
           </div>
-        </>
-      ) : (
-        <div className="p-4 md:p-6">
-          <h2 className="text-xl font-bold mb-4">Edit Entry</h2>
 
-          {/* Edit Form */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
-              <input
-                value={editedEntry.title}
-                onChange={(e) =>
-                  setEditedEntry({ ...editedEntry, title: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
-              <input
-                type="date"
-                value={editedEntry.date}
-                onChange={(e) =>
-                  setEditedEntry({ ...editedEntry, date: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Location</label>
-              <input
-                value={editedEntry.location}
-                onChange={(e) =>
-                  setEditedEntry({ ...editedEntry, location: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Notes</label>
-              <textarea
-                value={editedEntry.content}
-                onChange={(e) =>
-                  setEditedEntry({ ...editedEntry, content: e.target.value })
-                }
-                rows={6}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
-              <div className="flex">
-                <input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addTag()}
-                  placeholder="Add tag and press Enter"
-                  className="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-                <button
-                  onClick={addTag}
-                  className="bg-amber-600 text-white p-2 rounded-r-lg"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {editedEntry.tags.map((tag, index) => (
-                  <span
-                    key={`edit-tag-${index}`}
-                    className="bg-amber-100 text-amber-800  px-2 py-1 rounded-full text-sm flex items-center gap-1"
+          <footer className={`py-8 border-t ${theme.border} mt-10`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col md:flex-row justify-between items-center">
+                <div className="flex flex-col items-center md:items-start mb-6 md:mb-0">
+                  <h3
+                    className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.highlight} mb-2`}
                   >
-                    {tag}
-                    <button
-                      onClick={() => removeTag(tag)}
-                      className="text-amber-800  hover:text-amber-900-200 ml-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Photos</label>
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                {editedEntry.images.map((image, index) => (
-                  <div key={`edit-img-${index}`} className="relative group">
-                    <img
-                      src={image}
-                      alt={`Photo ${index + 1}`}
-                      className="h-24 w-full object-cover rounded-lg"
-                    />
-                    <button
-                      onClick={() => onRemovePhoto(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={onPhotoUpload}
-                  className="h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-amber-600 hover:border-amber-400 transition-colors"
-                >
-                  <Camera size={24} />
-                  <span className="text-xs mt-1">Add Photo</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-between pt-4">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="py-2 md:px-4 px-2 border border-gray-300 rounded-lg"
-              >
-                Cancel
-              </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Are you sure you want to delete this entry?"
-                      )
-                    ) {
-                      onDelete(entry.id);
-                    }
-                  }}
-                  className="py-2 md:px-4 px-2 bg-red-600 text-white rounded-lg"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="py-2 md:px-4 px-2 bg-amber-600 text-white rounded-lg"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ExploreView() {
-  const [selectedCategory, setSelectedCategory] = useState("trending");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeView, setActiveView] = useState("grid");
-  const [isLoading, setIsLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Detect dark mode from parent component (would be passed as prop in real implementation)
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setDarkMode(isDark);
-  }, []);
-
-  // Filter destinations based on category and search
-  const filteredDestinations = destinations.filter((dest) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (selectedCategory === "trending" && dest.trending) ||
-      dest.category === selectedCategory;
-
-    const matchesSearch =
-      dest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dest.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesCategory && matchesSearch;
-  });
-
-  // Categories for filtering
-  const categories = [
-    { id: "trending", name: "Trending", icon: <ArrowUpRight size={16} /> },
-    { id: "all", name: "All Destinations", icon: <Compass size={16} /> },
-    { id: "beach", name: "Beaches & Islands", icon: <Umbrella size={16} /> },
-    {
-      id: "cultural",
-      name: "Cultural Experiences",
-      icon: <LandmarkIcon size={16} />,
-    },
-    {
-      id: "adventure",
-      name: "Adventure & Outdoors",
-      icon: <Mountain size={16} />,
-    },
-  ];
-
-  // Simulate loading destinations
-  const handleLoadMore = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  // Handle destination booking/saving
-  const handleDestinationAction = (id: number, action: 'save' | 'explore') => {
-    // In a real app, this would interact with an API
-    console.log(`${action} destination ${id}`);
-
-    // Show a temporary success message
-    const message =
-      action === "save"
-        ? "Destination saved to favorites!"
-        : "Exploring this destination!";
-    alert(message);
-  };
-
-  return (
-    <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 overflow-y-auto max-h-screen">
-      {/* Hero Section */}
-      <section className="rounded-3xl overflow-hidden relative h-64 md:h-80 group">
-        <img
-          src="https://images.unsplash.com/photo-1488085061387-422e29b40080?fm=jpg&q=60&w=3000"
-          alt="Explore the world"
-          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70 flex flex-col justify-end p-6">
-          <h1 className="text-white text-3xl md:text-4xl font-bold mb-2">
-            Explore the World
-          </h1>
-          <p className="text-amber-100 text-sm md:text-base mb-4">
-            Discover amazing destinations and plan your next adventure
-          </p>
-
-          {/* Search Bar */}
-          <div className="relative w-full md:max-w-md">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search destinations, experiences, activities..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-full bg-white/90 backdrop-blur-sm border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm transition-all"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold">Explore Categories</h2>
-
-        <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-colors whitespace-nowrap snap-start
-                  ${
-                    selectedCategory === category.id
-                      ? darkMode
-                        ? "bg-amber-500 text-white border-amber-600"
-                        : "bg-amber-500 text-white border-amber-500"
-                      : darkMode
-                      ? "border-slate-700 text-gray-300 hover:bg-slate-700"
-                      : "border-amber-200 text-amber-800 hover:bg-amber-100"
-                  }`}
-            >
-              {category.icon}
-              {category.name}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* View Toggle and Sort */}
-      <div className="flex justify-between items-center">
-        <div className="font-medium">
-          {filteredDestinations.length}{" "}
-          {filteredDestinations.length === 1 ? "destination" : "destinations"}{" "}
-          found
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveView("grid")}
-            className={`p-2 rounded-md transition-colors ${
-              activeView === "grid"
-                ? darkMode
-                  ? "bg-slate-700 text-amber-400"
-                  : "bg-amber-100 text-amber-800"
-                : "text-gray-500"
-            }`}
-          >
-            <Grid size={18} />
-          </button>
-          <button
-            onClick={() => setActiveView("list")}
-            className={`p-2 rounded-md transition-colors ${
-              activeView === "list"
-                ? darkMode
-                  ? "bg-slate-700 text-amber-400"
-                  : "bg-amber-100 text-amber-800"
-                : "text-gray-500"
-            }`}
-          >
-            <List size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* Destinations Grid/List */}
-      {filteredDestinations.length > 0 ? (
-        <section>
-          {activeView === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredDestinations.map((destination) => (
-                <div
-                  key={destination.id}
-                  className={`rounded-xl overflow-hidden ${
-                    darkMode ? "bg-slate-800" : "bg-white"
-                  } shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 cursor-pointer`}
-                >
-                  <div className="relative h-48">
-                    <img
-                      src={destination.image}
-                      alt={destination.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {destination.trending && (
-                      <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <TrendingUp size={12} />
-                        Trending
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDestinationAction(destination.id, "save");
-                      }}
-                      className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-full backdrop-blur-sm"
-                    >
-                      <Bookmark
-                        size={18}
-                        className={
-                          darkMode ? "text-slate-700" : "text-amber-600"
-                        }
-                      />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <h3
-                      className={`font-bold text-lg ${
-                        darkMode ? "text-white" : "text-amber-800"
-                      }`}
-                    >
-                      {destination.name}
-                    </h3>
-                    <div className="flex items-center text-amber-500 text-sm mt-1 font-medium">
-                      <Star size={14} className="mr-1" fill="currentColor" />
-                      {destination.rating}
-                      <span
-                        className={`mx-2 ${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        •
-                      </span>
-                      <Tag size={14} className="mr-1" />
-                      {destination.category.charAt(0).toUpperCase() +
-                        destination.category.slice(1)}
-                    </div>
-                    <p
-                      className={`mt-2 text-sm ${
-                        darkMode ? "text-gray-300" : "text-gray-600"
-                      } line-clamp-2`}
-                    >
-                      {destination.description}
-                    </p>
-                    <div
-                      className={`mt-3 text-xs ${
-                        darkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1 mb-1">
-                        <Calendar size={12} />
-                        Best time: {destination.bestTimeToVisit}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <DollarSign size={12} />
-                        {destination.averageCost}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleDestinationAction(destination.id, "explore")
-                      }
-                      className={`mt-4 w-full py-2 rounded-lg flex items-center justify-center gap-2 transition-colors
-                          ${
-                            darkMode
-                              ? "bg-amber-500 hover:bg-amber-600 text-white"
-                              : "bg-amber-600 hover:bg-amber-700 text-white"
-                          }`}
-                    >
-                      Explore Destination
-                    </button>
-                  </div>
+                    Spectrum Pro
+                  </h3>
+                  <p
+                    className={`${theme.subtext} text-sm max-w-xs text-center md:text-left`}
+                  >
+                    Professional color palette generator for designers and
+                    developers
+                  </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredDestinations.map((destination) => (
-                <div
-                  key={destination.id}
-                  className={`rounded-xl overflow-hidden ${
-                    darkMode ? "bg-slate-800" : "bg-white"
-                  } shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 cursor-pointer flex flex-col md:flex-row`}
-                >
-                  <div className="relative h-48 md:h-auto md:w-1/3">
-                    <img
-                      src={destination.image}
-                      alt={destination.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {destination.trending && (
-                      <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <TrendingUp size={12} />
-                        Trending
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h3
-                          className={`font-bold text-lg ${
-                            darkMode ? "text-white" : "text-amber-800"
-                          }`}
-                        >
-                          {destination.name}
-                        </h3>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDestinationAction(destination.id, "save");
-                          }}
-                          className={`p-1.5 ${
-                            darkMode
-                              ? "text-gray-300 hover:text-amber-400"
-                              : "text-amber-600 hover:text-amber-800"
-                          }`}
-                        >
-                          <Bookmark size={18} />
-                        </button>
-                      </div>
-                      <div className="flex items-center text-amber-500 text-sm mt-1 font-medium">
-                        <Star size={14} className="mr-1" fill="currentColor" />
-                        {destination.rating}
-                        <span
-                          className={`mx-2 ${
-                            darkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          •
-                        </span>
-                        <Tag size={14} className="mr-1" />
-                        {destination.category.charAt(0).toUpperCase() +
-                          destination.category.slice(1)}
-                      </div>
-                      <p
-                        className={`mt-2 text-sm ${
-                          darkMode ? "text-gray-300" : "text-gray-600"
-                        }`}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+                  <div className="flex flex-col items-center md:items-start">
+                    <h4 className={`font-medium mb-3 ${theme.text} text-sm`}>
+                      Resources
+                    </h4>
+                    <div className="flex flex-col space-y-2">
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
                       >
-                        {destination.description}
-                      </p>
+                        Color Theory
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Accessibility
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Design Trends
+                      </a>
                     </div>
-                    <div className="mt-4 flex flex-wrap justify-between items-end">
-                      <div
-                        className={`text-xs ${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
+                  </div>
+
+                  <div className="flex flex-col items-center md:items-start">
+                    <h4 className={`font-medium mb-3 ${theme.text} text-sm`}>
+                      Company
+                    </h4>
+                    <div className="flex flex-col space-y-2">
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
                       >
-                        <div className="flex items-center gap-1 mb-1">
-                          <Calendar size={12} />
-                          Best time: {destination.bestTimeToVisit}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign size={12} />
-                          {destination.averageCost}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() =>
-                          handleDestinationAction(destination.id, "explore")
-                        }
-                        className={`mt-2 py-2 px-4 rounded-lg flex items-center gap-2 transition-colors
-                            ${
-                              darkMode
-                                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                : "bg-amber-600 hover:bg-amber-700 text-white"
-                            }`}
+                        About
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
                       >
-                        <Compass size={16} />
-                        Explore
-                      </button>
+                        Blog
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Contact
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center md:items-start">
+                    <h4 className={`font-medium mb-3 ${theme.text} text-sm`}>
+                      Legal
+                    </h4>
+                    <div className="flex flex-col space-y-2">
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Terms
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Privacy
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} text-xs hover:text-purple-500 transition-colors`}
+                      >
+                        Cookies
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center md:items-start">
+                    <h4 className={`font-medium mb-3 ${theme.text} text-sm`}>
+                      Connect
+                    </h4>
+                    <div className="flex space-x-3">
+                      <a
+                        href="#"
+                        className={`${theme.subtext} hover:text-purple-500 transition-colors p-2 hover:bg-gray-800/30 rounded-full`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+                        </svg>
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} hover:text-purple-500 transition-colors p-2 hover:bg-gray-800/30 rounded-full`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                        </svg>
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} hover:text-purple-500 transition-colors p-2 hover:bg-gray-800/30 rounded-full`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z" />
+                        </svg>
+                      </a>
+                      <a
+                        href="#"
+                        className={`${theme.subtext} hover:text-purple-500 transition-colors p-2 hover:bg-gray-800/30 rounded-full`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                        </svg>
+                      </a>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={handleLoadMore}
-              className={`py-2 px-6 rounded-lg flex items-center gap-2 border transition-colors
-                  ${
-                    darkMode
-                      ? "border-slate-700 hover:bg-slate-700 text-gray-300"
-                      : "border-amber-200 hover:bg-amber-50 text-amber-800"
-                  }`}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader size={16} className="animate-spin" />
-                  Loading more destinations...
-                </>
-              ) : (
-                <>
-                  <Compass size={16} />
-                  Discover More Destinations
-                </>
-              )}
-            </button>
-          </div>
-        </section>
-      ) : (
-        <div
-          className={`text-center p-8 rounded-xl ${
-            darkMode ? "bg-slate-800" : "bg-amber-50"
-          }`}
-        >
-          <div
-            className={`bg-amber-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 ${
-              darkMode ? "bg-slate-700" : ""
-            }`}
-          >
-            <Search
-              className={darkMode ? "text-amber-400" : "text-amber-600"}
-              size={24}
-            />
-          </div>
-          <h3
-            className={`font-medium ${
-              darkMode ? "text-white" : "text-amber-800"
-            } mb-2`}
-          >
-            No destinations found
-          </h3>
-          <p
-            className={`${
-              darkMode ? "text-gray-400" : "text-gray-600"
-            } text-sm mb-4`}
-          >
-            Try adjusting your search or category filters to find more
-            destinations.
-          </p>
-          <button
-            onClick={() => {
-              setSearchQuery("");
-              setSelectedCategory("all");
-            }}
-            className={`py-2 px-4 rounded-lg font-medium inline-flex items-center gap-2
-                ${
-                  darkMode
-                    ? "bg-amber-500 hover:bg-amber-600 text-white"
-                    : "bg-amber-600 hover:bg-amber-700 text-white"
-                }`}
-          >
-            <RefreshCw size={18} />
-            Reset Filters
-          </button>
-        </div>
-      )}
-
-      {/* Travel Inspiration */}
-      <section className="space-y-4 mt-8">
-        <h2 className="text-xl font-bold">Travel Inspiration</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {travelArticles.map((article) => (
-            <div
-              key={article.id}
-              className={`rounded-xl overflow-hidden ${
-                darkMode ? "bg-slate-800" : "bg-white"
-              } shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 cursor-pointer`}
-            >
-              <div className="relative h-40">
-                <img
-                  src={article.image}
-                  alt={article.title}
-                  className="w-full h-full object-cover"
-                />
               </div>
-              <div className="p-4">
-                <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    darkMode
-                      ? "bg-slate-700 text-amber-400"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {article.category.charAt(0).toUpperCase() +
-                    article.category.slice(1)}
-                </span>
-                <h3
-                  className={`font-bold text-lg mt-2 ${
-                    darkMode ? "text-white" : "text-amber-800"
-                  }`}
-                >
-                  {article.title}
-                </h3>
-                <p
-                  className={`mt-2 text-sm ${
-                    darkMode ? "text-gray-300" : "text-gray-600"
-                  }`}
-                >
-                  {article.excerpt}
+
+              <div className="border-t border-gray-700/30 mt-6 pt-6 flex flex-col md:flex-row items-center justify-between">
+                <p className={`${theme.subtext} text-xs`}>
+                  &copy; {new Date().getFullYear()} Spectrum Pro. All rights
+                  reserved.
                 </p>
-                <div className="mt-3 flex justify-between items-center">
-                  <span
-                    className={`text-xs ${
-                      darkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {article.readTime}
+                <div className="flex items-center mt-4 md:mt-0">
+                  <span className="bg-gray-700/50 text-xs py-1 px-2 rounded-full text-gray-400 backdrop-blur-sm mx-2">
+                    v2.1.0
                   </span>
-                  <a href="#">
-                    <button
-                      className={`text-sm font-medium flex items-center gap-1 
-                        ${darkMode ? "text-amber-400" : "text-amber-700"}`}
-                    >
-                      Read more <ArrowRight size={14} />
-                    </button>
-                  </a>
+                  <span className={`${theme.subtext} text-xs`}>
+                    Made with <span className="text-red-500">♥</span> for
+                    designers
+                  </span>
                 </div>
               </div>
             </div>
-          ))}
+          </footer>
         </div>
-      </section>
+      </main>
 
-      {/* Newsletter Signup */}
-      <section
-        className={`rounded-xl p-6 ${
-          darkMode ? "bg-slate-800" : "bg-amber-50"
-        } mt-8`}
-      >
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <h3
-              className={`text-xl font-bold ${
-                darkMode ? "text-white" : "text-amber-800"
-              }`}
-            >
-              Get Travel Inspiration
-            </h3>
-            <p
-              className={`text-sm mt-1 ${
-                darkMode ? "text-gray-300" : "text-gray-600"
-              }`}
-            >
-              Sign up for our newsletter to receive travel tips and destination
-              recommendations.
-            </p>
-          </div>
-          <div className="flex md:flex-row flex-col w-full md:w-auto gap-2">
-            <input
-              type="email"
-              placeholder="Your email"
-              className="flex-1 md:w-64 pl-4 pr-4 py-2.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-            <button
-              className={`whitespace-nowrap py-2.5 px-4 rounded-lg font-medium 
-                  ${
-                    darkMode
-                      ? "bg-amber-500 hover:bg-amber-600 text-white"
-                      : "bg-amber-600 hover:bg-amber-700 text-white"
-                  }`}
-            >
-              Subscribe
-            </button>
-          </div>
-        </div>
-      </section>
+      <style jsx global>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out forwards;
+        }
+
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+
+        .animate-pulse {
+          animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-slow {
+          0%,
+          100% {
+            opacity: 0.2;
+          }
+          50% {
+            opacity: 0.3;
+          }
+        }
+
+        .animate-pulse-slow {
+          animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+
+        .animate-float-delayed {
+          animation: float 7s ease-in-out 1s infinite;
+        }
+
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 20s linear infinite;
+        }
+
+        @keyframes reverse-spin {
+          from {
+            transform: rotate(360deg);
+          }
+          to {
+            transform: rotate(0deg);
+          }
+        }
+
+        .animate-reverse-spin {
+          animation: reverse-spin 12s linear infinite;
+        }
+
+        @keyframes gradient {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 5s ease infinite;
+        }
+
+        .shadow-glow {
+          box-shadow: 0 0 15px rgba(167, 139, 250, 0.5);
+        }
+
+        .perspective-500 {
+          perspective: 500px;
+        }
+
+        /* RGB Cube Animation */
+        .rgb-cube {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          transform-style: preserve-3d;
+          animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+          from {
+            transform: rotateX(0) rotateY(0) rotateZ(0);
+          }
+          to {
+            transform: rotateX(360deg) rotateY(180deg) rotateZ(360deg);
+          }
+        }
+
+        .face {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          opacity: 0.7;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .red-face {
+          background: rgba(255, 0, 0, 0.5);
+          transform: translateZ(16px);
+        }
+
+        .green-face {
+          background: rgba(0, 255, 0, 0.5);
+          transform: rotateY(90deg) translateZ(16px);
+        }
+
+        .blue-face {
+          background: rgba(0, 0, 255, 0.5);
+          transform: rotateY(-90deg) translateZ(16px);
+        }
+
+        .yellow-face {
+          background: rgba(255, 255, 0, 0.5);
+          transform: rotateX(90deg) translateZ(16px);
+        }
+
+        .magenta-face {
+          background: rgba(255, 0, 255, 0.5);
+          transform: rotateX(-90deg) translateZ(16px);
+        }
+
+        .cyan-face {
+          background: rgba(0, 255, 255, 0.5);
+          transform: translateZ(-16px);
+        }
+
+        .color-wave {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 12px;
+          background: linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.7),
+            rgba(255, 165, 0, 0.7),
+            rgba(255, 255, 0, 0.7),
+            rgba(0, 128, 0, 0.7),
+            rgba(0, 0, 255, 0.7),
+            rgba(75, 0, 130, 0.7),
+            rgba(238, 130, 238, 0.7)
+          );
+          background-size: 200% 100%;
+          animation: wave 10s linear infinite;
+        }
+
+        @keyframes wave {
+          0% {
+            background-position: 0% 50%;
+          }
+          100% {
+            background-position: 200% 50%;
+          }
+        }
+
+        .color-helix-1 {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          width: 4px;
+          height: 100%;
+          background: linear-gradient(
+            to bottom,
+            rgba(255, 0, 0, 0.5),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 255, 0, 0.5),
+            rgba(0, 128, 0, 0.5),
+            rgba(0, 0, 255, 0.5),
+            rgba(75, 0, 130, 0.5),
+            rgba(238, 130, 238, 0.5)
+          );
+          animation: helix1 8s linear infinite;
+        }
+
+        .color-helix-2 {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          width: 4px;
+          height: 100%;
+          background: linear-gradient(
+            to bottom,
+            rgba(238, 130, 238, 0.5),
+            rgba(75, 0, 130, 0.5),
+            rgba(0, 0, 255, 0.5),
+            rgba(0, 128, 0, 0.5),
+            rgba(255, 255, 0, 0.5),
+            rgba(255, 165, 0, 0.5),
+            rgba(255, 0, 0, 0.5)
+          );
+          animation: helix2 8s linear infinite;
+        }
+
+        @keyframes helix1 {
+          0% {
+            transform: translateX(-10px) rotateX(0deg);
+          }
+          100% {
+            transform: translateX(-10px) rotateX(360deg);
+          }
+        }
+
+        @keyframes helix2 {
+          0% {
+            transform: translateX(10px) rotateX(180deg);
+          }
+          100% {
+            transform: translateX(10px) rotateX(540deg);
+          }
+        }
+
+        .color-dots {
+          background-image: radial-gradient(
+            circle at 10px 10px,
+            rgba(255, 255, 255, 0.1) 2px,
+            transparent 0
+          );
+          background-size: 20px 20px;
+        }
+
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: ${isDarkMode
+            ? "rgba(31, 41, 55, 0.5)"
+            : "rgba(243, 244, 246, 0.5)"};
+          border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: ${isDarkMode
+            ? "rgba(107, 114, 128, 0.5)"
+            : "rgba(156, 163, 175, 0.5)"};
+          border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${isDarkMode
+            ? "rgba(107, 114, 128, 0.7)"
+            : "rgba(156, 163, 175, 0.7)"};
+        }
+
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+          height: 4px;
+          border-radius: 2px;
+          background: ${isDarkMode
+            ? "rgba(156, 163, 175, 0.2)"
+            : "rgba(209, 213, 219, 0.5)"};
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          margin-top: -6px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: linear-gradient(to right, #a855f7, #6366f1);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .headline-container {
+          display: inline-block;
+          overflow: hidden;
+        }
+
+        .pro-letter {
+          display: inline-block;
+          position: relative;
+          animation: subtleColorShift ease-in-out infinite;
+          will-change: color;
+        }
+
+        @keyframes subtleColorShift {
+          0%,
+          100% {
+            color: #4f46e5; /* Primary indigo */
+          }
+          25% {
+            color: #6366f1; /* Lighter indigo */
+          }
+          50% {
+            color: #7c3aed; /* Purple */
+          }
+          75% {
+            color: #4338ca; /* Darker indigo */
+          }
+        }
+
+        .pro-letter {
+          opacity: 0;
+          transform: translateY(5px);
+          animation-name: subtleColorShift, fadeInPro;
+          animation-duration: 5s, 0.6s;
+          animation-timing-function: ease-in-out, ease-out;
+          animation-fill-mode: forwards, forwards;
+          animation-iteration-count: infinite, 1;
+          animation-delay: 0s, calc(0.05s * var(--index, 0));
+        }
+
+        @keyframes fadeInPro {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .headline-container:hover .pro-letter {
+          animation-play-state: paused;
+          color: #4f46e5; /* Consistent color on hover */
+          text-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
+          transition: text-shadow 0.4s ease;
+        }
+
+        button svg,
+        .icon svg {
+          color: var(--icon-color);
+          transition: color 0.3s ease;
+        }
+
+        .dark button svg,
+        .dark .icon svg {
+          color: #a78bfa;
+        }
+
+        button svg,
+        .icon svg {
+          color: rgb(154, 133, 133);
+        }
+
+        button:hover svg,
+        .icon:hover svg {
+          color: #8b5cf6;
+        }
+      `}</style>
     </div>
   );
-}
+};
 
-function JournalView({ trips }: { trips: Trip[] }) {
-  return (
-    <div className="flex items-center justify-center h-full p-6 text-center">
-      <div>
-        <div className="bg-amber-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-          <BookOpen className="text-amber-600" size={24} />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Travel Journal</h2>
-        <p className="text-gray-600  max-w-md mx-auto">
-          You have {trips.length} {trips.length === 1 ? "trip" : "trips"} in
-          your journal. This section will soon let you view your journeys in a
-          beautiful timeline!
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ProfileView() {
-  return (
-    <div className="flex items-center justify-center h-full p-6 text-center">
-      <div>
-        <div className="bg-amber-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-          <User className="text-amber-600" size={24} />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Profile & Settings</h2>
-        <p className="text-gray-600  max-w-md mx-auto">
-          Profile settings including account preferences, notifications, and
-          privacy controls will be available here soon.
-        </p>
-      </div>
-    </div>
-  );
-}
+export default ColorPaletteGenerator;

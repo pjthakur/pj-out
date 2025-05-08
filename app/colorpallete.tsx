@@ -1976,9 +1976,8 @@ const ColorPaletteGenerator: NextPage = () => {
                                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition-all cursor-text shadow-sm"
                                         placeholder="Enter your text"
                                         style={{
-                                          borderColor: "rgb(229, 231, 235)",
-                                          focusRingColor:
-                                            currentPalette.colors[0].hex,
+                                          borderColor: currentPalette.colors.length > 0 ? currentPalette.colors[0].hex : "rgb(229, 231, 235)",
+                                          outlineColor: currentPalette.colors.length > 0 ? currentPalette.colors[0].hex : "#111827",
                                         }}
                                       />
                                     </div>
