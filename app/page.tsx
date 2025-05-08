@@ -34,6 +34,7 @@ import {
   Mountain,
   ArrowRight,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const DEFAULT_COVERS = [
   "https://images.unsplash.com/photo-1707343848552-893e05dba6ac?fm=jpg&q=60&w=3000",
@@ -738,7 +739,7 @@ export default function TravelJournalApp() {
           darkMode
             ? "bg-slate-800 border-slate-700"
             : "bg-amber-100 border-amber-200"
-        } px-4 py-3 flex items-center justify-between border-b transition-colors duration-300 sticky top-0 z-10`}
+        } px-4 py-3 flex items-center justify-between border-b transition-colors duration-300 fixed top-0 left-0 right-0 z-20`}
       >
         <div className="flex items-center gap-3">
           {currentView !== "home" && (
@@ -774,86 +775,100 @@ export default function TravelJournalApp() {
           </h1>
         </div>
       </header>
+      
+      {/* Add padding to account for fixed header */}
+      <div className="pt-12 md:pt-14"></div>
 
       {/* Mobile Menu Overlay */}
-      {isMenuOpen && (
-        <div
-          className={`fixed inset-0 z-20 ${
-            darkMode ? "bg-black/70" : "bg-black/50"
-          }`}
-          onClick={() => setIsMenuOpen(false)}
-        >
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-amber-100"
-            } w-64 h-full p-4 flex flex-col gap-4 transform transition-transform duration-300`}
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={`fixed inset-0 z-20 ${
+              darkMode ? "bg-black/70" : "bg-black/50"
+            }`}
+            onClick={() => setIsMenuOpen(false)}
           >
-            <div className="flex justify-between items-center">
-              <h2
-                className={`font-bold text-xl ${
-                  darkMode ? "text-amber-100" : "text-amber-800"
-                }`}
-              >
-                Menu
-              </h2>
-              <button onClick={() => setIsMenuOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <NavbarItem
-              icon={<Home size={20} />}
-              label="Home"
-              isActive={currentView === "home"}
-              onClick={() => {
-                setCurrentView("home");
-                setIsMenuOpen(false);
-              }}
-              darkMode={darkMode}
-            />
-            <NavbarItem
-              icon={<Compass size={20} />}
-              label="Explore"
-              isActive={currentView === "explore"}
-              onClick={() => {
-                setCurrentView("explore");
-                setIsMenuOpen(false);
-              }}
-              darkMode={darkMode}
-            />
-            <NavbarItem
-              icon={<BookOpen size={20} />}
-              label="Journal"
-              isActive={currentView === "journal"}
-              onClick={() => {
-                setCurrentView("journal");
-                setIsMenuOpen(false);
-              }}
-              darkMode={darkMode}
-            />
-            <NavbarItem
-              icon={<User size={20} />}
-              label="Profile"
-              isActive={currentView === "profile"}
-              onClick={() => {
-                setCurrentView("profile");
-                setIsMenuOpen(false);
-              }}
-              darkMode={darkMode}
-            />
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={`${
+                darkMode ? "bg-slate-800" : "bg-amber-100"
+              } w-64 h-full p-4 flex flex-col gap-4`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center">
+                <h2
+                  className={`font-bold text-xl ${
+                    darkMode ? "text-amber-100" : "text-amber-800"
+                  }`}
+                >
+                  Menu
+                </h2>
+                <button onClick={() => setIsMenuOpen(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="mt-4"></div>
+              <NavbarItem
+                icon={<Home size={20} />}
+                label="Home"
+                isActive={currentView === "home"}
+                onClick={() => {
+                  setCurrentView("home");
+                  setIsMenuOpen(false);
+                }}
+                darkMode={darkMode}
+              />
+              <NavbarItem
+                icon={<Compass size={20} />}
+                label="Explore"
+                isActive={currentView === "explore"}
+                onClick={() => {
+                  setCurrentView("explore");
+                  setIsMenuOpen(false);
+                }}
+                darkMode={darkMode}
+              />
+              <NavbarItem
+                icon={<BookOpen size={20} />}
+                label="Journal"
+                isActive={currentView === "journal"}
+                onClick={() => {
+                  setCurrentView("journal");
+                  setIsMenuOpen(false);
+                }}
+                darkMode={darkMode}
+              />
+              <NavbarItem
+                icon={<User size={20} />}
+                label="Profile"
+                isActive={currentView === "profile"}
+                onClick={() => {
+                  setCurrentView("profile");
+                  setIsMenuOpen(false);
+                }}
+                darkMode={darkMode}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex">
+      {/* Main Content Container */}
+      <div className="flex md:pl-20">
         {/* Desktop Sidebar Navigation */}
         <nav
           className={`${
             darkMode
               ? "bg-slate-800 border-slate-700"
               : "bg-amber-100 border-amber-200"
-          } hidden md:flex flex-col w-20 border-r transition-colors duration-300`}
+          } hidden md:flex flex-col w-20 border-r transition-colors duration-300 fixed left-0 top-[48px] bottom-0 overflow-hidden z-10 pt-6`}
         >
           <NavbarItem
             icon={<Home size={24} />}
@@ -886,7 +901,7 @@ export default function TravelJournalApp() {
         </nav>
 
         {/* Dynamic Content Area */}
-        <div className="flex-1 overflow-x-hidden">
+        <div className="w-full max-h-[calc(100vh-48px)] overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader
@@ -898,10 +913,20 @@ export default function TravelJournalApp() {
               <p className="mt-4 font-medium">Loading your adventures...</p>
             </div>
           ) : (
-            renderMainContent()
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentView}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderMainContent()}
+              </motion.div>
+            </AnimatePresence>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Bottom Navigation for Mobile */}
       <nav
@@ -909,7 +934,7 @@ export default function TravelJournalApp() {
           darkMode
             ? "bg-slate-800 border-slate-700"
             : "bg-amber-100 border-amber-200"
-        } md:hidden flex items-center justify-around border-t py-2 transition-colors duration-300 sticky bottom-0 z-10`}
+        } md:hidden flex items-center justify-around border-t py-2 transition-colors duration-300 fixed bottom-0 left-0 right-0 z-20`}
       >
         <NavbarItem
           icon={<Home size={24} />}
@@ -949,37 +974,44 @@ export default function TravelJournalApp() {
 
       {/* Offline Indicator */}
       {!isOnline && (
-        <div
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           className={`fixed bottom-16 left-0 right-0 ${
             darkMode ? "bg-red-900 text-white" : "bg-red-500 text-white"
           } p-2 text-center text-sm`}
         >
           You're currently offline. Changes will sync when you reconnect.
-        </div>
+        </motion.div>
       )}
 
       {/* Notification Toast */}
-      {notification.show && (
-        <div
-          className={`fixed top-20 right-4 max-w-xs p-3 rounded shadow-lg 
-          ${
-            notification.type === "success"
-              ? darkMode
-                ? "bg-green-800 text-green-100"
-                : "bg-green-500 text-white"
-              : notification.type === "error"
-              ? darkMode
-                ? "bg-red-800 text-red-100"
-                : "bg-red-500 text-white"
-              : darkMode
-              ? "bg-blue-800 text-blue-100"
-              : "bg-blue-500 text-white"
-          }
-          transform transition-all duration-300 animate-fade-in`}
-        >
-          {notification.message}
-        </div>
-      )}
+      <AnimatePresence>
+        {notification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className={`fixed top-20 right-4 max-w-xs p-3 rounded shadow-lg 
+            ${
+              notification.type === "success"
+                ? darkMode
+                  ? "bg-green-800 text-green-100"
+                  : "bg-green-500 text-white"
+                : notification.type === "error"
+                ? darkMode
+                  ? "bg-red-800 text-red-100"
+                  : "bg-red-500 text-white"
+                : darkMode
+                ? "bg-blue-800 text-blue-100"
+                : "bg-blue-500 text-white"
+            }`}
+          >
+            {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1030,9 +1062,9 @@ function NavbarItem({
   }
 
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center p-4 gap-1 transition-colors
+      className={`flex flex-col items-center justify-center py-5 gap-2 transition-colors
         ${
           isActive
             ? darkMode
@@ -1042,10 +1074,12 @@ function NavbarItem({
             ? "text-gray-400 hover:text-gray-200"
             : "text-amber-600/70 hover:text-amber-800"
         }`}
+      whileHover={{ scale: isActive ? 1 : 1.05 }}
+      whileTap={{ scale: 0.95 }}
     >
       <div>{icon}</div>
       {label && <span className="text-xs font-medium">{label}</span>}
-    </button>
+    </motion.button>
   );
 }
 
@@ -1063,10 +1097,35 @@ function HomeView({
     (a, b) => (new Date(b.startDate) as any) - (new Date(a.startDate) as any)
   );
 
+  // Card animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    }),
+    hover: { 
+      y: -10,
+      scale: 1.02,
+      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+      transition: { duration: 0.2 }
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20 md:pb-6 overflow-y-auto max-h-screen">
       {/* Search Bar */}
-      <div className="relative">
+      <motion.div 
+        className="relative"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <Search
           className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
           size={20}
@@ -1078,31 +1137,51 @@ function HomeView({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500  shadow-sm transition-all"
         />
-      </div>
+      </motion.div>
 
       {/* Welcome Section */}
-      <section className="rounded-3xl overflow-hidden relative h-64 md:h-80 group">
+      <motion.section 
+        className="rounded-3xl overflow-hidden relative h-64 md:h-80 group"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+      >
         <img
           src="https://images.unsplash.com/photo-1489641024260-20e5cb3ee4aa?fm=jpg&q=60&w=3000"
           alt="Travel memories"
           className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70 flex flex-col justify-end p-6">
-          <h1 className="text-white text-3xl md:text-4xl font-bold mb-2">
+          <motion.h1 
+            className="text-white text-3xl md:text-4xl font-bold mb-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
             Your Travel Journey
-          </h1>
-          <p className="text-amber-100 text-sm md:text-base mb-4">
+          </motion.h1>
+          <motion.p 
+            className="text-amber-100 text-sm md:text-base mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          >
             Capture and relive your most precious travel moments
-          </p>
-          <button
+          </motion.p>
+          <motion.button
             onClick={onCreateTrip}
-            className="bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-5 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg transition-transform transform hover:scale-105 w-full md:w-auto md:self-start"
+            className="bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-5 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg w-full md:w-auto md:self-start"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             <Plus size={20} />
             Start a New Adventure
-          </button>
+          </motion.button>
         </div>
-      </section>
+      </motion.section>
 
       {/* Favorites Section */}
       {favoriteTrips.length > 0 && (
@@ -1110,17 +1189,26 @@ function HomeView({
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Favorite Journeys</h2>
             <a href="#see-all">
-              <button className="text-sm font-medium flex items-center gap-1 text-amber-700">
+              <motion.button 
+                className="text-sm font-medium flex items-center gap-1 text-amber-700"
+                whileHover={{ x: 3 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 See all <ArrowUpRight size={16} />
-              </button>
+              </motion.button>
             </a>
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-            {favoriteTrips.map((trip) => (
-              <div
+            {favoriteTrips.map((trip, index) => (
+              <motion.div
                 key={`favorite-${trip.id}`}
-                className="snap-start rounded-xl overflow-hidden flex-shrink-0 w-64 bg-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 cursor-pointer"
+                className="snap-start rounded-xl overflow-hidden flex-shrink-0 w-64 bg-white shadow-md cursor-pointer"
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover="hover"
+                custom={index}
                 onClick={() => onSelectTrip(trip)}
               >
                 <div className="relative h-40">
@@ -1129,19 +1217,21 @@ function HomeView({
                     alt={trip.title}
                     className="w-full h-full object-cover"
                   />
-                  <button
+                  <motion.button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFavorite(trip.id);
                     }}
                     className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-full backdrop-blur-sm"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                   >
                     <Heart
                       size={18}
                       fill="#F59E0B"
                       className="text-amber-500"
                     />
-                  </button>
+                  </motion.button>
                 </div>
                 <div className="p-3">
                   <h3 className="font-bold text-amber-800 ">{trip.title}</h3>
@@ -1150,7 +1240,7 @@ function HomeView({
                     {trip.location}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </section>
@@ -1163,10 +1253,15 @@ function HomeView({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recentTrips.map((trip) => (
-            <div
+          {recentTrips.map((trip, index) => (
+            <motion.div
               key={`trip-${trip.id}`}
-              className="rounded-xl overflow-hidden bg-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 cursor-pointer"
+              className="rounded-xl overflow-hidden bg-white shadow-md cursor-pointer"
+              variants={cardVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover="hover"
+              custom={index}
               onClick={() => onSelectTrip(trip)}
             >
               <div className="relative h-48">
@@ -1181,12 +1276,14 @@ function HomeView({
                     {trip.startDate} - {trip.endDate || "Ongoing"}
                   </div>
                 </div>
-                <button
+                <motion.button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleFavorite(trip.id);
                   }}
                   className="absolute top-2 right-2 p-1.5 bg-white/80/80 rounded-full backdrop-blur-sm"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                 >
                   <Heart
                     size={18}
@@ -1195,7 +1292,7 @@ function HomeView({
                       trip.favorite ? "text-amber-500" : "text-gray-500 "
                     }
                   />
-                </button>
+                </motion.button>
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-lg text-amber-800 ">
@@ -1210,24 +1307,38 @@ function HomeView({
                   {trip.entries.length === 1 ? "entry" : "entries"}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {/* Create Trip Card */}
-          <div
-            className="rounded-xl overflow-hidden border-2 border-dashed border-amber-200  flex flex-col items-center justify-center p-6 h-64 cursor-pointer hover:border-amber-400 transition-colors"
+          <motion.div
+            className="rounded-xl overflow-hidden border-2 border-dashed border-amber-200 flex flex-col items-center justify-center p-6 h-64 cursor-pointer hover:border-amber-400 transition-colors"
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ 
+              scale: 1.03, 
+              borderColor: "#F59E0B",
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
+            }}
+            whileTap={{ scale: 0.97 }}
+            custom={recentTrips.length}
             onClick={onCreateTrip}
           >
-            <div className="bg-amber-100 rounded-full p-3 mb-4">
+            <motion.div 
+              className="bg-amber-100 rounded-full p-3 mb-4"
+              whileHover={{ rotate: 90, scale: 1.1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            >
               <Plus size={24} className="text-amber-600" />
-            </div>
+            </motion.div>
             <h3 className="font-bold text-amber-800  text-center">
               Create New Trip
             </h3>
             <p className="text-gray-500  text-sm text-center mt-2">
               Start documenting your next adventure
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
     </div>
@@ -1260,6 +1371,26 @@ function TripDetailView({
     images: [],
     tags: [],
   });
+
+  // Animation variants
+  const entryVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.05,
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    }),
+    hover: { 
+      y: -5,
+      scale: 1.02,
+      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      transition: { duration: 0.2 }
+    }
+  };
 
   const handleSave = () => {
     onUpdateTrip(editedTrip);
@@ -1295,7 +1426,9 @@ function TripDetailView({
   return (
     <div className="overflow-y-auto max-h-screen pb-20 md:pb-6">
       {/* Cover Photo and Trip Info */}
-      <div
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className={
           isEditing
             ? "relative group h-96 md:h-80"
@@ -1311,7 +1444,11 @@ function TripDetailView({
           {!isEditing ? (
             <div className="absolute bottom-0 left-0 w-full p-6 text-white">
               <div className="flex justify-between items-start">
-                <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                >
                   <h1 className="text-3xl font-bold mb-1">{trip.title}</h1>
                   <div className="flex items-center gap-2 text-amber-100 mb-2">
                     <MapPin size={16} />
@@ -1320,11 +1457,18 @@ function TripDetailView({
                   <div className="text-sm text-gray-200">
                     {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
+                </motion.div>
+                <motion.div 
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                  <motion.button
                     onClick={() => toggleFavorite(trip.id)}
                     className="p-2 bg-white/20 rounded-full backdrop-blur-sm"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                   >
                     <Heart
                       size={20}
@@ -1333,14 +1477,16 @@ function TripDetailView({
                         trip.favorite ? "text-amber-500" : "text-white"
                       }
                     />
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={() => setIsEditing(true)}
                     className="py-1.5 px-3 bg-white/20 rounded-lg backdrop-blur-sm text-sm font-medium"
+                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.3)" }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Edit Trip
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               </div>
             </div>
           ) : (
@@ -1380,14 +1526,16 @@ function TripDetailView({
                 />
               </div>
               <div className="flex justify-between gap-1 ">
-                <button
+                <motion.button
                   onClick={() => setIsEditing(false)}
                   className="py-2 md:px-4 px-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-medium"
+                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.3)" }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   Cancel
-                </button>
+                </motion.button>
                 <div className="flex gap-3">
-                  <button
+                  <motion.button
                     onClick={() => {
                       if (
                         window.confirm(
@@ -1398,432 +1546,501 @@ function TripDetailView({
                       }
                     }}
                     className="py-2 md:px-4 px-2 bg-red-600/80 backdrop-blur-sm rounded-lg text-sm font-medium"
+                    whileHover={{ backgroundColor: "rgba(220, 38, 38, 0.9)" }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Delete Trip
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={handleSave}
                     className="py-2 md:px-4 px-2 bg-amber-500/90 backdrop-blur-sm rounded-lg text-sm font-medium"
+                    whileHover={{ backgroundColor: "rgba(245, 158, 11, 1)" }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Save Changes
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      {showEntryModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 transition-all duration-300 animate-fade-in">
-          <div
-            className="bg-white rounded-xl w-full max-w-lg p-0 shadow-2xl transform transition-all duration-300 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {showEntryModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowEntryModal(false)}
           >
-            {/* Modal Header */}
-            <div className="bg-amber-50 p-5 border-b border-amber-100">
-              <h2 className="text-xl font-bold text-amber-800 flex items-center gap-2">
-                <Plus size={20} className="text-amber-600" />
-                New Journal Entry
-              </h2>
-            </div>
+            <motion.div
+              className="bg-white rounded-xl w-full max-w-lg p-0 shadow-2xl transform overflow-hidden"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="bg-amber-50 p-5 border-b border-amber-100">
+                <h2 className="text-xl font-bold text-amber-800 flex items-center gap-2">
+                  <Plus size={20} className="text-amber-600" />
+                  New Journal Entry
+                </h2>
+              </div>
 
-            <div className="p-5 max-h-[80vh] overflow-y-auto">
-              {/* Form sections */}
-              <div className="space-y-5">
-                {/* Basic Info Section */}
-                <div className="space-y-3">
-                  {/* Title */}
-                  <label className="block">
-                    <span className="text-sm font-medium text-gray-700 mb-1 block">
-                      Title
-                    </span>
-                    <input
-                      value={entryForm.title}
-                      onChange={(e) =>
-                        setEntryForm({ ...entryForm, title: e.target.value })
-                      }
-                      placeholder="What's memorable about this moment?"
-                      className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                    />
-                  </label>
-
-                  {/* Date and Location in a row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-5 max-h-[80vh] overflow-y-auto">
+                {/* Form sections */}
+                <div className="space-y-5">
+                  {/* Basic Info Section */}
+                  <div className="space-y-3">
+                    {/* Title */}
                     <label className="block">
                       <span className="text-sm font-medium text-gray-700 mb-1 block">
-                        Date
+                        Title
                       </span>
                       <input
-                        type="date"
-                        value={entryForm.date}
+                        value={entryForm.title}
                         onChange={(e) =>
-                          setEntryForm({ ...entryForm, date: e.target.value })
+                          setEntryForm({ ...entryForm, title: e.target.value })
                         }
+                        placeholder="What's memorable about this moment?"
                         className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
                       />
                     </label>
+
+                    {/* Date and Location in a row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-sm font-medium text-gray-700 mb-1 block">
+                          Date
+                        </span>
+                        <input
+                          type="date"
+                          value={entryForm.date}
+                          onChange={(e) =>
+                            setEntryForm({ ...entryForm, date: e.target.value })
+                          }
+                          className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-medium text-gray-700 mb-1 block">
+                          Location
+                        </span>
+                        <div className="relative">
+                          <MapPin
+                            size={16}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
+                          />
+                          <input
+                            value={entryForm.location}
+                            onChange={(e) =>
+                              setEntryForm({
+                                ...entryForm,
+                                location: e.target.value,
+                              })
+                            }
+                            placeholder="Where was this?"
+                            className="w-full border border-gray-300 p-2.5 pl-9 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                          />
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Notes */}
                     <label className="block">
                       <span className="text-sm font-medium text-gray-700 mb-1 block">
-                        Location
+                        Notes
                       </span>
-                      <div className="relative">
-                        <MapPin
+                      <textarea
+                        value={entryForm.content}
+                        onChange={(e) =>
+                          setEntryForm({ ...entryForm, content: e.target.value })
+                        }
+                        rows={4}
+                        placeholder="Capture your experience..."
+                        className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Tags Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        Tags
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {(entryForm.tags || []).length} tags
+                      </span>
+                    </div>
+                    <div className="flex mt-1">
+                      <div className="relative flex-1">
+                        <Tag
                           size={16}
                           className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
                         />
                         <input
-                          value={entryForm.location}
-                          onChange={(e) =>
-                            setEntryForm({
-                              ...entryForm,
-                              location: e.target.value,
-                            })
-                          }
-                          placeholder="Where was this?"
-                          className="w-full border border-gray-300 p-2.5 pl-9 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                        />
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* Notes */}
-                  <label className="block">
-                    <span className="text-sm font-medium text-gray-700 mb-1 block">
-                      Notes
-                    </span>
-                    <textarea
-                      value={entryForm.content}
-                      onChange={(e) =>
-                        setEntryForm({ ...entryForm, content: e.target.value })
-                      }
-                      rows={4}
-                      placeholder="Capture your experience..."
-                      className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none"
-                    />
-                  </label>
-                </div>
-
-                {/* Tags Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Tags
-                    </span>
-                    <span className="text-xs text-gray-500 ">
-                      {(entryForm.tags || []).length} tags
-                    </span>
-                  </div>
-                  <div className="flex mt-1">
-                    <div className="relative flex-1">
-                      <Tag
-                        size={16}
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
-                      />
-                      <input
-                        className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                        placeholder="Add a tag"
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            e.currentTarget.value.trim()
-                          ) {
-                            setEntryForm({
-                              ...entryForm,
-                              tags: [
-                                ...(entryForm.tags || []),
-                                e.currentTarget.value.trim(),
-                              ],
-                            });
-                            e.currentTarget.value = "";
-                            e.preventDefault();
-                          }
-                        }}
-                      />
-                    </div>
-                    <button
-                      className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
-                      onClick={() => {
-                        const input = document.querySelector(
-                          'input[placeholder="Add a tag"]'
-                        ) as HTMLInputElement;
-                        const val = input?.value?.trim();
-                        if (val) {
-                          setEntryForm({
-                            ...entryForm,
-                            tags: [...(entryForm.tags || []), val],
-                          });
-                          if (input instanceof HTMLInputElement) {
-                            input.value = "";
-                          }
-                        }
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  {/* Tags Display */}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {(entryForm.tags || []).length > 0 ? (
-                      (entryForm.tags || []).map((tag, i) => (
-                        <span
-                          key={i}
-                          className="bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm group transition-all hover:bg-amber-100 "
-                        >
-                          #{tag}
-                          <button
-                            onClick={() => {
+                          className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                          placeholder="Add a tag"
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              e.currentTarget.value.trim()
+                            ) {
                               setEntryForm({
                                 ...entryForm,
-                                tags: (entryForm.tags || []).filter(
-                                  (_, idx) => idx !== i
-                                ),
+                                tags: [
+                                  ...(entryForm.tags || []),
+                                  e.currentTarget.value.trim(),
+                                ],
                               });
-                            }}
-                            className="text-amber-600 hover:text-amber-800 rounded-full p-0.5 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-500  italic">
-                        No tags added yet
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Image Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Photos
-                    </span>
-                    <span className="text-xs text-gray-500 ">
-                      {(entryForm.images || []).length} photos
-                    </span>
-                  </div>
-
-                  {/* Image URL Input */}
-                  <div className="flex mt-1">
-                    <div className="relative flex-1">
-                      <Camera
-                        size={16}
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
-                      />
-                      <input
-                        className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                        placeholder="https://..."
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            e.currentTarget.value.trim()
-                          ) {
+                              e.currentTarget.value = "";
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                      </div>
+                      <motion.button
+                        className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
+                        whileHover={{ backgroundColor: "#b45309" }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const input = document.querySelector(
+                            'input[placeholder="Add a tag"]'
+                          ) as HTMLInputElement;
+                          const val = input?.value?.trim();
+                          if (val) {
                             setEntryForm({
                               ...entryForm,
-                              images: [
-                                ...(entryForm.images || []),
-                                e.currentTarget.value.trim(),
-                              ],
+                              tags: [...(entryForm.tags || []), val],
                             });
-                            e.currentTarget.value = "";
-                            e.preventDefault();
+                            if (input instanceof HTMLInputElement) {
+                              input.value = "";
+                            }
                           }
                         }}
-                      />
+                      >
+                        Add
+                      </motion.button>
                     </div>
-                    <button
-                      className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
-                      onClick={() => {
-                        const input = document.querySelector('input[placeholder="https://..."]') as HTMLInputElement;
-                        const url = input?.value?.trim();
-                        if (url) {
-                          setEntryForm({
-                            ...entryForm,
-                            images: [...(entryForm.images || []), url],
-                          });
-                          if (input instanceof HTMLInputElement) {
-                            input.value = "";
-                          }
-                        }
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
 
-                  {/* File Upload */}
-                  <div className="mt-3">
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50/50 hover:bg-gray-100  transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Camera size={24} className="text-amber-600 mb-2" />
-                        <p className="text-sm text-gray-600">
-                          Drag & drop photos or click to browse
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          files.forEach((file) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setEntryForm((form) => ({
-                                ...form,
-                                images: [
-                                  ...(form.images || []),
-                                  reader.result as string,
-                                ],
-                              }));
-                            };
-                            reader.readAsDataURL(file);
-                          });
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Image Preview */}
-                  {(entryForm.images || []).length > 0 && (
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mt-3">
-                      {(entryForm.images || []).map((src, i) => (
-                        <div
-                          key={i}
-                          className="relative group aspect-square overflow-hidden rounded-lg"
-                        >
-                          <img
-                            src={src}
-                            className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transform transition-transform hover:scale-110"
+                    {/* Tags Display */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(entryForm.tags || []).length > 0 ? (
+                        (entryForm.tags || []).map((tag, i) => (
+                          <motion.span
+                            key={i}
+                            className="bg-amber-50 text-amber-800 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-sm group transition-all hover:bg-amber-100"
+                            whileHover={{ scale: 1.05 }}
+                          >
+                            #{tag}
+                            <motion.button
                               onClick={() => {
                                 setEntryForm({
                                   ...entryForm,
-                                  images: (entryForm.images || []).filter(
+                                  tags: (entryForm.tags || []).filter(
                                     (_, idx) => idx !== i
                                   ),
                                 });
                               }}
+                              className="text-amber-600 hover:text-amber-800 rounded-full p-0.5 transition-colors"
+                              whileHover={{ scale: 1.2 }}
+                              whileTap={{ scale: 0.9 }}
                             >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                              <X size={14} />
+                            </motion.button>
+                          </motion.span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-500 italic">
+                          No tags added yet
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  {/* Image Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        Photos
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {(entryForm.images || []).length} photos
+                      </span>
+                    </div>
+
+                    {/* Image URL Input */}
+                    <div className="flex mt-1">
+                      <div className="relative flex-1">
+                        <Camera
+                          size={16}
+                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600"
+                        />
+                        <input
+                          className="flex-1 border border-gray-300 p-2.5 pl-9 rounded-l-lg w-full focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                          placeholder="https://..."
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              e.currentTarget.value.trim()
+                            ) {
+                              setEntryForm({
+                                ...entryForm,
+                                images: [
+                                  ...(entryForm.images || []),
+                                  e.currentTarget.value.trim(),
+                                ],
+                              });
+                              e.currentTarget.value = "";
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                      </div>
+                      <motion.button
+                        className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
+                        whileHover={{ backgroundColor: "#b45309" }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const input = document.querySelector('input[placeholder="https://..."]') as HTMLInputElement;
+                          const url = input?.value?.trim();
+                          if (url) {
+                            setEntryForm({
+                              ...entryForm,
+                              images: [...(entryForm.images || []), url],
+                            });
+                            if (input instanceof HTMLInputElement) {
+                              input.value = "";
+                            }
+                          }
+                        }}
+                      >
+                        Add
+                      </motion.button>
+                    </div>
+
+                    {/* File Upload */}
+                    <div className="mt-3">
+                      <motion.label 
+                        className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50/50 hover:bg-gray-100 transition-colors"
+                        whileHover={{ borderColor: "#d97706", backgroundColor: "#fef3c7" }}
+                      >
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <motion.div 
+                            whileHover={{ y: -3 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 10 }}
+                          >
+                            <Camera size={24} className="text-amber-600 mb-2" />
+                          </motion.div>
+                          <p className="text-sm text-gray-600">
+                            Drag & drop photos or click to browse
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            files.forEach((file) => {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setEntryForm((form) => ({
+                                  ...form,
+                                  images: [
+                                    ...(form.images || []),
+                                    reader.result as string,
+                                  ],
+                                }));
+                              };
+                              reader.readAsDataURL(file);
+                            });
+                          }}
+                        />
+                      </motion.label>
+                    </div>
+
+                    {/* Image Preview */}
+                    {(entryForm.images || []).length > 0 && (
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mt-3">
+                        {(entryForm.images || []).map((src, i) => (
+                          <motion.div
+                            key={i}
+                            className="relative group aspect-square overflow-hidden rounded-lg"
+                            whileHover={{ scale: 1.05 }}
+                          >
+                            <img
+                              src={src}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <motion.button
+                                className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5"
+                                whileHover={{ scale: 1.2 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => {
+                                  setEntryForm({
+                                    ...entryForm,
+                                    images: (entryForm.images || []).filter(
+                                      (_, idx) => idx !== i
+                                    ),
+                                  });
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div className="border-t border-gray-200 p-4 flex justify-end gap-3 bg-gray-50">
-              <button
-                onClick={() => setShowEntryModal(false)}
-                className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100  transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const newEntry: Entry = {
-                    id: Date.now(),
-                    ...(entryForm as Omit<Entry, 'id'>),
-                  };
-                  onUpdateTrip({
-                    ...trip,
-                    entries: [newEntry, ...trip.entries],
-                  });
-                  setShowEntryModal(false);
-                  setSelectedEntry(newEntry);
-                  setCurrentView("entry-detail");
-                }}
-                className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors shadow-sm"
-              >
-                <BookOpen size={18} />
-                Save Entry
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Modal Footer */}
+              <div className="border-t border-gray-200 p-4 flex justify-end gap-3 bg-gray-50">
+                <motion.button
+                  onClick={() => setShowEntryModal(false)}
+                  className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+                  whileHover={{ scale: 1.05, backgroundColor: "#f3f4f6" }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    const newEntry: Entry = {
+                      id: Date.now(),
+                      ...(entryForm as Omit<Entry, 'id'>),
+                    };
+                    onUpdateTrip({
+                      ...trip,
+                      entries: [newEntry, ...trip.entries],
+                    });
+                    setShowEntryModal(false);
+                    setSelectedEntry(newEntry);
+                    setCurrentView("entry-detail");
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors shadow-sm"
+                  whileHover={{ scale: 1.05, backgroundColor: "#b45309" }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <BookOpen size={18} />
+                  Save Entry
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Entries Section */}
       <div className="p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Trip Entries</h2>
-          <button
+          <motion.button
             onClick={() => setShowEntryModal(true)}
-            className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium flex items-center gap-2 transition-colors"
+            className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium flex items-center gap-2"
+            whileHover={{ scale: 1.05, backgroundColor: "#b45309" }}
+            whileTap={{ scale: 0.95 }}
           >
             <Plus size={18} />
             New Entry
-          </button>
+          </motion.button>
         </div>
 
         {trip.entries.length === 0 ? (
-          <div className="text-center p-6 bg-amber-50  rounded-xl">
-            <div className="bg-amber-100  rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+          <motion.div 
+            className="text-center p-6 bg-amber-50 rounded-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="bg-amber-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
               <BookOpen className="text-amber-600" size={24} />
             </div>
-            <h3 className="font-medium text-amber-800  mb-2">No entries yet</h3>
+            <h3 className="font-medium text-amber-800 mb-2">No entries yet</h3>
             <p className="text-gray-600 text-sm mb-4">
               Start documenting your trip memories by creating your first entry.
             </p>
-            <button
-            onClick={() => setShowEntryModal(true)}
-            className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium inline-flex items-center gap-2"
+            <motion.button
+              onClick={() => setShowEntryModal(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg font-medium inline-flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               <Plus size={18} />
               Create First Entry
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         ) : (
           <div className="space-y-8">
-            {sortedDates.map((date) => (
-              <div key={date}>
+            {sortedDates.map((date, dateIndex) => (
+              <motion.div 
+                key={date}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: dateIndex * 0.1 }}
+              >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-amber-100  text-amber-800 rounded-full h-10 w-10 flex items-center justify-center">
+                  <motion.div 
+                    className="bg-amber-100 text-amber-800 rounded-full h-10 w-10 flex items-center justify-center"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 300, 
+                      damping: 20,
+                      delay: dateIndex * 0.1 + 0.2 
+                    }}
+                  >
                     <Calendar size={18} />
-                  </div>
+                  </motion.div>
                   <h3 className="font-medium">{formatDate(date)}</h3>
                 </div>
 
-                <div className="space-y-4 pl-5 border-l-2 border-amber-200 ">
-                  {entriesByDate[date].map((entry: Entry) => (
-                    <div
+                <div className="space-y-4 pl-5 border-l-2 border-amber-200">
+                  {entriesByDate[date].map((entry: Entry, entryIndex: number) => (
+                    <motion.div
                       key={entry.id}
-                      className="bg-white  rounded-xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 cursor-pointer p-4"
+                      className="bg-white rounded-xl shadow-sm cursor-pointer p-4"
+                      variants={entryVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      custom={entryIndex}
                       onClick={() => onSelectEntry(entry)}
                     >
-                      <h4 className="font-bold text-amber-800  mb-2">
+                      <h4 className="font-bold text-amber-800 mb-2">
                         {entry.title}
                       </h4>
 
                       {entry.images.length > 0 && (
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-3 snap-x">
                           {entry.images.map((image: string, index: number) => (
-                            <img
+                            <motion.img
                               key={`img-${index}`}
                               src={image}
                               alt={`Photo ${index + 1}`}
                               className="h-20 w-32 object-cover rounded-lg flex-shrink-0 snap-start"
+                              whileHover={{ scale: 1.05 }}
                             />
                           ))}
                         </div>
                       )}
 
-                      <p className="text-gray-600  text-sm line-clamp-2 mb-3">
+                      <p className="text-gray-600 text-sm line-clamp-2 mb-3">
                         {entry.content}
                       </p>
 
-                      <div className="flex items-center text-gray-500  text-xs">
+                      <div className="flex items-center text-gray-500 text-xs">
                         <MapPin size={12} className="mr-1" />
                         {entry.location}
                       </div>
@@ -1831,19 +2048,20 @@ function TripDetailView({
                       {entry.tags && entry.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {entry.tags.map((tag: string, index: number) => (
-                            <span
+                            <motion.span
                               key={`tag-${index}`}
-                              className="bg-amber-100 text-amber-800  text-xs px-2 py-0.5 rounded-full"
+                              className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full"
+                              whileHover={{ scale: 1.1 }}
                             >
                               #{tag}
-                            </span>
+                            </motion.span>
                           ))}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
