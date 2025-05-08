@@ -525,7 +525,7 @@ const ClipboardManager = () => {
   const primaryButtonClasses = `${buttonClasses} bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50`;
   const secondaryButtonClasses = darkMode
     ? `${buttonClasses} bg-gray-700 text-gray-200 hover:bg-gray-600`
-    : `${buttonClasses} bg-gray-200 text-gray-700 hover:bg-gray-300`;
+    : `${buttonClasses} bg-gray-300 text-gray-800 hover:bg-gray-400`;
 
   const dangerButtonClasses = `${buttonClasses} bg-red-600 text-white hover:bg-red-700`;
 
@@ -552,7 +552,12 @@ const ClipboardManager = () => {
           <a href="#">
             <div className="flex items-center gap-2">
               <Clipboard className="w-8 h-8 text-indigo-600" />
-              <h1 className="text-2xl font-bold">DevClipboard</h1>
+              <h1 
+                className="text-2xl font-bold"
+                style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
+              >
+                DevClipboard
+              </h1>
             </div>
           </a>
 
@@ -589,9 +594,10 @@ const ClipboardManager = () => {
               className={`${buttonClasses} py-3 ${
                 darkMode
                   ? "bg-gray-800 text-gray-200"
-                  : "bg-gray-200 text-gray-700"
+                  : "bg-gray-300 text-gray-800"
               } rounded-md p-2`}
               onClick={() => setDarkMode(!darkMode)}
+              style={{ color: darkMode ? '#d1d5db' : '#111827' }}
               aria-label={
                 darkMode ? "Switch to light mode" : "Switch to dark mode"
               }
@@ -681,9 +687,10 @@ const ClipboardManager = () => {
                       className={`px-3 py-1 rounded-md text-sm cursor-pointer ${
                         currentFilter === null
                           ? "bg-indigo-600 text-white"
-                          : "bg-gray-200 dark:bg-gray-700"
+                          : "bg-gray-300 dark:bg-gray-700"
                       }`}
                       onClick={() => setCurrentFilter(null)}
+                      style={{ color: currentFilter === null ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
                     >
                       All
                     </button>
@@ -693,9 +700,10 @@ const ClipboardManager = () => {
                         className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 cursor-pointer ${
                           currentFilter === category.id
                             ? "bg-indigo-600 text-white"
-                            : "bg-gray-200 dark:bg-gray-700"
+                            : "bg-gray-300 dark:bg-gray-700"
                         }`}
                         onClick={() => setCurrentFilter(category.id)}
+                        style={{ color: currentFilter === category.id ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${category.color}`}
@@ -719,9 +727,10 @@ const ClipboardManager = () => {
                   ? "bg-indigo-600 text-white"
                   : darkMode
                   ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
               }`}
               onClick={() => setCurrentFilter(null)}
+              style={{ color: currentFilter === null ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
             >
               All
             </button>
@@ -734,9 +743,10 @@ const ClipboardManager = () => {
                     ? "bg-indigo-600 text-white"
                     : darkMode
                     ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
                 }`}
                 onClick={() => setCurrentFilter(category.id)}
+                style={{ color: currentFilter === category.id ? 'white' : (darkMode ? '#d1d5db' : '#111827') }}
               >
                 <div className={`w-2 h-2 rounded-full ${category.color}`}></div>
                 {category.name}
@@ -749,10 +759,11 @@ const ClipboardManager = () => {
               className={`p-1 rounded-md cursor-pointer ${
                 darkMode
                   ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
               }`}
               onClick={() => setShowAddCategory(true)}
               title="Add Category"
+              style={{ color: darkMode ? '#d1d5db' : '#111827' }}
             >
               <Plus className="w-4 h-4" />
             </motion.button>
@@ -788,7 +799,7 @@ const ClipboardManager = () => {
         <div className="relative overflow-hidden mb-8">
           <div
             className={`py-8 px-4 sm:px-6 lg:px-8 rounded-xl ${
-              darkMode ? "bg-gray-800/50" : "bg-indigo-50"
+              darkMode ? "bg-gray-800" : "bg-indigo-100"
             }`}
           >
             <div className="relative z-10">
@@ -796,14 +807,19 @@ const ClipboardManager = () => {
                 <div className="flex-1 w-full max-w-full">
                   <div className="flex items-center mb-4">
                     <Clipboard className="w-10 h-10 text-indigo-600 mr-3" />
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 
+                      className="text-3xl font-bold"
+                      style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
+                    >
                       DevClipboard
                     </h1>
                   </div>
                   <p
-                    className={`text-lg mb-6 ${
-                      darkMode ? "text-gray-300" : "text-gray-600"
-                    }`}
+                    style={{ 
+                      color: darkMode ? '#d1d5db' : '#111827',
+                      fontSize: '1.125rem',
+                      marginBottom: '1.5rem'
+                    }}
                   >
                     Your personal library for storing, organizing, and
                     retrieving code snippets. Save time by reusing your most
@@ -813,7 +829,7 @@ const ClipboardManager = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`${primaryButtonClasses} flex items-center gap-2 px-5 py-2.5`}
+                      className={`${primaryButtonClasses} flex items-center gap-2 px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800`}
                       onClick={() => setShowAddForm(true)}
                     >
                       <Plus className="w-5 h-5" />
@@ -822,13 +838,13 @@ const ClipboardManager = () => {
                     <div className="hidden md:flex items-center">
                       <span
                         className={`mr-2 text-sm ${
-                          darkMode ? "text-gray-400" : "text-gray-500"
+                          darkMode ? "text-gray-400" : "text-indigo-800"
                         }`}
                       >
                         <span>Press</span>{" "}
                         <kbd
                           className={`px-2 py-1 text-xs rounded ${
-                            darkMode ? "bg-gray-700" : "bg-gray-200"
+                            darkMode ? "bg-gray-700" : "bg-indigo-200 text-indigo-900"
                           }`}
                         >
                           Ctrl+N
@@ -847,14 +863,14 @@ const ClipboardManager = () => {
             <div className="absolute top-0 right-0 -mt-20 -mr-20 hidden md:block">
               <div
                 className={`w-64 h-64 rounded-full ${
-                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/50"
+                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/70"
                 }`}
               ></div>
             </div>
             <div className="absolute bottom-0 left-0 -mb-16 -ml-16 hidden md:block">
               <div
                 className={`w-40 h-40 rounded-full ${
-                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/50"
+                  darkMode ? "bg-indigo-900/10" : "bg-indigo-200/70"
                 }`}
               ></div>
             </div>
@@ -988,7 +1004,10 @@ const ClipboardManager = () => {
 
                     <div className="h-12 mt-3">
                       {snippet.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                        <p 
+                          className="text-sm line-clamp-2"
+                          style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+                        >
                           {snippet.description}
                         </p>
                       )}
@@ -1004,11 +1023,12 @@ const ClipboardManager = () => {
                           ? "bg-green-600 text-white"
                           : darkMode
                           ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          : "bg-gray-300 text-gray-800 hover:bg-gray-400"
                       }`}
                       onClick={() =>
                         handleCopyToClipboard(snippet.content, snippet.id)
                       }
+                      style={copiedId === snippet.id ? {} : { color: darkMode ? '#d1d5db' : '#111827' }}
                     >
                       {copiedId === snippet.id ? (
                         <>
@@ -1030,11 +1050,12 @@ const ClipboardManager = () => {
                         className="p-1 text-gray-500 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => {
                           setActiveSnippet(snippet);
-                          setShowViewModal(true);
+                          setShowEditForm(true);
                         }}
-                        title="View"
+                        title="Edit"
+                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
                       >
-                        <Eye className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </motion.button>
 
                       <motion.button
@@ -1043,11 +1064,12 @@ const ClipboardManager = () => {
                         className="p-1 text-gray-500 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => {
                           setActiveSnippet(snippet);
-                          setShowEditForm(true);
+                          setShowViewModal(true);
                         }}
-                        title="Edit"
+                        title="View"
+                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
                       >
-                        <Edit className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </motion.button>
 
                       <motion.button
@@ -1056,6 +1078,7 @@ const ClipboardManager = () => {
                         className="p-1 text-gray-500 rounded hover:bg-gray-200 hover:text-red-500 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => handleDeleteSnippet(snippet.id)}
                         title="Delete"
+                        style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
                       >
                         <Trash2 className="w-4 h-4" />
                       </motion.button>
@@ -1286,6 +1309,7 @@ const ClipboardManager = () => {
                     <button
                       className={secondaryButtonClasses}
                       onClick={() => setShowAddForm(false)}
+                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                     >
                       Cancel
                     </button>
@@ -1360,7 +1384,10 @@ const ClipboardManager = () => {
                     </pre>
 
                     {newSnippet.description && (
-                      <p className="mb-3 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                      <p 
+                        className="mb-3 text-sm line-clamp-2"
+                        style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+                      >
                         {newSnippet.description}
                       </p>
                     )}
@@ -1381,7 +1408,8 @@ const ClipboardManager = () => {
                   <div className="flex flex-col justify-end gap-3 pt-4 md:flex-row">
                     <button
                       className={secondaryButtonClasses}
-                      onClick={() => setActiveTab("edit")}
+                      onClick={() => setEditActiveTab("edit")}
+                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                     >
                       Back to Edit
                     </button>
@@ -1553,6 +1581,7 @@ const ClipboardManager = () => {
                     <button
                       className={secondaryButtonClasses}
                       onClick={() => setShowEditForm(false)}
+                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                     >
                       Cancel
                     </button>
@@ -1627,9 +1656,15 @@ const ClipboardManager = () => {
                     </pre>
 
                     {activeSnippet.description && (
-                      <p className="mb-3 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {activeSnippet.description}
-                      </p>
+                      <div>
+                        <h3 className="mb-1 text-sm font-medium">Description</h3>
+                        <p 
+                          className="text-sm"
+                          style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+                        >
+                          {activeSnippet.description}
+                        </p>
+                      </div>
                     )}
 
                     <div className="flex justify-between mt-4">
@@ -1649,6 +1684,7 @@ const ClipboardManager = () => {
                     <button
                       className={secondaryButtonClasses}
                       onClick={() => setEditActiveTab("edit")}
+                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                     >
                       Back to Edit
                     </button>
@@ -1730,7 +1766,10 @@ const ClipboardManager = () => {
                 {activeSnippet.description && (
                   <div>
                     <h3 className="mb-1 text-sm font-medium">Description</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p 
+                      className="text-sm"
+                      style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+                    >
                       {activeSnippet.description}
                     </p>
                   </div>
@@ -1758,7 +1797,7 @@ const ClipboardManager = () => {
                         ? "bg-green-600 text-white"
                         : darkMode
                         ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        : "bg-gray-300 text-gray-800 hover:bg-gray-400"
                     }`}
                     onClick={() =>
                       handleCopyToClipboard(
@@ -1766,6 +1805,7 @@ const ClipboardManager = () => {
                         activeSnippet.id
                       )
                     }
+                    style={copiedId === activeSnippet.id ? {} : { color: darkMode ? '#d1d5db' : '#111827' }}
                   >
                     {copiedId === activeSnippet.id ? (
                       <>
@@ -1783,6 +1823,7 @@ const ClipboardManager = () => {
                   <button
                     className={secondaryButtonClasses}
                     onClick={() => setShowViewModal(false)}
+                    style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                   >
                     Close
                   </button>
@@ -1859,6 +1900,7 @@ const ClipboardManager = () => {
                   <button
                     className={secondaryButtonClasses}
                     onClick={() => setShowAddCategory(false)}
+                    style={{ color: darkMode ? '#d1d5db' : '#111827' }}
                   >
                     Cancel
                   </button>
@@ -1960,6 +2002,7 @@ const ClipboardManager = () => {
               : "bg-gray-200 text-gray-600 hover:text-gray-800"
           }`}
           title="Keyboard Shortcuts"
+          style={{ color: darkMode ? '#9ca3af' : '#4b5563' }}
         >
           <Info className="w-5 h-5" />
           <span className="sr-only">Keyboard Shortcuts</span>
@@ -1976,9 +2019,17 @@ const ClipboardManager = () => {
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center mb-3">
                 <Clipboard className="w-6 h-6 text-indigo-600 mr-2" />
-                <h3 className="text-lg font-semibold">DevClipboard</h3>
+                <h3 
+                  className="text-lg font-semibold"
+                  style={{ color: darkMode ? '#ffffff' : '#1e1e1e' }}
+                >
+                  DevClipboard
+                </h3>
               </div>
-              <p className="mb-3 text-sm">
+              <p 
+                className="mb-3 text-sm"
+                style={{ color: darkMode ? '#d1d5db' : '#111827' }}
+              >
                 A personal code snippet manager designed for developers to
                 store, organize, and quickly access their most-used code
                 snippets across different programming languages.
