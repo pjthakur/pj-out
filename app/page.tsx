@@ -702,14 +702,14 @@ const ColorPaletteGenerator: NextPage = () => {
       : "bg-white/80 backdrop-blur-lg",
     cardBorder: isDarkMode ? "border-gray-700/50" : "border-gray-200/50",
     text: isDarkMode ? "text-white" : "text-gray-800",
-    subtext: isDarkMode ? "text-gray-300" : "text-gray-600",
+    subtext: isDarkMode ? "text-gray-200" : "text-gray-600",
     border: isDarkMode ? "border-gray-700" : "border-gray-200",
     button: isDarkMode
       ? "bg-gray-700/80 hover:bg-gray-600/80 backdrop-blur-md"
       : "bg-gray-200/80 hover:bg-gray-300/80 backdrop-blur-md",
     buttonText: isDarkMode ? "text-white" : "text-gray-800",
     activeButton: isDarkMode
-      ? "bg-purple-600/90 hover:bg-purple-700/90 backdrop-blur-md"
+      ? "bg-purple-600/90 hover:bg-purple-700/90 backdrop-blur-md text-white"
       : "bg-purple-500/90 hover:bg-purple-600/90 backdrop-blur-md",
     input: isDarkMode
       ? "bg-gray-700/80 border-gray-600/50 backdrop-blur-md"
@@ -723,6 +723,7 @@ const ColorPaletteGenerator: NextPage = () => {
     glow: isDarkMode
       ? "shadow-lg shadow-purple-500/20"
       : "shadow-lg shadow-purple-500/10",
+    iconColor: isDarkMode ? "text-gray-300" : "text-gray-500",
   };
 
   return (
@@ -750,9 +751,9 @@ const ColorPaletteGenerator: NextPage = () => {
               <div className="absolute top-10 right-10 w-32 h-32 bg-indigo-500/30 rounded-full filter blur-2xl opacity-20 -z-10 animate-float"></div>
               <div className="absolute -top-20 -left-20 w-64 h-64 bg-pink-500/20 rounded-full filter blur-3xl opacity-20 -z-10 animate-float-delayed"></div>
 
-              <div className="flex justify-between items-center">
-                <div className="relative z-10">
-                  <h1 className="text-4xl font-bold relative headline-container">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div className="relative z-10 mb-4 sm:mb-0">
+                  <h1 className="text-3xl sm:text-4xl font-bold relative headline-container">
                     {"Spectrum Pro".split("").map((letter, index) => (
                       <span
                         key={index}
@@ -766,21 +767,21 @@ const ColorPaletteGenerator: NextPage = () => {
                       </span>
                     ))}
                   </h1>
-                  <p className={`${theme.subtext} max-w-2xl`}>
+                  <p className={`${theme.subtext} max-w-2xl text-sm sm:text-base`}>
                     Professional color palette generator for designers
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-3 relative z-10">
+                <div className="flex items-center space-x-3 relative z-10 self-end sm:self-auto">
                   <button
                     onClick={toggleTheme}
-                    className={`p-3 rounded-full transition-all ${theme.button} ${theme.shadow} cursor-pointer hover:scale-105 transform`}
+                    className={`p-2 sm:p-3 rounded-full transition-all ${theme.button} ${theme.shadow} cursor-pointer hover:scale-105 transform`}
                     aria-label="Toggle theme"
                   >
                     {isDarkMode ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -795,7 +796,7 @@ const ColorPaletteGenerator: NextPage = () => {
                     ) : (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -812,11 +813,12 @@ const ColorPaletteGenerator: NextPage = () => {
 
                   <button
                     onClick={() => setShowSaved(!showSaved)}
-                    className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all ${theme.button} ${theme.buttonText} ${theme.shadow} cursor-pointer hover:scale-105 transform`}
+                    className={`flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-all ${theme.button} ${theme.buttonText} ${theme.shadow} cursor-pointer hover:scale-105 transform text-sm sm:text-base`}
+                    aria-label="Saved Palettes"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -828,9 +830,9 @@ const ColorPaletteGenerator: NextPage = () => {
                         d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
                       />
                     </svg>
-                    <span className="font-medium">Saved</span>
+                    <span className="hidden sm:inline font-medium">Saved</span>
                     {savedPalettes.length > 0 && (
-                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white ml-1 sm:ml-0">
                         {savedPalettes.length}
                       </span>
                     )}
@@ -838,19 +840,19 @@ const ColorPaletteGenerator: NextPage = () => {
                 </div>
               </div>
 
-              <div className="flex mt-8 border-b border-gray-700/30 items-center justify-between">
-                <div className="flex">
+              <div className="flex flex-wrap mt-6 sm:mt-8 border-b border-gray-700/30 items-center justify-between">
+                <div className="flex overflow-x-auto w-full pb-1 sm:pb-0 sm:w-auto hide-scrollbar">
                   <button
                     onClick={() => setCurrentView("palettes")}
-                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                    className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm rounded-t-lg transition-all duration-300 cursor-pointer whitespace-nowrap ${
                       currentView === "palettes"
                         ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
-                        : `text-gray-400 hover:text-gray-500 `
+                        : `${isDarkMode ? "text-gray-300" : "text-gray-400"} hover:${isDarkMode ? "text-white" : "text-gray-500"} `
                     }`}
                   >
-                    <span className="flex items-center">
+                    <span className="flex items-center justify-center">
                       <svg
-                        className="w-4 h-4 mr-2"
+                        className="w-4 h-4"
                         viewBox="0 0 24 24"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -877,20 +879,20 @@ const ColorPaletteGenerator: NextPage = () => {
                           fill="currentColor"
                         />
                       </svg>
-                      Palettes
+                      <span className="hidden sm:inline ml-2">Palettes</span>
                     </span>
                   </button>
                   <button
                     onClick={() => setCurrentView("preview")}
-                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                    className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm rounded-t-lg transition-all duration-300 cursor-pointer whitespace-nowrap ${
                       currentView === "preview"
                         ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
-                        : `text-gray-400 hover:text-gray-500 $`
+                        : `${isDarkMode ? "text-gray-300" : "text-gray-400"} hover:${isDarkMode ? "text-white" : "text-gray-500"} $`
                     }`}
                   >
-                    <span className="flex items-center">
+                    <span className="flex items-center justify-center">
                       <svg
-                        className="w-4 h-4 mr-2"
+                        className="w-4 h-4"
                         viewBox="0 0 24 24"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -912,20 +914,20 @@ const ColorPaletteGenerator: NextPage = () => {
                         <circle cx="5" cy="5" r="1" fill="currentColor" />
                         <circle cx="9" cy="5" r="1" fill="currentColor" />
                       </svg>
-                      UI Preview
+                      <span className="hidden sm:inline ml-2">UI Preview</span>
                     </span>
                   </button>
                   <button
                     onClick={() => setCurrentView("export")}
-                    className={`px-6 py-3 font-medium text-sm rounded-t-lg transition-all duration-300 cursor-pointer ${
+                    className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm rounded-t-lg transition-all duration-300 cursor-pointer whitespace-nowrap ${
                       currentView === "export"
                         ? `bg-gradient-to-r ${theme.highlight} text-white shadow-glow`
-                        : `text-gray-400 hover:text-gray-500`
+                        : `${isDarkMode ? "text-gray-300" : "text-gray-400"} hover:${isDarkMode ? "text-white" : "text-gray-500"}`
                     }`}
                   >
-                    <span className="flex items-center">
+                    <span className="flex items-center justify-center">
                       <svg
-                        className="w-4 h-4 mr-2"
+                        className="w-4 h-4"
                         viewBox="0 0 24 24"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -945,19 +947,20 @@ const ColorPaletteGenerator: NextPage = () => {
                           strokeLinejoin="round"
                         />
                       </svg>
-                      Export
+                      <span className="hidden sm:inline ml-2">Export</span>
                     </span>
                   </button>
                 </div>
 
-                <div className="flex items-center">
+                <div className="flex items-center mt-3 sm:mt-0 w-full sm:w-auto justify-end">
                   <button
                     onClick={savePalette}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] transform cursor-pointer font-medium"
+                    className="flex items-center space-x-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] transform cursor-pointer font-medium text-xs sm:text-sm"
+                    aria-label="Save Palette"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="#fff"
@@ -969,14 +972,14 @@ const ColorPaletteGenerator: NextPage = () => {
                         d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                       />
                     </svg>
-                    <span>Save Palette</span>
+                    <span className="hidden sm:inline">Save Palette</span>
                   </button>
                 </div>
               </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              <div className="space-y-4 sm:space-y-6">
                 <div
                   className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px] relative`}
                 >
@@ -1010,26 +1013,6 @@ const ColorPaletteGenerator: NextPage = () => {
                             strokeLinejoin="round"
                             strokeWidth={2}
                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setShowColorInfo(!showColorInfo)}
-                        className={`p-2 rounded-lg ${theme.button} hover:scale-105 transform transition-all cursor-pointer`}
-                        title="Show color details"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
                       </button>
@@ -1132,83 +1115,81 @@ const ColorPaletteGenerator: NextPage = () => {
                       </div>
                     </div>
 
-                    {showColorInfo && (
-                      <div
-                        className={`rounded-xl border ${theme.border} p-4 transition-all duration-300 ${theme.card} animate-fade-in`}
-                      >
-                        <h3 className="text-sm font-medium mb-3">
-                          Color Details
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between items-center">
-                            <span>HEX:</span>
-                            <span className="font-mono">{baseColor}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span>RGB:</span>
-                            <span className="font-mono">
-                              {hexToRgb(baseColor).join(", ")}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span>HSL:</span>
-                            <span className="font-mono">
-                              {baseHsl[0]}°, {baseHsl[1]}%, {baseHsl[2]}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span>Name:</span>
-                            <span className="font-medium">{colorName}</span>
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-gray-700/30">
-                            <h4 className="text-xs font-medium mb-2">
-                              Accessibility
-                            </h4>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center">
-                                  <div className="w-4 h-4 rounded bg-white mr-2"></div>
-                                  <span>Contrast with white:</span>
-                                </div>
-                                <div
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    contrastWithWhite >= 4.5
-                                      ? "bg-green-500/20 text-green-400"
-                                      : "bg-yellow-500/20 text-yellow-400"
-                                  }`}
-                                >
-                                  {contrastWithWhite.toFixed(2)}{" "}
-                                  {contrastWithWhite >= 4.5 ? "✓" : "!"}
-                                </div>
+                    <div
+                      className={`rounded-xl border ${theme.border} p-4 transition-all duration-300 ${theme.card} animate-fade-in`}
+                    >
+                      <h3 className={`text-sm font-medium mb-3 ${theme.text}`}>
+                        Color Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className={theme.text}>HEX:</span>
+                          <span className={`font-mono ${theme.text}`}>{baseColor}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={theme.text}>RGB:</span>
+                          <span className={`font-mono ${theme.text}`}>
+                            {hexToRgb(baseColor).join(", ")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={theme.text}>HSL:</span>
+                          <span className={`font-mono ${theme.text}`}>
+                            {baseHsl[0]}°, {baseHsl[1]}%, {baseHsl[2]}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={theme.text}>Name:</span>
+                          <span className={`font-medium ${theme.text}`}>{colorName}</span>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-700/30">
+                          <h4 className={`text-xs font-medium mb-2 ${theme.text}`}>
+                            Accessibility
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center">
+                                <div className="w-4 h-4 rounded bg-white mr-2"></div>
+                                <span className={theme.text}>Contrast with white:</span>
                               </div>
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center">
-                                  <div className="w-4 h-4 rounded bg-black mr-2"></div>
-                                  <span>Contrast with black:</span>
-                                </div>
-                                <div
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    contrastWithBlack >= 4.5
-                                      ? "bg-green-500/20 text-green-400"
-                                      : "bg-yellow-500/20 text-yellow-400"
-                                  }`}
-                                >
-                                  {contrastWithBlack.toFixed(2)}{" "}
-                                  {contrastWithBlack >= 4.5 ? "✓" : "!"}
-                                </div>
+                              <div
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  contrastWithWhite >= 4.5
+                                    ? `bg-green-500/20 ${isDarkMode ? "text-green-300" : "text-green-600"}`
+                                    : `bg-yellow-500/20 ${isDarkMode ? "text-yellow-300" : "text-yellow-600"}`
+                                }`}
+                              >
+                                {contrastWithWhite.toFixed(2)}{" "}
+                                {contrastWithWhite >= 4.5 ? "✓" : "!"}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center">
+                                <div className="w-4 h-4 rounded bg-black mr-2"></div>
+                                <span className={theme.text}>Contrast with black:</span>
+                              </div>
+                              <div
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  contrastWithBlack >= 4.5
+                                    ? `bg-green-500/20 ${isDarkMode ? "text-green-300" : "text-green-600"}`
+                                    : `bg-yellow-500/20 ${isDarkMode ? "text-yellow-300" : "text-yellow-600"}`
+                                }`}
+                              >
+                                {contrastWithBlack.toFixed(2)}{" "}
+                                {contrastWithBlack >= 4.5 ? "✓" : "!"}
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 
                 <div
                   className={`rounded-2xl overflow-hidden ${theme.shadow} ${theme.card} border ${theme.cardBorder} transition-all duration-300 transform hover:translate-y-[-2px]`}
                 >
-                  <div className="p-5 border-b border-gray-700/30 flex justify-between items-center">
+                  <div className="p-3 sm:p-5 border-b border-gray-700/30 flex justify-between items-center">
                     <div className="flex items-center">
                       <div className="flex space-x-2 mr-3">
                         <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -1308,11 +1289,32 @@ const ColorPaletteGenerator: NextPage = () => {
 
                   {showHistory && colorHistory.length > 0 && (
                     <div
-                      className={`mt-2 rounded-xl border ${theme.border} p-4 transition-colors duration-300 ${theme.card}`}
+                      className={`mt-6 rounded-xl rounded-t-none border ${theme.border} p-3 sm:p-4 transition-colors duration-300 ${theme.card}`}
                     >
-                      <h3 className="text-sm font-medium mb-3">
-                        Recently Used Colors
-                      </h3>
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-medium text-black dark:text-gray-300">
+                          Recently Used Colors
+                        </h3>
+                        <button
+                          onClick={() => setShowHistory(false)}
+                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {colorHistory.map((color, index) => (
                           <button
@@ -1405,7 +1407,7 @@ const ColorPaletteGenerator: NextPage = () => {
                     >
                       {currentPalette && (
                         <>
-                          <div className="p-5 border-b border-gray-700/30 flex items-center justify-between">
+                          <div className="p-3 sm:p-5 border-b border-gray-700/30 flex items-center justify-between">
                             <div className="flex items-center">
                               <div className="flex space-x-2 mr-3">
                                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -1421,7 +1423,8 @@ const ColorPaletteGenerator: NextPage = () => {
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => exportPalettes()}
-                                className={`px-4 py-2 text-sm rounded-lg transition-all ${theme.button} ${theme.buttonText} flex items-center space-x-2 cursor-pointer hover:scale-105 transform`}
+                                className={`p-2 sm:px-4 sm:py-2 text-sm rounded-lg transition-all ${theme.button} ${theme.buttonText} flex items-center space-x-0 sm:space-x-2 cursor-pointer hover:scale-105 transform`}
+                                aria-label="Export palette"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -1437,16 +1440,16 @@ const ColorPaletteGenerator: NextPage = () => {
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                                   />
                                 </svg>
-                                <span className="font-medium">Export</span>
+                                <span className="hidden sm:inline font-medium">Export</span>
                               </button>
                             </div>
                           </div>
 
-                          <div className="flex overflow-hidden group">
+                          <div className="flex group">
                             {currentPalette.colors.map((color, idx) => (
                               <div
                                 key={idx}
-                                className="flex-1 transition-all duration-300 cursor-pointer group/color relative"
+                                className="flex-1 min-w-0 transition-all duration-300 cursor-pointer group/color relative"
                                 style={{ backgroundColor: color.hex }}
                               >
                                 <div className="h-40 lg:h-56 flex items-end p-4 transition-all duration-300 opacity-0 group-hover:opacity-100 bg-gradient-to-t from-black/80 to-transparent">
@@ -1520,11 +1523,11 @@ const ColorPaletteGenerator: NextPage = () => {
                             ))}
                           </div>
 
-                          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                          <div className="p-4 sm:p-6 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                             {currentPalette.colors.map((color, idx) => (
                               <div
                                 key={idx}
-                                className={`p-4 rounded-xl border ${theme.border} transition-all duration-300 hover:shadow-lg hover:scale-105 transform ${theme.card} group/detail`}
+                                className={`p-3 sm:p-4 rounded-xl border ${theme.border} transition-all duration-300 hover:shadow-lg hover:scale-105 transform ${theme.card} group/detail`}
                               >
                                 <div className="flex justify-between items-center mb-3">
                                   <div
@@ -1550,15 +1553,15 @@ const ColorPaletteGenerator: NextPage = () => {
                                   </button>
                                 </div>
                                 <div className="space-y-1.5 text-xs text-gray-400">
-                                  <p>
+                                  <p className={isDarkMode ? "text-gray-300" : ""}>
                                     <span className="font-semibold">HEX:</span>{" "}
                                     {color.hex}
                                   </p>
-                                  <p>
+                                  <p className={isDarkMode ? "text-gray-300" : ""}>
                                     <span className="font-semibold">RGB:</span>{" "}
                                     {color.rgb.join(", ")}
                                   </p>
-                                  <p>
+                                  <p className={isDarkMode ? "text-gray-300" : ""}>
                                     <span className="font-semibold">HSL:</span>{" "}
                                     {color.hsl[0]}°, {color.hsl[1]}%,{" "}
                                     {color.hsl[2]}%
@@ -1734,7 +1737,7 @@ const ColorPaletteGenerator: NextPage = () => {
                                   >
                                     <path
                                       fillRule="evenodd"
-                                      d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
+                                      d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 01-1.414 0L8 9.586 3.707 5.293a1 1 0 01-1.414 1.414l5 5a1 1 0 011.414 0L11 9.414 14.586 13H12z"
                                       clipRule="evenodd"
                                     />
                                   </svg>
@@ -2403,7 +2406,7 @@ ${currentPalette.colors
                               ))}
                             </div>
 
-                            <div className="p-4">
+                            <div className="p-4 sm:p-6">
                               {/* Palette info with better spacing */}
                               <div className="flex items-center justify-between mb-3">
                                 <div>
@@ -2658,19 +2661,6 @@ ${currentPalette.colors
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z" />
-                        </svg>
-                      </a>
-                      <a
-                        href="#"
-                        className={`${theme.subtext} hover:text-purple-500 transition-colors p-2 hover:bg-gray-800/30 rounded-full`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
                           <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                         </svg>
                       </a>
@@ -2685,7 +2675,7 @@ ${currentPalette.colors
                   reserved.
                 </p>
                 <div className="flex items-center mt-4 md:mt-0">
-                  <span className="bg-gray-700/50 text-xs py-1 px-2 rounded-full text-gray-400 backdrop-blur-sm mx-2">
+                  <span className={`bg-gray-700/50 text-xs py-1 px-2 rounded-full ${isDarkMode ? "text-gray-200" : "text-gray-400"} backdrop-blur-sm mx-2`}>
                     v2.1.0
                   </span>
                   <span className={`${theme.subtext} text-xs`}>
@@ -3061,8 +3051,8 @@ ${currentPalette.colors
 
         .headline-container:hover .pro-letter {
           animation-play-state: paused;
-          color: #4f46e5; /* Consistent color on hover */
-          text-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
+          color: ${isDarkMode ? "#a78bfa" : "#4f46e5"}; /* Different color based on theme */
+          text-shadow: 0 0 10px ${isDarkMode ? "rgba(167, 139, 250, 0.3)" : "rgba(79, 70, 229, 0.2)"};
           transition: text-shadow 0.4s ease;
         }
 
@@ -3079,12 +3069,101 @@ ${currentPalette.colors
 
         button svg,
         .icon svg {
-          color: rgb(154, 133, 133);
+          color: ${isDarkMode ? "#a78bfa" : "#6366f1"};
         }
 
         button:hover svg,
         .icon:hover svg {
-          color: #8b5cf6;
+          color: ${isDarkMode ? "#c4b5fd" : "#8b5cf6"};
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
+        @media (max-width: 640px) {
+          .headline-container {
+            font-size: 1.75rem;
+            line-height: 2rem;
+          }
+          
+          input[type="range"]::-webkit-slider-thumb {
+            width: 14px;
+            height: 14px;
+            margin-top: -5px;
+          }
+        }
+
+        @media (min-width: 480px) {
+          .xs\\:w-1\\/2 {
+            width: 50%;
+          }
+          
+          .xs\\:grid-cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        /* Color palette styles */
+        @media (max-width: 640px) {
+          .color-palette-container {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory !important;
+          }
+          
+          .color-card {
+            scroll-snap-align: start !important;
+            min-width: 150px !important;
+            flex: 0 0 auto !important;
+          }
+        }
+
+        /* Color palette styles */
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .color-palette-container {
+          display: flex;
+          width: 100%;
+        }
+        
+        .color-card {
+          min-width: 0;
+        }
+        
+        @media (max-width: 640px) {
+          .color-palette-container {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            width: 100%;
+            padding-bottom: 8px;
+          }
+          
+          .color-card {
+            min-width: 125px !important;
+            flex: 0 0 auto !important;
+            scroll-snap-align: start;
+            width: 33.333%;
+          }
+          
+          .color-palette-container::-webkit-scrollbar {
+            display: none;
+          }
         }
       `}</style>
     </div>
