@@ -661,8 +661,8 @@ const FeaturedArtists = ({ darkMode }: { darkMode: boolean }) => {
               />
             </div>
             <div className="p-4 sm:p-6">
-              <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${cormorant.className}`}>{artist.name}</h3>
-              <p className={`text-xs sm:text-sm ${raleway.className} ${darkMode ? 'text-neutral-300' : 'text-neutral-600'}`}>
+              <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${cormorant.className} ${darkMode ? 'text-white' : 'text-neutral-800'}`}>{artist.name}</h3>
+              <p className={`text-xs sm:text-sm ${raleway.className} ${darkMode ? 'text-neutral-200' : 'text-neutral-600'}`}>
                 {artist.specialty}
               </p>
               <button 
