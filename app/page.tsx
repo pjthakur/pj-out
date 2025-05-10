@@ -3,9 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useAnimation } from 'framer-motion';
 import { Cormorant_Garamond, Raleway } from 'next/font/google';
-import { SunIcon, MoonIcon, XMarkIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { Sun, Moon, X, Menu, Check } from 'lucide-react';
 import { useInView } from 'framer-motion';
-import { toast, Toaster } from 'react-hot-toast';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -217,9 +216,9 @@ const ThemeToggle = ({ darkMode, toggleDarkMode }: { darkMode: boolean; toggleDa
       aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
     >
       {darkMode ? (
-        <SunIcon className="w-5 h-5" />
+        <Sun className="w-5 h-5" />
       ) : (
-        <MoonIcon className="w-5 h-5" />
+        <Moon className="w-5 h-5" />
       )}
     </motion.button>
   );
@@ -272,9 +271,9 @@ const Navbar = ({ darkMode, toggleDarkMode }: { darkMode: boolean; toggleDarkMod
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
         >
           {menuOpen ? (
-            <XMarkIcon className="w-7 h-7 text-amber-500" />
+            <X className="w-7 h-7 text-amber-500" />
           ) : (
-            <Bars3Icon className="w-7 h-7 text-amber-500" />
+            <Menu className="w-7 h-7 text-amber-500" />
           )}
         </button>
         {/* Desktop nav */}
@@ -315,7 +314,7 @@ const Navbar = ({ darkMode, toggleDarkMode }: { darkMode: boolean; toggleDarkMod
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close menu"
               >
-                <XMarkIcon className="w-7 h-7" />
+                <X className="w-7 h-7" />
               </button>
               <ul className="flex flex-col space-y-8 text-2xl">
                 {['Gallery', 'Artists', 'Exhibitions', 'Contact'].map((item) => (
@@ -387,7 +386,7 @@ const Modal = ({ isOpen, onClose, children, darkMode }: ModalProps) => {
           } hover:bg-amber-600 hover:text-white transition-colors`}
           aria-label="Close"
         >
-          <XMarkIcon className="w-6 h-6" />
+          <X className="w-6 h-6" />
         </button>
         {children}
       </motion.div>
@@ -405,6 +404,9 @@ const ArtCollage = ({ darkMode }: { darkMode: boolean }) => {
   const handlePieceClick = (piece: typeof artPieces[0]) => {
     setSelectedPiece(piece);
   };
+  
+  const [favoriteTick, setFavoriteTick] = useState(false);
+  const [shareTick, setShareTick] = useState(false);
   
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -485,24 +487,30 @@ const ArtCollage = ({ darkMode }: { darkMode: boolean }) => {
                 
                 <div className="mt-auto pt-6">
                   <button 
-                    className={`py-2 px-6 rounded-full ${
+                    className={`py-2 px-6 rounded-full flex items-center justify-center gap-2 ${
                       darkMode 
                         ? 'bg-amber-600 text-white hover:bg-amber-700' 
                         : 'bg-amber-700 text-white hover:bg-amber-800'
                     } transition-colors duration-300 text-sm ${raleway.className} mr-3`}
-                    onClick={() => toast.success('Added to Favorites!')}
+                    onClick={() => {
+                      setFavoriteTick(true);
+                      setTimeout(() => setFavoriteTick(false), 2000);
+                    }}
                   >
-                    Add to Favorites
+                    {favoriteTick ? <Check className="w-5 h-5" /> : 'Add to Favorites'}
                   </button>
                   <button 
-                    className={`py-2 px-6 rounded-full border ${
+                    className={`py-2 px-6 rounded-full border flex items-center justify-center gap-2 ${
                       darkMode 
                         ? 'border-white/30 text-white/90 hover:bg-white/10' 
                         : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100'
                     } transition-colors duration-300 text-sm ${raleway.className}`}
-                    onClick={() => toast.success('Share link copied!')}
+                    onClick={() => {
+                      setShareTick(true);
+                      setTimeout(() => setShareTick(false), 2000);
+                    }}
                   >
-                    Share
+                    {shareTick ? <Check className="w-5 h-5" /> : 'Share'}
                   </button>
                 </div>
               </div>
@@ -800,7 +808,7 @@ const FeaturedArtists = ({ darkMode }: { darkMode: boolean }) => {
 
 const ArtistContactForm = ({ darkMode, artistName, onBack }: { darkMode: boolean; artistName: string; onBack: () => void }) => {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
-  const [submitted, setSubmitted] = useState(false);
+  const [tick, setTick] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -810,31 +818,9 @@ const ArtistContactForm = ({ darkMode, artistName, onBack }: { darkMode: boolean
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Artist contact form submitted:', formData);
-    setSubmitted(true);
-    toast.success('Message sent! We will get back to you soon.');
+    setTick(true);
+    setTimeout(() => setTick(false), 2000);
   };
-
-  if (submitted) {
-    return (
-      <div className="py-8 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <h3 className={`text-xl font-semibold mb-2 ${cormorant.className}`}>Message Sent!</h3>
-        <p className={`text-sm mb-6 ${raleway.className} ${darkMode ? 'text-neutral-300' : 'text-neutral-600'}`}>
-          Thank you for reaching out to {artistName}. We'll forward your message and they will get back to you soon.
-        </p>
-        <button
-          onClick={onBack}
-          className={`py-2 px-6 rounded-full ${
-            darkMode ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-amber-700 text-white hover:bg-amber-800'
-          } transition-colors duration-300 text-sm ${raleway.className}`}
-        >
-          Back to Profile
-        </button>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className={`space-y-5 ${darkMode ? 'text-white' : 'text-neutral-800'}`}>
@@ -908,11 +894,12 @@ const ArtistContactForm = ({ darkMode, artistName, onBack }: { darkMode: boolean
         </button>
         <button
           type="submit"
-          className={`py-2 px-6 rounded-full ${
+          className={`py-2 px-6 rounded-full flex items-center justify-center gap-2 ${
             darkMode ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-amber-700 text-white hover:bg-amber-800'
           } transition-colors duration-300 text-sm ${raleway.className}`}
+          disabled={tick}
         >
-          Send Message
+          {tick ? <Check className="w-5 h-5" /> : 'Send Message'}
         </button>
       </div>
     </form>
@@ -986,6 +973,7 @@ const Exhibitions = ({ darkMode }: { darkMode: boolean }) => {
 
 const ContactForm = ({ darkMode }: { darkMode: boolean }) => {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [tick, setTick] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -995,8 +983,8 @@ const ContactForm = ({ darkMode }: { darkMode: boolean }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted:', formData);
-    setFormData({ name: '', email: '', message: '' });
-    toast.success('Message sent! We will get back to you soon.');
+    setTick(true);
+    setTimeout(() => setTick(false), 2000);
   };
 
   return (
@@ -1045,11 +1033,12 @@ const ContactForm = ({ darkMode }: { darkMode: boolean }) => {
       </div>
       <button
         type="submit"
-        className={`py-2 px-6 rounded-full ${
+        className={`py-2 px-6 rounded-full flex items-center justify-center gap-2 ${
           darkMode ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-amber-700 text-white hover:bg-amber-800'
         } transition-colors duration-300 text-sm ${raleway.className}`}
+        disabled={tick}
       >
-        Send Message
+        {tick ? <Check className="w-5 h-5" /> : 'Send Message'}
       </button>
     </form>
   );
@@ -1093,7 +1082,34 @@ const Footer = ({ darkMode }: { darkMode: boolean }) => {
   );
 };
 
+// ErrorBoundary for runtime error capture
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    // You can log errorInfo here if needed
+    console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ color: 'red', padding: 32, fontSize: 20 }}>
+          <b>Something went wrong:</b>
+          <pre>{this.state.error?.toString()}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ArtistryCollective = () => {
+  console.log('Rendering ArtistryCollective');
   const [darkMode, setDarkMode] = useState(false);
   
   useEffect(() => {
@@ -1114,125 +1130,126 @@ const ArtistryCollective = () => {
   };
   
   return (
-    <div className={`${cormorant.variable} ${raleway.variable} ${darkMode ? 'bg-neutral-900 text-white' : 'bg-neutral-50 text-neutral-900'} transition-colors duration-500`}>
-      <Toaster position="top-right" />
-      <Navbar darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
-      
-      <main>
-        <div id="home" className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 text-center relative">
-          <div className="absolute inset-0 -z-10">
-            <div className={`absolute inset-0 ${darkMode ? 'bg-neutral-900/80' : 'bg-neutral-200/50'}`} />
-            <img 
-              src="https://images.pexels.com/photos/20967/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=1600" 
-              alt="Art Gallery Background" 
-              className="w-full h-full object-cover opacity-30"
-            />
+    <ErrorBoundary>
+      <div className={`${cormorant.variable} ${raleway.variable} ${darkMode ? 'bg-neutral-900 text-white' : 'bg-neutral-50 text-neutral-900'} transition-colors duration-500`}>
+        <Navbar darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+        
+        <main>
+          <div id="home" className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 text-center relative">
+            <div className="absolute inset-0 -z-10">
+              <div className={`absolute inset-0 ${darkMode ? 'bg-neutral-900/80' : 'bg-neutral-200/50'}`} />
+              <img 
+                src="https://images.pexels.com/photos/20967/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=1600" 
+                alt="Art Gallery Background" 
+                className="w-full h-full object-cover opacity-30"
+              />
+            </div>
+            
+            <motion.h1 
+              className={`text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 ${cormorant.className}`}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              Discover Artistic Brilliance
+            </motion.h1>
+            
+            <motion.p 
+              className={`text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 sm:mb-10 px-4 ${raleway.className} font-light`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              Explore our curated collection of masterpieces from renowned artists across the globe. 
+              Experience the beauty of artistic expression through our interactive gallery.
+            </motion.p>
+            
+            <motion.button 
+              onClick={() => scrollToSection('gallery')}
+              className={`py-2 sm:py-3 px-6 sm:px-8 rounded-full ${
+                darkMode 
+                  ? 'bg-amber-600 text-white hover:bg-amber-700' 
+                  : 'bg-amber-700 text-white hover:bg-amber-800'
+              } transition-all duration-300 text-sm sm:text-base ${raleway.className} font-medium`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              Explore Gallery
+            </motion.button>
+            
+            <motion.div 
+              onClick={() => scrollToSection('gallery')}
+              className="absolute bottom-10 left-0 right-0 flex justify-center cursor-pointer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
+              whileHover={{ opacity: 1, scale: 1.2 }}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-6 w-6 animate-bounce" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </motion.div>
           </div>
           
-          <motion.h1 
-            className={`text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 ${cormorant.className}`}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            Discover Artistic Brilliance
-          </motion.h1>
-          
-          <motion.p 
-            className={`text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 sm:mb-10 px-4 ${raleway.className} font-light`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          >
-            Explore our curated collection of masterpieces from renowned artists across the globe. 
-            Experience the beauty of artistic expression through our interactive gallery.
-          </motion.p>
-          
-          <motion.button 
-            onClick={() => scrollToSection('gallery')}
-            className={`py-2 sm:py-3 px-6 sm:px-8 rounded-full ${
-              darkMode 
-                ? 'bg-amber-600 text-white hover:bg-amber-700' 
-                : 'bg-amber-700 text-white hover:bg-amber-800'
-            } transition-all duration-300 text-sm sm:text-base ${raleway.className} font-medium`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            Explore Gallery
-          </motion.button>
-          
-          <motion.div 
-            onClick={() => scrollToSection('gallery')}
-            className="absolute bottom-10 left-0 right-0 flex justify-center cursor-pointer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.7 }}
-            transition={{ duration: 0.8, delay: 1.2 }}
-            whileHover={{ opacity: 1, scale: 1.2 }}
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-6 w-6 animate-bounce" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
+          {/* Art Collage Section */}
+          <section id="gallery">
+            <Section 
+              title="Interactive Art Collection" 
+              description="Hover over each piece to discover its story. Click on artwork to see details and descriptions. Our collection spans centuries of artistic innovation and expression."
+              darkMode={darkMode}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          </motion.div>
-        </div>
+              <ArtCollage darkMode={darkMode} />
+            </Section>
+          </section>
+          
+          {/* Featured Artists Section */}
+          <section id="artists">
+            <Section 
+              title="Featured Artists" 
+              description="Meet the creative minds behind our curated collection. Each artist brings their unique perspective and technique to our gallery."
+              darkMode={darkMode}
+              direction="right"
+            >
+              <FeaturedArtists darkMode={darkMode} />
+            </Section>
+          </section>
+          
+          {/* Upcoming Exhibitions Section */}
+          <section id="exhibitions">
+            <Section 
+              title="Upcoming Exhibitions" 
+              description="Mark your calendar for our special exhibitions featuring exclusive collections and immersive artistic experiences."
+              darkMode={darkMode}
+            >
+              <Exhibitions darkMode={darkMode} />
+            </Section>
+          </section>
+          
+          {/* Contact Section */}
+          <section id="contact">
+            <Section 
+              title="Get in Touch" 
+              description="Have questions or interested in our exhibitions? We'd love to hear from you."
+              darkMode={darkMode}
+              isLast={true}
+            >
+              <ContactForm darkMode={darkMode} />
+            </Section>
+          </section>
+        </main>
         
-        {/* Art Collage Section */}
-        <section id="gallery">
-          <Section 
-            title="Interactive Art Collection" 
-            description="Hover over each piece to discover its story. Click on artwork to see details and descriptions. Our collection spans centuries of artistic innovation and expression."
-            darkMode={darkMode}
-          >
-            <ArtCollage darkMode={darkMode} />
-          </Section>
-        </section>
-        
-        {/* Featured Artists Section */}
-        <section id="artists">
-          <Section 
-            title="Featured Artists" 
-            description="Meet the creative minds behind our curated collection. Each artist brings their unique perspective and technique to our gallery."
-            darkMode={darkMode}
-            direction="right"
-          >
-            <FeaturedArtists darkMode={darkMode} />
-          </Section>
-        </section>
-        
-        {/* Upcoming Exhibitions Section */}
-        <section id="exhibitions">
-          <Section 
-            title="Upcoming Exhibitions" 
-            description="Mark your calendar for our special exhibitions featuring exclusive collections and immersive artistic experiences."
-            darkMode={darkMode}
-          >
-            <Exhibitions darkMode={darkMode} />
-          </Section>
-        </section>
-        
-        {/* Contact Section */}
-        <section id="contact">
-          <Section 
-            title="Get in Touch" 
-            description="Have questions or interested in our exhibitions? We'd love to hear from you."
-            darkMode={darkMode}
-            isLast={true}
-          >
-            <ContactForm darkMode={darkMode} />
-          </Section>
-        </section>
-      </main>
-      
-      <Footer darkMode={darkMode} />
-    </div>
+        <Footer darkMode={darkMode} />
+      </div>
+    </ErrorBoundary>
   );
 };
 
