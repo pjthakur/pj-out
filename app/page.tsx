@@ -1,975 +1,3592 @@
-"use client"
-import React, { useState, useEffect, useRef } from 'react';
-import { Poppins, Play } from 'next/font/google';
-import { Moon, Sun, Trophy, X, RefreshCcw, PlayIcon, PauseIcon } from 'lucide-react';
+"use client";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+	Search,
+	Moon,
+	Sun,
+	Plus,
+	Edit,
+	Trash2,
+	Copy,
+	Save,
+	Code,
+	Folder,
+	Tag,
+	Settings,
+	ChevronDown,
+	ChevronRight,
+	ChevronLeft,
+	Clock,
+	Star,
+	Github,
+	Check,
+	Twitter,
+	Linkedin,
+	Bookmark,
+	Download,
+	Upload,
+	FileText,
+	Info,
+	AlertCircle,
+	ArrowLeftCircle,
+	Grid,
+	Layout,
+	List,
+	Filter,
+	BookOpen,
+	Share2,
+	Gift,
+	ExternalLink,
+} from "lucide-react";
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  variable: '--font-poppins'
-});
-
-const playFont = Play({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-play'
-});
-
-type GridType = number[][];
-type Direction = 'up' | 'down' | 'left' | 'right';
-type Theme = 'light' | 'dark';
-type GameState = 'not-started' | 'playing' | 'won' | 'game-over';
-type GameRecord = {
-  score: number;
-  time: number;
-  date: string;
-  isCurrent?: boolean;
+type Snippet = {
+	id: string;
+	title: string;
+	code: string;
+	language: string;
+	description: string;
+	tags: string[];
+	category: string;
+	created: Date;
+	lastAccessed?: Date;
+	isFavorite: boolean;
+	useCount: number;
 };
 
-const Game2048 = () => {
-  const [grid, setGrid] = useState<GridType>([]);
-  const [score, setScore] = useState<number>(0);
-  const [topScore, setTopScore] = useState<number>(0);
-  const [gameState, setGameState] = useState<GameState>('not-started'); 
-  const [time, setTime] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [theme, setTheme] = useState<Theme>('light');
-  const [previousGrid, setPreviousGrid] = useState<GridType>([]);
-  const [gameRecords, setGameRecords] = useState<GameRecord[]>([]);
-  const [showContinueModal, setShowContinueModal] = useState<boolean>(false);
-  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
-  const [showHowToPlayModal, setShowHowToPlayModal] = useState<boolean>(false);
-  const [reachedTarget, setReachedTarget] = useState<boolean>(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+type Category = {
+	id: string;
+	name: string;
+	snippetCount: number;
+	icon?: string;
+};
 
-  useEffect(() => {
-    if (showContinueModal || showHistoryModal || showHowToPlayModal || gameState === 'not-started' || gameState === 'game-over' || gameState === 'won' || isPaused) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+type ViewMode = "grid" | "list";
+type SortOption = "newest" | "oldest" | "a-z" | "z-a" | "most-used";
 
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showContinueModal, showHistoryModal, showHowToPlayModal, gameState, isPaused]);
+const SnippetProApp = () => {
+	const [darkMode, setDarkMode] = useState(false);
+	const [snippets, setSnippets] = useState<Snippet[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedCategory, setSelectedCategory] = useState("all");
+	const [filteredSnippets, setFilteredSnippets] = useState<Snippet[]>([]);
+	const [filterType, setFilterType] = useState<
+		"all" | "favorites" | "recents" | "search"
+	>("all");
+	const [currentSnippet, setCurrentSnippet] = useState<Snippet | null>(null);
+	const [isEditing, setIsEditing] = useState(false);
+	const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+	const [viewMode, setViewMode] = useState<ViewMode>("grid");
+	const [sortOption, setSortOption] = useState<SortOption>("newest");
+	const [showCategoryDropdown, setShowCategoryDropdown] = useState(true);
+	const [mostUsedTags, setMostUsedTags] = useState<string[]>([]);
+	const [notification, setNotification] = useState<{
+		show: boolean;
+		message: string;
+		type: "success" | "error" | "info" | "";
+		id?: string;
+	}>({
+		show: false,
+		message: "",
+		type: "",
+	});
+	const [copySuccess, setCopySuccess] = useState("");
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
+	const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
+	const [showSettings, setShowSettings] = useState(false);
+	const [showMobileNav, setShowMobileNav] = useState(false);
+	const [showSortOptions, setShowSortOptions] = useState(false);
+	const [favoriteSnippets, setFavoriteSnippets] = useState<Snippet[]>([]);
+	const [recentSnippets, setRecentSnippets] = useState<Snippet[]>([]);
+	const [userPreferences, setUserPreferences] = useState({
+		fontSize: 14,
+		tabSize: 2,
+		autoSave: false,
+		showLineNumbers: true,
+		defaultView: "grid" as ViewMode,
+		highlightCurrentLine: true,
+		autoCloseBrackets: true,
+		snippetsPerPage: 9,
+		theme: "default",
+	});
+	const [newCategory, setNewCategory] = useState("");
+	const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+	const [isSearchFocused, setIsSearchFocused] = useState(false);
+	const [breadcrumbs, setBreadcrumbs] = useState<
+		{ id: string; name: string }[]
+	>([]);
+	const [showExportModal, setShowExportModal] = useState(false);
+	const [currentPage, setCurrentPage] = useState(1);
+	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+	const [isProUser, setIsProUser] = useState(false);
+	const [showOnboarding, setShowOnboarding] = useState(false);
+	const [onboardingStep, setOnboardingStep] = useState(1);
+	const [showMobileSortOptions, setShowMobileSortOptions] = useState(false);
 
-  const minSwipeDistance = 50;
+	const snippetsPerPage = userPreferences.snippetsPerPage;
+	const totalPages = Math.ceil(filteredSnippets.length / snippetsPerPage);
+	const currentSnippetsPage = filteredSnippets.slice(
+		(currentPage - 1) * snippetsPerPage,
+		currentPage * snippetsPerPage
+	);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart({
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY
-    });
+	useEffect(() => {
+		const initialCategories: Category[] = [
+			{ id: "cat1", name: "JavaScript", snippetCount: 4, icon: "javascript" },
+			{ id: "cat2", name: "React", snippetCount: 3, icon: "react" },
+			{ id: "cat3", name: "CSS", snippetCount: 2, icon: "css" },
+			{ id: "cat4", name: "TypeScript", snippetCount: 3, icon: "typescript" },
+			{ id: "cat5", name: "HTML", snippetCount: 1, icon: "html" },
+			{ id: "cat6", name: "Node.js", snippetCount: 2, icon: "nodejs" },
+		];
+
+		const initialSnippets: Snippet[] = [
+			{
+				id: "snip1",
+				title: "React useEffect Hook",
+				code: `useEffect(() => {
+  // This runs after every render
+  const subscription = props.source.subscribe();
+  
+  // Optional cleanup function
+  return () => {
+    subscription.unsubscribe();
   };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd({
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY
-    });
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-
-    const distanceX = touchStart.x - touchEnd.x;
-    const distanceY = touchStart.y - touchEnd.y;
-    const isHorizontal = Math.abs(distanceX) > Math.abs(distanceY);
-
-    if (Math.max(Math.abs(distanceX), Math.abs(distanceY)) < minSwipeDistance) return;
-
-    if (isHorizontal) {
-      if (distanceX > 0) move('left');
-      else move('right');
-    } else {
-      if (distanceY > 0) move('up');
-      else move('down');
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
-
-  useEffect(() => {
-    const newGrid: GridType = Array(4).fill(0).map(() => Array(4).fill(0));
-    addRandomTile(newGrid); 
-    addRandomTile(newGrid);
-    setGrid(newGrid);
-
-    const storedRecords = localStorage.getItem('game2048Records');
-    if (storedRecords) {
-      const records = JSON.parse(storedRecords);
-      setGameRecords(records);
-
-      if (records.length > 0) {
-        const highestRecord = records.reduce(
-          (max: GameRecord, record: GameRecord): GameRecord =>
-            record.score > max.score ? record : max,
-          records[0] as GameRecord
-        );
-        setTopScore(highestRecord.score);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    if (gameState === 'playing' && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setTime(prevTime => prevTime + 1);
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [gameState, isPaused]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (gameState !== 'playing' || isPaused) return;
-
-      switch (event.key) {
-        case 'ArrowUp':
-          move('up');
-          break;
-        case 'ArrowDown':
-          move('down');
-          break;
-        case 'ArrowLeft':
-          move('left');
-          break;
-        case 'ArrowRight':
-          move('right');
-          break;
-        default:
-          return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [grid, gameState, isPaused]);
-
-  useEffect(() => {
-    if (gameRecords.length > 0) {
-      localStorage.setItem('game2048Records', JSON.stringify(gameRecords));
-    }
-  }, [gameRecords]);
-
-  const startGame = () => {
-    const newGrid: GridType = Array(4).fill(0).map(() => Array(4).fill(0));
-
-    addRandomTile(newGrid);
-    addRandomTile(newGrid);
-
-    setGrid(newGrid);
-    setPreviousGrid([]);
-    setScore(0);
-    setGameState('playing');
-    setTime(0);
-    setIsPlaying(true);
-    setReachedTarget(false);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setTime(prevTime => prevTime + 1);
-    }, 1000);
-  };
-
-  const resetGame = () => {
-    const newGrid: GridType = Array(4).fill(0).map(() => Array(4).fill(0));
-
-    addRandomTile(newGrid);
-    addRandomTile(newGrid);
-
-    setGrid(newGrid);
-    setPreviousGrid([]);
-    setScore(0);
-    setGameState('playing');
-    setTime(0);
-    setIsPlaying(true);
-    setReachedTarget(false);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setTime(prevTime => prevTime + 1);
-    }, 1000);
-  };
-
-  const endGame = (state: 'won' | 'game-over') => {
-    setGameState(state);
-    setIsPlaying(false);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    const newRecord: GameRecord = {
-      score,
-      time,
-      date: new Date().toLocaleString(),
-      isCurrent: true
-    };
-
-    const updatedRecords = gameRecords.map(record => ({ ...record, isCurrent: false }));
-    const newRecords = [...updatedRecords, newRecord].sort((a, b) => b.score - a.score);
-    setGameRecords(newRecords);
-
-    if (score > topScore) {
-      setTopScore(score);
-    }
-  };
-
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-
-  const toggleHistoryModal = () => {
-    setShowHistoryModal(prev => !prev);
-  };
-
-  const toggleHowToPlay = () => {
-    setShowHowToPlayModal(prev => !prev);
-  };
-
-  const continueGame = () => {
-    setShowContinueModal(false);
-    setReachedTarget(true);
-  };
-
-  const finishGame = () => {
-    setShowContinueModal(false);
-    endGame('won');
-  };
-
-  const addRandomTile = (currentGrid: GridType): void => {
-    const emptyCells: { row: number; col: number }[] = [];
-
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 4; col++) {
-        if (currentGrid[row][col] === 0) {
-          emptyCells.push({ row, col });
-        }
-      }
-    }
-
-    if (emptyCells.length === 0) return;
-
-    const { row, col } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-
-    currentGrid[row][col] = Math.random() < 0.9 ? 2 : 4;
-  };
-
-  const checkGameOver = (currentGrid: GridType): boolean => {
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 4; col++) {
-        if (currentGrid[row][col] === 0) return false;
-      }
-    }
-
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 3; col++) {
-        if (currentGrid[row][col] === currentGrid[row][col + 1]) return false;
-      }
-    }
-
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 4; col++) {
-        if (currentGrid[row][col] === currentGrid[row + 1][col]) return false;
-      }
-    }
-
-    return true;
-  };
-
-  const checkWinCondition = (currentGrid: GridType): boolean => {
-    if (reachedTarget) return false; 
-
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 4; col++) {
-        if (currentGrid[row][col] === 2048) return true;
-      }
-    }
-
-    return false;
-  };
-
-  const move = (direction: Direction): void => {
-    setPreviousGrid(JSON.parse(JSON.stringify(grid)));
-    const newGrid: GridType = JSON.parse(JSON.stringify(grid));
-    let moved = false;
-    let newScore = score;
-
-    if (!isPlaying) {
-      setIsPlaying(true);
-    }
-
-    if (direction === 'left') {
-      for (let row = 0; row < 4; row++) {
-        const result = processTilesLeftRight(newGrid[row], false);
-        newGrid[row] = result.newRow;
-        moved = moved || result.moved;
-        newScore += result.scoreIncrease;
-      }
-    } else if (direction === 'right') {
-      for (let row = 0; row < 4; row++) {
-        const result = processTilesLeftRight(newGrid[row], true);
-        newGrid[row] = result.newRow;
-        moved = moved || result.moved;
-        newScore += result.scoreIncrease;
-      }
-    } else if (direction === 'up') {
-      for (let col = 0; col < 4; col++) {
-        const column = [newGrid[0][col], newGrid[1][col], newGrid[2][col], newGrid[3][col]];
-        const result = processTilesLeftRight(column, false);
-        for (let row = 0; row < 4; row++) {
-          newGrid[row][col] = result.newRow[row];
-        }
-        moved = moved || result.moved;
-        newScore += result.scoreIncrease;
-      }
-    } else if (direction === 'down') {
-      for (let col = 0; col < 4; col++) {
-        const column = [newGrid[0][col], newGrid[1][col], newGrid[2][col], newGrid[3][col]];
-        const result = processTilesLeftRight(column, true);
-        for (let row = 0; row < 4; row++) {
-          newGrid[row][col] = result.newRow[row];
-        }
-        moved = moved || result.moved;
-        newScore += result.scoreIncrease;
-      }
-    }
-
-    if (moved) {
-      addRandomTile(newGrid);
-      setScore(newScore);
-
-      if (newScore > topScore) {
-        setTopScore(newScore);
-      }
-
-      setGrid(newGrid);
-
-      if (checkWinCondition(newGrid)) {
-        setShowContinueModal(true);
-      }
-
-      if (checkGameOver(newGrid)) {
-        endGame('game-over');
-      }
-    }
-  };
-
-  const processTilesLeftRight = (
-    row: number[],
-    reverse: boolean
-  ): { newRow: number[]; moved: boolean; scoreIncrease: number } => {
-    let newRow = [...row];
-    let moved = false;
-    let scoreIncrease = 0;
-
-    if (reverse) newRow.reverse();
-
-    newRow = newRow.filter(tile => tile !== 0);
-
-    for (let i = 0; i < newRow.length - 1; i++) {
-      if (newRow[i] === newRow[i + 1]) {
-        newRow[i] *= 2;
-        scoreIncrease += newRow[i];
-        newRow.splice(i + 1, 1);
-        moved = true;
-      }
-    }
-
-    while (newRow.length < 4) {
-      newRow.push(0);
-    }
-
-    if (reverse) newRow.reverse();
-
-    if (!moved) {
-      moved = !row.every((val, index) => val === newRow[index]);
-    }
-
-    return { newRow, moved, scoreIncrease };
-  };
-
-  const getTileColor = (value: number): string => {
-    switch (value) {
-      case 2:
-        return 'bg-yellow-100';
-      case 4:
-        return 'bg-yellow-200';
-      case 8:
-        return 'bg-orange-200';
-      case 16:
-        return 'bg-orange-300';
-      case 32:
-        return 'bg-red-300';
-      case 64:
-        return 'bg-red-400';
-      case 128:
-        return 'bg-blue-300';
-      case 256:
-        return 'bg-blue-400';
-      case 512:
-        return 'bg-indigo-400';
-      case 1024:
-        return 'bg-indigo-500';
-      case 2048:
-        return 'bg-purple-500';
-      default:
-        return theme === 'light' ? 'bg-gray-200' : 'bg-gray-600';
-    }
-  };
-
-  const getTextColor = (value: number): string => {
-    return value <= 4 ? 'text-gray-700' : 'text-white';
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getFontSize = (value: number): string => {
-    if (value < 100) return 'text-3xl';
-    if (value < 1000) return 'text-2xl';
-    return 'text-xl';
-  };
-
-  const togglePause = () => {
-    setIsPaused(prev => !prev);
-  };
-
+}, [props.source]);`,
+				language: "javascript",
+				description:
+					"Basic React useEffect hook with dependency array and cleanup",
+				tags: ["react", "hooks", "effect"],
+				category: "React",
+				created: new Date("2025-04-20"),
+				lastAccessed: new Date("2025-05-09"),
+				isFavorite: true,
+				useCount: 12,
+			},
+			{
+				id: "snip2",
+				title: "TypeScript Interface vs Type",
+				code: `// Interface
+interface User {
+  id: number;
+  name: string;
+}
+
+// Type
+type User = {
+  id: number;
+  name: string;
+}
+
+// Extending interface
+interface Employee extends User {
+  department: string;
+}
+
+// Extending type
+type Employee = User & {
+  department: string;
+}`,
+				language: "typescript",
+				description:
+					"Comparison between TypeScript interface and type definitions",
+				tags: ["typescript", "interface", "type"],
+				category: "TypeScript",
+				created: new Date("2025-04-22"),
+				lastAccessed: new Date("2025-05-07"),
+				isFavorite: false,
+				useCount: 8,
+			},
+			{
+				id: "snip3",
+				title: "CSS Grid Layout",
+				code: `.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-gap: 20px;
+}
+
+.grid-item {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+}`,
+				language: "css",
+				description: "Responsive CSS grid layout with auto-fill and minmax",
+				tags: ["css", "grid", "responsive"],
+				category: "CSS",
+				created: new Date("2025-04-25"),
+				lastAccessed: new Date("2025-05-08"),
+				isFavorite: false,
+				useCount: 5,
+			},
+			{
+				id: "snip4",
+				title: "Modern JavaScript Array Methods",
+				code: `// Filter array
+const filtered = numbers.filter(num => num > 10);
+
+// Map array
+const doubled = numbers.map(num => num * 2);
+
+// Reduce array
+const sum = numbers.reduce((total, num) => total + num, 0);
+
+// Find in array
+const found = users.find(user => user.id === 42);
+
+// Some (any) condition
+const hasAdmin = users.some(user => user.role === 'admin');
+
+// Every condition
+const allActive = users.every(user => user.isActive);`,
+				language: "javascript",
+				description: "Common array methods in modern JavaScript",
+				tags: ["javascript", "array", "methods"],
+				category: "JavaScript",
+				created: new Date("2025-04-27"),
+				lastAccessed: new Date("2025-05-10"),
+				isFavorite: true,
+				useCount: 18,
+			},
+			{
+				id: "snip5",
+				title: "React Context API",
+				code: `// Create context
+const ThemeContext = React.createContext('light');
+
+// Provider component
+function App() {
   return (
-    <div className={`${poppins.variable} ${playFont.variable} flex flex-col min-h-screen transition-colors duration-300 ${
-      theme === 'light' ? 'bg-slate-50/100' : 'bg-gradient-to-br from-gray-900 to-gray-800'
-    }`}>
-      <nav className={`fixed top-0 left-0 right-0 z-50 ${
-        theme === 'light' 
-          ? 'bg-white/80 border-b border-gray-200/50' 
-          : 'bg-gray-900/80 border-b border-gray-700/50'
-      } backdrop-blur-sm`}>
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center justify-between flex-wrap sm:flex-nowrap gap-2">
-              <span className={`font-play font-bold text-3xl sm:text-4xl inline-flex transform hover:scale-105 transition-all duration-300 
-                ${theme === 'light' ? 'drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]' : ''}`}
-              >
-                <span className={`${theme === 'light' ? 'text-yellow-200' : 'text-yellow-100'}`}>2</span>
-                <span className={`${theme === 'light' ? 'text-yellow-300' : 'text-yellow-100'}`}>0</span>
-                <span className={`${theme === 'light' ? 'text-yellow-400' : 'text-yellow-200'}`}>4</span>
-                <span className={`${theme === 'light' ? 'text-orange-500' : 'text-orange-300'}`}>8</span>
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleHowToPlay}
-                  className={`group transform hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1
-                    ${theme === 'light'
-                      ? 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700'
-                      : 'bg-gradient-to-br from-gray-700 to-gray-800 text-slate-200'
-                    } p-2 sm:px-3 sm:py-2 rounded-xl shadow-lg hover:shadow-slate-500/25 text-xs sm:text-sm border ${
-                      theme === 'light' ? 'border-slate-200' : 'border-gray-600'
-                    }`}
-                >
-                  <i className="hidden sm:block">?</i>
-                  <span>How to Play</span>
-                </button>
-                <button
-                  onClick={toggleHistoryModal}
-                  className={`group transform hover:scale-105 active:scale-95 transition-all duration-200
-                    ${theme === 'light'
-                      ? 'bg-gradient-to-br from-amber-400 to-amber-500'
-                      : 'bg-gradient-to-br from-amber-500 to-amber-600'
-                    } p-2 rounded-xl text-white shadow-lg hover:shadow-amber-500/25`}
-                  aria-label="View score history"
-                >
-                  <Trophy size={20} className="transform group-hover:-rotate-12 transition-transform" />
-                </button>
-                <button
-                  onClick={toggleTheme}
-                  className={`group transform hover:scale-105 active:scale-95 transition-all duration-200 ${
-                    theme === 'light' 
-                      ? 'bg-white/90 text-slate-700 shadow-lg hover:bg-white' 
-                      : 'bg-gray-800/90 text-slate-200 shadow-lg hover:bg-gray-800'
-                  } p-2 rounded-xl backdrop-blur-sm`}
-                >
-                  {theme === 'light' 
-                    ? <Moon size={20} className="transform group-hover:rotate-12 transition-transform" /> 
-                    : <Sun size={20} className="transform group-hover:rotate-90 transition-transform" />
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="flex-1 flex flex-col items-center justify-center pt-20 sm:pt-28">
-        <main className="container mx-auto max-w-lg px-2 sm:px-4 w-full">
-          <div className="flex flex-col gap-4 sm:gap-6">
-            <div className={`${
-              theme === 'light'
-                ? 'bg-white/80 shadow-lg backdrop-blur-sm'
-                : 'bg-gray-800/80 shadow-lg backdrop-blur-sm'
-            } rounded-xl sm:rounded-2xl p-3 sm:p-5 transition-all duration-300`}>
-              <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                <div className={`${
-                  theme === 'light' ? 'bg-slate-100' : 'bg-gray-700'
-                } col-span-1 rounded-xl p-3 text-center transition-colors flex flex-col items-center justify-center`}>
-                  <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Score</p>
-                  <p className={`text-xl font-bold font-play ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{score}</p>
-                </div>
-                
-                <div className={`${
-                  theme === 'light' ? 'bg-slate-100' : 'bg-gray-700'
-                } col-span-1 rounded-xl p-3 text-center transition-colors flex flex-col items-center justify-center`}>
-                  <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Time</p>
-                  <p className={`text-xl font-bold font-play ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>{formatTime(time)}</p>
-                </div>
-
-                <div className={`${
-                  theme === 'light' ? 'bg-slate-100' : 'bg-gray-700'
-                } col-span-1 rounded-xl p-3 text-center transition-colors flex flex-col items-center justify-center`}>
-                  <p className={`text-sm ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Top Score</p>
-                  <p className={`text-xl font-bold font-play ${score > 0 && score === topScore ? 'text-green-500' : (theme === 'light' ? 'text-slate-900' : 'text-white')}`}>
-                    {topScore}
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2">
-                  {gameState === 'playing' && (
-                    <button
-                      onClick={togglePause}
-                      className={`group flex items-center justify-center transform hover:scale-105 active:scale-95 transition-all duration-200
-                        ${theme === 'light'
-                          ? 'bg-gradient-to-br from-blue-400 to-blue-500'
-                          : 'bg-gradient-to-br from-blue-500 to-blue-600'
-                        } rounded-xl text-white shadow-lg hover:shadow-blue-500/25 flex-1`}
-                      aria-label={isPaused ? "Resume game" : "Pause game"}
-                    >
-                      {isPaused ? (
-                        <PlayIcon size={20} className="transform group-hover:scale-110 transition-transform" />
-                      ) : (
-                        <PauseIcon size={20} className="transform group-hover:scale-110 transition-transform" />
-                      )}
-                    </button>
-                  )}
-                  <button
-                    onClick={resetGame}
-                    className={`group flex items-center justify-center transform hover:scale-105 active:scale-95 transition-all duration-200
-                      ${theme === 'light'
-                        ? 'bg-gradient-to-br from-rose-400 to-rose-500'
-                        : 'bg-gradient-to-br from-rose-500 to-rose-600'
-                      } rounded-xl text-white shadow-lg hover:shadow-rose-500/25 flex-1`}
-                    aria-label="Reset game"
-                  >
-                    <RefreshCcw size={20} className="transform group-hover:rotate-180 transition-transform duration-500" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div 
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              className={`${
-                theme === 'light'
-                  ? 'bg-white/80 shadow-lg backdrop-blur-sm'
-                  : 'bg-gray-800/80 shadow-lg backdrop-blur-sm'
-              } p-4 sm:p-6 rounded-xl sm:rounded-2xl transition-all duration-300`}
-            >
-              <div className="grid grid-cols-4 gap-2 sm:gap-4 w-full aspect-square">
-                {grid.map((row, rowIndex) => (
-                  row.map((value, colIndex) => {
-                    const isPreviousTile = previousGrid.length > 0 && previousGrid[rowIndex]?.[colIndex] !== value;
-                    return (
-                      <div
-                        key={`${rowIndex}-${colIndex}`}
-                        className={`aspect-square flex items-center justify-center rounded-xl shadow-lg
-                          ${value === 0 
-                            ? theme === 'light' 
-                              ? 'bg-slate-200/50' 
-                              : 'bg-gray-700/50' 
-                            : getTileColor(value)} 
-                          ${getTextColor(value)} font-bold font-play ${getFontSize(value)}
-                          transform transition-all ease-in-out duration-150 ${isPreviousTile ? 'animate-pop' : ''}
-                          hover:scale-[1.02] transition-transform`}
-                      >
-                        {value !== 0 && value}
-                      </div>
-                    );
-                  })
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {gameState === 'playing' && (
-            <div className={`mt-4 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'} text-center`}>
-              <p>Use arrow keys or swipe to move the tiles</p>
-              <p className="text-sm mt-2">
-                Combine tiles with the same number to create a tile with the sum!
-              </p>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {gameState === 'not-started' && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
-          <div className={`${theme === 'light' 
-            ? 'bg-white/90 shadow-xl' 
-            : 'bg-gray-800/90'
-          } max-w-md w-full mx-4 p-8 rounded-3xl backdrop-blur-sm border ${
-            theme === 'light' ? 'border-slate-200' : 'border-gray-700'
-          }`}>
-            <div className="text-center space-y-6">
-              <h1 className={`font-play font-bold text-5xl inline-flex transform hover:scale-105 transition-all duration-300 
-                ${theme === 'light' ? 'drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]' : ''}`}
-              >
-                <span className={`${theme === 'light' ? 'text-yellow-200' : 'text-yellow-100'}`}>2</span>
-                <span className={`${theme === 'light' ? 'text-yellow-300' : 'text-yellow-100'}`}>0</span>
-                <span className={`${theme === 'light' ? 'text-yellow-400' : 'text-yellow-200'}`}>4</span>
-                <span className={`${theme === 'light' ? 'text-orange-500' : 'text-orange-300'}`}>8</span>
-              </h1>
-              
-              <p className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-300'} text-lg`}>
-                Join the tiles, get to 2048!
-              </p>
-
-              <button
-                onClick={startGame}
-                className={`w-full py-4 px-6 rounded-xl font-medium transition-all transform hover:scale-105 active:scale-95 
-                  ${theme === 'light'
-                    ? 'bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300 hover:from-slate-100 hover:to-slate-200'
-                    : 'bg-gradient-to-r from-gray-700 to-gray-800 text-slate-200 border border-gray-600 hover:border-gray-500 hover:from-gray-600 hover:to-gray-700'
-                  } shadow-lg`}
-              >
-                Start Game
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {gameState === 'game-over' && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50">
-          <div className={`${theme === 'light' 
-            ? 'bg-white shadow-xl' 
-            : 'bg-gray-900/95'
-          } max-w-md w-full mx-4 p-6 rounded-3xl backdrop-blur-sm border ${
-            theme === 'light' ? 'border-orange-200' : 'border-gray-700'
-          }`}>
-            <div className="text-center space-y-6">
-              <div className={`${
-                theme === 'light' ? 'bg-red-100' : 'bg-red-900/20'
-              } w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4`}>
-                <X size={32} className={`${
-                  theme === 'light' ? 'text-red-600' : 'text-red-400'
-                }`} />
-              </div>
-              
-              <div>
-                <h2 className={`text-3xl font-bold font-play mb-3 ${
-                  theme === 'light' ? 'text-gray-900' : 'text-gray-100'
-                }`}>Game Over</h2>
-                <div className="flex flex-col sm:flex-row justify-center gap-4 items-center">
-                  <div className={`${
-                    theme === 'light' 
-                      ? 'bg-orange-100 text-gray-900' 
-                      : 'bg-gray-700 text-white'
-                  } px-6 py-2 rounded-xl`}>
-                    <div className="text-sm font-medium opacity-75">Score</div>
-                    <div className="font-play font-bold text-2xl">{score}</div>
-                  </div>
-                  <div className={`${
-                    theme === 'light' 
-                      ? 'bg-slate-100 text-slate-700' 
-                      : 'bg-gray-700 text-white'
-                  } px-6 py-2 rounded-xl`}>
-                    <div className="text-sm font-medium opacity-75">Time</div>
-                    <div className="font-play font-bold text-2xl">{formatTime(time)}</div>
-                  </div>
-                </div>
-              </div>
-
-              {score > 0 && (
-                <div className={`${
-                  theme === 'light' 
-                    ? 'bg-gradient-to-b from-slate-50 to-white border border-slate-200' 
-                    : 'bg-gradient-to-b from-gray-700 to-gray-800 border border-gray-600'
-                } rounded-2xl p-5`}>
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <Trophy size={18} className={theme === 'light' ? 'text-amber-500' : 'text-amber-400'} />
-                    <span className={`font-medium ${
-                      theme === 'light' ? 'text-gray-700' : 'text-gray-200'
-                    }`}>Top 3 Scores</span>
-                  </div>
-                  <div className="space-y-3">
-                    {gameRecords.slice(0, 3).map((record, index) => (
-                      <div key={index} 
-                        className={`flex justify-between items-center p-2 rounded-xl transition-colors ${
-                          record.isCurrent 
-                            ? theme === 'light'
-                              ? 'bg-blue-50 text-blue-600 font-medium'
-                              : 'bg-blue-700 text-blue-200 font-medium'
-                            : theme === 'light'
-                              ? 'bg-slate-50'
-                              : 'bg-gray-800 text-gray-200'
-                        }`}>
-                        <div className="flex items-center gap-3">
-                          <span className={`${
-                            theme === 'light' ? 'text-slate-400' : 'text-slate-500'
-                          } text-sm`}>#{index + 1}</span>
-                          <span className={`font-play text-lg ${
-                            theme === 'light' 
-                              ? 'text-gray-900 font-semibold' 
-                              : 'text-white font-semibold'
-                          }`}>{record.score}</span>
-                        </div>
-                        <span className={`${
-                          theme === 'light' ? 'text-slate-400' : 'text-slate-300'
-                        } text-sm font-medium`}>{formatTime(record.time)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={startGame}
-                className={`w-full py-3 px-4 rounded-xl font-medium transition-all transform hover:scale-105 active:scale-95 ${
-                  theme === 'light'
-                    ? 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
-                } shadow-lg`}
-              >
-                Play Again
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {gameState === 'won' && (
-        <div className={`absolute inset-0 flex items-center justify-center bg-opacity-50 z-10 rounded-lg ${theme==='light'?'bg-gray-200':'bg-gray-800'} `}>
-          <div className={`${theme === 'light' ? 'bg-white' : 'bg-gray-800'} p-6 rounded-lg shadow-lg text-center transition-colors max-h-96 overflow-y-auto w-full`}>
-            <h2 className={`text-2xl font-bold font-play mb-2 ${theme === 'light' ? 'text-green-600' : 'text-green-400'}`}>You Won!</h2>
-            <p className={`mb-4 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>Your score: {score} - Time: {formatTime(time)}</p>
-
-            <div className="mb-4">
-              <h3 className={`text-lg font-bold font-play mb-2 flex items-center justify-center ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
-                <Trophy size={18} className="mr-1" />
-                <span>High Scores</span>
-              </h3>
-
-              <div className={`${theme === 'light' ? 'bg-gray-100' : 'bg-gray-900'} rounded-lg p-2 max-h-32 overflow-y-auto`}>
-                <table className="w-full">
-                  <thead>
-                    <tr className={`text-left ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-                      <th className="px-2 py-1">Rank</th>
-                      <th className="px-2 py-1">Score</th>
-                      <th className="px-2 py-1">Time</th>
-                      <th className="px-2 py-1">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gameRecords.map((record, index) => (
-                      <tr
-                        key={index}
-                        className={`${record.isCurrent ? (theme === 'light' ? 'bg-yellow-100' : 'bg-yellow-900') : ''} ${theme === 'light' ? 'text-gray-800' : 'text-gray-200'}`}
-                      >
-                        <td className="px-2 py-1">{index + 1}</td>
-                        <td className="px-2 py-1 font-play">{record.score}</td>
-                        <td className="px-2 py-1 font-play">{formatTime(record.time)}</td>
-                        <td className="px-2 py-1 text-xs">{record.date}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <button
-              onClick={startGame}
-              className={`${theme === 'light' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded transition-colors`}
-            >
-              Play Again
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showContinueModal && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-20 rounded-lg">
-          <div className={`${theme === 'light' ? 'bg-white' : 'bg-gray-800'} p-6 rounded-lg shadow-lg text-center transition-colors`}>
-            <h2 className={`text-2xl font-bold font-play mb-4 ${theme === 'light' ? 'text-green-600' : 'text-green-400'}`}>You reached 2048!</h2>
-            <p className={`mb-6 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>Would you like to continue playing?</p>
-
-            <div className="flex space-x-4 justify-center">
-              <button
-                onClick={continueGame}
-                className={`${theme === 'light' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded transition-colors`}
-              >
-                Continue
-              </button>
-              <button
-                onClick={finishGame}
-                className={`${theme === 'light' ? 'bg-gray-500 hover:bg-gray-600' : 'bg-gray-600 hover:bg-gray-700'} text-white px-4 py-2 rounded transition-colors`}
-              >
-                End Game
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showHowToPlayModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-          <div className={`${
-            theme === 'light' 
-              ? 'bg-white/80 backdrop-blur-md' 
-              : 'bg-gray-800/80 backdrop-blur-md'
-          } p-6 rounded-2xl shadow-lg text-center transition-colors w-full max-w-md border ${
-            theme === 'light' ? 'border-gray-200/50' : 'border-gray-700/50'
-          }`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-xl font-bold font-play ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
-                How to Play
-              </h2>
-              <button
-                onClick={toggleHowToPlay}
-                className={`${theme === 'light' ? 'text-gray-700 hover:bg-gray-200' : 'text-gray-300 hover:bg-gray-700'} p-1 rounded-full transition-colors`}
-              >
-                <X size={20} className='cursor-pointer' />
-              </button>
-            </div>
-
-            <div className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-300'} space-y-4 text-left`}>
-              <p className="text-sm">Use your arrow keys to move the tiles. When two tiles with the same number touch, they merge into one!</p>
-              <ul className="list-disc list-inside space-y-2 text-sm">
-                <li>Start with tiles showing 2 and 4</li>
-                <li>Join matching numbers to add them together</li>
-                <li>Plan your moves carefully to reach 2048</li>
-                <li>Keep combining to aim for higher scores!</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isPaused && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-          <div className={`${
-            theme === 'light' 
-              ? 'bg-white/80 backdrop-blur-md' 
-              : 'bg-gray-800/80 backdrop-blur-md'
-          } p-6 rounded-2xl shadow-lg text-center transition-colors w-full max-w-md border ${
-            theme === 'light' ? 'border-gray-200/50' : 'border-gray-700/50'
-          }`}>
-            <h2 className={`text-2xl font-bold font-play mb-4 ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
-              Game Paused
-            </h2>
-            <div className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-300'} mb-6`}>
-              <p className="mb-2">Current Score: {score}</p>
-              <p>Time: {formatTime(time)}</p>
-            </div>
-            <button
-              onClick={togglePause}
-              className={`w-full py-3 px-4 rounded-xl font-medium transition-all transform hover:scale-105 active:scale-95 ${
-                theme === 'light'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-              } text-white shadow-lg`}
-            >
-              Resume Game
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showHistoryModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-          <div className={`${
-            theme === 'light' 
-              ? 'bg-white/80 backdrop-blur-md' 
-              : 'bg-gray-800/80 backdrop-blur-md'
-          } p-6 rounded-2xl shadow-lg text-center transition-colors max-h-96 overflow-y-auto w-full max-w-md border ${
-            theme === 'light' ? 'border-gray-200/50' : 'border-gray-700/50'
-          }`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-xl font-bold font-play flex items-center ${theme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>
-                <Trophy size={20} className="mr-2 cursor-pointer" />
-                <span>Score History</span>
-              </h2>
-              <button
-                onClick={toggleHistoryModal}
-                className={`${theme === 'light' ? 'text-gray-700 hover:bg-gray-200' : 'text-gray-300 hover:bg-gray-700'} p-1 rounded-full transition-colors`}
-              >
-                <X size={20} className='cursor-pointer' />
-              </button>
-            </div>
-
-            {gameRecords.length > 0 ? (
-              <div className={`${theme === 'light' ? 'bg-gray-100' : 'bg-gray-900'} rounded-lg p-2 max-h-60 overflow-y-auto`}>
-                <table className="w-full">
-                  <thead>
-                    <tr className={`text-left ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-                      <th className="px-2 py-1">Rank</th>
-                      <th className="px-2 py-1">Score</th>
-                      <th className="px-2 py-1">Time</th>
-                      <th className="px-2 py-1">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gameRecords.map((record, index) => (
-                      <tr
-                        key={index}
-                        className={`${record.isCurrent ? (theme === 'light' ? 'bg-yellow-100' : 'bg-yellow-900') : ''} ${theme === 'light' ? 'text-gray-800' : 'text-gray-200'}`}
-                      >
-                        <td className="px-2 py-1">{index + 1}</td>
-                        <td className="px-2 py-1 font-play">{record.score}</td>
-                        <td className="px-2 py-1 font-play">{formatTime(record.time)}</td>
-                        <td className="px-2 py-1 text-xs">{record.date}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className={`my-8 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-                No games played yet.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    <ThemeContext.Provider value="dark">
+      <ThemedButton />
+    </ThemeContext.Provider>
   );
+}
+
+// Consumer component with useContext
+function ThemedButton() {
+  const theme = useContext(ThemeContext);
+  return <button className={theme}>Themed Button</button>;
+}`,
+				language: "javascript",
+				description: "Using React Context API for state management",
+				tags: ["react", "context", "state"],
+				category: "React",
+				created: new Date("2025-04-29"),
+				lastAccessed: new Date("2025-05-05"),
+				isFavorite: false,
+				useCount: 7,
+			},
+			{
+				id: "snip6",
+				title: "TypeScript Generics",
+				code: `// Generic function
+function getFirstElement<T>(array: T[]): T | undefined {
+  return array[0];
+}
+
+// Usage
+const numbers = [1, 2, 3];
+const firstNumber = getFirstElement<number>(numbers);
+
+// Generic interface
+interface Box<T> {
+  value: T;
+}
+
+// Usage
+const stringBox: Box<string> = { value: 'Hello TypeScript' };`,
+				language: "typescript",
+				description: "Using TypeScript generics for reusable components",
+				tags: ["typescript", "generics", "functions"],
+				category: "TypeScript",
+				created: new Date("2025-05-01"),
+				lastAccessed: new Date("2025-05-09"),
+				isFavorite: true,
+				useCount: 10,
+			},
+			{
+				id: "snip7",
+				title: "CSS Animation",
+				code: `@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animated-element {
+  animation: fadeIn 1.5s ease-in-out;
+}
+
+.hover-effect {
+  transition: transform 0.3s ease;
+}
+
+.hover-effect:hover {
+  transform: scale(1.05);
+}`,
+				language: "css",
+				description: "CSS animations and transitions for UI elements",
+				tags: ["css", "animation", "transition"],
+				category: "CSS",
+				created: new Date("2025-05-03"),
+				lastAccessed: new Date("2025-05-06"),
+				isFavorite: false,
+				useCount: 9,
+			},
+			{
+				id: "snip8",
+				title: "JavaScript Async/Await",
+				code: `// Basic async/await
+async function fetchUserData(userId) {
+  try {
+    const response = await fetch(\`/api/users/\${userId}\`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch user');
+    }
+    const userData = await response.json();
+    return userData;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
+
+// Parallel async operations
+async function fetchMultipleUsers(userIds) {
+  const promises = userIds.map(id => 
+    fetch(\`/api/users/\${id}\`).then(res => res.json())
+  );
+  
+  const users = await Promise.all(promises);
+  return users;
+}`,
+				language: "javascript",
+				description: "Using async/await for asynchronous operations",
+				tags: ["javascript", "async", "promises"],
+				category: "JavaScript",
+				created: new Date("2025-05-05"),
+				lastAccessed: new Date("2025-05-10"),
+				isFavorite: false,
+				useCount: 11,
+			},
+			{
+				id: "snip9",
+				title: "TypeScript Utility Types",
+				code: `// Original interface
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  createdAt: Date;
+}
+
+// Partial - all properties optional
+type PartialUser = Partial<User>;
+
+// Pick - select specific properties
+type UserCredentials = Pick<User, 'email' | 'password'>;
+
+// Omit - exclude specific properties
+type PublicUser = Omit<User, 'email' | 'password'>;
+
+// Required - all properties required
+type StrictUser = Required<PartialUser>;
+
+// Readonly - all properties readonly
+type ImmutableUser = Readonly<User>;`,
+				language: "typescript",
+				description: "Common TypeScript utility types",
+				tags: ["typescript", "utility", "types"],
+				category: "TypeScript",
+				created: new Date("2025-05-07"),
+				lastAccessed: new Date("2025-05-09"),
+				isFavorite: false,
+				useCount: 6,
+			},
+			{
+				id: "snip10",
+				title: "React Custom Hooks",
+				code: `// useLocalStorage hook
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(error);
+      return initialValue;
+    }
+  });
+
+  const setValue = value => {
+    try {
+      const valueToStore = 
+        value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return [storedValue, setValue];
+}`,
+				language: "javascript",
+				description: "Creating custom React hooks for reusable logic",
+				tags: ["react", "hooks", "custom"],
+				category: "React",
+				created: new Date("2025-05-09"),
+				lastAccessed: new Date("2025-05-10"),
+				isFavorite: false,
+				useCount: 4,
+			},
+			{
+				id: "snip11",
+				title: "HTML Semantic Elements",
+				code: `<header>
+  <h1>Website Title</h1>
+  <nav>
+    <ul>
+      <li><a href="#home">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <section id="hero">
+    <h2>Welcome to our site</h2>
+  </section>
+  
+  <article>
+    <h2>Article Title</h2>
+    <p>Article content goes here...</p>
+    <figure>
+      <img src="image.jpg" alt="Description">
+      <figcaption>Image caption</figcaption>
+    </figure>
+  </article>
+  
+  <aside>
+    <h3>Related Information</h3>
+    <p>Sidebar content...</p>
+  </aside>
+</main>
+
+<footer>
+  <p>&copy; 2025 Company Name</p>
+</footer>`,
+				language: "html",
+				description:
+					"Proper usage of HTML5 semantic elements for better accessibility and SEO",
+				tags: ["html", "semantic", "accessibility"],
+				category: "HTML",
+				created: new Date("2025-05-04"),
+				lastAccessed: new Date("2025-05-08"),
+				isFavorite: false,
+				useCount: 7,
+			},
+			{
+				id: "snip12",
+				title: "Node.js Express Server",
+				code: `const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.get('/api/users', (req, res) => {
+  // Get users from database
+  res.json([
+    { id: 1, name: 'John Doe' },
+    { id: 2, name: 'Jane Smith' }
+  ]);
+});
+
+app.post('/api/users', (req, res) => {
+  const { name } = req.body;
+  // Save user to database
+  res.status(201).json({ id: 3, name });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(\`Server running on port \${PORT}\`);
+});`,
+				language: "javascript",
+				description:
+					"Basic Express.js server setup with routes and error handling",
+				tags: ["nodejs", "express", "server"],
+				category: "Node.js",
+				created: new Date("2025-05-06"),
+				lastAccessed: new Date("2025-05-09"),
+				isFavorite: false,
+				useCount: 9,
+			},
+		];
+
+		setCategories(initialCategories);
+		setSnippets(initialSnippets);
+		setFilteredSnippets(initialSnippets);
+
+		// Extract most used tags
+		const allTags = initialSnippets.flatMap((snippet) => snippet.tags);
+		const tagCounts = allTags.reduce((acc, tag) => {
+			acc[tag] = (acc[tag] || 0) + 1;
+			return acc;
+		}, {} as Record<string, number>);
+
+		const sortedTags = Object.entries(tagCounts)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 5)
+			.map(([tag]) => tag);
+
+		setMostUsedTags(sortedTags);
+
+		// Initialize favorites
+		const favorites = initialSnippets.filter((snippet) => snippet.isFavorite);
+		setFavoriteSnippets(favorites);
+
+		// Initialize recents
+		const recents = [...initialSnippets]
+			.sort(
+				(a, b) =>
+					new Date(b.lastAccessed || 0).getTime() -
+					new Date(a.lastAccessed || 0).getTime()
+			)
+			.slice(0, 5);
+		setRecentSnippets(recents);
+
+		// Check system preference for dark/light mode
+		if (
+			window.matchMedia &&
+			window.matchMedia("(prefers-color-scheme: dark)").matches
+		) {
+			setDarkMode(true);
+		}
+
+		// Set initial view mode from preferences
+		setViewMode(userPreferences.defaultView);
+
+		// Check for first-time users
+		const isFirstVisit = !localStorage.getItem("hasVisitedBefore");
+		if (isFirstVisit) {
+			setShowOnboarding(true);
+			localStorage.setItem("hasVisitedBefore", "true");
+		}
+
+		// Reset pagination
+		setCurrentPage(1);
+
+		// Check premium status from localStorage
+		const proStatus = localStorage.getItem("isProUser");
+		if (proStatus === "true") {
+			setIsProUser(true);
+		}
+	}, []);
+
+	useEffect(() => {
+		let filtered = [...snippets];
+
+		// Apply filter based on filter type
+		if (filterType === "favorites") {
+			filtered = filtered.filter((snippet) => snippet.isFavorite);
+		} else if (filterType === "recents") {
+			filtered = [...snippets]
+				.sort(
+					(a, b) =>
+						new Date(b.lastAccessed || b.created).getTime() -
+						new Date(a.lastAccessed || a.created).getTime()
+				)
+				.slice(0, 5);
+		} else if (searchQuery) {
+			// Handle search query
+			const query = searchQuery.toLowerCase();
+			filtered = filtered.filter(
+				(snippet) =>
+					snippet.title.toLowerCase().includes(query) ||
+					snippet.description.toLowerCase().includes(query) ||
+					snippet.code.toLowerCase().includes(query) ||
+					snippet.tags.some((tag) => tag.toLowerCase().includes(query))
+			);
+		}
+
+		// Filter by category
+		if (selectedCategory !== "all") {
+			filtered = filtered.filter(
+				(snippet) => snippet.category === selectedCategory
+			);
+		}
+
+		// Apply sorting
+		switch (sortOption) {
+			case "newest":
+				filtered = filtered.sort(
+					(a, b) =>
+						new Date(b.created).getTime() - new Date(a.created).getTime()
+				);
+				break;
+			case "oldest":
+				filtered = filtered.sort(
+					(a, b) =>
+						new Date(a.created).getTime() - new Date(b.created).getTime()
+				);
+				break;
+			case "a-z":
+				filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+				break;
+			case "z-a":
+				filtered = filtered.sort((a, b) => b.title.localeCompare(a.title));
+				break;
+			case "most-used":
+				filtered = filtered.sort((a, b) => b.useCount - a.useCount);
+				break;
+		}
+
+		setFilteredSnippets(filtered);
+		// Reset to first page when filters change
+		setCurrentPage(1);
+	}, [snippets, searchQuery, selectedCategory, sortOption, filterType]);
+	useEffect(() => {
+		document.body.classList.toggle("dark-mode", darkMode);
+		document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
+	}, [darkMode]);
+
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+				e.preventDefault();
+				searchInputRef.current?.focus();
+			}
+
+			if (e.key === "Escape") {
+				if (isEditing) {
+					setIsEditing(false);
+				} else if (showDeleteModal) {
+					setShowDeleteModal(false);
+				} else if (showSettings) {
+					setShowSettings(false);
+				} else if (showExportModal) {
+					setShowExportModal(false);
+				} else if (showUpgradeModal) {
+					setShowUpgradeModal(false);
+				}
+			}
+
+			if ((e.ctrlKey || e.metaKey) && e.key === "s" && isEditing) {
+				e.preventDefault();
+				saveSnippet();
+			}
+
+			if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+				e.preventDefault();
+				createNewSnippet();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [
+		isEditing,
+		showDeleteModal,
+		showSettings,
+		showExportModal,
+		showUpgradeModal,
+	]);
+
+	useEffect(() => {
+		const crumbs = [{ id: "home", name: "Home" }];
+
+		if (selectedCategory !== "all") {
+			crumbs.push({ id: "category", name: selectedCategory });
+		}
+
+		if (currentSnippet) {
+			crumbs.push({ id: currentSnippet.id, name: currentSnippet.title });
+		}
+
+		setBreadcrumbs(crumbs);
+	}, [selectedCategory, currentSnippet]);
+
+	useEffect(() => {
+		if (showMobileNav) {
+			document.body.style.overflow = 'hidden';
+		} else {
+			document.body.style.overflow = '';
+		}
+		// Clean up in case the component unmounts while menu is open
+		return () => {
+			document.body.style.overflow = '';
+		};
+	}, [showMobileNav]);
+
+	const copyToClipboard = (code: string, snippetId?: string) => {
+		navigator.clipboard
+			.writeText(code)
+			.then(() => {
+				setCopySuccess("Copied!");
+				setTimeout(() => setCopySuccess(""), 2000);
+
+				showNotification("Snippet copied to clipboard!", "success");
+
+				if (snippetId) {
+					incrementSnippetUseCount(snippetId);
+				}
+			})
+			.catch((err) => {
+				console.error("Failed to copy:", err);
+				showNotification("Failed to copy snippet", "error");
+			});
+	};
+
+	const incrementSnippetUseCount = (snippetId: string) => {
+		const updatedSnippets = snippets.map((snippet) =>
+			snippet.id === snippetId
+				? {
+						...snippet,
+						useCount: snippet.useCount + 1,
+						lastAccessed: new Date(),
+				  }
+				: snippet
+		);
+
+		setSnippets(updatedSnippets);
+
+		const updatedRecents = [...updatedSnippets]
+			.sort(
+				(a, b) =>
+					new Date(b.lastAccessed || 0).getTime() -
+					new Date(a.lastAccessed || 0).getTime()
+			)
+			.slice(0, 5);
+		setRecentSnippets(updatedRecents);
+	};
+
+	const showNotification = (
+		message: string,
+		type: "success" | "error" | "info"
+	) => {
+		const id = Math.random().toString(36).substring(2, 9);
+		setNotification({ show: true, message, type, id });
+
+		setTimeout(() => {
+			setNotification((prev) =>
+				prev.id === id ? { show: false, message: "", type: "" } : prev
+			);
+		}, 3000);
+	};
+
+	const createNewSnippet = useCallback(() => {
+		if (snippets.length >= 12 && !isProUser) {
+			setShowUpgradeModal(true);
+			return;
+		}
+
+		const newSnippet: Snippet = {
+			id: `snip${Date.now()}`,
+			title: "New Snippet",
+			code: "// Add your code here",
+			language: "javascript",
+			description: "Description of your snippet",
+			tags: [],
+			category: categories.length > 0 ? categories[0].name : "Uncategorized",
+			created: new Date(),
+			lastAccessed: new Date(),
+			isFavorite: false,
+			useCount: 0,
+		};
+
+		setSnippets((prev) => [...prev, newSnippet]);
+		setCurrentSnippet(newSnippet);
+		setIsEditing(true);
+		showNotification("New snippet created", "success");
+	}, [categories, snippets.length, isProUser]);
+
+	const saveSnippet = () => {
+		if (!currentSnippet) return;
+
+		const updatedSnippet = {
+			...currentSnippet,
+			lastAccessed: new Date(),
+		};
+
+		const updatedSnippets = snippets.map((snippet) =>
+			snippet.id === updatedSnippet.id ? updatedSnippet : snippet
+		);
+
+		setSnippets(updatedSnippets);
+		setCurrentSnippet(updatedSnippet);
+		setIsEditing(false);
+
+		updateCategorySnippetCounts(updatedSnippets);
+
+		if (updatedSnippet.isFavorite) {
+			setFavoriteSnippets((prev) =>
+				prev.some((s) => s.id === updatedSnippet.id)
+					? prev.map((s) => (s.id === updatedSnippet.id ? updatedSnippet : s))
+					: [...prev, updatedSnippet]
+			);
+		} else {
+			setFavoriteSnippets((prev) =>
+				prev.filter((s) => s.id !== updatedSnippet.id)
+			);
+		}
+
+		const updatedRecents = [...updatedSnippets]
+			.sort(
+				(a, b) =>
+					new Date(b.lastAccessed || 0).getTime() -
+					new Date(a.lastAccessed || 0).getTime()
+			)
+			.slice(0, 5);
+		setRecentSnippets(updatedRecents);
+
+		showNotification("Snippet saved successfully", "success");
+	};
+
+	const updateCategorySnippetCounts = (updatedSnippets: Snippet[]) => {
+		const categoryCounts: Record<string, number> = {};
+
+		updatedSnippets.forEach((snippet) => {
+			categoryCounts[snippet.category] =
+				(categoryCounts[snippet.category] || 0) + 1;
+		});
+
+		const updatedCategories = categories.map((category) => ({
+			...category,
+			snippetCount: categoryCounts[category.name] || 0,
+		}));
+
+		setCategories(updatedCategories);
+	};
+
+	const deleteSnippet = (id: string) => {
+		setSnippetToDelete(id);
+		setShowDeleteModal(true);
+	};
+
+	const confirmDeleteSnippet = () => {
+		if (!snippetToDelete) return;
+
+		const updatedSnippets = snippets.filter(
+			(snippet) => snippet.id !== snippetToDelete
+		);
+		setSnippets(updatedSnippets);
+
+		if (currentSnippet && currentSnippet.id === snippetToDelete) {
+			setCurrentSnippet(null);
+			setIsEditing(false);
+		}
+
+		setFavoriteSnippets((prev) => prev.filter((s) => s.id !== snippetToDelete));
+		setRecentSnippets((prev) => prev.filter((s) => s.id !== snippetToDelete));
+
+		updateCategorySnippetCounts(updatedSnippets);
+
+		setShowDeleteModal(false);
+		setSnippetToDelete(null);
+		showNotification("Snippet deleted", "success");
+	};
+
+	const toggleFavorite = (id: string) => {
+		const updatedSnippets = snippets.map((snippet) =>
+			snippet.id === id
+				? { ...snippet, isFavorite: !snippet.isFavorite }
+				: snippet
+		);
+
+		setSnippets(updatedSnippets);
+
+		if (currentSnippet && currentSnippet.id === id) {
+			setCurrentSnippet({
+				...currentSnippet,
+				isFavorite: !currentSnippet.isFavorite,
+			});
+		}
+
+		const snippet = updatedSnippets.find((s) => s.id === id);
+		if (snippet) {
+			if (snippet.isFavorite) {
+				setFavoriteSnippets((prev) => [...prev, snippet]);
+				showNotification("Added to favorites", "success");
+			} else {
+				setFavoriteSnippets((prev) => prev.filter((s) => s.id !== id));
+				showNotification("Removed from favorites", "info");
+			}
+		}
+	};
+
+	const viewSnippet = (snippet: Snippet) => {
+		const updatedSnippet = {
+			...snippet,
+			lastAccessed: new Date(),
+			useCount: snippet.useCount + 1,
+		};
+
+		const updatedSnippets = snippets.map((s) =>
+			s.id === snippet.id ? updatedSnippet : s
+		);
+		setSnippets(updatedSnippets);
+
+		setCurrentSnippet(updatedSnippet);
+
+		const updatedRecents = [
+			updatedSnippet,
+			...recentSnippets.filter((s) => s.id !== snippet.id),
+		].slice(0, 5);
+		setRecentSnippets(updatedRecents);
+	};
+
+	const goBack = () => {
+		setCurrentSnippet(null);
+		setIsEditing(false);
+	};
+
+	const addNewCategory = () => {
+		if (!newCategory.trim()) return;
+
+		if (
+			categories.some(
+				(cat) => cat.name.toLowerCase() === newCategory.toLowerCase()
+			)
+		) {
+			showNotification("Category already exists", "error");
+			return;
+		}
+
+		const newCategoryObj: Category = {
+			id: `cat${Date.now()}`,
+			name: newCategory,
+			snippetCount: 0,
+			icon: "folder",
+		};
+
+		setCategories([...categories, newCategoryObj]);
+		setNewCategory("");
+		setShowNewCategoryInput(false);
+		showNotification("New category added", "success");
+	};
+
+	const updateSnippetField = (field: keyof Snippet, value: any) => {
+		if (!currentSnippet) return;
+
+		setCurrentSnippet({
+			...currentSnippet,
+			[field]: value,
+		});
+
+		if (
+			userPreferences.autoSave &&
+			field !== "title" &&
+			field !== "description"
+		) {
+			const timer = setTimeout(() => {
+				saveSnippet();
+			}, 1000);
+
+			return () => clearTimeout(timer);
+		}
+	};
+
+	const exportSnippets = () => {
+		const dataStr = JSON.stringify(snippets, null, 2);
+		const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(
+			dataStr
+		)}`;
+
+		const exportFileDefaultName = `snippetpro-export-${
+			new Date().toISOString().split("T")[0]
+		}.json`;
+
+		const linkElement = document.createElement("a");
+		linkElement.setAttribute("href", dataUri);
+		linkElement.setAttribute("download", exportFileDefaultName);
+		linkElement.click();
+
+		setShowExportModal(false);
+		showNotification("Snippets exported successfully", "success");
+	};
+
+	const importSnippets = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			try {
+				const importedSnippets = JSON.parse(
+					e.target?.result as string
+				) as Snippet[];
+
+				if (snippets.length + importedSnippets.length > 12 && !isProUser) {
+					showNotification("Upgrade to Pro to import more snippets", "error");
+					setShowUpgradeModal(true);
+					return;
+				}
+
+				const newSnippets = importedSnippets.map((snippet) => ({
+					...snippet,
+					id: `snip${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+				}));
+
+				setSnippets((prev) => [...prev, ...newSnippets]);
+				showNotification(`Imported ${newSnippets.length} snippets`, "success");
+
+				updateCategorySnippetCounts([...snippets, ...newSnippets]);
+
+				const newCategories = new Set(newSnippets.map((s) => s.category));
+				const existingCategories = new Set(categories.map((c) => c.name));
+
+				const categoriesToAdd = Array.from(newCategories).filter(
+					(c) => !existingCategories.has(c)
+				);
+
+				if (categoriesToAdd.length > 0) {
+					const additionalCategories = categoriesToAdd.map((name) => ({
+						id: `cat${Date.now()}-${Math.random()
+							.toString(36)
+							.substring(2, 5)}`,
+						name,
+						snippetCount: newSnippets.filter((s) => s.category === name).length,
+						icon: "folder",
+					}));
+
+					setCategories((prev) => [...prev, ...additionalCategories]);
+				}
+			} catch (error) {
+				console.error("Error importing snippets:", error);
+				showNotification(
+					"Failed to import snippets. Invalid file format.",
+					"error"
+				);
+			}
+		};
+		reader.readAsText(file);
+
+		event.target.value = "";
+	};
+
+	const goToPage = (page: number) => {
+		setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+		window.scrollTo(0, 0);
+	};
+
+	const formatDate = (date: Date) => {
+		return new Intl.DateTimeFormat("en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		}).format(new Date(date));
+	};
+
+	const formatRelativeTime = (date: Date) => {
+		const now = new Date();
+		const diff = now.getTime() - new Date(date).getTime();
+
+		const seconds = Math.floor(diff / 1000);
+		const minutes = Math.floor(seconds / 60);
+		const hours = Math.floor(minutes / 60);
+		const days = Math.floor(hours / 24);
+
+		if (days > 0) {
+			return days === 1 ? "Yesterday" : `${days} days ago`;
+		} else if (hours > 0) {
+			return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+		} else if (minutes > 0) {
+			return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+		} else {
+			return "Just now";
+		}
+	};
+
+	const getLanguageIcon = (language: string) => {
+		switch (language.toLowerCase()) {
+			case "javascript":
+				return <div className="text-yellow-400 font-bold text-lg">JS</div>;
+			case "typescript":
+				return <div className="text-blue-500 font-bold text-lg">TS</div>;
+			case "css":
+				return <div className="text-pink-500 font-bold text-lg">CSS</div>;
+			case "html":
+				return <div className="text-orange-500 font-bold text-lg">HTML</div>;
+			case "python":
+				return <div className="text-green-500 font-bold text-lg">PY</div>;
+			default:
+				return <Code size={18} />;
+		}
+	};
+
+	const nextOnboardingStep = () => {
+		if (onboardingStep < 4) {
+			setOnboardingStep(onboardingStep + 1);
+		} else {
+			setShowOnboarding(false);
+		}
+	};
+
+	const handleUpgrade = () => {
+		setIsProUser(true);
+		localStorage.setItem("isProUser", "true");
+		setShowUpgradeModal(false);
+		showNotification(
+			"Upgraded to SnippetPro Premium! Enjoy all features.",
+			"success"
+		);
+	};
+
+	const Navigation = () => (
+		<nav className="flex items-center text-sm mb-4 overflow-x-auto whitespace-nowrap pb-1">
+			{breadcrumbs.map((crumb, index) => (
+				<React.Fragment key={crumb.id}>
+					{index > 0 && (
+						<ChevronRight
+							size={14}
+							className={`mx-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
+						/>
+					)}
+					<button
+						onClick={() => {
+							if (crumb.id === "home") {
+								setSelectedCategory("all");
+								setCurrentSnippet(null);
+							} else if (crumb.id === "category") {
+								setCurrentSnippet(null);
+							}
+						}}
+						className={`hover:underline ${
+							index === breadcrumbs.length - 1
+								? darkMode
+									? "text-white font-medium"
+									: "text-gray-900 font-medium"
+								: darkMode
+								? "text-gray-400 hover:text-gray-300"
+								: "text-gray-600 hover:text-gray-800"
+						}`}
+					>
+						{crumb.id === "home" ? "All" : crumb.name}
+					</button>
+				</React.Fragment>
+			))}
+		</nav>
+	);
+
+	const SnippetCard = ({ snippet }: { snippet: Snippet }) => (
+		<div
+			onClick={() => viewSnippet(snippet)}
+			className={`relative rounded-xl shadow-sm border transition-all cursor-pointer transform hover:scale-102 hover:shadow-md ${
+				darkMode
+					? "bg-gray-800 border-gray-700 hover:bg-gray-750"
+					: "bg-white border-gray-100 hover:bg-gray-50"
+			} p-5 flex flex-col`}
+		>
+			<div className="flex justify-between items-start mb-2">
+				<div className="flex items-center">
+					<div className={`mr-3 p-2 rounded-lg bg-opacity-20`}>
+						{getLanguageIcon(snippet.language)}
+					</div>
+					<h3 className="font-semibold text-lg text-clip mr-2">
+						{snippet.title}
+					</h3>
+				</div>
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						toggleFavorite(snippet.id);
+					}}
+					className={`p-1.5 rounded-full transition-colors ${
+						snippet.isFavorite
+							? "text-yellow-400 bg-yellow-50"
+							: darkMode
+							? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
+							: "text-gray-300 hover:text-yellow-400 hover:bg-gray-100"
+					}`}
+					aria-label={
+						snippet.isFavorite ? "Remove from favorites" : "Add to favorites"
+					}
+				>
+					<Star
+						size={16}
+						className={snippet.isFavorite ? "fill-current" : ""}
+					/>
+				</button>
+			</div>
+
+			<p
+				className={`text-sm mb-3 line-clamp-2 flex-grow ${
+					darkMode ? "text-gray-400" : "text-gray-600"
+				}`}
+			>
+				{snippet.description}
+			</p>
+
+			<div className="flex flex-wrap items-center gap-2 mb-3">
+				<div
+					className={`px-2 py-0.5 rounded-full text-xs ${
+						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
+					} flex items-center`}
+				>
+					<Folder size={12} className="mr-1" />
+					{snippet.category}
+				</div>
+
+				<div
+					className={`px-2 py-0.5 rounded-full text-xs ${
+						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
+					}`}
+				>
+					<Clock size={12} className="inline mr-1" />
+					{formatRelativeTime(snippet.lastAccessed || snippet.created)}
+				</div>
+			</div>
+
+			<div className="flex flex-wrap gap-1.5 mb-1">
+				{snippet.tags.slice(0, 3).map((tag, index) => (
+					<div
+						key={index}
+						className={`px-2 py-0.5 rounded-full text-xs ${
+							darkMode
+								? "bg-blue-900 bg-opacity-40 text-blue-300"
+								: "bg-blue-50 text-blue-700"
+						}`}
+					>
+						#{tag}
+					</div>
+				))}
+				{snippet.tags.length > 3 && (
+					<div
+						className={`px-2 py-0.5 rounded-full text-xs ${
+							darkMode
+								? "bg-gray-700 text-gray-400"
+								: "bg-gray-100 text-gray-600"
+						}`}
+					>
+						+{snippet.tags.length - 3}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+
+	const SnippetListItem = ({ snippet }: { snippet: Snippet }) => (
+		<div
+			onClick={() => viewSnippet(snippet)}
+			className={`relative rounded-lg shadow-sm border p-3 transition-all cursor-pointer hover:shadow-md ${
+				darkMode
+					? "bg-gray-800 border-gray-700 hover:bg-gray-750"
+					: "bg-white border-gray-100 hover:bg-gray-50"
+			} flex justify-between items-center`}
+		>
+			<div className="flex items-center flex-grow min-w-0">
+				<div className={`mr-3 p-1.5 rounded-lg bg-opacity-20`}>
+					{getLanguageIcon(snippet.language)}
+				</div>
+				<div className="min-w-0">
+					<h3 className="font-medium text-base truncate">{snippet.title}</h3>
+					<p
+						className={`text-xs truncate ${
+							darkMode ? "text-gray-400" : "text-gray-600"
+						}`}
+					>
+						{snippet.description}
+					</p>
+				</div>
+			</div>
+
+			<div className="flex items-center ml-4">
+				<div
+					className={`hidden sm:block mr-3 px-2 py-0.5 rounded-full text-xs ${
+						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
+					}`}
+				>
+					{snippet.category}
+				</div>
+
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						toggleFavorite(snippet.id);
+					}}
+					className={`p-1.5 rounded-full transition-colors ${
+						snippet.isFavorite
+							? "text-yellow-400 bg-yellow-50"
+							: darkMode
+							? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
+							: "text-gray-300 hover:text-yellow-400 hover:bg-gray-100"
+					}`}
+					aria-label={
+						snippet.isFavorite ? "Remove from favorites" : "Add to favorites"
+					}
+				>
+					<Star
+						size={16}
+						className={snippet.isFavorite ? "fill-current" : ""}
+					/>
+				</button>
+			</div>
+		</div>
+	);
+
+	return (
+		<div
+			className={`flex flex-col min-h-screen transition-colors duration-200 ${
+				darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
+			}`}
+		>
+			{}
+			<header
+				className={`sticky top-0 z-50 ${
+					darkMode ? "bg-gray-800" : "bg-white"
+				} shadow-sm border-b ${
+					darkMode ? "border-gray-700" : "border-gray-200"
+				}`}
+			>
+				<div className="container mx-auto px-4 py-3 flex items-center justify-between">
+					<div className="flex items-center">
+						<div className="flex items-center mr-6">
+							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg shadow-sm">
+								<Code size={22} className="text-white" />
+							</div>
+							<h1 className="ml-2.5 text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
+								SnippetPro
+							</h1>
+							{isProUser && (
+								<span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 rounded-full shadow-sm flex items-center">
+									<Star size={14} className="text-yellow-600 mr-1" />
+									{/* Optionally, you can remove the text or keep a tooltip */}
+								</span>
+							)}
+						</div>
+
+						{}
+						<div
+							className={`relative hidden md:block max-w-md transition-all duration-300 ${
+								isSearchFocused ? "w-96" : "w-64"
+							}`}
+						>
+							<div
+								className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
+									darkMode ? "text-gray-400" : "text-gray-500"
+								}`}
+							>
+								<Search size={16} />
+							</div>
+							<input
+								ref={searchInputRef}
+								type="text"
+								placeholder="Search snippets (Ctrl+K)"
+								className={`py-2 pl-10 pr-4 block w-full rounded-lg ${
+									darkMode
+										? "bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+										: "bg-gray-100 border-gray-200 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+								} transition-all border`}
+								value={searchQuery}
+								onChange={(e) => {
+									setSearchQuery(e.target.value);
+									if (e.target.value) {
+										setFilterType("search");
+									} else {
+										setFilterType("all");
+									}
+								}}
+								onFocus={() => setIsSearchFocused(true)}
+								onBlur={() => setIsSearchFocused(false)}
+							/>
+							{searchQuery && (
+								<button
+									onClick={() => {
+										setSearchQuery("");
+										setFilterType("all");
+									}}
+									className="absolute inset-y-0 right-0 pr-3 flex items-center"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className={`h-4 w-4 ${
+											darkMode ? "text-gray-400" : "text-gray-500"
+										}`}
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M6 18L18 6M6 6l12 12"
+										/>
+									</svg>
+								</button>
+							)}
+						</div>
+					</div>
+
+					<div className="flex items-center space-x-3">
+						{}
+						<button
+							onClick={() => setDarkMode(!darkMode)}
+							className={`p-2 rounded-lg ${
+								darkMode
+									? "bg-gray-700 hover:bg-gray-600 text-gray-200"
+									: "bg-gray-100 hover:bg-gray-200 text-gray-700"
+							} transition-colors`}
+							aria-label="Toggle theme"
+							title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+						>
+							{darkMode ? <Sun size={18} /> : <Moon size={18} />}
+						</button>
+
+						{}
+						<div className="relative hidden sm:block">
+							<button
+								onClick={() => setShowExportModal(!showExportModal)}
+								className={`p-2 rounded-lg ${
+									darkMode
+										? "bg-gray-700 hover:bg-gray-600 text-gray-200"
+										: "bg-gray-100 hover:bg-gray-200 text-gray-700"
+								} transition-colors`}
+								aria-label="Import/Export"
+								title="Import/Export"
+							>
+								<Download size={18} />
+							</button>
+							{showExportModal && (
+								<div
+									className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg ${
+										darkMode
+											? "bg-gray-800 border border-gray-700"
+											: "bg-white border border-gray-200"
+									} z-50`}
+								>
+									<div className="py-1">
+										<button
+											onClick={exportSnippets}
+											className={`flex items-center w-full px-4 py-2 text-sm ${
+												darkMode
+													? "hover:bg-gray-700 text-gray-200"
+													: "hover:bg-gray-100 text-gray-700"
+											}`}
+										>
+											<Upload size={16} className="mr-2" />
+											Export Snippets
+										</button>
+										<label
+											className={`flex items-center w-full px-4 py-2 text-sm cursor-pointer ${
+												darkMode
+													? "hover:bg-gray-700 text-gray-200"
+													: "hover:bg-gray-100 text-gray-700"
+											}`}
+										>
+                      <Download size={16} className="mr-2" />
+											Import Snippets
+											<input
+												type="file"
+												accept=".json"
+												className="hidden"
+												onChange={importSnippets}
+											/>
+										</label>
+									</div>
+								</div>
+							)}
+						</div>
+
+						{/* New Snippet Button - always visible */}
+						<button
+							onClick={createNewSnippet}
+							className="hidden md:flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all shadow-sm"
+						>
+							<Plus size={18} className="mr-1.5" />
+							<span>New Snippet</span>
+						</button>
+
+						{/* Mobile: Sort and Plus icons */}
+						<div className="flex md:hidden items-center space-x-2">
+							<button
+								onClick={() => setShowMobileSortOptions(true)}
+								className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+								aria-label="Sort snippets"
+								title="Sort"
+							>
+								<Filter size={18} />
+							</button>
+							<button
+								onClick={() => setShowMobileNav(!showMobileNav)}
+								className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+								aria-label="Open menu"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M4 6h16M4 12h16M4 18h16"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+
+				{}
+				<div className="md:hidden px-4 pb-3">
+					<div className="relative">
+						<div
+							className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
+								darkMode ? "text-gray-400" : "text-gray-500"
+							}`}
+						>
+							<Search size={16} />
+						</div>
+						<input
+							type="text"
+							placeholder="Search snippets..."
+							className={`py-2 pl-10 pr-4 block w-full rounded-lg border ${
+								darkMode
+									? "bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+									: "bg-gray-100 border-gray-200 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+							}`}
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+						/>
+						{searchQuery && (
+							<button
+								onClick={() => setSearchQuery("")}
+								className="absolute inset-y-0 right-0 pr-3 flex items-center"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className={`h-4 w-4 ${
+										darkMode ? "text-gray-400" : "text-gray-500"
+									}`}
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</button>
+						)}
+					</div>
+				</div>
+
+				{}
+				{showMobileNav && (
+					<div className="fixed inset-0 z-50 md:hidden bg-black bg-opacity-40">
+						<div
+							className={`absolute left-0 top-0 w-full h-full overflow-y-auto max-h-screen ${
+								darkMode ? "bg-gray-800" : "bg-white"
+							} shadow-lg p-4 border-t ${
+								darkMode ? "border-gray-700" : "border-gray-200"
+							} pt-10`}
+						>
+							{/* Close button */}
+							<button
+								onClick={() => setShowMobileNav(false)}
+								 className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 z-50"
+								aria-label="Close menu"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+							<div className="flex flex-col space-y-2 mt-8">
+								<button
+									onClick={() => {
+										createNewSnippet();
+										setShowMobileNav(false);
+									}}
+									className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all shadow-sm"
+								>
+									<Plus size={18} className="mr-1.5" />
+									<span>New Snippet</span>
+								</button>
+
+								{!isProUser && (
+									<button
+										onClick={() => {
+											setShowUpgradeModal(true);
+											setShowMobileNav(false);
+										}}
+										className="flex items-center w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-600 focus:outline-none transition-all shadow-sm"
+									>
+										<Gift size={18} className="mr-2" />
+										<span>Upgrade to Premium</span>
+									</button>
+								)}
+
+								<div
+									className={`pt-2 border-t ${
+										darkMode ? "border-gray-700" : "border-gray-200"
+									}`}
+								>
+									<div className="mb-2 font-medium">Categories</div>
+									<ul className="space-y-1">
+										<li>
+											<button
+												onClick={() => {
+													setSelectedCategory("all");
+													setShowMobileNav(false);
+												}}
+												className={`w-full text-left py-2 px-4 rounded-md ${
+													selectedCategory === "all"
+														? "bg-blue-600 text-white"
+														: darkMode
+														? "hover:bg-gray-700"
+														: "hover:bg-gray-100"
+												}`}
+											>
+												All Snippets
+											</button>
+										</li>
+										{categories.map((category) => (
+											<li key={category.id}>
+												<button
+													onClick={() => {
+														setSelectedCategory(category.name);
+														setShowMobileNav(false);
+													}}
+													className={`w-full text-left py-2 px-4 rounded-md ${
+														selectedCategory === category.name
+															? "bg-blue-600 text-white"
+															: darkMode
+															? "hover:bg-gray-700"
+															: "hover:bg-gray-100"
+													}`}
+												>
+													{category.name} ({category.snippetCount})
+												</button>
+											</li>
+										))}
+									</ul>
+								</div>
+
+								<div
+									className={`pt-2 border-t ${
+										darkMode ? "border-gray-700" : "border-gray-200"
+									}`}
+								>
+									<div className="mb-2 font-medium">Quick Access</div>
+									<ul className="space-y-1">
+										<li>
+											<button
+												onClick={() => {
+													setShowMobileNav(false);
+												}}
+												className={`w-full flex items-center justify-between py-2 px-4 rounded-md ${
+													searchQuery === "favorite:true"
+														? "bg-blue-600 text-white"
+														: darkMode
+														? "hover:bg-gray-700"
+														: "hover:bg-gray-100"
+												}`}
+											>
+												<div className="flex items-center">
+													<Star size={16} className="mr-2 text-yellow-400" />
+													<span>Favorites</span>
+												</div>
+												<span className="text-sm px-2 py-0.5 rounded-full bg-opacity-50">
+													{favoriteSnippets.length}
+												</span>
+											</button>
+										</li>
+										<li>
+											<button
+												onClick={() => {
+													setShowMobileNav(false);
+												}}
+												className={`w-full flex items-center justify-between py-2 px-4 rounded-md ${
+													searchQuery === "recent:true"
+														? "bg-blue-600 text-white"
+														: darkMode
+														? "hover:bg-gray-700"
+														: "hover:bg-gray-100"
+												}`}
+											>
+												<div className="flex items-center">
+													<Clock size={16} className="mr-2 text-green-400" />
+													<span>Recent</span>
+												</div>
+												<span className="text-sm px-2 py-0.5 rounded-full bg-opacity-50">
+													{recentSnippets.length}
+												</span>
+											</button>
+										</li>
+									</ul>
+								</div>
+
+								<div
+									className={`pt-2 border-t ${
+										darkMode ? "border-gray-700" : "border-gray-200"
+									}`}
+								>
+									<div className="flex items-center space-x-2">
+										<div
+											className={`flex rounded-md overflow-hidden border ${
+												darkMode ? "border-gray-700" : "border-gray-200"
+											}`}
+											style={{ height: '40px' }}
+										>
+											<button
+												onClick={() => setViewMode("grid")}
+												className={`flex items-center justify-center px-4 py-2 ${
+													viewMode === "grid"
+														? "bg-blue-600 text-white"
+														: darkMode
+															? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+															: "bg-white hover:bg-gray-50 text-gray-600"
+												}`}
+												style={{ height: '40px' }}
+												title="Grid view"
+											>
+												<Grid size={18} />
+											</button>
+											<button
+												onClick={() => setViewMode("list")}
+												className={`flex items-center justify-center px-4 py-2 ${
+													viewMode === "list"
+															? "bg-blue-600 text-white"
+															: darkMode
+																? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+																: "bg-white hover:bg-gray-50 text-gray-600"
+												}`}
+												style={{ height: '40px' }}
+												title="List view"
+											>
+												<List size={18} />
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
+			</header>
+
+			<main className="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-8 gap-6">
+				{}
+				<aside
+					className={`hidden md:block md:col-span-2 ${
+						darkMode ? "bg-gray-800" : "bg-white"
+					} rounded-xl shadow-sm border ${
+						darkMode ? "border-gray-700" : "border-gray-200"
+					} transition-colors p-4 h-fit sticky top-24`}
+				>
+					<div className="mb-4">
+						<button
+							onClick={() => setSelectedCategory("all")}
+							className={`w-full flex items-center justify-between p-2 rounded-md transition-colors ${
+								selectedCategory === "all"
+									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+									: darkMode
+									? "hover:bg-gray-700"
+									: "hover:bg-gray-100"
+							}`}
+						>
+							<span className="font-medium">All Snippets</span>
+							<span
+								className={`text-sm px-2 py-0.5 rounded-full ${
+									selectedCategory === "all"
+										? "bg-white bg-opacity-20 text-black"
+										: darkMode
+										? "bg-gray-700"
+										: "bg-gray-200"
+								}`}
+							>
+								{snippets.length}
+							</span>
+						</button>
+					</div>
+
+					<div className="mb-2 flex items-center justify-between">
+						<h3 className="font-semibold">Categories</h3>
+						<button
+							onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+							className={`p-1 rounded-md transition-colors ${
+								darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+							}`}
+						>
+							{showCategoryDropdown ? (
+								<ChevronDown size={16} />
+							) : (
+								<ChevronRight size={16} />
+							)}
+						</button>
+					</div>
+
+					{showCategoryDropdown && (
+						<div className="space-y-1 mb-4 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+							{categories.map((category) => (
+								<button
+									key={category.id}
+									onClick={() => setSelectedCategory(category.name)}
+									className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
+										selectedCategory === category.name
+											? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+											: darkMode
+											? "hover:bg-gray-700"
+											: "hover:bg-gray-100"
+									}`}
+								>
+									<span>{category.name}</span>
+									<span
+										className={`text-xs px-2 py-0.5 rounded-full ${
+											selectedCategory === category.name
+												? "bg-white bg-opacity-20 text-black"
+												: darkMode
+												? "bg-gray-700 text-gray-300"
+												: "bg-gray-200 text-gray-700"
+										}`}
+									>
+										{category.snippetCount}
+									</span>
+								</button>
+							))}
+
+							{}
+							{showNewCategoryInput ? (
+								<div className="mt-2">
+									<div className="flex items-center space-x-2 mb-2">
+										<input
+											type="text"
+											placeholder="Category name"
+											className={`block flex-grow py-1 px-2 text-sm rounded-md border ${
+												darkMode
+													? "bg-gray-700 border-gray-600 text-white"
+													: "bg-gray-100 border-gray-200 text-gray-900"
+											}`}
+											value={newCategory}
+											onChange={(e) => setNewCategory(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") addNewCategory();
+												if (e.key === "Escape") setShowNewCategoryInput(false);
+											}}
+										/>
+										<button
+											onClick={addNewCategory}
+											className="p-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+											title="Add"
+										>
+											<Plus size={16} />
+										</button>
+									</div>
+									<button
+										onClick={() => {
+											setShowNewCategoryInput(false);
+											setNewCategory("");
+										}}
+										className={`w-full text-center text-xs py-1 rounded-md ${
+											darkMode
+												? "text-gray-400 hover:bg-gray-700"
+												: "text-gray-500 hover:bg-gray-100"
+										}`}
+									>
+										Cancel
+									</button>
+								</div>
+							) : (
+								<button
+									onClick={() => setShowNewCategoryInput(true)}
+									className={`w-full flex items-center p-2 rounded-md text-sm transition-colors ${
+										darkMode
+											? "text-blue-400 hover:bg-gray-700"
+											: "text-blue-600 hover:bg-gray-100"
+									}`}
+								>
+									<Plus size={14} className="mr-1" />
+									<span>Add Category</span>
+								</button>
+							)}
+						</div>
+					)}
+
+					<div className="mb-2 flex items-center justify-between">
+						<h3 className="font-semibold">Popular Tags</h3>
+					</div>
+					<div className="flex flex-wrap gap-2 mb-6">
+						{mostUsedTags.map((tag) => (
+							<button
+								key={tag}
+								onClick={() => setSearchQuery(tag)}
+								className={`px-3 py-1 text-xs rounded-full ${
+									darkMode
+										? "bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600"
+										: "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
+								} transition-colors`}
+							>
+								#{tag}
+							</button>
+						))}
+					</div>
+
+					<div
+						className={`border-t ${
+							darkMode ? "border-gray-700" : "border-gray-200"
+						} pt-4`}
+					>
+						<button
+							onClick={() => {
+								setFilterType("favorites");
+								setSelectedCategory("all");
+							}}
+							className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
+								filterType === "favorites"
+									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+									: darkMode
+									? "hover:bg-gray-700"
+									: "hover:bg-gray-100"
+							}`}
+						>
+							<div className="flex items-center">
+								<Star size={16} className="mr-2 text-yellow-400" />
+								<span>Favorites</span>
+							</div>
+							<span
+								className={`text-xs px-2 py-0.5 rounded-full ${
+									filterType === "favorites"
+										? "bg-white bg-opacity-20 text-black"
+										: darkMode
+										? "bg-gray-700"
+										: "bg-gray-200"
+								}`}
+							>
+								{favoriteSnippets.length}
+							</span>
+						</button>
+
+						<button
+							onClick={() => {
+								setFilterType("recents");
+								setSelectedCategory("all");
+							}}
+							className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
+								filterType === "recents"
+									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+									: darkMode
+									? "hover:bg-gray-700"
+									: "hover:bg-gray-100"
+							}`}
+						>
+							<div className="flex items-center">
+								<Clock size={16} className="mr-2 text-green-400" />
+								<span>Recent</span>
+							</div>
+							<span
+								className={`text-xs px-2 py-0.5 rounded-full ${
+									filterType === "recents"
+										? "bg-white bg-opacity-20 text-black"
+										: darkMode
+										? "bg-gray-700"
+										: "bg-gray-200"
+								}`}
+							>
+								{recentSnippets.length}
+							</span>
+						</button>
+					</div>
+
+					{}
+					{!isProUser && (
+						<div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100">
+							<h4 className="font-medium text-amber-900 flex items-center">
+								<Gift size={16} className="mr-1.5 text-yellow-500" />
+								Premium Features
+							</h4>
+							<p className="mt-2 text-xs text-amber-800">
+								Unlock unlimited snippets, advanced features, and cloud backup
+							</p>
+							<button
+								onClick={() => setShowUpgradeModal(true)}
+								className="mt-2 w-full py-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-amber-900 font-medium text-sm rounded-md hover:from-yellow-500 hover:to-amber-600 transition-colors shadow-sm"
+							>
+								Upgrade Now
+							</button>
+						</div>
+					)}
+				</aside>
+
+				{}
+				<div className="md:col-span-6">
+					{}
+					{(currentSnippet || selectedCategory !== "all") && <Navigation />}
+
+					{}
+					{currentSnippet && (
+						<div className="mb-4">
+							<button
+								onClick={goBack}
+								className={`flex items-center px-3 py-1.5 rounded-md ${
+									darkMode
+										? "bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300"
+										: "bg-white hover:bg-gray-50 border border-gray-200 text-gray-700"
+								} transition-colors shadow-sm`}
+							>
+								<ChevronLeft size={16} className="mr-1" />
+								<span>Back to snippets</span>
+							</button>
+						</div>
+					)}
+
+					{}
+					{!currentSnippet && (
+						<div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+							<div className="flex items-center">
+								<h2 className="text-lg font-semibold mr-3">
+									{filterType === "favorites"
+										? "Favorite Snippets"
+										: filterType === "recents"
+										? "Recent Snippets"
+										: selectedCategory !== "all"
+										? `${selectedCategory} Snippets`
+										: "All Snippets"}
+								</h2>
+								<div
+									className={`text-sm rounded-full px-3 py-0.5 ${
+										darkMode
+											? "bg-blue-900 bg-opacity-40 text-blue-300"
+											: "bg-blue-100 text-blue-800"
+									} `}
+								>
+									{filteredSnippets.length} snippets
+								</div>
+							</div>
+
+							<div className="flex items-center space-x-2">
+								{}
+								<div className="relative hidden sm:block">
+									<button
+										onClick={() => setShowSortOptions(!showSortOptions)}
+										className={`flex items-center px-3 py-1.5 rounded-md ${
+											darkMode
+												? "bg-gray-800 hover:bg-gray-700 border border-gray-700"
+												: "bg-white hover:bg-gray-50 border border-gray-200"
+										} transition-colors shadow-sm`}
+									>
+										<Filter size={16} className="mr-1.5" />
+										<span>Sort</span>
+										<ChevronDown size={14} className="ml-1" />
+									</button>
+									{showSortOptions && (
+										<div
+											className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg ${
+												darkMode
+													? "bg-gray-800 border border-gray-700"
+													: "bg-white border border-gray-200"
+											} z-10`}
+										>
+											<div className="py-1">
+												{[
+													{ value: "newest", label: "Newest First" },
+													{ value: "oldest", label: "Oldest First" },
+													{ value: "a-z", label: "A to Z" },
+													{ value: "z-a", label: "Z to A" },
+													{ value: "most-used", label: "Most Used" },
+												].map((option) => (
+													<button
+														key={option.value}
+														onClick={() => {
+															setSortOption(option.value as SortOption);
+															setShowSortOptions(false);
+														}}
+														className={`flex items-center w-full px-4 py-2 text-sm ${
+															sortOption === option.value
+																? "bg-blue-600 text-white"
+																: darkMode
+																? "hover:bg-gray-700 text-gray-200"
+																: "hover:bg-gray-100 text-gray-700"
+														}`}
+													>
+														{sortOption === option.value && (
+															<Check size={16} className="mr-2" />
+														)}
+														{sortOption !== option.value && (
+															<div className="w-4 mr-2"></div>
+														)}
+														{option.label}
+													</button>
+												))}
+											</div>
+										</div>
+									)}
+								</div>
+
+								{}
+								<div
+									className={`hidden sm:flex rounded-md overflow-hidden border ${
+										darkMode ? "border-gray-700" : "border-gray-200"
+									}`}
+								>
+									<button
+										onClick={() => setViewMode("grid")}
+										className={`p-1.5 ${
+											viewMode === "grid"
+												? "bg-blue-600 text-white"
+												: darkMode
+												? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+												: "bg-white hover:bg-gray-50 text-gray-600"
+										}`}
+										title="Grid view"
+									>
+										<Grid size={16} />
+									</button>
+									<button
+										onClick={() => setViewMode("list")}
+										className={`p-1.5 ${
+											viewMode === "list"
+												? "bg-blue-600 text-white"
+												: darkMode
+												? "bg-gray-800 hover:bg-gray-700 text-gray-400"
+												: "bg-white hover:bg-gray-50 text-gray-600"
+										}`}
+										title="List view"
+									>
+										<List size={16} />
+									</button>
+								</div>
+
+								{}
+								<button
+									onClick={createNewSnippet}
+									className="sm:hidden flex items-center p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
+									title="New snippet"
+								>
+									<Plus size={18} />
+								</button>
+							</div>
+						</div>
+					)}
+
+					{}
+					{filteredSnippets.length === 0 && !currentSnippet && !isEditing && (
+						<div
+							className={`rounded-xl shadow-sm border ${
+								darkMode
+									? "bg-gray-800 border-gray-700"
+									: "bg-white border-gray-200"
+							} p-8 text-center`}
+						>
+							<div
+								className={`mx-auto h-24 w-24 rounded-full flex items-center justify-center ${
+									darkMode ? "border-gray-700" : "border-gray-100"
+								} mb-4`}
+							>
+								<FileText
+									size={36}
+									className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}
+								/>
+							</div>
+							<h3 className="text-xl font-bold mb-2">No snippets found</h3>
+							<p
+								className={`mb-4 ${
+									darkMode ? "text-gray-400" : "text-gray-600"
+								}`}
+							>
+								{searchQuery
+									? "No snippets match your search criteria."
+									: "You don't have any snippets in this category yet."}
+							</p>
+							<button
+								onClick={createNewSnippet}
+								className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
+							>
+								<Plus size={18} className="mr-1.5" />
+								Create New Snippet
+							</button>
+						</div>
+					)}
+
+					{}
+					{isEditing && currentSnippet ? (
+						<div
+							className={`rounded-xl shadow-sm border ${
+								darkMode
+									? "bg-gray-800 border-gray-700"
+									: "bg-white border-gray-200"
+							} p-5`}
+						>
+							<div className="mb-4">
+								<label
+									className={`block mb-1 font-medium ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									Title
+								</label>
+								<input
+									type="text"
+									value={currentSnippet.title}
+									onChange={(e) => updateSnippetField("title", e.target.value)}
+									className={`block w-full px-4 py-2 rounded-lg border ${
+										darkMode
+											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+									}`}
+								/>
+							</div>
+
+							<div className="mb-4">
+								<label
+									className={`block mb-1 font-medium ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									Description
+								</label>
+								<textarea
+									value={currentSnippet.description}
+									onChange={(e) =>
+										updateSnippetField("description", e.target.value)
+									}
+									className={`block w-full px-4 py-2 rounded-lg border ${
+										darkMode
+											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+									}`}
+									rows={2}
+								/>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+								<div>
+									<label
+										className={`block mb-1 font-medium ${
+											darkMode ? "text-gray-300" : "text-gray-700"
+										}`}
+									>
+										Language
+									</label>
+									<select
+										value={currentSnippet.language}
+										onChange={(e) =>
+											updateSnippetField("language", e.target.value)
+										}
+										className={`block w-full px-4 py-2 rounded-lg border ${
+											darkMode
+												? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+												: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+										}`}
+									>
+										<option value="javascript">JavaScript</option>
+										<option value="typescript">TypeScript</option>
+										<option value="html">HTML</option>
+										<option value="css">CSS</option>
+										<option value="python">Python</option>
+										<option value="java">Java</option>
+										<option value="rust">Rust</option>
+										<option value="go">Go</option>
+									</select>
+								</div>
+
+								<div>
+									<label
+										className={`block mb-1 font-medium ${
+											darkMode ? "text-gray-300" : "text-gray-700"
+										}`}
+									>
+										Category
+									</label>
+									<select
+										value={currentSnippet.category}
+										onChange={(e) =>
+											updateSnippetField("category", e.target.value)
+										}
+										className={`block w-full px-4 py-2 rounded-lg border ${
+											darkMode
+												? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+												: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+										}`}
+									>
+										{categories.map((category) => (
+											<option key={category.id} value={category.name}>
+												{category.name}
+											</option>
+										))}
+									</select>
+								</div>
+							</div>
+
+							<div className="mb-4">
+								<label
+									className={`block mb-1 font-medium ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									Tags (comma separated)
+								</label>
+								<input
+									type="text"
+									value={currentSnippet.tags.join(", ")}
+									onChange={(e) =>
+										updateSnippetField(
+											"tags",
+											e.target.value
+												.split(",")
+												.map((tag) => tag.trim())
+												.filter((tag) => tag)
+										)
+									}
+									className={`block w-full px-4 py-2 rounded-lg border ${
+										darkMode
+											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+									}`}
+									placeholder="E.g. react, hooks, state"
+								/>
+							</div>
+
+							<div className="mb-4">
+								<div className="flex items-center justify-between mb-1">
+									<label
+										className={`font-medium ${
+											darkMode ? "text-gray-300" : "text-gray-700"
+										}`}
+									>
+										Code
+									</label>
+									<div className="flex items-center space-x-2">
+										<div
+											className={`text-xs ${
+												darkMode ? "text-gray-400" : "text-gray-500"
+											}`}
+										>
+											Press Ctrl+S to save
+										</div>
+										<div
+											className={`px-2 py-0.5 rounded-md text-xs ${
+												darkMode
+													? "bg-gray-700 text-gray-300"
+													: "bg-gray-100 text-gray-700"
+											}`}
+										>
+											{currentSnippet.language.toUpperCase()}
+										</div>
+									</div>
+								</div>
+								<textarea
+									value={currentSnippet.code}
+									onChange={(e) => updateSnippetField("code", e.target.value)}
+									className={`block w-full px-4 py-2 rounded-lg border font-mono ${
+										darkMode
+											? "bg-gray-900 border-gray-600 text-gray-100 focus:border-blue-500 focus:ring-blue-500"
+											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+									}`}
+									rows={12}
+									style={{ fontSize: `${userPreferences.fontSize}px` }}
+								/>
+							</div>
+
+							<div className="flex items-center mb-4">
+								<input
+									type="checkbox"
+									id="favorite-checkbox"
+									checked={currentSnippet.isFavorite}
+									onChange={(e) =>
+										updateSnippetField("isFavorite", e.target.checked)
+									}
+									className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								/>
+								<label
+									htmlFor="favorite-checkbox"
+									className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}
+								>
+									Add to favorites
+								</label>
+							</div>
+
+							<div className="flex flex-wrap justify-end gap-2">
+								<button
+									onClick={() => setIsEditing(false)}
+									className={`px-4 py-2 rounded-lg border ${
+										darkMode
+											? "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+											: "bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
+									} transition-colors`}
+								>
+									Cancel
+								</button>
+								<button
+									onClick={saveSnippet}
+									className="px-4 py-2 flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
+								>
+									<Save size={18} className="mr-1.5" />
+									Save
+								</button>
+							</div>
+						</div>
+					) : currentSnippet ? (
+						<div
+							className={`rounded-xl shadow-sm border ${
+								darkMode
+									? "bg-gray-800 border-gray-700"
+									: "bg-white border-gray-200"
+							} p-5`}
+						>
+							<div className="flex flex-wrap justify-between items-start mb-4">
+								<div className="flex items-start">
+									<div className={`mr-3 mt-1 p-2 rounded-lg bg-opacity-20`}>
+										{getLanguageIcon(currentSnippet.language)}
+									</div>
+									<div>
+										<h2 className="text-xl font-bold">
+											{currentSnippet.title}
+										</h2>
+										<p
+											className={`mt-1 ${
+												darkMode ? "text-gray-400" : "text-gray-600"
+											}`}
+										>
+											{currentSnippet.description}
+										</p>
+									</div>
+								</div>
+
+								<div className="flex space-x-2 mt-3 sm:mt-0">
+									<button
+										onClick={() => toggleFavorite(currentSnippet.id)}
+										className={`p-2 rounded-md transition-colors ${
+											currentSnippet.isFavorite
+												? "text-yellow-400 bg-yellow-50"
+												: darkMode
+												? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
+												: "text-gray-500 hover:text-yellow-400 hover:bg-gray-100"
+										}`}
+										aria-label={
+											currentSnippet.isFavorite
+												? "Remove from favorites"
+												: "Add to favorites"
+										}
+										title={
+											currentSnippet.isFavorite
+												? "Remove from favorites"
+												: "Add to favorites"
+										}
+									>
+										<Star
+											size={20}
+											className={
+												currentSnippet.isFavorite ? "fill-current" : ""
+											}
+										/>
+									</button>
+
+									<button
+										onClick={() => setIsEditing(true)}
+										className={`p-2 rounded-md ${
+											darkMode
+												? "bg-gray-700 hover:bg-gray-600 text-blue-400"
+												: "bg-gray-100 hover:bg-gray-200 text-blue-600"
+										} transition-colors`}
+										aria-label="Edit snippet"
+										title="Edit snippet"
+									>
+										<Edit size={18} />
+									</button>
+
+									<button
+										onClick={() =>
+											copyToClipboard(currentSnippet.code, currentSnippet.id)
+										}
+										className={`p-2 rounded-md ${
+											darkMode
+												? "bg-gray-700 hover:bg-gray-600 text-green-400"
+												: "bg-gray-100 hover:bg-gray-200 text-green-600"
+										} transition-colors`}
+										aria-label="Copy to clipboard"
+										title="Copy to clipboard"
+									>
+										<Copy size={18} />
+									</button>
+
+									<button
+										onClick={() => deleteSnippet(currentSnippet.id)}
+										className={`p-2 rounded-md ${
+											darkMode
+												? "bg-gray-700 hover:bg-gray-600 text-red-400"
+												: "bg-gray-100 hover:bg-gray-200 text-red-600"
+										} transition-colors`}
+										aria-label="Delete snippet"
+										title="Delete snippet"
+									>
+										<Trash2 size={18} />
+									</button>
+								</div>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-2 mb-3">
+								<div
+									className={`px-3 py-1 rounded-full text-xs ${
+										darkMode ? "bg-gray-700" : "bg-gray-100"
+									} flex items-center`}
+								>
+									<span className={`mr-1.5 w-2 h-2 rounded-full `}></span>
+									{currentSnippet.language}
+								</div>
+								<div
+									className={`px-3 py-1 rounded-full text-xs ${
+										darkMode
+											? "bg-gray-700 text-gray-300"
+											: "bg-gray-100 text-gray-700"
+									}`}
+								>
+									<Folder size={12} className="inline mr-1" />
+									{currentSnippet.category}
+								</div>
+								<div
+									className={`px-3 py-1 rounded-full text-xs ${
+										darkMode
+											? "bg-gray-700 text-gray-300"
+											: "bg-gray-100 text-gray-700"
+									}`}
+								>
+									<Clock size={12} className="inline mr-1" />
+									{formatDate(currentSnippet.created)}
+								</div>
+								<div
+									className={`px-3 py-1 rounded-full text-xs ${
+										darkMode
+											? "bg-gray-700 text-gray-300"
+											: "bg-gray-100 text-gray-700"
+									}`}
+								>
+									<Bookmark size={12} className="inline mr-1" />
+									{currentSnippet.useCount}{" "}
+									{currentSnippet.useCount === 1 ? "use" : "uses"}
+								</div>
+							</div>
+
+							<div className="mb-4 flex flex-wrap gap-2">
+								{currentSnippet.tags.map((tag, index) => (
+									<div
+										key={index}
+										className={`px-2 py-1 rounded-full text-xs ${
+											darkMode
+												? "bg-blue-900 bg-opacity-40 text-blue-300"
+												: "bg-blue-50 text-blue-700 border border-blue-100"
+										}`}
+									>
+										#{tag}
+									</div>
+								))}
+							</div>
+
+							<div className="overflow-hidden rounded-lg border mb-3 flex flex-col">
+								<div
+									className={`flex items-center justify-between px-4 py-2 border-b ${
+										darkMode
+											? "bg-gray-900 border-gray-700 text-gray-300"
+											: "bg-gray-50 border-gray-200 text-gray-700"
+									}`}
+								>
+									<div className="flex items-center">
+										<span className="font-medium text-sm">
+											{currentSnippet.language}
+										</span>
+									</div>
+									<div className="flex items-center">
+										<button
+											onClick={() =>
+												copyToClipboard(currentSnippet.code, currentSnippet.id)
+											}
+											className={`p-1 rounded text-xs flex items-center ${
+												darkMode
+													? "hover:bg-gray-800 text-gray-400 hover:text-gray-300"
+													: "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+											}`}
+											title="Copy code"
+										>
+											<Copy size={14} className="mr-1" />
+											Copy
+										</button>
+									</div>
+								</div>
+								<pre
+									className={`w-full p-4 overflow-x-auto font-mono ${
+										darkMode
+											? "bg-gray-900 text-gray-100"
+											: "bg-gray-50 text-gray-800"
+									}`}
+									style={{ fontSize: `${userPreferences.fontSize}px` }}
+								>
+									<code>{currentSnippet.code}</code>
+								</pre>
+							</div>
+
+							{copySuccess && (
+								<div className="mt-2 text-sm text-green-500 flex items-center justify-end">
+									<Check size={16} className="mr-1" />
+									{copySuccess}
+								</div>
+							)}
+
+							<div
+								className={`mt-6 flex flex-wrap justify-between items-center pt-4 border-t ${
+									darkMode ? "border-gray-700" : "border-gray-200"
+								}`}
+							>
+								<div className="text-sm">
+									<span
+										className={darkMode ? "text-gray-400" : "text-gray-600"}
+									>
+										Created:{" "}
+									</span>
+									<span
+										className={darkMode ? "text-gray-300" : "text-gray-700"}
+									>
+										{formatDate(currentSnippet.created)}
+									</span>
+								</div>
+								<div className="flex space-x-2">
+									<button
+										onClick={() => setIsEditing(true)}
+										className="px-4 py-2 flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
+									>
+										<Edit size={16} className="mr-1.5" />
+										Edit Snippet
+									</button>
+								</div>
+							</div>
+						</div>
+					) : (
+						<>
+							{}
+							{viewMode === "grid" ? (
+								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+									{currentSnippetsPage.map((snippet) => (
+										<SnippetCard key={snippet.id} snippet={snippet} />
+									))}
+								</div>
+							) : (
+								<div className="flex flex-col space-y-2">
+									{currentSnippetsPage.map((snippet) => (
+										<SnippetListItem key={snippet.id} snippet={snippet} />
+									))}
+								</div>
+							)}
+
+							{}
+							{totalPages > 1 && (
+								<div className="mt-6 flex justify-center">
+									<nav
+										className={`inline-flex rounded-md shadow-sm border ${
+											darkMode ? "border-gray-700" : "border-gray-200"
+										}`}
+										aria-label="Pagination"
+									>
+										<button
+											onClick={() => goToPage(currentPage - 1)}
+											disabled={currentPage === 1}
+											className={`px-3 py-2 rounded-l-md ${
+												currentPage === 1
+													? darkMode
+														? "bg-gray-800 text-gray-500 cursor-not-allowed"
+														: "bg-gray-100 text-gray-400 cursor-not-allowed"
+													: darkMode
+													? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+													: "bg-white hover:bg-gray-50 text-gray-700"
+											} text-sm font-medium`}
+										>
+											Previous
+										</button>
+										{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+											(page) => (
+												<button
+													key={page}
+													onClick={() => goToPage(page)}
+													className={`px-3 py-2 ${
+														currentPage === page
+															? "bg-blue-600 text-white"
+															: darkMode
+															? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+															: "bg-white hover:bg-gray-50 text-gray-700"
+													} text-sm font-medium`}
+												>
+													{page}
+												</button>
+											)
+										)}
+										<button
+											onClick={() => goToPage(currentPage + 1)}
+											disabled={currentPage === totalPages}
+											className={`px-3 py-2 rounded-r-md ${
+												currentPage === totalPages
+													? darkMode
+														? "bg-gray-800 text-gray-500 cursor-not-allowed"
+														: "bg-gray-100 text-gray-400 cursor-not-allowed"
+													: darkMode
+													? "bg-gray-800 hover:bg-gray-700 text-gray-300"
+													: "bg-white hover:bg-gray-50 text-gray-700"
+											} text-sm font-medium`}
+										>
+											Next
+										</button>
+									</nav>
+								</div>
+							)}
+						</>
+					)}
+				</div>
+			</main>
+
+			{}
+			<footer
+				className={`mt-auto py-6 ${
+					darkMode ? "bg-gray-800 text-gray-400" : "bg-white text-gray-600"
+				} border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+			>
+				<div className="container mx-auto px-4">
+					<div className="flex flex-col md:flex-row justify-between items-center">
+						<div className="flex items-center mb-4 md:mb-0">
+							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg shadow-sm mr-2">
+								<Code size={18} className="text-white" />
+							</div>
+							<span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
+								SnippetPro
+							</span>
+						</div>
+
+						<div className="flex flex-col text-sm items-center md:items-end">
+							<p className="mb-1">© 2025 SnippetPro. All rights reserved.</p>
+							<div className="flex space-x-3">
+								<a href="#" className="hover:underline">
+									Privacy Policy
+								</a>
+								<span>•</span>
+								<a href="#" className="hover:underline">
+									Terms of Service
+								</a>
+							</div>
+						</div>
+
+						<div className="flex space-x-4 mt-4 md:mt-0">
+							<a
+								href="#"
+								className={`p-2 rounded-full ${
+									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+								} transition-colors`}
+								title="GitHub"
+							>
+								<Github size={18} />
+							</a>
+							<a
+								href="#"
+								className={`p-2 rounded-full ${
+									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+								} transition-colors`}
+								title="Twitter"
+							>
+								<Twitter size={18} />
+							</a>
+							<a
+								href="#"
+								className={`p-2 rounded-full ${
+									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+								} transition-colors`}
+								title="LinkedIn"
+							>
+								<Linkedin size={18} />
+							</a>
+						</div>
+					</div>
+				</div>
+			</footer>
+
+			{}
+			{notification.show && (
+				<div
+					className={`fixed bottom-4 right-4 px-5 py-3 rounded-lg shadow-lg transition-all transform animate-slide-up max-w-sm flex items-center ${
+						notification.type === "success"
+							? "bg-green-600 text-white"
+							: notification.type === "error"
+							? "bg-red-600 text-white"
+							: "bg-blue-600 text-white"
+					}`}
+				>
+					{notification.type === "success" && (
+						<Check size={18} className="mr-2" />
+					)}
+					{notification.type === "error" && (
+						<AlertCircle size={18} className="mr-2" />
+					)}
+					{notification.type === "info" && <Info size={18} className="mr-2" />}
+					{notification.message}
+				</div>
+			)}
+
+			{}
+			{showDeleteModal && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+					<div
+						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
+							darkMode ? "bg-gray-800" : "bg-white"
+						} animate-slide-up`}
+					>
+						<h3 className="text-xl font-bold mb-2">Delete Snippet</h3>
+						<p className={darkMode ? "text-gray-300" : "text-gray-700"}>
+							Are you sure you want to delete this snippet? This action cannot
+							be undone.
+						</p>
+						<div className="flex justify-end space-x-3 mt-6">
+							<button
+								onClick={() => setShowDeleteModal(false)}
+								className={`px-4 py-2 rounded-lg ${
+									darkMode
+										? "bg-gray-700 hover:bg-gray-600 text-white"
+										: "bg-gray-200 hover:bg-gray-300 text-gray-800"
+								}`}
+							>
+								Cancel
+							</button>
+							<button
+								onClick={confirmDeleteSnippet}
+								className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm"
+							>
+								Delete
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{}
+			{showSettings && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+					<div
+						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
+							darkMode ? "bg-gray-800" : "bg-white"
+						} animate-slide-up overflow-y-auto max-h-[90vh]`}
+					>
+						<div className="flex justify-between items-center mb-4">
+							<h3 className="text-xl font-bold">Settings</h3>
+							<button
+								onClick={() => setShowSettings(false)}
+								className={`p-1.5 rounded-full ${
+									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
+								}`}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</button>
+						</div>
+
+						<div className="space-y-6">
+							<div>
+								<h4
+									className={`font-semibold text-lg mb-3 ${
+										darkMode ? "text-gray-200" : "text-gray-800"
+									}`}
+								>
+									Display Options
+								</h4>
+								<div className="space-y-4">
+									<div>
+										<label
+											className={`block mb-1 font-medium ${
+												darkMode ? "text-gray-300" : "text-gray-700"
+											}`}
+										>
+											Font Size
+										</label>
+										<div className="flex items-center">
+											<input
+												type="range"
+												min="12"
+												max="24"
+												value={userPreferences.fontSize}
+												onChange={(e) =>
+													setUserPreferences({
+														...userPreferences,
+														fontSize: parseInt(e.target.value),
+													})
+												}
+												className="w-full mr-2"
+											/>
+											<span className="w-10 text-center">
+												{userPreferences.fontSize}px
+											</span>
+										</div>
+									</div>
+
+									<div>
+										<label
+											className={`block mb-1 font-medium ${
+												darkMode ? "text-gray-300" : "text-gray-700"
+											}`}
+										>
+											Default View
+										</label>
+										<div className="flex">
+											<button
+												onClick={() =>
+													setUserPreferences({
+														...userPreferences,
+														defaultView: "grid",
+													})
+												}
+												className={`flex-1 flex items-center justify-center p-2 ${
+													userPreferences.defaultView === "grid"
+														? "bg-blue-600 text-white"
+														: darkMode
+														? "bg-gray-700 text-gray-300"
+														: "bg-gray-100 text-gray-700"
+												} rounded-l-md`}
+											>
+												<Grid size={16} className="mr-1.5" />
+												Grid
+											</button>
+											<button
+												onClick={() =>
+													setUserPreferences({
+														...userPreferences,
+														defaultView: "list",
+													})
+												}
+												className={`flex-1 flex items-center justify-center p-2 ${
+													userPreferences.defaultView === "list"
+														? "bg-blue-600 text-white"
+														: darkMode
+														? "bg-gray-700 text-gray-300"
+														: "bg-gray-100 text-gray-700"
+												} rounded-r-md`}
+											>
+												<List size={16} className="mr-1.5" />
+												List
+											</button>
+										</div>
+									</div>
+
+									<div>
+										<label
+											className={`block mb-1 font-medium ${
+												darkMode ? "text-gray-300" : "text-gray-700"
+											}`}
+										>
+											Items Per Page
+										</label>
+										<select
+											value={userPreferences.snippetsPerPage}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													snippetsPerPage: parseInt(e.target.value),
+												})
+											}
+											className={`block w-full px-4 py-2 rounded-lg border ${
+												darkMode
+													? "bg-gray-700 border-gray-600 text-white"
+													: "bg-gray-50 border-gray-300 text-gray-900"
+											}`}
+										>
+											<option value="6">6 snippets</option>
+											<option value="9">9 snippets</option>
+											<option value="12">12 snippets</option>
+											<option value="15">15 snippets</option>
+											<option value="24">24 snippets</option>
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<div>
+								<h4
+									className={`font-semibold text-lg mb-3 ${
+										darkMode ? "text-gray-200" : "text-gray-800"
+									}`}
+								>
+									Editor Settings
+								</h4>
+								<div className="space-y-4">
+									<div>
+										<label
+											className={`block mb-1 font-medium ${
+												darkMode ? "text-gray-300" : "text-gray-700"
+											}`}
+										>
+											Tab Size
+										</label>
+										<select
+											value={userPreferences.tabSize}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													tabSize: parseInt(e.target.value),
+												})
+											}
+											className={`block w-full px-4 py-2 rounded-lg border ${
+												darkMode
+													? "bg-gray-700 border-gray-600 text-white"
+													: "bg-gray-50 border-gray-300 text-gray-900"
+											}`}
+										>
+											<option value="2">2 spaces</option>
+											<option value="4">4 spaces</option>
+											<option value="8">8 spaces</option>
+										</select>
+									</div>
+
+									<div className="flex items-center">
+										<input
+											type="checkbox"
+											id="auto-save"
+											checked={userPreferences.autoSave}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													autoSave: e.target.checked,
+												})
+											}
+											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+										/>
+										<label
+											htmlFor="auto-save"
+											className={darkMode ? "text-gray-300" : "text-gray-700"}
+										>
+											Auto-save when editing
+										</label>
+									</div>
+
+									<div className="flex items-center">
+										<input
+											type="checkbox"
+											id="line-numbers"
+											checked={userPreferences.showLineNumbers}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													showLineNumbers: e.target.checked,
+												})
+											}
+											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+										/>
+										<label
+											htmlFor="line-numbers"
+											className={darkMode ? "text-gray-300" : "text-gray-700"}
+										>
+											Show line numbers
+										</label>
+									</div>
+
+									<div className="flex items-center">
+										<input
+											type="checkbox"
+											id="highlight-line"
+											checked={userPreferences.highlightCurrentLine}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													highlightCurrentLine: e.target.checked,
+												})
+											}
+											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+										/>
+										<label
+											htmlFor="highlight-line"
+											className={darkMode ? "text-gray-300" : "text-gray-700"}
+										>
+											Highlight current line
+										</label>
+									</div>
+
+									<div className="flex items-center">
+										<input
+											type="checkbox"
+											id="auto-brackets"
+											checked={userPreferences.autoCloseBrackets}
+											onChange={(e) =>
+												setUserPreferences({
+													...userPreferences,
+													autoCloseBrackets: e.target.checked,
+												})
+											}
+											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+										/>
+										<label
+											htmlFor="auto-brackets"
+											className={darkMode ? "text-gray-300" : "text-gray-700"}
+										>
+											Auto-close brackets
+										</label>
+									</div>
+								</div>
+							</div>
+
+							<div
+								className={`pt-4 border-t ${
+									darkMode ? "border-gray-700" : "border-gray-200"
+								}`}
+							>
+								<div className="flex justify-between items-center">
+									<button
+										onClick={() => {
+											showNotification(
+												"All settings reset to defaults",
+												"info"
+											);
+											setUserPreferences({
+												fontSize: 14,
+												tabSize: 2,
+												autoSave: true,
+												showLineNumbers: true,
+												defaultView: "grid",
+												highlightCurrentLine: true,
+												autoCloseBrackets: true,
+												snippetsPerPage: 9,
+												theme: "default",
+											});
+										}}
+										className={`px-4 py-2 rounded-lg ${
+											darkMode
+												? "bg-gray-700 hover:bg-gray-600 text-white"
+												: "bg-gray-100 hover:bg-gray-200 text-gray-800"
+										}`}
+									>
+										Reset to Default
+									</button>
+									<button
+										onClick={() => setShowSettings(false)}
+										className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-sm"
+									>
+										Save Changes
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{}
+			{showUpgradeModal && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+					<div
+						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 overflow-hidden ${
+							darkMode ? "bg-gray-800" : "bg-white"
+						} animate-slide-up`}
+					>
+						{}
+						<div className="absolute top-0 right-0 w-40 h-40 bg-yellow-400 rounded-full opacity-10 -mr-10 -mt-10"></div>
+						<div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-600 rounded-full opacity-10 -ml-10 -mb-10"></div>
+
+						<h3 className="text-2xl font-bold mb-1 relative">
+							Upgrade to SnippetPro Premium
+							<span className="absolute -top-1 -right-1 w-20 h-20 bg-yellow-400 rounded-full opacity-10"></span>
+						</h3>
+						<p
+							className={`${
+								darkMode ? "text-gray-300" : "text-gray-700"
+							} mb-4 relative`}
+						>
+							Take your productivity to the next level with premium features.
+						</p>
+
+						<ul className="space-y-2 mb-6 relative">
+							{[
+								"Unlimited code snippets",
+								"Cloud sync across devices",
+								"Advanced code editor features",
+								"Team sharing & collaboration",
+								"Custom themes and branding",
+								"Automatic backups",
+							].map((feature, index) => (
+								<li
+									key={index}
+									className={`flex items-center ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									<Check size={16} className="mr-2 text-green-500" />
+									{feature}
+								</li>
+							))}
+						</ul>
+
+						<div
+							className={`flex flex-col mb-4 py-3 px-4 rounded-lg ${
+								darkMode ? "bg-blue-900" : "bg-blue-50"
+							} relative`}
+						>
+							<div className="flex justify-between items-center">
+								<span className="text-blue-500 font-medium">Monthly</span>
+								<span className="text-xl font-bold text-blue-500">$5.99</span>
+							</div>
+							<div className="flex justify-between items-center mt-2">
+								<span className="text-blue-500 font-medium">
+									Annual (save 20%)
+								</span>
+								<span className="text-xl font-bold text-blue-600">$49.99</span>
+							</div>
+						</div>
+
+						<div className="flex flex-col sm:flex-row gap-3 relative">
+							<button
+								onClick={() => setShowUpgradeModal(false)}
+								className={`flex-1 px-4 py-2 rounded-lg ${
+									darkMode
+										? "bg-gray-700 hover:bg-gray-600 text-white"
+										: "bg-gray-200 hover:bg-gray-300 text-gray-800"
+								}`}
+							>
+								Maybe Later
+							</button>
+							<button
+								onClick={handleUpgrade}
+								className="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-600 shadow-sm"
+							>
+								Upgrade Now
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{}
+			{showOnboarding && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+					<div
+						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
+							darkMode ? "bg-gray-800" : "bg-white"
+						} animate-slide-up`}
+					>
+						<button
+							onClick={() => setShowOnboarding(false)}
+							className={`absolute top-4 right-4 p-1 rounded-full ${
+								darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
+							}`}
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								className="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+
+						<div className="flex items-center justify-center mb-4">
+							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-lg">
+								<Code size={30} className="text-white" />
+							</div>
+						</div>
+
+						{onboardingStep === 1 && (
+							<>
+								<h3 className="text-xl font-bold text-center mb-2">
+									Welcome to SnippetPro!
+								</h3>
+								<p
+									className={`text-center mb-4 ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									The easiest way to organize and access your code snippets.
+								</p>
+								<div className="flex justify-center mb-6">
+									<img
+										src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=300"
+										alt="Code snippet illustration"
+										className="rounded-lg w-64 h-auto object-cover"
+									/>
+								</div>
+							</>
+						)}
+
+						{onboardingStep === 2 && (
+							<>
+								<h3 className="text-xl font-bold text-center mb-2">
+									Create & Organize
+								</h3>
+								<p
+									className={`text-center mb-4 ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									Create new snippets and organize them by language, category,
+									and tags.
+								</p>
+								<div className="flex flex-col space-y-3 mb-6">
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Plus size={18} className="mr-3 text-blue-500" />
+										<span>Create new snippets quickly</span>
+									</div>
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Folder size={18} className="mr-3 text-blue-500" />
+										<span>Organize by categories</span>
+									</div>
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Tag size={18} className="mr-3 text-blue-500" />
+										<span>Add tags for easy filtering</span>
+									</div>
+								</div>
+							</>
+						)}
+
+						{onboardingStep === 3 && (
+							<>
+								<h3 className="text-xl font-bold text-center mb-2">
+									Find & Use
+								</h3>
+								<p
+									className={`text-center mb-4 ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									Quickly find and reuse your code snippets whenever you need
+									them.
+								</p>
+								<div className="flex flex-col space-y-3 mb-6">
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Search size={18} className="mr-3 text-blue-500" />
+										<span>Search across all snippets</span>
+									</div>
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Star size={18} className="mr-3 text-yellow-400" />
+										<span>Mark favorites for quick access</span>
+									</div>
+									<div
+										className={`flex items-center p-3 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-gray-100"
+										}`}
+									>
+										<Copy size={18} className="mr-3 text-blue-500" />
+										<span>Copy code with one click</span>
+									</div>
+								</div>
+							</>
+						)}
+
+						{onboardingStep === 4 && (
+							<>
+								<h3 className="text-xl font-bold text-center mb-2">
+									Ready to Start?
+								</h3>
+								<p
+									className={`text-center mb-4 ${
+										darkMode ? "text-gray-300" : "text-gray-700"
+									}`}
+								>
+									You're all set! Explore SnippetPro and boost your coding
+									productivity.
+								</p>
+								<div className="flex justify-center mb-6">
+									<div
+										className={`p-4 rounded-lg ${
+											darkMode ? "bg-gray-700" : "bg-blue-50"
+										} max-w-xs`}
+									>
+										<h4 className="font-medium text-center mb-2">Pro Tip</h4>
+										<p className="text-sm text-center">
+											Use keyboard shortcuts like Ctrl+K to search and Ctrl+N to
+											create new snippets!
+										</p>
+									</div>
+								</div>
+							</>
+						)}
+
+						<div
+							className={`flex justify-between items-center pt-4 border-t ${
+								darkMode ? "border-gray-700" : "border-gray-200"
+							}`}
+						>
+							<div className="flex space-x-1">
+								{[1, 2, 3, 4].map((step) => (
+									<div
+										key={step}
+										className={`w-2 h-2 rounded-full ${
+											step === onboardingStep
+												? "bg-blue-600"
+												: darkMode
+												? "bg-gray-600"
+												: "bg-gray-300"
+										}`}
+									></div>
+								))}
+							</div>
+							<button
+								onClick={nextOnboardingStep}
+								className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-sm"
+							>
+								{onboardingStep < 4 ? "Next" : "Get Started"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{}
+			<style jsx>{`
+				@keyframes fade-in {
+					from {
+						opacity: 0;
+					}
+					to {
+						opacity: 1;
+					}
+				}
+
+				@keyframes slide-up {
+					from {
+						transform: translateY(10px);
+						opacity: 0;
+					}
+					to {
+						transform: translateY(0);
+						opacity: 1;
+					}
+				}
+
+				.animate-fade-in {
+					animation: fade-in 0.2s ease-out;
+				}
+
+				.animate-slide-up {
+					animation: slide-up 0.3s ease-out;
+				}
+
+				.hover\:scale-102:hover {
+					transform: scale(1.02);
+				}
+
+				.custom-scrollbar::-webkit-scrollbar {
+					width: 6px;
+					height: 6px;
+				}
+
+				.custom-scrollbar::-webkit-scrollbar-track {
+					background: ${darkMode
+						? "rgba(31, 41, 55, 0.5)"
+						: "rgba(243, 244, 246, 0.5)"};
+					border-radius: 10px;
+				}
+
+				.custom-scrollbar::-webkit-scrollbar-thumb {
+					background: ${darkMode
+						? "rgba(75, 85, 99, 0.5)"
+						: "rgba(209, 213, 219, 0.5)"};
+					border-radius: 10px;
+				}
+
+				.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+					background: ${darkMode
+						? "rgba(75, 85, 99, 0.8)"
+						: "rgba(156, 163, 175, 0.8)"};
+				}
+			`}</style>
+
+			{/* Mobile Sort Modal */}
+			{showMobileSortOptions && (
+				<div className="fixed inset-0 z-50 flex items-end justify-center md:hidden bg-black bg-opacity-40" onClick={() => setShowMobileSortOptions(false)}>
+					<div
+						className={`w-full max-w-sm mx-auto rounded-t-xl shadow-lg p-4 mb-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+						style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+						onClick={e => e.stopPropagation()}
+					>
+						<div className="mb-2 font-semibold text-center">Sort Snippets</div>
+						<div className="flex flex-col gap-1">
+							{[
+								{ value: "newest", label: "Newest First" },
+								{ value: "oldest", label: "Oldest First" },
+								{ value: "a-z", label: "A to Z" },
+								{ value: "z-a", label: "Z to A" },
+								{ value: "most-used", label: "Most Used" },
+							].map(option => (
+								<button
+									key={option.value}
+									onClick={() => {
+										setSortOption(option.value as SortOption);
+										setShowMobileSortOptions(false);
+									}}
+									className={`flex items-center w-full px-4 py-3 text-base rounded-lg mb-1 ${
+										sortOption === option.value
+											? "bg-blue-600 text-white"
+											: darkMode
+											? "hover:bg-gray-700 text-gray-200"
+											: "hover:bg-gray-100 text-gray-700"
+									}`}
+								>
+									{sortOption === option.value && <Check size={18} className="mr-2" />}
+									{sortOption !== option.value && <div className="w-5 mr-2"></div>}
+									{option.label}
+								</button>
+							))}
+						</div>
+						<button
+							onClick={() => setShowMobileSortOptions(false)}
+							className={`mt-3 w-full py-2 rounded-lg ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-800"}`}
+						>
+							Cancel
+						</button>
+					</div>
+				</div>
+			)}
+		</div>
+	);
 };
 
-export default Game2048;
+export default SnippetProApp;
