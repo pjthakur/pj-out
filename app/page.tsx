@@ -1,3592 +1,1368 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-	Search,
-	Moon,
-	Sun,
-	Plus,
-	Edit,
-	Trash2,
-	Copy,
-	Save,
-	Code,
-	Folder,
-	Tag,
-	Settings,
-	ChevronDown,
-	ChevronRight,
-	ChevronLeft,
-	Clock,
-	Star,
-	Github,
-	Check,
-	Twitter,
-	Linkedin,
-	Bookmark,
-	Download,
-	Upload,
-	FileText,
-	Info,
-	AlertCircle,
-	ArrowLeftCircle,
-	Grid,
-	Layout,
-	List,
-	Filter,
-	BookOpen,
-	Share2,
-	Gift,
-	ExternalLink,
-} from "lucide-react";
 
-type Snippet = {
-	id: string;
-	title: string;
-	code: string;
-	language: string;
-	description: string;
-	tags: string[];
-	category: string;
-	created: Date;
-	lastAccessed?: Date;
-	isFavorite: boolean;
-	useCount: number;
-};
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { Moon, Sun, Search, Info, Heart, Share2, ChevronDown, Sparkles, Clock, MapPin } from "lucide-react";
 
-type Category = {
-	id: string;
-	name: string;
-	snippetCount: number;
-	icon?: string;
-};
-
-type ViewMode = "grid" | "list";
-type SortOption = "newest" | "oldest" | "a-z" | "z-a" | "most-used";
-
-const SnippetProApp = () => {
-	const [darkMode, setDarkMode] = useState(false);
-	const [snippets, setSnippets] = useState<Snippet[]>([]);
-	const [categories, setCategories] = useState<Category[]>([]);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState("all");
-	const [filteredSnippets, setFilteredSnippets] = useState<Snippet[]>([]);
-	const [filterType, setFilterType] = useState<
-		"all" | "favorites" | "recents" | "search"
-	>("all");
-	const [currentSnippet, setCurrentSnippet] = useState<Snippet | null>(null);
-	const [isEditing, setIsEditing] = useState(false);
-	const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-	const [viewMode, setViewMode] = useState<ViewMode>("grid");
-	const [sortOption, setSortOption] = useState<SortOption>("newest");
-	const [showCategoryDropdown, setShowCategoryDropdown] = useState(true);
-	const [mostUsedTags, setMostUsedTags] = useState<string[]>([]);
-	const [notification, setNotification] = useState<{
-		show: boolean;
-		message: string;
-		type: "success" | "error" | "info" | "";
-		id?: string;
-	}>({
-		show: false,
-		message: "",
-		type: "",
-	});
-	const [copySuccess, setCopySuccess] = useState("");
-	const searchInputRef = useRef<HTMLInputElement>(null);
-	const [showDeleteModal, setShowDeleteModal] = useState(false);
-	const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
-	const [showSettings, setShowSettings] = useState(false);
-	const [showMobileNav, setShowMobileNav] = useState(false);
-	const [showSortOptions, setShowSortOptions] = useState(false);
-	const [favoriteSnippets, setFavoriteSnippets] = useState<Snippet[]>([]);
-	const [recentSnippets, setRecentSnippets] = useState<Snippet[]>([]);
-	const [userPreferences, setUserPreferences] = useState({
-		fontSize: 14,
-		tabSize: 2,
-		autoSave: false,
-		showLineNumbers: true,
-		defaultView: "grid" as ViewMode,
-		highlightCurrentLine: true,
-		autoCloseBrackets: true,
-		snippetsPerPage: 9,
-		theme: "default",
-	});
-	const [newCategory, setNewCategory] = useState("");
-	const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
-	const [isSearchFocused, setIsSearchFocused] = useState(false);
-	const [breadcrumbs, setBreadcrumbs] = useState<
-		{ id: string; name: string }[]
-	>([]);
-	const [showExportModal, setShowExportModal] = useState(false);
-	const [currentPage, setCurrentPage] = useState(1);
-	const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-	const [isProUser, setIsProUser] = useState(false);
-	const [showOnboarding, setShowOnboarding] = useState(false);
-	const [onboardingStep, setOnboardingStep] = useState(1);
-	const [showMobileSortOptions, setShowMobileSortOptions] = useState(false);
-
-	const snippetsPerPage = userPreferences.snippetsPerPage;
-	const totalPages = Math.ceil(filteredSnippets.length / snippetsPerPage);
-	const currentSnippetsPage = filteredSnippets.slice(
-		(currentPage - 1) * snippetsPerPage,
-		currentPage * snippetsPerPage
-	);
-
-	useEffect(() => {
-		const initialCategories: Category[] = [
-			{ id: "cat1", name: "JavaScript", snippetCount: 4, icon: "javascript" },
-			{ id: "cat2", name: "React", snippetCount: 3, icon: "react" },
-			{ id: "cat3", name: "CSS", snippetCount: 2, icon: "css" },
-			{ id: "cat4", name: "TypeScript", snippetCount: 3, icon: "typescript" },
-			{ id: "cat5", name: "HTML", snippetCount: 1, icon: "html" },
-			{ id: "cat6", name: "Node.js", snippetCount: 2, icon: "nodejs" },
-		];
-
-		const initialSnippets: Snippet[] = [
-			{
-				id: "snip1",
-				title: "React useEffect Hook",
-				code: `useEffect(() => {
-  // This runs after every render
-  const subscription = props.source.subscribe();
-  
-  // Optional cleanup function
-  return () => {
-    subscription.unsubscribe();
-  };
-}, [props.source]);`,
-				language: "javascript",
-				description:
-					"Basic React useEffect hook with dependency array and cleanup",
-				tags: ["react", "hooks", "effect"],
-				category: "React",
-				created: new Date("2025-04-20"),
-				lastAccessed: new Date("2025-05-09"),
-				isFavorite: true,
-				useCount: 12,
-			},
-			{
-				id: "snip2",
-				title: "TypeScript Interface vs Type",
-				code: `// Interface
-interface User {
-  id: number;
-  name: string;
-}
-
-// Type
-type User = {
-  id: number;
-  name: string;
-}
-
-// Extending interface
-interface Employee extends User {
-  department: string;
-}
-
-// Extending type
-type Employee = User & {
-  department: string;
-}`,
-				language: "typescript",
-				description:
-					"Comparison between TypeScript interface and type definitions",
-				tags: ["typescript", "interface", "type"],
-				category: "TypeScript",
-				created: new Date("2025-04-22"),
-				lastAccessed: new Date("2025-05-07"),
-				isFavorite: false,
-				useCount: 8,
-			},
-			{
-				id: "snip3",
-				title: "CSS Grid Layout",
-				code: `.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  grid-gap: 20px;
-}
-
-.grid-item {
-  background-color: #f5f5f5;
-  padding: 20px;
-  border-radius: 8px;
-}`,
-				language: "css",
-				description: "Responsive CSS grid layout with auto-fill and minmax",
-				tags: ["css", "grid", "responsive"],
-				category: "CSS",
-				created: new Date("2025-04-25"),
-				lastAccessed: new Date("2025-05-08"),
-				isFavorite: false,
-				useCount: 5,
-			},
-			{
-				id: "snip4",
-				title: "Modern JavaScript Array Methods",
-				code: `// Filter array
-const filtered = numbers.filter(num => num > 10);
-
-// Map array
-const doubled = numbers.map(num => num * 2);
-
-// Reduce array
-const sum = numbers.reduce((total, num) => total + num, 0);
-
-// Find in array
-const found = users.find(user => user.id === 42);
-
-// Some (any) condition
-const hasAdmin = users.some(user => user.role === 'admin');
-
-// Every condition
-const allActive = users.every(user => user.isActive);`,
-				language: "javascript",
-				description: "Common array methods in modern JavaScript",
-				tags: ["javascript", "array", "methods"],
-				category: "JavaScript",
-				created: new Date("2025-04-27"),
-				lastAccessed: new Date("2025-05-10"),
-				isFavorite: true,
-				useCount: 18,
-			},
-			{
-				id: "snip5",
-				title: "React Context API",
-				code: `// Create context
-const ThemeContext = React.createContext('light');
-
-// Provider component
-function App() {
-  return (
-    <ThemeContext.Provider value="dark">
-      <ThemedButton />
-    </ThemeContext.Provider>
-  );
-}
-
-// Consumer component with useContext
-function ThemedButton() {
-  const theme = useContext(ThemeContext);
-  return <button className={theme}>Themed Button</button>;
-}`,
-				language: "javascript",
-				description: "Using React Context API for state management",
-				tags: ["react", "context", "state"],
-				category: "React",
-				created: new Date("2025-04-29"),
-				lastAccessed: new Date("2025-05-05"),
-				isFavorite: false,
-				useCount: 7,
-			},
-			{
-				id: "snip6",
-				title: "TypeScript Generics",
-				code: `// Generic function
-function getFirstElement<T>(array: T[]): T | undefined {
-  return array[0];
-}
-
-// Usage
-const numbers = [1, 2, 3];
-const firstNumber = getFirstElement<number>(numbers);
-
-// Generic interface
-interface Box<T> {
-  value: T;
-}
-
-// Usage
-const stringBox: Box<string> = { value: 'Hello TypeScript' };`,
-				language: "typescript",
-				description: "Using TypeScript generics for reusable components",
-				tags: ["typescript", "generics", "functions"],
-				category: "TypeScript",
-				created: new Date("2025-05-01"),
-				lastAccessed: new Date("2025-05-09"),
-				isFavorite: true,
-				useCount: 10,
-			},
-			{
-				id: "snip7",
-				title: "CSS Animation",
-				code: `@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animated-element {
-  animation: fadeIn 1.5s ease-in-out;
-}
-
-.hover-effect {
-  transition: transform 0.3s ease;
-}
-
-.hover-effect:hover {
-  transform: scale(1.05);
-}`,
-				language: "css",
-				description: "CSS animations and transitions for UI elements",
-				tags: ["css", "animation", "transition"],
-				category: "CSS",
-				created: new Date("2025-05-03"),
-				lastAccessed: new Date("2025-05-06"),
-				isFavorite: false,
-				useCount: 9,
-			},
-			{
-				id: "snip8",
-				title: "JavaScript Async/Await",
-				code: `// Basic async/await
-async function fetchUserData(userId) {
-  try {
-    const response = await fetch(\`/api/users/\${userId}\`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch user');
-    }
-    const userData = await response.json();
-    return userData;
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    throw error;
+const paintings = [
+  {
+    id: 1,
+    title: "WHISPERS OF THE COSMIC TEACUP",
+    artist: "Stella Dreamweaver",
+    year: "2023",
+    image: "https://images.unsplash.com/photo-1693067821550-064a6c8683f8?q=80&w=1922&auto=format&fit=crop&&q=80",
+    frameStyle: "gold-swirl",
+    hoverEffect: "float-vertical",
+    description: "A whimsical journey through the stars, where teacups dance with nebulae and cosmic sugar cubes dissolve into stardust."
+  },
+  {
+    id: 2,
+    title: "DANCING WITH NEON SHADOWS",
+    artist: "Max Colorfield",
+    year: "2022",
+    image: "https://images.unsplash.com/photo-1584440947229-eeff7372b251?q=80&w=2018&auto=format&fit=crop&q=80",
+    frameStyle: "silver-wave",
+    hoverEffect: "rotate-gentle",
+    description: "Electric silhouettes groove across vibrant cityscapes as day turns to night, blurring the line between reality and dream."
+  },
+  {
+    id: 3,
+    title: "MIDNIGHT SYMPHONY OF CATS",
+    artist: "Luna Whiskerton",
+    year: "2024",
+    image: "https://images.unsplash.com/photo-1741805190534-1bb410acfba0?q=80&w=1920&auto=format&fit=crop&q=80",
+    frameStyle: "bronze-leaves",
+    hoverEffect: "pulse-subtle",
+    description: "Mischievous felines conduct an orchestra of moonbeams and shadows, composing melodies only heard by those who dream awake."
   }
-}
+];
 
-// Parallel async operations
-async function fetchMultipleUsers(userIds) {
-  const promises = userIds.map(id => 
-    fetch(\`/api/users/\${id}\`).then(res => res.json())
+const additionalPaintings = [
+  {
+    id: 4,
+    title: "LAUGHTER IN THE PUZZLE DIMENSION",
+    artist: "Felix Joybrush",
+    year: "2021",
+    image: "https://images.unsplash.com/photo-1580136579312-94651dfd596d?q=80&w=2070&auto=format&fit=crop&q=80",
+    frameStyle: "rainbow-ripple",
+    hoverEffect: "zoom-bounce",
+    description: "Reality fragments into giggles and geometric impossibilities where every piece fits perfectly despite defying all logic."
+  },
+  {
+    id: 5,
+    title: "BREAKFAST WITH TIME TRAVELERS",
+    artist: "Chronos Bakerfield",
+    year: "2025",
+    image: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2044&auto=format&fit=crop&q=80",
+    frameStyle: "copper-twist",
+    hoverEffect: "spin-slow",
+    description: "Toast pops up from different centuries while eggs cook in quantum pans, capturing the cheerful chaos of cross-temporal dining."
+  },
+  {
+    id: 6,
+    title: "DREAMS OF FLYING PICKLES",
+    artist: "Dill Skywalker",
+    year: "2023",
+    image: "https://images.unsplash.com/photo-1541680670548-88e8cd23c0f4?q=80&w=2069&auto=format&fit=crop&q=80",
+    frameStyle: "emerald-dots",
+    hoverEffect: "wobble-fun",
+    description: "Aerodynamic cucumbers soar through cotton candy clouds, a delightful reminder that absurdity is the spice of imagination."
+  }
+];
+
+const ParticleEffect = () => {
+  const particleCount = 25;
+  const particles = Array.from({ length: particleCount });
+
+  return (
+    <div className="fixed inset-0 z-0 opacity-60 pointer-events-none">
+      {particles.map((_, i) => {
+        const randomX = Math.floor(Math.random() * 100);
+        const randomY = Math.floor(Math.random() * 100);
+        const randomSize = Math.random() * 2 + 1;
+        const randomDelay = Math.random() * 5;
+        const randomDuration = Math.random() * 10 + 10;
+
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              left: `${randomX}%`,
+              top: `${randomY}%`,
+              width: `${randomSize}px`,
+              height: `${randomSize}px`,
+              background: `radial-gradient(circle at center, #f9e076, #d4af37)`,
+              boxShadow: '0 0 8px #f9e076'
+            }}
+            animate={{
+              y: [0, -100, 0],
+              opacity: [0.2, 0.8, 0.2],
+              scale: [1, 1.5, 1]
+            }}
+            transition={{
+              duration: randomDuration,
+              repeat: Infinity,
+              delay: randomDelay
+            }}
+          />
+        );
+      })}
+    </div>
   );
-  
-  const users = await Promise.all(promises);
-  return users;
-}`,
-				language: "javascript",
-				description: "Using async/await for asynchronous operations",
-				tags: ["javascript", "async", "promises"],
-				category: "JavaScript",
-				created: new Date("2025-05-05"),
-				lastAccessed: new Date("2025-05-10"),
-				isFavorite: false,
-				useCount: 11,
-			},
-			{
-				id: "snip9",
-				title: "TypeScript Utility Types",
-				code: `// Original interface
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  createdAt: Date;
-}
+};
 
-// Partial - all properties optional
-type PartialUser = Partial<User>;
+export default function Home() {
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [hoveredPainting, setHoveredPainting] = useState<number | null>(null);
+  const [spotlight, setSpotlight] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredPaintings, setFilteredPaintings] = useState([...paintings, ...additionalPaintings]);
+  const [likedPaintings, setLikedPaintings] = useState<number[]>([]);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [selectedPainting, setSelectedPainting] = useState<any>(null);
 
-// Pick - select specific properties
-type UserCredentials = Pick<User, 'email' | 'password'>;
+  // Add refs for scroll animations
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const historicalRef = useRef<HTMLDivElement>(null);
+  const exploreRef = useRef<HTMLDivElement>(null);
 
-// Omit - exclude specific properties
-type PublicUser = Omit<User, 'email' | 'password'>;
+  // Create scroll-based animations
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.4], [1, 0.8, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.2, 0.4], [1, 0.95, 1]);
 
-// Required - all properties required
-type StrictUser = Required<PartialUser>;
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    setIsDarkMode(savedTheme === "dark" || savedTheme === null);
 
-// Readonly - all properties readonly
-type ImmutableUser = Readonly<User>;`,
-				language: "typescript",
-				description: "Common TypeScript utility types",
-				tags: ["typescript", "utility", "types"],
-				category: "TypeScript",
-				created: new Date("2025-05-07"),
-				lastAccessed: new Date("2025-05-09"),
-				isFavorite: false,
-				useCount: 6,
-			},
-			{
-				id: "snip10",
-				title: "React Custom Hooks",
-				code: `// useLocalStorage hook
-function useLocalStorage(key, initialValue) {
-  const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(error);
-      return initialValue;
+    // Start spotlight effect after a delay
+    const timer = setTimeout(() => {
+      setSpotlight(true);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark-theme", isDarkMode);
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
+
+  // Search functionality
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredPaintings([...paintings, ...additionalPaintings]);
+      return;
     }
-  });
 
-  const setValue = value => {
-    try {
-      const valueToStore = 
-        value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(error);
+    const query = searchQuery.toLowerCase();
+    const filtered = [...paintings, ...additionalPaintings].filter(
+      painting =>
+        painting.title.toLowerCase().includes(query) ||
+        painting.artist.toLowerCase().includes(query) ||
+        painting.year.includes(query)
+    );
+
+    setFilteredPaintings(filtered);
+  }, [searchQuery]);
+
+  // Handle like button click
+  const handleLikeClick = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLikedPaintings(prev =>
+      prev.includes(id)
+        ? prev.filter(paintingId => paintingId !== id)
+        : [...prev, id]
+    );
+  };
+
+  // Handle share button click
+  const handleShareClick = (painting: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (navigator.share) {
+      navigator.share({
+        title: `${painting.title} by ${painting.artist}`,
+        text: `Check out this amazing painting: ${painting.title} by ${painting.artist} (${painting.year})`,
+        url: window.location.href,
+      }).catch(err => {
+        alert("Sharing is not available on this device or browser.");
+      });
+    } else {
+      alert("Copied painting details to clipboard!");
+      navigator.clipboard.writeText(
+        `${painting.title} by ${painting.artist} (${painting.year})`
+      );
     }
   };
 
-  return [storedValue, setValue];
-}`,
-				language: "javascript",
-				description: "Creating custom React hooks for reusable logic",
-				tags: ["react", "hooks", "custom"],
-				category: "React",
-				created: new Date("2025-05-09"),
-				lastAccessed: new Date("2025-05-10"),
-				isFavorite: false,
-				useCount: 4,
-			},
-			{
-				id: "snip11",
-				title: "HTML Semantic Elements",
-				code: `<header>
-  <h1>Website Title</h1>
-  <nav>
-    <ul>
-      <li><a href="#home">Home</a></li>
-      <li><a href="#about">About</a></li>
-      <li><a href="#contact">Contact</a></li>
-    </ul>
-  </nav>
-</header>
-
-<main>
-  <section id="hero">
-    <h2>Welcome to our site</h2>
-  </section>
-  
-  <article>
-    <h2>Article Title</h2>
-    <p>Article content goes here...</p>
-    <figure>
-      <img src="image.jpg" alt="Description">
-      <figcaption>Image caption</figcaption>
-    </figure>
-  </article>
-  
-  <aside>
-    <h3>Related Information</h3>
-    <p>Sidebar content...</p>
-  </aside>
-</main>
-
-<footer>
-  <p>&copy; 2025 Company Name</p>
-</footer>`,
-				language: "html",
-				description:
-					"Proper usage of HTML5 semantic elements for better accessibility and SEO",
-				tags: ["html", "semantic", "accessibility"],
-				category: "HTML",
-				created: new Date("2025-05-04"),
-				lastAccessed: new Date("2025-05-08"),
-				isFavorite: false,
-				useCount: 7,
-			},
-			{
-				id: "snip12",
-				title: "Node.js Express Server",
-				code: `const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-app.get('/api/users', (req, res) => {
-  // Get users from database
-  res.json([
-    { id: 1, name: 'John Doe' },
-    { id: 2, name: 'Jane Smith' }
-  ]);
-});
-
-app.post('/api/users', (req, res) => {
-  const { name } = req.body;
-  // Save user to database
-  res.status(201).json({ id: 3, name });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(\`Server running on port \${PORT}\`);
-});`,
-				language: "javascript",
-				description:
-					"Basic Express.js server setup with routes and error handling",
-				tags: ["nodejs", "express", "server"],
-				category: "Node.js",
-				created: new Date("2025-05-06"),
-				lastAccessed: new Date("2025-05-09"),
-				isFavorite: false,
-				useCount: 9,
-			},
-		];
-
-		setCategories(initialCategories);
-		setSnippets(initialSnippets);
-		setFilteredSnippets(initialSnippets);
-
-		// Extract most used tags
-		const allTags = initialSnippets.flatMap((snippet) => snippet.tags);
-		const tagCounts = allTags.reduce((acc, tag) => {
-			acc[tag] = (acc[tag] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
-
-		const sortedTags = Object.entries(tagCounts)
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 5)
-			.map(([tag]) => tag);
-
-		setMostUsedTags(sortedTags);
-
-		// Initialize favorites
-		const favorites = initialSnippets.filter((snippet) => snippet.isFavorite);
-		setFavoriteSnippets(favorites);
-
-		// Initialize recents
-		const recents = [...initialSnippets]
-			.sort(
-				(a, b) =>
-					new Date(b.lastAccessed || 0).getTime() -
-					new Date(a.lastAccessed || 0).getTime()
-			)
-			.slice(0, 5);
-		setRecentSnippets(recents);
-
-		// Check system preference for dark/light mode
-		if (
-			window.matchMedia &&
-			window.matchMedia("(prefers-color-scheme: dark)").matches
-		) {
-			setDarkMode(true);
-		}
-
-		// Set initial view mode from preferences
-		setViewMode(userPreferences.defaultView);
-
-		// Check for first-time users
-		const isFirstVisit = !localStorage.getItem("hasVisitedBefore");
-		if (isFirstVisit) {
-			setShowOnboarding(true);
-			localStorage.setItem("hasVisitedBefore", "true");
-		}
-
-		// Reset pagination
-		setCurrentPage(1);
-
-		// Check premium status from localStorage
-		const proStatus = localStorage.getItem("isProUser");
-		if (proStatus === "true") {
-			setIsProUser(true);
-		}
-	}, []);
-
-	useEffect(() => {
-		let filtered = [...snippets];
-
-		// Apply filter based on filter type
-		if (filterType === "favorites") {
-			filtered = filtered.filter((snippet) => snippet.isFavorite);
-		} else if (filterType === "recents") {
-			filtered = [...snippets]
-				.sort(
-					(a, b) =>
-						new Date(b.lastAccessed || b.created).getTime() -
-						new Date(a.lastAccessed || a.created).getTime()
-				)
-				.slice(0, 5);
-		} else if (searchQuery) {
-			// Handle search query
-			const query = searchQuery.toLowerCase();
-			filtered = filtered.filter(
-				(snippet) =>
-					snippet.title.toLowerCase().includes(query) ||
-					snippet.description.toLowerCase().includes(query) ||
-					snippet.code.toLowerCase().includes(query) ||
-					snippet.tags.some((tag) => tag.toLowerCase().includes(query))
-			);
-		}
-
-		// Filter by category
-		if (selectedCategory !== "all") {
-			filtered = filtered.filter(
-				(snippet) => snippet.category === selectedCategory
-			);
-		}
-
-		// Apply sorting
-		switch (sortOption) {
-			case "newest":
-				filtered = filtered.sort(
-					(a, b) =>
-						new Date(b.created).getTime() - new Date(a.created).getTime()
-				);
-				break;
-			case "oldest":
-				filtered = filtered.sort(
-					(a, b) =>
-						new Date(a.created).getTime() - new Date(b.created).getTime()
-				);
-				break;
-			case "a-z":
-				filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
-				break;
-			case "z-a":
-				filtered = filtered.sort((a, b) => b.title.localeCompare(a.title));
-				break;
-			case "most-used":
-				filtered = filtered.sort((a, b) => b.useCount - a.useCount);
-				break;
-		}
-
-		setFilteredSnippets(filtered);
-		// Reset to first page when filters change
-		setCurrentPage(1);
-	}, [snippets, searchQuery, selectedCategory, sortOption, filterType]);
-	useEffect(() => {
-		document.body.classList.toggle("dark-mode", darkMode);
-		document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
-	}, [darkMode]);
-
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-				e.preventDefault();
-				searchInputRef.current?.focus();
-			}
-
-			if (e.key === "Escape") {
-				if (isEditing) {
-					setIsEditing(false);
-				} else if (showDeleteModal) {
-					setShowDeleteModal(false);
-				} else if (showSettings) {
-					setShowSettings(false);
-				} else if (showExportModal) {
-					setShowExportModal(false);
-				} else if (showUpgradeModal) {
-					setShowUpgradeModal(false);
-				}
-			}
-
-			if ((e.ctrlKey || e.metaKey) && e.key === "s" && isEditing) {
-				e.preventDefault();
-				saveSnippet();
-			}
-
-			if ((e.ctrlKey || e.metaKey) && e.key === "n") {
-				e.preventDefault();
-				createNewSnippet();
-			}
-		};
-
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [
-		isEditing,
-		showDeleteModal,
-		showSettings,
-		showExportModal,
-		showUpgradeModal,
-	]);
-
-	useEffect(() => {
-		const crumbs = [{ id: "home", name: "Home" }];
-
-		if (selectedCategory !== "all") {
-			crumbs.push({ id: "category", name: selectedCategory });
-		}
-
-		if (currentSnippet) {
-			crumbs.push({ id: currentSnippet.id, name: currentSnippet.title });
-		}
-
-		setBreadcrumbs(crumbs);
-	}, [selectedCategory, currentSnippet]);
-
-	useEffect(() => {
-		if (showMobileNav) {
-			document.body.style.overflow = 'hidden';
-		} else {
-			document.body.style.overflow = '';
-		}
-		// Clean up in case the component unmounts while menu is open
-		return () => {
-			document.body.style.overflow = '';
-		};
-	}, [showMobileNav]);
-
-	const copyToClipboard = (code: string, snippetId?: string) => {
-		navigator.clipboard
-			.writeText(code)
-			.then(() => {
-				setCopySuccess("Copied!");
-				setTimeout(() => setCopySuccess(""), 2000);
-
-				showNotification("Snippet copied to clipboard!", "success");
-
-				if (snippetId) {
-					incrementSnippetUseCount(snippetId);
-				}
-			})
-			.catch((err) => {
-				console.error("Failed to copy:", err);
-				showNotification("Failed to copy snippet", "error");
-			});
-	};
-
-	const incrementSnippetUseCount = (snippetId: string) => {
-		const updatedSnippets = snippets.map((snippet) =>
-			snippet.id === snippetId
-				? {
-						...snippet,
-						useCount: snippet.useCount + 1,
-						lastAccessed: new Date(),
-				  }
-				: snippet
-		);
-
-		setSnippets(updatedSnippets);
-
-		const updatedRecents = [...updatedSnippets]
-			.sort(
-				(a, b) =>
-					new Date(b.lastAccessed || 0).getTime() -
-					new Date(a.lastAccessed || 0).getTime()
-			)
-			.slice(0, 5);
-		setRecentSnippets(updatedRecents);
-	};
-
-	const showNotification = (
-		message: string,
-		type: "success" | "error" | "info"
-	) => {
-		const id = Math.random().toString(36).substring(2, 9);
-		setNotification({ show: true, message, type, id });
-
-		setTimeout(() => {
-			setNotification((prev) =>
-				prev.id === id ? { show: false, message: "", type: "" } : prev
-			);
-		}, 3000);
-	};
-
-	const createNewSnippet = useCallback(() => {
-		if (snippets.length >= 12 && !isProUser) {
-			setShowUpgradeModal(true);
-			return;
-		}
-
-		const newSnippet: Snippet = {
-			id: `snip${Date.now()}`,
-			title: "New Snippet",
-			code: "// Add your code here",
-			language: "javascript",
-			description: "Description of your snippet",
-			tags: [],
-			category: categories.length > 0 ? categories[0].name : "Uncategorized",
-			created: new Date(),
-			lastAccessed: new Date(),
-			isFavorite: false,
-			useCount: 0,
-		};
-
-		setSnippets((prev) => [...prev, newSnippet]);
-		setCurrentSnippet(newSnippet);
-		setIsEditing(true);
-		showNotification("New snippet created", "success");
-	}, [categories, snippets.length, isProUser]);
-
-	const saveSnippet = () => {
-		if (!currentSnippet) return;
-
-		const updatedSnippet = {
-			...currentSnippet,
-			lastAccessed: new Date(),
-		};
-
-		const updatedSnippets = snippets.map((snippet) =>
-			snippet.id === updatedSnippet.id ? updatedSnippet : snippet
-		);
-
-		setSnippets(updatedSnippets);
-		setCurrentSnippet(updatedSnippet);
-		setIsEditing(false);
-
-		updateCategorySnippetCounts(updatedSnippets);
-
-		if (updatedSnippet.isFavorite) {
-			setFavoriteSnippets((prev) =>
-				prev.some((s) => s.id === updatedSnippet.id)
-					? prev.map((s) => (s.id === updatedSnippet.id ? updatedSnippet : s))
-					: [...prev, updatedSnippet]
-			);
-		} else {
-			setFavoriteSnippets((prev) =>
-				prev.filter((s) => s.id !== updatedSnippet.id)
-			);
-		}
-
-		const updatedRecents = [...updatedSnippets]
-			.sort(
-				(a, b) =>
-					new Date(b.lastAccessed || 0).getTime() -
-					new Date(a.lastAccessed || 0).getTime()
-			)
-			.slice(0, 5);
-		setRecentSnippets(updatedRecents);
-
-		showNotification("Snippet saved successfully", "success");
-	};
-
-	const updateCategorySnippetCounts = (updatedSnippets: Snippet[]) => {
-		const categoryCounts: Record<string, number> = {};
-
-		updatedSnippets.forEach((snippet) => {
-			categoryCounts[snippet.category] =
-				(categoryCounts[snippet.category] || 0) + 1;
-		});
-
-		const updatedCategories = categories.map((category) => ({
-			...category,
-			snippetCount: categoryCounts[category.name] || 0,
-		}));
-
-		setCategories(updatedCategories);
-	};
-
-	const deleteSnippet = (id: string) => {
-		setSnippetToDelete(id);
-		setShowDeleteModal(true);
-	};
-
-	const confirmDeleteSnippet = () => {
-		if (!snippetToDelete) return;
-
-		const updatedSnippets = snippets.filter(
-			(snippet) => snippet.id !== snippetToDelete
-		);
-		setSnippets(updatedSnippets);
-
-		if (currentSnippet && currentSnippet.id === snippetToDelete) {
-			setCurrentSnippet(null);
-			setIsEditing(false);
-		}
-
-		setFavoriteSnippets((prev) => prev.filter((s) => s.id !== snippetToDelete));
-		setRecentSnippets((prev) => prev.filter((s) => s.id !== snippetToDelete));
-
-		updateCategorySnippetCounts(updatedSnippets);
-
-		setShowDeleteModal(false);
-		setSnippetToDelete(null);
-		showNotification("Snippet deleted", "success");
-	};
-
-	const toggleFavorite = (id: string) => {
-		const updatedSnippets = snippets.map((snippet) =>
-			snippet.id === id
-				? { ...snippet, isFavorite: !snippet.isFavorite }
-				: snippet
-		);
-
-		setSnippets(updatedSnippets);
-
-		if (currentSnippet && currentSnippet.id === id) {
-			setCurrentSnippet({
-				...currentSnippet,
-				isFavorite: !currentSnippet.isFavorite,
-			});
-		}
-
-		const snippet = updatedSnippets.find((s) => s.id === id);
-		if (snippet) {
-			if (snippet.isFavorite) {
-				setFavoriteSnippets((prev) => [...prev, snippet]);
-				showNotification("Added to favorites", "success");
-			} else {
-				setFavoriteSnippets((prev) => prev.filter((s) => s.id !== id));
-				showNotification("Removed from favorites", "info");
-			}
-		}
-	};
-
-	const viewSnippet = (snippet: Snippet) => {
-		const updatedSnippet = {
-			...snippet,
-			lastAccessed: new Date(),
-			useCount: snippet.useCount + 1,
-		};
-
-		const updatedSnippets = snippets.map((s) =>
-			s.id === snippet.id ? updatedSnippet : s
-		);
-		setSnippets(updatedSnippets);
-
-		setCurrentSnippet(updatedSnippet);
-
-		const updatedRecents = [
-			updatedSnippet,
-			...recentSnippets.filter((s) => s.id !== snippet.id),
-		].slice(0, 5);
-		setRecentSnippets(updatedRecents);
-	};
-
-	const goBack = () => {
-		setCurrentSnippet(null);
-		setIsEditing(false);
-	};
-
-	const addNewCategory = () => {
-		if (!newCategory.trim()) return;
-
-		if (
-			categories.some(
-				(cat) => cat.name.toLowerCase() === newCategory.toLowerCase()
-			)
-		) {
-			showNotification("Category already exists", "error");
-			return;
-		}
-
-		const newCategoryObj: Category = {
-			id: `cat${Date.now()}`,
-			name: newCategory,
-			snippetCount: 0,
-			icon: "folder",
-		};
-
-		setCategories([...categories, newCategoryObj]);
-		setNewCategory("");
-		setShowNewCategoryInput(false);
-		showNotification("New category added", "success");
-	};
-
-	const updateSnippetField = (field: keyof Snippet, value: any) => {
-		if (!currentSnippet) return;
-
-		setCurrentSnippet({
-			...currentSnippet,
-			[field]: value,
-		});
-
-		if (
-			userPreferences.autoSave &&
-			field !== "title" &&
-			field !== "description"
-		) {
-			const timer = setTimeout(() => {
-				saveSnippet();
-			}, 1000);
-
-			return () => clearTimeout(timer);
-		}
-	};
-
-	const exportSnippets = () => {
-		const dataStr = JSON.stringify(snippets, null, 2);
-		const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(
-			dataStr
-		)}`;
-
-		const exportFileDefaultName = `snippetpro-export-${
-			new Date().toISOString().split("T")[0]
-		}.json`;
-
-		const linkElement = document.createElement("a");
-		linkElement.setAttribute("href", dataUri);
-		linkElement.setAttribute("download", exportFileDefaultName);
-		linkElement.click();
-
-		setShowExportModal(false);
-		showNotification("Snippets exported successfully", "success");
-	};
-
-	const importSnippets = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		if (!file) return;
-
-		const reader = new FileReader();
-		reader.onload = (e) => {
-			try {
-				const importedSnippets = JSON.parse(
-					e.target?.result as string
-				) as Snippet[];
-
-				if (snippets.length + importedSnippets.length > 12 && !isProUser) {
-					showNotification("Upgrade to Pro to import more snippets", "error");
-					setShowUpgradeModal(true);
-					return;
-				}
-
-				const newSnippets = importedSnippets.map((snippet) => ({
-					...snippet,
-					id: `snip${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-				}));
-
-				setSnippets((prev) => [...prev, ...newSnippets]);
-				showNotification(`Imported ${newSnippets.length} snippets`, "success");
-
-				updateCategorySnippetCounts([...snippets, ...newSnippets]);
-
-				const newCategories = new Set(newSnippets.map((s) => s.category));
-				const existingCategories = new Set(categories.map((c) => c.name));
-
-				const categoriesToAdd = Array.from(newCategories).filter(
-					(c) => !existingCategories.has(c)
-				);
-
-				if (categoriesToAdd.length > 0) {
-					const additionalCategories = categoriesToAdd.map((name) => ({
-						id: `cat${Date.now()}-${Math.random()
-							.toString(36)
-							.substring(2, 5)}`,
-						name,
-						snippetCount: newSnippets.filter((s) => s.category === name).length,
-						icon: "folder",
-					}));
-
-					setCategories((prev) => [...prev, ...additionalCategories]);
-				}
-			} catch (error) {
-				console.error("Error importing snippets:", error);
-				showNotification(
-					"Failed to import snippets. Invalid file format.",
-					"error"
-				);
-			}
-		};
-		reader.readAsText(file);
-
-		event.target.value = "";
-	};
-
-	const goToPage = (page: number) => {
-		setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-		window.scrollTo(0, 0);
-	};
-
-	const formatDate = (date: Date) => {
-		return new Intl.DateTimeFormat("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		}).format(new Date(date));
-	};
-
-	const formatRelativeTime = (date: Date) => {
-		const now = new Date();
-		const diff = now.getTime() - new Date(date).getTime();
-
-		const seconds = Math.floor(diff / 1000);
-		const minutes = Math.floor(seconds / 60);
-		const hours = Math.floor(minutes / 60);
-		const days = Math.floor(hours / 24);
-
-		if (days > 0) {
-			return days === 1 ? "Yesterday" : `${days} days ago`;
-		} else if (hours > 0) {
-			return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-		} else if (minutes > 0) {
-			return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
-		} else {
-			return "Just now";
-		}
-	};
-
-	const getLanguageIcon = (language: string) => {
-		switch (language.toLowerCase()) {
-			case "javascript":
-				return <div className="text-yellow-400 font-bold text-lg">JS</div>;
-			case "typescript":
-				return <div className="text-blue-500 font-bold text-lg">TS</div>;
-			case "css":
-				return <div className="text-pink-500 font-bold text-lg">CSS</div>;
-			case "html":
-				return <div className="text-orange-500 font-bold text-lg">HTML</div>;
-			case "python":
-				return <div className="text-green-500 font-bold text-lg">PY</div>;
-			default:
-				return <Code size={18} />;
-		}
-	};
-
-	const nextOnboardingStep = () => {
-		if (onboardingStep < 4) {
-			setOnboardingStep(onboardingStep + 1);
-		} else {
-			setShowOnboarding(false);
-		}
-	};
-
-	const handleUpgrade = () => {
-		setIsProUser(true);
-		localStorage.setItem("isProUser", "true");
-		setShowUpgradeModal(false);
-		showNotification(
-			"Upgraded to SnippetPro Premium! Enjoy all features.",
-			"success"
-		);
-	};
-
-	const Navigation = () => (
-		<nav className="flex items-center text-sm mb-4 overflow-x-auto whitespace-nowrap pb-1">
-			{breadcrumbs.map((crumb, index) => (
-				<React.Fragment key={crumb.id}>
-					{index > 0 && (
-						<ChevronRight
-							size={14}
-							className={`mx-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
-						/>
-					)}
-					<button
-						onClick={() => {
-							if (crumb.id === "home") {
-								setSelectedCategory("all");
-								setCurrentSnippet(null);
-							} else if (crumb.id === "category") {
-								setCurrentSnippet(null);
-							}
-						}}
-						className={`hover:underline ${
-							index === breadcrumbs.length - 1
-								? darkMode
-									? "text-white font-medium"
-									: "text-gray-900 font-medium"
-								: darkMode
-								? "text-gray-400 hover:text-gray-300"
-								: "text-gray-600 hover:text-gray-800"
-						}`}
-					>
-						{crumb.id === "home" ? "All" : crumb.name}
-					</button>
-				</React.Fragment>
-			))}
-		</nav>
-	);
-
-	const SnippetCard = ({ snippet }: { snippet: Snippet }) => (
-		<div
-			onClick={() => viewSnippet(snippet)}
-			className={`relative rounded-xl shadow-sm border transition-all cursor-pointer transform hover:scale-102 hover:shadow-md ${
-				darkMode
-					? "bg-gray-800 border-gray-700 hover:bg-gray-750"
-					: "bg-white border-gray-100 hover:bg-gray-50"
-			} p-5 flex flex-col`}
-		>
-			<div className="flex justify-between items-start mb-2">
-				<div className="flex items-center">
-					<div className={`mr-3 p-2 rounded-lg bg-opacity-20`}>
-						{getLanguageIcon(snippet.language)}
-					</div>
-					<h3 className="font-semibold text-lg text-clip mr-2">
-						{snippet.title}
-					</h3>
-				</div>
-				<button
-					onClick={(e) => {
-						e.stopPropagation();
-						toggleFavorite(snippet.id);
-					}}
-					className={`p-1.5 rounded-full transition-colors ${
-						snippet.isFavorite
-							? "text-yellow-400 bg-yellow-50"
-							: darkMode
-							? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
-							: "text-gray-300 hover:text-yellow-400 hover:bg-gray-100"
-					}`}
-					aria-label={
-						snippet.isFavorite ? "Remove from favorites" : "Add to favorites"
-					}
-				>
-					<Star
-						size={16}
-						className={snippet.isFavorite ? "fill-current" : ""}
-					/>
-				</button>
-			</div>
-
-			<p
-				className={`text-sm mb-3 line-clamp-2 flex-grow ${
-					darkMode ? "text-gray-400" : "text-gray-600"
-				}`}
-			>
-				{snippet.description}
-			</p>
-
-			<div className="flex flex-wrap items-center gap-2 mb-3">
-				<div
-					className={`px-2 py-0.5 rounded-full text-xs ${
-						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
-					} flex items-center`}
-				>
-					<Folder size={12} className="mr-1" />
-					{snippet.category}
-				</div>
-
-				<div
-					className={`px-2 py-0.5 rounded-full text-xs ${
-						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
-					}`}
-				>
-					<Clock size={12} className="inline mr-1" />
-					{formatRelativeTime(snippet.lastAccessed || snippet.created)}
-				</div>
-			</div>
-
-			<div className="flex flex-wrap gap-1.5 mb-1">
-				{snippet.tags.slice(0, 3).map((tag, index) => (
-					<div
-						key={index}
-						className={`px-2 py-0.5 rounded-full text-xs ${
-							darkMode
-								? "bg-blue-900 bg-opacity-40 text-blue-300"
-								: "bg-blue-50 text-blue-700"
-						}`}
-					>
-						#{tag}
-					</div>
-				))}
-				{snippet.tags.length > 3 && (
-					<div
-						className={`px-2 py-0.5 rounded-full text-xs ${
-							darkMode
-								? "bg-gray-700 text-gray-400"
-								: "bg-gray-100 text-gray-600"
-						}`}
-					>
-						+{snippet.tags.length - 3}
-					</div>
-				)}
-			</div>
-		</div>
-	);
-
-	const SnippetListItem = ({ snippet }: { snippet: Snippet }) => (
-		<div
-			onClick={() => viewSnippet(snippet)}
-			className={`relative rounded-lg shadow-sm border p-3 transition-all cursor-pointer hover:shadow-md ${
-				darkMode
-					? "bg-gray-800 border-gray-700 hover:bg-gray-750"
-					: "bg-white border-gray-100 hover:bg-gray-50"
-			} flex justify-between items-center`}
-		>
-			<div className="flex items-center flex-grow min-w-0">
-				<div className={`mr-3 p-1.5 rounded-lg bg-opacity-20`}>
-					{getLanguageIcon(snippet.language)}
-				</div>
-				<div className="min-w-0">
-					<h3 className="font-medium text-base truncate">{snippet.title}</h3>
-					<p
-						className={`text-xs truncate ${
-							darkMode ? "text-gray-400" : "text-gray-600"
-						}`}
-					>
-						{snippet.description}
-					</p>
-				</div>
-			</div>
-
-			<div className="flex items-center ml-4">
-				<div
-					className={`hidden sm:block mr-3 px-2 py-0.5 rounded-full text-xs ${
-						darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-700"
-					}`}
-				>
-					{snippet.category}
-				</div>
-
-				<button
-					onClick={(e) => {
-						e.stopPropagation();
-						toggleFavorite(snippet.id);
-					}}
-					className={`p-1.5 rounded-full transition-colors ${
-						snippet.isFavorite
-							? "text-yellow-400 bg-yellow-50"
-							: darkMode
-							? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
-							: "text-gray-300 hover:text-yellow-400 hover:bg-gray-100"
-					}`}
-					aria-label={
-						snippet.isFavorite ? "Remove from favorites" : "Add to favorites"
-					}
-				>
-					<Star
-						size={16}
-						className={snippet.isFavorite ? "fill-current" : ""}
-					/>
-				</button>
-			</div>
-		</div>
-	);
-
-	return (
-		<div
-			className={`flex flex-col min-h-screen transition-colors duration-200 ${
-				darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
-			}`}
-		>
-			{}
-			<header
-				className={`sticky top-0 z-50 ${
-					darkMode ? "bg-gray-800" : "bg-white"
-				} shadow-sm border-b ${
-					darkMode ? "border-gray-700" : "border-gray-200"
-				}`}
-			>
-				<div className="container mx-auto px-4 py-3 flex items-center justify-between">
-					<div className="flex items-center">
-						<div className="flex items-center mr-6">
-							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg shadow-sm">
-								<Code size={22} className="text-white" />
-							</div>
-							<h1 className="ml-2.5 text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
-								SnippetPro
-							</h1>
-							{isProUser && (
-								<span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 rounded-full shadow-sm flex items-center">
-									<Star size={14} className="text-yellow-600 mr-1" />
-									{/* Optionally, you can remove the text or keep a tooltip */}
-								</span>
-							)}
-						</div>
-
-						{}
-						<div
-							className={`relative hidden md:block max-w-md transition-all duration-300 ${
-								isSearchFocused ? "w-96" : "w-64"
-							}`}
-						>
-							<div
-								className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
-									darkMode ? "text-gray-400" : "text-gray-500"
-								}`}
-							>
-								<Search size={16} />
-							</div>
-							<input
-								ref={searchInputRef}
-								type="text"
-								placeholder="Search snippets (Ctrl+K)"
-								className={`py-2 pl-10 pr-4 block w-full rounded-lg ${
-									darkMode
-										? "bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-										: "bg-gray-100 border-gray-200 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-								} transition-all border`}
-								value={searchQuery}
-								onChange={(e) => {
-									setSearchQuery(e.target.value);
-									if (e.target.value) {
-										setFilterType("search");
-									} else {
-										setFilterType("all");
-									}
-								}}
-								onFocus={() => setIsSearchFocused(true)}
-								onBlur={() => setIsSearchFocused(false)}
-							/>
-							{searchQuery && (
-								<button
-									onClick={() => {
-										setSearchQuery("");
-										setFilterType("all");
-									}}
-									className="absolute inset-y-0 right-0 pr-3 flex items-center"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className={`h-4 w-4 ${
-											darkMode ? "text-gray-400" : "text-gray-500"
-										}`}
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M6 18L18 6M6 6l12 12"
-										/>
-									</svg>
-								</button>
-							)}
-						</div>
-					</div>
-
-					<div className="flex items-center space-x-3">
-						{}
-						<button
-							onClick={() => setDarkMode(!darkMode)}
-							className={`p-2 rounded-lg ${
-								darkMode
-									? "bg-gray-700 hover:bg-gray-600 text-gray-200"
-									: "bg-gray-100 hover:bg-gray-200 text-gray-700"
-							} transition-colors`}
-							aria-label="Toggle theme"
-							title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-						>
-							{darkMode ? <Sun size={18} /> : <Moon size={18} />}
-						</button>
-
-						{}
-						<div className="relative hidden sm:block">
-							<button
-								onClick={() => setShowExportModal(!showExportModal)}
-								className={`p-2 rounded-lg ${
-									darkMode
-										? "bg-gray-700 hover:bg-gray-600 text-gray-200"
-										: "bg-gray-100 hover:bg-gray-200 text-gray-700"
-								} transition-colors`}
-								aria-label="Import/Export"
-								title="Import/Export"
-							>
-								<Download size={18} />
-							</button>
-							{showExportModal && (
-								<div
-									className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg ${
-										darkMode
-											? "bg-gray-800 border border-gray-700"
-											: "bg-white border border-gray-200"
-									} z-50`}
-								>
-									<div className="py-1">
-										<button
-											onClick={exportSnippets}
-											className={`flex items-center w-full px-4 py-2 text-sm ${
-												darkMode
-													? "hover:bg-gray-700 text-gray-200"
-													: "hover:bg-gray-100 text-gray-700"
-											}`}
-										>
-											<Upload size={16} className="mr-2" />
-											Export Snippets
-										</button>
-										<label
-											className={`flex items-center w-full px-4 py-2 text-sm cursor-pointer ${
-												darkMode
-													? "hover:bg-gray-700 text-gray-200"
-													: "hover:bg-gray-100 text-gray-700"
-											}`}
-										>
-                      <Download size={16} className="mr-2" />
-											Import Snippets
-											<input
-												type="file"
-												accept=".json"
-												className="hidden"
-												onChange={importSnippets}
-											/>
-										</label>
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* New Snippet Button - always visible */}
-						<button
-							onClick={createNewSnippet}
-							className="hidden md:flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all shadow-sm"
-						>
-							<Plus size={18} className="mr-1.5" />
-							<span>New Snippet</span>
-						</button>
-
-						{/* Mobile: Sort and Plus icons */}
-						<div className="flex md:hidden items-center space-x-2">
-							<button
-								onClick={() => setShowMobileSortOptions(true)}
-								className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-								aria-label="Sort snippets"
-								title="Sort"
-							>
-								<Filter size={18} />
-							</button>
-							<button
-								onClick={() => setShowMobileNav(!showMobileNav)}
-								className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-								aria-label="Open menu"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M4 6h16M4 12h16M4 18h16"
-									/>
-								</svg>
-							</button>
-						</div>
-					</div>
-				</div>
-
-				{}
-				<div className="md:hidden px-4 pb-3">
-					<div className="relative">
-						<div
-							className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
-								darkMode ? "text-gray-400" : "text-gray-500"
-							}`}
-						>
-							<Search size={16} />
-						</div>
-						<input
-							type="text"
-							placeholder="Search snippets..."
-							className={`py-2 pl-10 pr-4 block w-full rounded-lg border ${
-								darkMode
-									? "bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-									: "bg-gray-100 border-gray-200 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-							}`}
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-						{searchQuery && (
-							<button
-								onClick={() => setSearchQuery("")}
-								className="absolute inset-y-0 right-0 pr-3 flex items-center"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className={`h-4 w-4 ${
-										darkMode ? "text-gray-400" : "text-gray-500"
-									}`}
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</button>
-						)}
-					</div>
-				</div>
-
-				{}
-				{showMobileNav && (
-					<div className="fixed inset-0 z-50 md:hidden bg-black bg-opacity-40">
-						<div
-							className={`absolute left-0 top-0 w-full h-full overflow-y-auto max-h-screen ${
-								darkMode ? "bg-gray-800" : "bg-white"
-							} shadow-lg p-4 border-t ${
-								darkMode ? "border-gray-700" : "border-gray-200"
-							} pt-10`}
-						>
-							{/* Close button */}
-							<button
-								onClick={() => setShowMobileNav(false)}
-								 className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 z-50"
-								aria-label="Close menu"
-							>
-								<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-								</svg>
-							</button>
-							<div className="flex flex-col space-y-2 mt-8">
-								<button
-									onClick={() => {
-										createNewSnippet();
-										setShowMobileNav(false);
-									}}
-									className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all shadow-sm"
-								>
-									<Plus size={18} className="mr-1.5" />
-									<span>New Snippet</span>
-								</button>
-
-								{!isProUser && (
-									<button
-										onClick={() => {
-											setShowUpgradeModal(true);
-											setShowMobileNav(false);
-										}}
-										className="flex items-center w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-600 focus:outline-none transition-all shadow-sm"
-									>
-										<Gift size={18} className="mr-2" />
-										<span>Upgrade to Premium</span>
-									</button>
-								)}
-
-								<div
-									className={`pt-2 border-t ${
-										darkMode ? "border-gray-700" : "border-gray-200"
-									}`}
-								>
-									<div className="mb-2 font-medium">Categories</div>
-									<ul className="space-y-1">
-										<li>
-											<button
-												onClick={() => {
-													setSelectedCategory("all");
-													setShowMobileNav(false);
-												}}
-												className={`w-full text-left py-2 px-4 rounded-md ${
-													selectedCategory === "all"
-														? "bg-blue-600 text-white"
-														: darkMode
-														? "hover:bg-gray-700"
-														: "hover:bg-gray-100"
-												}`}
-											>
-												All Snippets
-											</button>
-										</li>
-										{categories.map((category) => (
-											<li key={category.id}>
-												<button
-													onClick={() => {
-														setSelectedCategory(category.name);
-														setShowMobileNav(false);
-													}}
-													className={`w-full text-left py-2 px-4 rounded-md ${
-														selectedCategory === category.name
-															? "bg-blue-600 text-white"
-															: darkMode
-															? "hover:bg-gray-700"
-															: "hover:bg-gray-100"
-													}`}
-												>
-													{category.name} ({category.snippetCount})
-												</button>
-											</li>
-										))}
-									</ul>
-								</div>
-
-								<div
-									className={`pt-2 border-t ${
-										darkMode ? "border-gray-700" : "border-gray-200"
-									}`}
-								>
-									<div className="mb-2 font-medium">Quick Access</div>
-									<ul className="space-y-1">
-										<li>
-											<button
-												onClick={() => {
-													setShowMobileNav(false);
-												}}
-												className={`w-full flex items-center justify-between py-2 px-4 rounded-md ${
-													searchQuery === "favorite:true"
-														? "bg-blue-600 text-white"
-														: darkMode
-														? "hover:bg-gray-700"
-														: "hover:bg-gray-100"
-												}`}
-											>
-												<div className="flex items-center">
-													<Star size={16} className="mr-2 text-yellow-400" />
-													<span>Favorites</span>
-												</div>
-												<span className="text-sm px-2 py-0.5 rounded-full bg-opacity-50">
-													{favoriteSnippets.length}
-												</span>
-											</button>
-										</li>
-										<li>
-											<button
-												onClick={() => {
-													setShowMobileNav(false);
-												}}
-												className={`w-full flex items-center justify-between py-2 px-4 rounded-md ${
-													searchQuery === "recent:true"
-														? "bg-blue-600 text-white"
-														: darkMode
-														? "hover:bg-gray-700"
-														: "hover:bg-gray-100"
-												}`}
-											>
-												<div className="flex items-center">
-													<Clock size={16} className="mr-2 text-green-400" />
-													<span>Recent</span>
-												</div>
-												<span className="text-sm px-2 py-0.5 rounded-full bg-opacity-50">
-													{recentSnippets.length}
-												</span>
-											</button>
-										</li>
-									</ul>
-								</div>
-
-								<div
-									className={`pt-2 border-t ${
-										darkMode ? "border-gray-700" : "border-gray-200"
-									}`}
-								>
-									<div className="flex items-center space-x-2">
-										<div
-											className={`flex rounded-md overflow-hidden border ${
-												darkMode ? "border-gray-700" : "border-gray-200"
-											}`}
-											style={{ height: '40px' }}
-										>
-											<button
-												onClick={() => setViewMode("grid")}
-												className={`flex items-center justify-center px-4 py-2 ${
-													viewMode === "grid"
-														? "bg-blue-600 text-white"
-														: darkMode
-															? "bg-gray-800 hover:bg-gray-700 text-gray-400"
-															: "bg-white hover:bg-gray-50 text-gray-600"
-												}`}
-												style={{ height: '40px' }}
-												title="Grid view"
-											>
-												<Grid size={18} />
-											</button>
-											<button
-												onClick={() => setViewMode("list")}
-												className={`flex items-center justify-center px-4 py-2 ${
-													viewMode === "list"
-															? "bg-blue-600 text-white"
-															: darkMode
-																? "bg-gray-800 hover:bg-gray-700 text-gray-400"
-																: "bg-white hover:bg-gray-50 text-gray-600"
-												}`}
-												style={{ height: '40px' }}
-												title="List view"
-											>
-												<List size={18} />
-											</button>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				)}
-			</header>
-
-			<main className="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-8 gap-6">
-				{}
-				<aside
-					className={`hidden md:block md:col-span-2 ${
-						darkMode ? "bg-gray-800" : "bg-white"
-					} rounded-xl shadow-sm border ${
-						darkMode ? "border-gray-700" : "border-gray-200"
-					} transition-colors p-4 h-fit sticky top-24`}
-				>
-					<div className="mb-4">
-						<button
-							onClick={() => setSelectedCategory("all")}
-							className={`w-full flex items-center justify-between p-2 rounded-md transition-colors ${
-								selectedCategory === "all"
-									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-									: darkMode
-									? "hover:bg-gray-700"
-									: "hover:bg-gray-100"
-							}`}
-						>
-							<span className="font-medium">All Snippets</span>
-							<span
-								className={`text-sm px-2 py-0.5 rounded-full ${
-									selectedCategory === "all"
-										? "bg-white bg-opacity-20 text-black"
-										: darkMode
-										? "bg-gray-700"
-										: "bg-gray-200"
-								}`}
-							>
-								{snippets.length}
-							</span>
-						</button>
-					</div>
-
-					<div className="mb-2 flex items-center justify-between">
-						<h3 className="font-semibold">Categories</h3>
-						<button
-							onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-							className={`p-1 rounded-md transition-colors ${
-								darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-							}`}
-						>
-							{showCategoryDropdown ? (
-								<ChevronDown size={16} />
-							) : (
-								<ChevronRight size={16} />
-							)}
-						</button>
-					</div>
-
-					{showCategoryDropdown && (
-						<div className="space-y-1 mb-4 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-							{categories.map((category) => (
-								<button
-									key={category.id}
-									onClick={() => setSelectedCategory(category.name)}
-									className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
-										selectedCategory === category.name
-											? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
-											: darkMode
-											? "hover:bg-gray-700"
-											: "hover:bg-gray-100"
-									}`}
-								>
-									<span>{category.name}</span>
-									<span
-										className={`text-xs px-2 py-0.5 rounded-full ${
-											selectedCategory === category.name
-												? "bg-white bg-opacity-20 text-black"
-												: darkMode
-												? "bg-gray-700 text-gray-300"
-												: "bg-gray-200 text-gray-700"
-										}`}
-									>
-										{category.snippetCount}
-									</span>
-								</button>
-							))}
-
-							{}
-							{showNewCategoryInput ? (
-								<div className="mt-2">
-									<div className="flex items-center space-x-2 mb-2">
-										<input
-											type="text"
-											placeholder="Category name"
-											className={`block flex-grow py-1 px-2 text-sm rounded-md border ${
-												darkMode
-													? "bg-gray-700 border-gray-600 text-white"
-													: "bg-gray-100 border-gray-200 text-gray-900"
-											}`}
-											value={newCategory}
-											onChange={(e) => setNewCategory(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") addNewCategory();
-												if (e.key === "Escape") setShowNewCategoryInput(false);
-											}}
-										/>
-										<button
-											onClick={addNewCategory}
-											className="p-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-											title="Add"
-										>
-											<Plus size={16} />
-										</button>
-									</div>
-									<button
-										onClick={() => {
-											setShowNewCategoryInput(false);
-											setNewCategory("");
-										}}
-										className={`w-full text-center text-xs py-1 rounded-md ${
-											darkMode
-												? "text-gray-400 hover:bg-gray-700"
-												: "text-gray-500 hover:bg-gray-100"
-										}`}
-									>
-										Cancel
-									</button>
-								</div>
-							) : (
-								<button
-									onClick={() => setShowNewCategoryInput(true)}
-									className={`w-full flex items-center p-2 rounded-md text-sm transition-colors ${
-										darkMode
-											? "text-blue-400 hover:bg-gray-700"
-											: "text-blue-600 hover:bg-gray-100"
-									}`}
-								>
-									<Plus size={14} className="mr-1" />
-									<span>Add Category</span>
-								</button>
-							)}
-						</div>
-					)}
-
-					<div className="mb-2 flex items-center justify-between">
-						<h3 className="font-semibold">Popular Tags</h3>
-					</div>
-					<div className="flex flex-wrap gap-2 mb-6">
-						{mostUsedTags.map((tag) => (
-							<button
-								key={tag}
-								onClick={() => setSearchQuery(tag)}
-								className={`px-3 py-1 text-xs rounded-full ${
-									darkMode
-										? "bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600"
-										: "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
-								} transition-colors`}
-							>
-								#{tag}
-							</button>
-						))}
-					</div>
-
-					<div
-						className={`border-t ${
-							darkMode ? "border-gray-700" : "border-gray-200"
-						} pt-4`}
-					>
-						<button
-							onClick={() => {
-								setFilterType("favorites");
-								setSelectedCategory("all");
-							}}
-							className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
-								filterType === "favorites"
-									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-									: darkMode
-									? "hover:bg-gray-700"
-									: "hover:bg-gray-100"
-							}`}
-						>
-							<div className="flex items-center">
-								<Star size={16} className="mr-2 text-yellow-400" />
-								<span>Favorites</span>
-							</div>
-							<span
-								className={`text-xs px-2 py-0.5 rounded-full ${
-									filterType === "favorites"
-										? "bg-white bg-opacity-20 text-black"
-										: darkMode
-										? "bg-gray-700"
-										: "bg-gray-200"
-								}`}
-							>
-								{favoriteSnippets.length}
-							</span>
-						</button>
-
-						<button
-							onClick={() => {
-								setFilterType("recents");
-								setSelectedCategory("all");
-							}}
-							className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
-								filterType === "recents"
-									? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-									: darkMode
-									? "hover:bg-gray-700"
-									: "hover:bg-gray-100"
-							}`}
-						>
-							<div className="flex items-center">
-								<Clock size={16} className="mr-2 text-green-400" />
-								<span>Recent</span>
-							</div>
-							<span
-								className={`text-xs px-2 py-0.5 rounded-full ${
-									filterType === "recents"
-										? "bg-white bg-opacity-20 text-black"
-										: darkMode
-										? "bg-gray-700"
-										: "bg-gray-200"
-								}`}
-							>
-								{recentSnippets.length}
-							</span>
-						</button>
-					</div>
-
-					{}
-					{!isProUser && (
-						<div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-100">
-							<h4 className="font-medium text-amber-900 flex items-center">
-								<Gift size={16} className="mr-1.5 text-yellow-500" />
-								Premium Features
-							</h4>
-							<p className="mt-2 text-xs text-amber-800">
-								Unlock unlimited snippets, advanced features, and cloud backup
-							</p>
-							<button
-								onClick={() => setShowUpgradeModal(true)}
-								className="mt-2 w-full py-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-amber-900 font-medium text-sm rounded-md hover:from-yellow-500 hover:to-amber-600 transition-colors shadow-sm"
-							>
-								Upgrade Now
-							</button>
-						</div>
-					)}
-				</aside>
-
-				{}
-				<div className="md:col-span-6">
-					{}
-					{(currentSnippet || selectedCategory !== "all") && <Navigation />}
-
-					{}
-					{currentSnippet && (
-						<div className="mb-4">
-							<button
-								onClick={goBack}
-								className={`flex items-center px-3 py-1.5 rounded-md ${
-									darkMode
-										? "bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300"
-										: "bg-white hover:bg-gray-50 border border-gray-200 text-gray-700"
-								} transition-colors shadow-sm`}
-							>
-								<ChevronLeft size={16} className="mr-1" />
-								<span>Back to snippets</span>
-							</button>
-						</div>
-					)}
-
-					{}
-					{!currentSnippet && (
-						<div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-							<div className="flex items-center">
-								<h2 className="text-lg font-semibold mr-3">
-									{filterType === "favorites"
-										? "Favorite Snippets"
-										: filterType === "recents"
-										? "Recent Snippets"
-										: selectedCategory !== "all"
-										? `${selectedCategory} Snippets`
-										: "All Snippets"}
-								</h2>
-								<div
-									className={`text-sm rounded-full px-3 py-0.5 ${
-										darkMode
-											? "bg-blue-900 bg-opacity-40 text-blue-300"
-											: "bg-blue-100 text-blue-800"
-									} `}
-								>
-									{filteredSnippets.length} snippets
-								</div>
-							</div>
-
-							<div className="flex items-center space-x-2">
-								{}
-								<div className="relative hidden sm:block">
-									<button
-										onClick={() => setShowSortOptions(!showSortOptions)}
-										className={`flex items-center px-3 py-1.5 rounded-md ${
-											darkMode
-												? "bg-gray-800 hover:bg-gray-700 border border-gray-700"
-												: "bg-white hover:bg-gray-50 border border-gray-200"
-										} transition-colors shadow-sm`}
-									>
-										<Filter size={16} className="mr-1.5" />
-										<span>Sort</span>
-										<ChevronDown size={14} className="ml-1" />
-									</button>
-									{showSortOptions && (
-										<div
-											className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg ${
-												darkMode
-													? "bg-gray-800 border border-gray-700"
-													: "bg-white border border-gray-200"
-											} z-10`}
-										>
-											<div className="py-1">
-												{[
-													{ value: "newest", label: "Newest First" },
-													{ value: "oldest", label: "Oldest First" },
-													{ value: "a-z", label: "A to Z" },
-													{ value: "z-a", label: "Z to A" },
-													{ value: "most-used", label: "Most Used" },
-												].map((option) => (
-													<button
-														key={option.value}
-														onClick={() => {
-															setSortOption(option.value as SortOption);
-															setShowSortOptions(false);
-														}}
-														className={`flex items-center w-full px-4 py-2 text-sm ${
-															sortOption === option.value
-																? "bg-blue-600 text-white"
-																: darkMode
-																? "hover:bg-gray-700 text-gray-200"
-																: "hover:bg-gray-100 text-gray-700"
-														}`}
-													>
-														{sortOption === option.value && (
-															<Check size={16} className="mr-2" />
-														)}
-														{sortOption !== option.value && (
-															<div className="w-4 mr-2"></div>
-														)}
-														{option.label}
-													</button>
-												))}
-											</div>
-										</div>
-									)}
-								</div>
-
-								{}
-								<div
-									className={`hidden sm:flex rounded-md overflow-hidden border ${
-										darkMode ? "border-gray-700" : "border-gray-200"
-									}`}
-								>
-									<button
-										onClick={() => setViewMode("grid")}
-										className={`p-1.5 ${
-											viewMode === "grid"
-												? "bg-blue-600 text-white"
-												: darkMode
-												? "bg-gray-800 hover:bg-gray-700 text-gray-400"
-												: "bg-white hover:bg-gray-50 text-gray-600"
-										}`}
-										title="Grid view"
-									>
-										<Grid size={16} />
-									</button>
-									<button
-										onClick={() => setViewMode("list")}
-										className={`p-1.5 ${
-											viewMode === "list"
-												? "bg-blue-600 text-white"
-												: darkMode
-												? "bg-gray-800 hover:bg-gray-700 text-gray-400"
-												: "bg-white hover:bg-gray-50 text-gray-600"
-										}`}
-										title="List view"
-									>
-										<List size={16} />
-									</button>
-								</div>
-
-								{}
-								<button
-									onClick={createNewSnippet}
-									className="sm:hidden flex items-center p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
-									title="New snippet"
-								>
-									<Plus size={18} />
-								</button>
-							</div>
-						</div>
-					)}
-
-					{}
-					{filteredSnippets.length === 0 && !currentSnippet && !isEditing && (
-						<div
-							className={`rounded-xl shadow-sm border ${
-								darkMode
-									? "bg-gray-800 border-gray-700"
-									: "bg-white border-gray-200"
-							} p-8 text-center`}
-						>
-							<div
-								className={`mx-auto h-24 w-24 rounded-full flex items-center justify-center ${
-									darkMode ? "border-gray-700" : "border-gray-100"
-								} mb-4`}
-							>
-								<FileText
-									size={36}
-									className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}
-								/>
-							</div>
-							<h3 className="text-xl font-bold mb-2">No snippets found</h3>
-							<p
-								className={`mb-4 ${
-									darkMode ? "text-gray-400" : "text-gray-600"
-								}`}
-							>
-								{searchQuery
-									? "No snippets match your search criteria."
-									: "You don't have any snippets in this category yet."}
-							</p>
-							<button
-								onClick={createNewSnippet}
-								className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
-							>
-								<Plus size={18} className="mr-1.5" />
-								Create New Snippet
-							</button>
-						</div>
-					)}
-
-					{}
-					{isEditing && currentSnippet ? (
-						<div
-							className={`rounded-xl shadow-sm border ${
-								darkMode
-									? "bg-gray-800 border-gray-700"
-									: "bg-white border-gray-200"
-							} p-5`}
-						>
-							<div className="mb-4">
-								<label
-									className={`block mb-1 font-medium ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									Title
-								</label>
-								<input
-									type="text"
-									value={currentSnippet.title}
-									onChange={(e) => updateSnippetField("title", e.target.value)}
-									className={`block w-full px-4 py-2 rounded-lg border ${
-										darkMode
-											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-									}`}
-								/>
-							</div>
-
-							<div className="mb-4">
-								<label
-									className={`block mb-1 font-medium ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									Description
-								</label>
-								<textarea
-									value={currentSnippet.description}
-									onChange={(e) =>
-										updateSnippetField("description", e.target.value)
-									}
-									className={`block w-full px-4 py-2 rounded-lg border ${
-										darkMode
-											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-									}`}
-									rows={2}
-								/>
-							</div>
-
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-								<div>
-									<label
-										className={`block mb-1 font-medium ${
-											darkMode ? "text-gray-300" : "text-gray-700"
-										}`}
-									>
-										Language
-									</label>
-									<select
-										value={currentSnippet.language}
-										onChange={(e) =>
-											updateSnippetField("language", e.target.value)
-										}
-										className={`block w-full px-4 py-2 rounded-lg border ${
-											darkMode
-												? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-												: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-										}`}
-									>
-										<option value="javascript">JavaScript</option>
-										<option value="typescript">TypeScript</option>
-										<option value="html">HTML</option>
-										<option value="css">CSS</option>
-										<option value="python">Python</option>
-										<option value="java">Java</option>
-										<option value="rust">Rust</option>
-										<option value="go">Go</option>
-									</select>
-								</div>
-
-								<div>
-									<label
-										className={`block mb-1 font-medium ${
-											darkMode ? "text-gray-300" : "text-gray-700"
-										}`}
-									>
-										Category
-									</label>
-									<select
-										value={currentSnippet.category}
-										onChange={(e) =>
-											updateSnippetField("category", e.target.value)
-										}
-										className={`block w-full px-4 py-2 rounded-lg border ${
-											darkMode
-												? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-												: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-										}`}
-									>
-										{categories.map((category) => (
-											<option key={category.id} value={category.name}>
-												{category.name}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
-
-							<div className="mb-4">
-								<label
-									className={`block mb-1 font-medium ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									Tags (comma separated)
-								</label>
-								<input
-									type="text"
-									value={currentSnippet.tags.join(", ")}
-									onChange={(e) =>
-										updateSnippetField(
-											"tags",
-											e.target.value
-												.split(",")
-												.map((tag) => tag.trim())
-												.filter((tag) => tag)
-										)
-									}
-									className={`block w-full px-4 py-2 rounded-lg border ${
-										darkMode
-											? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-									}`}
-									placeholder="E.g. react, hooks, state"
-								/>
-							</div>
-
-							<div className="mb-4">
-								<div className="flex items-center justify-between mb-1">
-									<label
-										className={`font-medium ${
-											darkMode ? "text-gray-300" : "text-gray-700"
-										}`}
-									>
-										Code
-									</label>
-									<div className="flex items-center space-x-2">
-										<div
-											className={`text-xs ${
-												darkMode ? "text-gray-400" : "text-gray-500"
-											}`}
-										>
-											Press Ctrl+S to save
-										</div>
-										<div
-											className={`px-2 py-0.5 rounded-md text-xs ${
-												darkMode
-													? "bg-gray-700 text-gray-300"
-													: "bg-gray-100 text-gray-700"
-											}`}
-										>
-											{currentSnippet.language.toUpperCase()}
-										</div>
-									</div>
-								</div>
-								<textarea
-									value={currentSnippet.code}
-									onChange={(e) => updateSnippetField("code", e.target.value)}
-									className={`block w-full px-4 py-2 rounded-lg border font-mono ${
-										darkMode
-											? "bg-gray-900 border-gray-600 text-gray-100 focus:border-blue-500 focus:ring-blue-500"
-											: "bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-									}`}
-									rows={12}
-									style={{ fontSize: `${userPreferences.fontSize}px` }}
-								/>
-							</div>
-
-							<div className="flex items-center mb-4">
-								<input
-									type="checkbox"
-									id="favorite-checkbox"
-									checked={currentSnippet.isFavorite}
-									onChange={(e) =>
-										updateSnippetField("isFavorite", e.target.checked)
-									}
-									className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<label
-									htmlFor="favorite-checkbox"
-									className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}
-								>
-									Add to favorites
-								</label>
-							</div>
-
-							<div className="flex flex-wrap justify-end gap-2">
-								<button
-									onClick={() => setIsEditing(false)}
-									className={`px-4 py-2 rounded-lg border ${
-										darkMode
-											? "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-											: "bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
-									} transition-colors`}
-								>
-									Cancel
-								</button>
-								<button
-									onClick={saveSnippet}
-									className="px-4 py-2 flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
-								>
-									<Save size={18} className="mr-1.5" />
-									Save
-								</button>
-							</div>
-						</div>
-					) : currentSnippet ? (
-						<div
-							className={`rounded-xl shadow-sm border ${
-								darkMode
-									? "bg-gray-800 border-gray-700"
-									: "bg-white border-gray-200"
-							} p-5`}
-						>
-							<div className="flex flex-wrap justify-between items-start mb-4">
-								<div className="flex items-start">
-									<div className={`mr-3 mt-1 p-2 rounded-lg bg-opacity-20`}>
-										{getLanguageIcon(currentSnippet.language)}
-									</div>
-									<div>
-										<h2 className="text-xl font-bold">
-											{currentSnippet.title}
-										</h2>
-										<p
-											className={`mt-1 ${
-												darkMode ? "text-gray-400" : "text-gray-600"
-											}`}
-										>
-											{currentSnippet.description}
-										</p>
-									</div>
-								</div>
-
-								<div className="flex space-x-2 mt-3 sm:mt-0">
-									<button
-										onClick={() => toggleFavorite(currentSnippet.id)}
-										className={`p-2 rounded-md transition-colors ${
-											currentSnippet.isFavorite
-												? "text-yellow-400 bg-yellow-50"
-												: darkMode
-												? "text-gray-400 hover:text-yellow-400 hover:bg-gray-700"
-												: "text-gray-500 hover:text-yellow-400 hover:bg-gray-100"
-										}`}
-										aria-label={
-											currentSnippet.isFavorite
-												? "Remove from favorites"
-												: "Add to favorites"
-										}
-										title={
-											currentSnippet.isFavorite
-												? "Remove from favorites"
-												: "Add to favorites"
-										}
-									>
-										<Star
-											size={20}
-											className={
-												currentSnippet.isFavorite ? "fill-current" : ""
-											}
-										/>
-									</button>
-
-									<button
-										onClick={() => setIsEditing(true)}
-										className={`p-2 rounded-md ${
-											darkMode
-												? "bg-gray-700 hover:bg-gray-600 text-blue-400"
-												: "bg-gray-100 hover:bg-gray-200 text-blue-600"
-										} transition-colors`}
-										aria-label="Edit snippet"
-										title="Edit snippet"
-									>
-										<Edit size={18} />
-									</button>
-
-									<button
-										onClick={() =>
-											copyToClipboard(currentSnippet.code, currentSnippet.id)
-										}
-										className={`p-2 rounded-md ${
-											darkMode
-												? "bg-gray-700 hover:bg-gray-600 text-green-400"
-												: "bg-gray-100 hover:bg-gray-200 text-green-600"
-										} transition-colors`}
-										aria-label="Copy to clipboard"
-										title="Copy to clipboard"
-									>
-										<Copy size={18} />
-									</button>
-
-									<button
-										onClick={() => deleteSnippet(currentSnippet.id)}
-										className={`p-2 rounded-md ${
-											darkMode
-												? "bg-gray-700 hover:bg-gray-600 text-red-400"
-												: "bg-gray-100 hover:bg-gray-200 text-red-600"
-										} transition-colors`}
-										aria-label="Delete snippet"
-										title="Delete snippet"
-									>
-										<Trash2 size={18} />
-									</button>
-								</div>
-							</div>
-
-							<div className="flex flex-wrap items-center gap-2 mb-3">
-								<div
-									className={`px-3 py-1 rounded-full text-xs ${
-										darkMode ? "bg-gray-700" : "bg-gray-100"
-									} flex items-center`}
-								>
-									<span className={`mr-1.5 w-2 h-2 rounded-full `}></span>
-									{currentSnippet.language}
-								</div>
-								<div
-									className={`px-3 py-1 rounded-full text-xs ${
-										darkMode
-											? "bg-gray-700 text-gray-300"
-											: "bg-gray-100 text-gray-700"
-									}`}
-								>
-									<Folder size={12} className="inline mr-1" />
-									{currentSnippet.category}
-								</div>
-								<div
-									className={`px-3 py-1 rounded-full text-xs ${
-										darkMode
-											? "bg-gray-700 text-gray-300"
-											: "bg-gray-100 text-gray-700"
-									}`}
-								>
-									<Clock size={12} className="inline mr-1" />
-									{formatDate(currentSnippet.created)}
-								</div>
-								<div
-									className={`px-3 py-1 rounded-full text-xs ${
-										darkMode
-											? "bg-gray-700 text-gray-300"
-											: "bg-gray-100 text-gray-700"
-									}`}
-								>
-									<Bookmark size={12} className="inline mr-1" />
-									{currentSnippet.useCount}{" "}
-									{currentSnippet.useCount === 1 ? "use" : "uses"}
-								</div>
-							</div>
-
-							<div className="mb-4 flex flex-wrap gap-2">
-								{currentSnippet.tags.map((tag, index) => (
-									<div
-										key={index}
-										className={`px-2 py-1 rounded-full text-xs ${
-											darkMode
-												? "bg-blue-900 bg-opacity-40 text-blue-300"
-												: "bg-blue-50 text-blue-700 border border-blue-100"
-										}`}
-									>
-										#{tag}
-									</div>
-								))}
-							</div>
-
-							<div className="overflow-hidden rounded-lg border mb-3 flex flex-col">
-								<div
-									className={`flex items-center justify-between px-4 py-2 border-b ${
-										darkMode
-											? "bg-gray-900 border-gray-700 text-gray-300"
-											: "bg-gray-50 border-gray-200 text-gray-700"
-									}`}
-								>
-									<div className="flex items-center">
-										<span className="font-medium text-sm">
-											{currentSnippet.language}
-										</span>
-									</div>
-									<div className="flex items-center">
-										<button
-											onClick={() =>
-												copyToClipboard(currentSnippet.code, currentSnippet.id)
-											}
-											className={`p-1 rounded text-xs flex items-center ${
-												darkMode
-													? "hover:bg-gray-800 text-gray-400 hover:text-gray-300"
-													: "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
-											}`}
-											title="Copy code"
-										>
-											<Copy size={14} className="mr-1" />
-											Copy
-										</button>
-									</div>
-								</div>
-								<pre
-									className={`w-full p-4 overflow-x-auto font-mono ${
-										darkMode
-											? "bg-gray-900 text-gray-100"
-											: "bg-gray-50 text-gray-800"
-									}`}
-									style={{ fontSize: `${userPreferences.fontSize}px` }}
-								>
-									<code>{currentSnippet.code}</code>
-								</pre>
-							</div>
-
-							{copySuccess && (
-								<div className="mt-2 text-sm text-green-500 flex items-center justify-end">
-									<Check size={16} className="mr-1" />
-									{copySuccess}
-								</div>
-							)}
-
-							<div
-								className={`mt-6 flex flex-wrap justify-between items-center pt-4 border-t ${
-									darkMode ? "border-gray-700" : "border-gray-200"
-								}`}
-							>
-								<div className="text-sm">
-									<span
-										className={darkMode ? "text-gray-400" : "text-gray-600"}
-									>
-										Created:{" "}
-									</span>
-									<span
-										className={darkMode ? "text-gray-300" : "text-gray-700"}
-									>
-										{formatDate(currentSnippet.created)}
-									</span>
-								</div>
-								<div className="flex space-x-2">
-									<button
-										onClick={() => setIsEditing(true)}
-										className="px-4 py-2 flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-sm"
-									>
-										<Edit size={16} className="mr-1.5" />
-										Edit Snippet
-									</button>
-								</div>
-							</div>
-						</div>
-					) : (
-						<>
-							{}
-							{viewMode === "grid" ? (
-								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-									{currentSnippetsPage.map((snippet) => (
-										<SnippetCard key={snippet.id} snippet={snippet} />
-									))}
-								</div>
-							) : (
-								<div className="flex flex-col space-y-2">
-									{currentSnippetsPage.map((snippet) => (
-										<SnippetListItem key={snippet.id} snippet={snippet} />
-									))}
-								</div>
-							)}
-
-							{}
-							{totalPages > 1 && (
-								<div className="mt-6 flex justify-center">
-									<nav
-										className={`inline-flex rounded-md shadow-sm border ${
-											darkMode ? "border-gray-700" : "border-gray-200"
-										}`}
-										aria-label="Pagination"
-									>
-										<button
-											onClick={() => goToPage(currentPage - 1)}
-											disabled={currentPage === 1}
-											className={`px-3 py-2 rounded-l-md ${
-												currentPage === 1
-													? darkMode
-														? "bg-gray-800 text-gray-500 cursor-not-allowed"
-														: "bg-gray-100 text-gray-400 cursor-not-allowed"
-													: darkMode
-													? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-													: "bg-white hover:bg-gray-50 text-gray-700"
-											} text-sm font-medium`}
-										>
-											Previous
-										</button>
-										{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-											(page) => (
-												<button
-													key={page}
-													onClick={() => goToPage(page)}
-													className={`px-3 py-2 ${
-														currentPage === page
-															? "bg-blue-600 text-white"
-															: darkMode
-															? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-															: "bg-white hover:bg-gray-50 text-gray-700"
-													} text-sm font-medium`}
-												>
-													{page}
-												</button>
-											)
-										)}
-										<button
-											onClick={() => goToPage(currentPage + 1)}
-											disabled={currentPage === totalPages}
-											className={`px-3 py-2 rounded-r-md ${
-												currentPage === totalPages
-													? darkMode
-														? "bg-gray-800 text-gray-500 cursor-not-allowed"
-														: "bg-gray-100 text-gray-400 cursor-not-allowed"
-													: darkMode
-													? "bg-gray-800 hover:bg-gray-700 text-gray-300"
-													: "bg-white hover:bg-gray-50 text-gray-700"
-											} text-sm font-medium`}
-										>
-											Next
-										</button>
-									</nav>
-								</div>
-							)}
-						</>
-					)}
-				</div>
-			</main>
-
-			{}
-			<footer
-				className={`mt-auto py-6 ${
-					darkMode ? "bg-gray-800 text-gray-400" : "bg-white text-gray-600"
-				} border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-			>
-				<div className="container mx-auto px-4">
-					<div className="flex flex-col md:flex-row justify-between items-center">
-						<div className="flex items-center mb-4 md:mb-0">
-							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg shadow-sm mr-2">
-								<Code size={18} className="text-white" />
-							</div>
-							<span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
-								SnippetPro
-							</span>
-						</div>
-
-						<div className="flex flex-col text-sm items-center md:items-end">
-							<p className="mb-1">© 2025 SnippetPro. All rights reserved.</p>
-							<div className="flex space-x-3">
-								<a href="#" className="hover:underline">
-									Privacy Policy
-								</a>
-								<span>•</span>
-								<a href="#" className="hover:underline">
-									Terms of Service
-								</a>
-							</div>
-						</div>
-
-						<div className="flex space-x-4 mt-4 md:mt-0">
-							<a
-								href="#"
-								className={`p-2 rounded-full ${
-									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-								} transition-colors`}
-								title="GitHub"
-							>
-								<Github size={18} />
-							</a>
-							<a
-								href="#"
-								className={`p-2 rounded-full ${
-									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-								} transition-colors`}
-								title="Twitter"
-							>
-								<Twitter size={18} />
-							</a>
-							<a
-								href="#"
-								className={`p-2 rounded-full ${
-									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-								} transition-colors`}
-								title="LinkedIn"
-							>
-								<Linkedin size={18} />
-							</a>
-						</div>
-					</div>
-				</div>
-			</footer>
-
-			{}
-			{notification.show && (
-				<div
-					className={`fixed bottom-4 right-4 px-5 py-3 rounded-lg shadow-lg transition-all transform animate-slide-up max-w-sm flex items-center ${
-						notification.type === "success"
-							? "bg-green-600 text-white"
-							: notification.type === "error"
-							? "bg-red-600 text-white"
-							: "bg-blue-600 text-white"
-					}`}
-				>
-					{notification.type === "success" && (
-						<Check size={18} className="mr-2" />
-					)}
-					{notification.type === "error" && (
-						<AlertCircle size={18} className="mr-2" />
-					)}
-					{notification.type === "info" && <Info size={18} className="mr-2" />}
-					{notification.message}
-				</div>
-			)}
-
-			{}
-			{showDeleteModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-					<div
-						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
-							darkMode ? "bg-gray-800" : "bg-white"
-						} animate-slide-up`}
-					>
-						<h3 className="text-xl font-bold mb-2">Delete Snippet</h3>
-						<p className={darkMode ? "text-gray-300" : "text-gray-700"}>
-							Are you sure you want to delete this snippet? This action cannot
-							be undone.
-						</p>
-						<div className="flex justify-end space-x-3 mt-6">
-							<button
-								onClick={() => setShowDeleteModal(false)}
-								className={`px-4 py-2 rounded-lg ${
-									darkMode
-										? "bg-gray-700 hover:bg-gray-600 text-white"
-										: "bg-gray-200 hover:bg-gray-300 text-gray-800"
-								}`}
-							>
-								Cancel
-							</button>
-							<button
-								onClick={confirmDeleteSnippet}
-								className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm"
-							>
-								Delete
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{}
-			{showSettings && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-					<div
-						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
-							darkMode ? "bg-gray-800" : "bg-white"
-						} animate-slide-up overflow-y-auto max-h-[90vh]`}
-					>
-						<div className="flex justify-between items-center mb-4">
-							<h3 className="text-xl font-bold">Settings</h3>
-							<button
-								onClick={() => setShowSettings(false)}
-								className={`p-1.5 rounded-full ${
-									darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
-								}`}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</button>
-						</div>
-
-						<div className="space-y-6">
-							<div>
-								<h4
-									className={`font-semibold text-lg mb-3 ${
-										darkMode ? "text-gray-200" : "text-gray-800"
-									}`}
-								>
-									Display Options
-								</h4>
-								<div className="space-y-4">
-									<div>
-										<label
-											className={`block mb-1 font-medium ${
-												darkMode ? "text-gray-300" : "text-gray-700"
-											}`}
-										>
-											Font Size
-										</label>
-										<div className="flex items-center">
-											<input
-												type="range"
-												min="12"
-												max="24"
-												value={userPreferences.fontSize}
-												onChange={(e) =>
-													setUserPreferences({
-														...userPreferences,
-														fontSize: parseInt(e.target.value),
-													})
-												}
-												className="w-full mr-2"
-											/>
-											<span className="w-10 text-center">
-												{userPreferences.fontSize}px
-											</span>
-										</div>
-									</div>
-
-									<div>
-										<label
-											className={`block mb-1 font-medium ${
-												darkMode ? "text-gray-300" : "text-gray-700"
-											}`}
-										>
-											Default View
-										</label>
-										<div className="flex">
-											<button
-												onClick={() =>
-													setUserPreferences({
-														...userPreferences,
-														defaultView: "grid",
-													})
-												}
-												className={`flex-1 flex items-center justify-center p-2 ${
-													userPreferences.defaultView === "grid"
-														? "bg-blue-600 text-white"
-														: darkMode
-														? "bg-gray-700 text-gray-300"
-														: "bg-gray-100 text-gray-700"
-												} rounded-l-md`}
-											>
-												<Grid size={16} className="mr-1.5" />
-												Grid
-											</button>
-											<button
-												onClick={() =>
-													setUserPreferences({
-														...userPreferences,
-														defaultView: "list",
-													})
-												}
-												className={`flex-1 flex items-center justify-center p-2 ${
-													userPreferences.defaultView === "list"
-														? "bg-blue-600 text-white"
-														: darkMode
-														? "bg-gray-700 text-gray-300"
-														: "bg-gray-100 text-gray-700"
-												} rounded-r-md`}
-											>
-												<List size={16} className="mr-1.5" />
-												List
-											</button>
-										</div>
-									</div>
-
-									<div>
-										<label
-											className={`block mb-1 font-medium ${
-												darkMode ? "text-gray-300" : "text-gray-700"
-											}`}
-										>
-											Items Per Page
-										</label>
-										<select
-											value={userPreferences.snippetsPerPage}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													snippetsPerPage: parseInt(e.target.value),
-												})
-											}
-											className={`block w-full px-4 py-2 rounded-lg border ${
-												darkMode
-													? "bg-gray-700 border-gray-600 text-white"
-													: "bg-gray-50 border-gray-300 text-gray-900"
-											}`}
-										>
-											<option value="6">6 snippets</option>
-											<option value="9">9 snippets</option>
-											<option value="12">12 snippets</option>
-											<option value="15">15 snippets</option>
-											<option value="24">24 snippets</option>
-										</select>
-									</div>
-								</div>
-							</div>
-
-							<div>
-								<h4
-									className={`font-semibold text-lg mb-3 ${
-										darkMode ? "text-gray-200" : "text-gray-800"
-									}`}
-								>
-									Editor Settings
-								</h4>
-								<div className="space-y-4">
-									<div>
-										<label
-											className={`block mb-1 font-medium ${
-												darkMode ? "text-gray-300" : "text-gray-700"
-											}`}
-										>
-											Tab Size
-										</label>
-										<select
-											value={userPreferences.tabSize}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													tabSize: parseInt(e.target.value),
-												})
-											}
-											className={`block w-full px-4 py-2 rounded-lg border ${
-												darkMode
-													? "bg-gray-700 border-gray-600 text-white"
-													: "bg-gray-50 border-gray-300 text-gray-900"
-											}`}
-										>
-											<option value="2">2 spaces</option>
-											<option value="4">4 spaces</option>
-											<option value="8">8 spaces</option>
-										</select>
-									</div>
-
-									<div className="flex items-center">
-										<input
-											type="checkbox"
-											id="auto-save"
-											checked={userPreferences.autoSave}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													autoSave: e.target.checked,
-												})
-											}
-											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-										/>
-										<label
-											htmlFor="auto-save"
-											className={darkMode ? "text-gray-300" : "text-gray-700"}
-										>
-											Auto-save when editing
-										</label>
-									</div>
-
-									<div className="flex items-center">
-										<input
-											type="checkbox"
-											id="line-numbers"
-											checked={userPreferences.showLineNumbers}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													showLineNumbers: e.target.checked,
-												})
-											}
-											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-										/>
-										<label
-											htmlFor="line-numbers"
-											className={darkMode ? "text-gray-300" : "text-gray-700"}
-										>
-											Show line numbers
-										</label>
-									</div>
-
-									<div className="flex items-center">
-										<input
-											type="checkbox"
-											id="highlight-line"
-											checked={userPreferences.highlightCurrentLine}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													highlightCurrentLine: e.target.checked,
-												})
-											}
-											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-										/>
-										<label
-											htmlFor="highlight-line"
-											className={darkMode ? "text-gray-300" : "text-gray-700"}
-										>
-											Highlight current line
-										</label>
-									</div>
-
-									<div className="flex items-center">
-										<input
-											type="checkbox"
-											id="auto-brackets"
-											checked={userPreferences.autoCloseBrackets}
-											onChange={(e) =>
-												setUserPreferences({
-													...userPreferences,
-													autoCloseBrackets: e.target.checked,
-												})
-											}
-											className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-										/>
-										<label
-											htmlFor="auto-brackets"
-											className={darkMode ? "text-gray-300" : "text-gray-700"}
-										>
-											Auto-close brackets
-										</label>
-									</div>
-								</div>
-							</div>
-
-							<div
-								className={`pt-4 border-t ${
-									darkMode ? "border-gray-700" : "border-gray-200"
-								}`}
-							>
-								<div className="flex justify-between items-center">
-									<button
-										onClick={() => {
-											showNotification(
-												"All settings reset to defaults",
-												"info"
-											);
-											setUserPreferences({
-												fontSize: 14,
-												tabSize: 2,
-												autoSave: true,
-												showLineNumbers: true,
-												defaultView: "grid",
-												highlightCurrentLine: true,
-												autoCloseBrackets: true,
-												snippetsPerPage: 9,
-												theme: "default",
-											});
-										}}
-										className={`px-4 py-2 rounded-lg ${
-											darkMode
-												? "bg-gray-700 hover:bg-gray-600 text-white"
-												: "bg-gray-100 hover:bg-gray-200 text-gray-800"
-										}`}
-									>
-										Reset to Default
-									</button>
-									<button
-										onClick={() => setShowSettings(false)}
-										className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-sm"
-									>
-										Save Changes
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{}
-			{showUpgradeModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-					<div
-						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 overflow-hidden ${
-							darkMode ? "bg-gray-800" : "bg-white"
-						} animate-slide-up`}
-					>
-						{}
-						<div className="absolute top-0 right-0 w-40 h-40 bg-yellow-400 rounded-full opacity-10 -mr-10 -mt-10"></div>
-						<div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-600 rounded-full opacity-10 -ml-10 -mb-10"></div>
-
-						<h3 className="text-2xl font-bold mb-1 relative">
-							Upgrade to SnippetPro Premium
-							<span className="absolute -top-1 -right-1 w-20 h-20 bg-yellow-400 rounded-full opacity-10"></span>
-						</h3>
-						<p
-							className={`${
-								darkMode ? "text-gray-300" : "text-gray-700"
-							} mb-4 relative`}
-						>
-							Take your productivity to the next level with premium features.
-						</p>
-
-						<ul className="space-y-2 mb-6 relative">
-							{[
-								"Unlimited code snippets",
-								"Cloud sync across devices",
-								"Advanced code editor features",
-								"Team sharing & collaboration",
-								"Custom themes and branding",
-								"Automatic backups",
-							].map((feature, index) => (
-								<li
-									key={index}
-									className={`flex items-center ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									<Check size={16} className="mr-2 text-green-500" />
-									{feature}
-								</li>
-							))}
-						</ul>
-
-						<div
-							className={`flex flex-col mb-4 py-3 px-4 rounded-lg ${
-								darkMode ? "bg-blue-900" : "bg-blue-50"
-							} relative`}
-						>
-							<div className="flex justify-between items-center">
-								<span className="text-blue-500 font-medium">Monthly</span>
-								<span className="text-xl font-bold text-blue-500">$5.99</span>
-							</div>
-							<div className="flex justify-between items-center mt-2">
-								<span className="text-blue-500 font-medium">
-									Annual (save 20%)
-								</span>
-								<span className="text-xl font-bold text-blue-600">$49.99</span>
-							</div>
-						</div>
-
-						<div className="flex flex-col sm:flex-row gap-3 relative">
-							<button
-								onClick={() => setShowUpgradeModal(false)}
-								className={`flex-1 px-4 py-2 rounded-lg ${
-									darkMode
-										? "bg-gray-700 hover:bg-gray-600 text-white"
-										: "bg-gray-200 hover:bg-gray-300 text-gray-800"
-								}`}
-							>
-								Maybe Later
-							</button>
-							<button
-								onClick={handleUpgrade}
-								className="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-600 shadow-sm"
-							>
-								Upgrade Now
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{}
-			{showOnboarding && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-					<div
-						className={`relative rounded-xl shadow-lg max-w-md w-full p-6 ${
-							darkMode ? "bg-gray-800" : "bg-white"
-						} animate-slide-up`}
-					>
-						<button
-							onClick={() => setShowOnboarding(false)}
-							className={`absolute top-4 right-4 p-1 rounded-full ${
-								darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
-							}`}
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								className="h-5 w-5"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M6 18L18 6M6 6l12 12"
-								/>
-							</svg>
-						</button>
-
-						<div className="flex items-center justify-center mb-4">
-							<div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-lg">
-								<Code size={30} className="text-white" />
-							</div>
-						</div>
-
-						{onboardingStep === 1 && (
-							<>
-								<h3 className="text-xl font-bold text-center mb-2">
-									Welcome to SnippetPro!
-								</h3>
-								<p
-									className={`text-center mb-4 ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									The easiest way to organize and access your code snippets.
-								</p>
-								<div className="flex justify-center mb-6">
-									<img
-										src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=300"
-										alt="Code snippet illustration"
-										className="rounded-lg w-64 h-auto object-cover"
-									/>
-								</div>
-							</>
-						)}
-
-						{onboardingStep === 2 && (
-							<>
-								<h3 className="text-xl font-bold text-center mb-2">
-									Create & Organize
-								</h3>
-								<p
-									className={`text-center mb-4 ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									Create new snippets and organize them by language, category,
-									and tags.
-								</p>
-								<div className="flex flex-col space-y-3 mb-6">
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Plus size={18} className="mr-3 text-blue-500" />
-										<span>Create new snippets quickly</span>
-									</div>
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Folder size={18} className="mr-3 text-blue-500" />
-										<span>Organize by categories</span>
-									</div>
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Tag size={18} className="mr-3 text-blue-500" />
-										<span>Add tags for easy filtering</span>
-									</div>
-								</div>
-							</>
-						)}
-
-						{onboardingStep === 3 && (
-							<>
-								<h3 className="text-xl font-bold text-center mb-2">
-									Find & Use
-								</h3>
-								<p
-									className={`text-center mb-4 ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									Quickly find and reuse your code snippets whenever you need
-									them.
-								</p>
-								<div className="flex flex-col space-y-3 mb-6">
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Search size={18} className="mr-3 text-blue-500" />
-										<span>Search across all snippets</span>
-									</div>
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Star size={18} className="mr-3 text-yellow-400" />
-										<span>Mark favorites for quick access</span>
-									</div>
-									<div
-										className={`flex items-center p-3 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-gray-100"
-										}`}
-									>
-										<Copy size={18} className="mr-3 text-blue-500" />
-										<span>Copy code with one click</span>
-									</div>
-								</div>
-							</>
-						)}
-
-						{onboardingStep === 4 && (
-							<>
-								<h3 className="text-xl font-bold text-center mb-2">
-									Ready to Start?
-								</h3>
-								<p
-									className={`text-center mb-4 ${
-										darkMode ? "text-gray-300" : "text-gray-700"
-									}`}
-								>
-									You're all set! Explore SnippetPro and boost your coding
-									productivity.
-								</p>
-								<div className="flex justify-center mb-6">
-									<div
-										className={`p-4 rounded-lg ${
-											darkMode ? "bg-gray-700" : "bg-blue-50"
-										} max-w-xs`}
-									>
-										<h4 className="font-medium text-center mb-2">Pro Tip</h4>
-										<p className="text-sm text-center">
-											Use keyboard shortcuts like Ctrl+K to search and Ctrl+N to
-											create new snippets!
-										</p>
-									</div>
-								</div>
-							</>
-						)}
-
-						<div
-							className={`flex justify-between items-center pt-4 border-t ${
-								darkMode ? "border-gray-700" : "border-gray-200"
-							}`}
-						>
-							<div className="flex space-x-1">
-								{[1, 2, 3, 4].map((step) => (
-									<div
-										key={step}
-										className={`w-2 h-2 rounded-full ${
-											step === onboardingStep
-												? "bg-blue-600"
-												: darkMode
-												? "bg-gray-600"
-												: "bg-gray-300"
-										}`}
-									></div>
-								))}
-							</div>
-							<button
-								onClick={nextOnboardingStep}
-								className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-sm"
-							>
-								{onboardingStep < 4 ? "Next" : "Get Started"}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{}
-			<style jsx>{`
-				@keyframes fade-in {
-					from {
-						opacity: 0;
-					}
-					to {
-						opacity: 1;
-					}
-				}
-
-				@keyframes slide-up {
-					from {
-						transform: translateY(10px);
-						opacity: 0;
-					}
-					to {
-						transform: translateY(0);
-						opacity: 1;
-					}
-				}
-
-				.animate-fade-in {
-					animation: fade-in 0.2s ease-out;
-				}
-
-				.animate-slide-up {
-					animation: slide-up 0.3s ease-out;
-				}
-
-				.hover\:scale-102:hover {
-					transform: scale(1.02);
-				}
-
-				.custom-scrollbar::-webkit-scrollbar {
-					width: 6px;
-					height: 6px;
-				}
-
-				.custom-scrollbar::-webkit-scrollbar-track {
-					background: ${darkMode
-						? "rgba(31, 41, 55, 0.5)"
-						: "rgba(243, 244, 246, 0.5)"};
-					border-radius: 10px;
-				}
-
-				.custom-scrollbar::-webkit-scrollbar-thumb {
-					background: ${darkMode
-						? "rgba(75, 85, 99, 0.5)"
-						: "rgba(209, 213, 219, 0.5)"};
-					border-radius: 10px;
-				}
-
-				.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-					background: ${darkMode
-						? "rgba(75, 85, 99, 0.8)"
-						: "rgba(156, 163, 175, 0.8)"};
-				}
-			`}</style>
-
-			{/* Mobile Sort Modal */}
-			{showMobileSortOptions && (
-				<div className="fixed inset-0 z-50 flex items-end justify-center md:hidden bg-black bg-opacity-40" onClick={() => setShowMobileSortOptions(false)}>
-					<div
-						className={`w-full max-w-sm mx-auto rounded-t-xl shadow-lg p-4 mb-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-						style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
-						onClick={e => e.stopPropagation()}
-					>
-						<div className="mb-2 font-semibold text-center">Sort Snippets</div>
-						<div className="flex flex-col gap-1">
-							{[
-								{ value: "newest", label: "Newest First" },
-								{ value: "oldest", label: "Oldest First" },
-								{ value: "a-z", label: "A to Z" },
-								{ value: "z-a", label: "Z to A" },
-								{ value: "most-used", label: "Most Used" },
-							].map(option => (
-								<button
-									key={option.value}
-									onClick={() => {
-										setSortOption(option.value as SortOption);
-										setShowMobileSortOptions(false);
-									}}
-									className={`flex items-center w-full px-4 py-3 text-base rounded-lg mb-1 ${
-										sortOption === option.value
-											? "bg-blue-600 text-white"
-											: darkMode
-											? "hover:bg-gray-700 text-gray-200"
-											: "hover:bg-gray-100 text-gray-700"
-									}`}
-								>
-									{sortOption === option.value && <Check size={18} className="mr-2" />}
-									{sortOption !== option.value && <div className="w-5 mr-2"></div>}
-									{option.label}
-								</button>
-							))}
-						</div>
-						<button
-							onClick={() => setShowMobileSortOptions(false)}
-							className={`mt-3 w-full py-2 rounded-lg ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-800"}`}
-						>
-							Cancel
-						</button>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-};
-
-export default SnippetProApp;
+  // Handle info button click
+  const handleInfoClick = (painting: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPainting(painting);
+    setShowInfoModal(true);
+  };
+
+  // Handle explore button click
+  const handleExploreClick = () => {
+    // Smooth scroll to the explored gallery section
+    document.querySelector(".explored-gallery-section")?.scrollIntoView({
+      behavior: "smooth"
+    });
+  };
+
+  // Render search results
+  const renderSearchResults = () => {
+    if (searchQuery === "") return null;
+
+    return (
+      <div className="relative mb-16">
+        <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 bg-[#0a0a0a] px-12 py-2 z-10 border-l-2 border-r-2 border-[#d4af37]">
+          <h2 className="text-lg uppercase tracking-[6px] gold-text font-semibold">Search Results</h2>
+        </div>
+        <div className="h-px w-full gold-gradient mb-20"></div>
+
+        {filteredPaintings.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {filteredPaintings.map((painting, index) => (
+              <motion.div
+                key={painting.id}
+                className={`flex flex-col items-center ${index === 1 && filteredPaintings.length >= 3 ? 'md:mt-16' : ''} w-full`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 * index }}
+              >
+                <motion.div
+                  className="mb-6 relative mx-auto"
+                  style={{ width: '320px', height: '420px' }}
+                  whileHover={{
+                    scale: 1.07,
+                    boxShadow: isDarkMode
+                      ? "0 15px 30px rgba(0,0,0,0.8), 0 10px 20px rgba(212,175,55,0.3)"
+                      : "0 15px 30px rgba(0,0,0,0.2), 0 10px 20px rgba(212,175,55,0.5)",
+                    transition: { type: "spring", stiffness: 300, damping: 20 }
+                  }}
+                  onHoverStart={() => setHoveredPainting(painting.id)}
+                  onHoverEnd={() => setHoveredPainting(null)}
+                >
+                  <div className="luxurious-frame relative">
+                    <div className="frame-corner frame-corner-tl"></div>
+                    <div className="frame-corner frame-corner-tr"></div>
+                    <div className="frame-corner frame-corner-bl"></div>
+                    <div className="frame-corner frame-corner-br"></div>
+                    <div className="frame-inner">
+                      <img
+                        src={painting.image}
+                        alt={painting.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <AnimatePresence>
+                      {hoveredPainting === painting.id && (
+                        <motion.div
+                          className="hover-card p-3"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="text-xs text-[#d4af37] font-medium">{painting.title}</h4>
+                            <div className="flex space-x-3">
+                              <Heart
+                                size={14}
+                                className={`hover-icon ${likedPaintings.includes(painting.id) ? "text-[#f9e076] fill-[#f9e076]" : ""}`}
+                                onClick={(e) => handleLikeClick(painting.id, e)}
+                              />
+                              <Share2
+                                size={14}
+                                className="hover-icon"
+                                onClick={(e) => handleShareClick(painting, e)}
+                              />
+                              <Info
+                                size={14}
+                                className="hover-icon"
+                                onClick={(e) => handleInfoClick(painting, e)}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-gray-400">
+                            <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.artist}</span>
+                            <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.year}</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+                <h3 className="text-sm uppercase tracking-wide font-medium text-center mb-1"
+                  style={{
+                    background: 'linear-gradient(to right, #d4af37, #f9e076, #d4af37)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    textShadow: isDarkMode ? '0 2px 10px rgba(212, 175, 55, 0.3)' : '0 1px 1px rgba(0, 0, 0, 0.8)'
+                  }}
+                >
+                  {painting.title}
+                </h3>
+                <p className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-[#593c15]"}`}>{painting.artist}</p>
+                <p className={`text-xs ${isDarkMode ? "text-gray-400" : "text-[#593c15]"}`}>{painting.year}</p>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-gray-400">No paintings found matching your search.</p>
+            <button
+              className="mt-4 px-6 py-2 border border-[#d4af37] text-[#d4af37] text-sm hover:bg-[#d4af37] hover:text-black transition-all"
+              onClick={() => setSearchQuery("")}
+            >
+              Clear Search
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className={`min-h-screen ${isDarkMode ? "bg-[#0a0a0a]" : "bg-[#f8f4e8]"} ${isDarkMode ? "text-white" : "text-[#3a2f1d]"} relative overflow-hidden`}>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap');
+        
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Cinzel', serif;
+          background-color: ${isDarkMode ? '#0a0a0a' : '#f8f4e8'};
+          overflow-x: hidden;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .gold-gradient {
+          background: linear-gradient(to right, #d4af37 0%, #f9e076 20%, #d4af37 40%, #d4af37 60%, #f9e076 80%, #d4af37 100%);
+          background-size: 200% auto;
+          animation: shimmer 2s linear infinite;
+          box-shadow: ${isDarkMode ? 'none' : '0 2px 10px rgba(212, 175, 55, 0.5)'};
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+        
+        .spotlight {
+          pointer-events: none;
+          position: fixed;
+          width: 100vw;
+          height: 100vh;
+          top: 0;
+          left: 0;
+          background: radial-gradient(
+            circle at 50% 30%, 
+            rgba(0,0,0,0) 0%, 
+            ${isDarkMode ? 'rgba(0,0,0,0.2) 20%, rgba(0,0,0,0.5) 70%' : 'rgba(137, 94, 38, 0.05) 20%, rgba(137, 94, 38, 0.15) 70%'}
+          );
+          opacity: ${isDarkMode ? '0.7' : '0.5'};
+          z-index: 10;
+          transition: opacity 1s ease;
+        }
+        
+        .title-stroke {
+          -webkit-text-stroke: 1px rgba(212, 175, 55, 0.5);
+          text-stroke: 1px rgba(212, 175, 55, 0.5);
+        }
+        
+        .luxurious-frame {
+          position: relative;
+          padding: 22px;
+          background: linear-gradient(45deg, #d4af37, #f9e076, #d4af37, #bb9837);
+          box-shadow: 
+            0 10px 30px rgba(0, 0, 0, ${isDarkMode ? '0.8' : '0.2'}),
+            0 5px 15px rgba(212, 175, 55, 0.5);
+          transform-style: preserve-3d;
+          perspective: 1000px;
+          transition: transform 0.3s ease;
+        }
+        
+        .luxurious-frame::before {
+          content: '';
+          position: absolute;
+          top: 5px;
+          left: 5px;
+          right: 5px;
+          bottom: 5px;
+          background: ${isDarkMode ? '#0a0a0a' : '#f8f4e8'};
+          z-index: 0;
+        }
+        
+        .luxurious-frame::after {
+          content: '';
+          position: absolute;
+          top: -10px;
+          left: -10px;
+          right: -10px;
+          bottom: -10px;
+          background: linear-gradient(45deg, #f9e076, #d4af37);
+          z-index: -2;
+          filter: blur(12px);
+          opacity: ${isDarkMode ? '0.5' : '0.7'};
+          transition: opacity 0.3s ease;
+        }
+        
+        .luxurious-frame:hover::after {
+          opacity: 1;
+        }
+        
+        .frame-inner {
+          position: relative;
+          z-index: 1;
+          transition: transform 0.3s ease;
+        }
+        
+        .frame-corner {
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          z-index: 2;
+          box-shadow: 0 0 10px rgba(249, 224, 118, 0.5);
+        }
+        
+        @media (min-width: 640px) {
+          .frame-corner {
+            width: 30px;
+            height: 30px;
+          }
+        }
+        
+        .frame-corner::before {
+          content: '';
+          position: absolute;
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #f9e076;
+          box-shadow: 0 0 5px #f9e076;
+        }
+        
+        .frame-corner-tl {
+          top: 8px;
+          left: 8px;
+          border-top: 2px solid #f9e076;
+          border-left: 2px solid #f9e076;
+        }
+        
+        .frame-corner-tl::before {
+          top: -2px;
+          left: -2px;
+        }
+        
+        .frame-corner-tr {
+          top: 8px;
+          right: 8px;
+          border-top: 2px solid #f9e076;
+          border-right: 2px solid #f9e076;
+        }
+        
+        .frame-corner-tr::before {
+          top: -2px;
+          right: -2px;
+        }
+        
+        .frame-corner-bl {
+          bottom: 8px;
+          left: 8px;
+          border-bottom: 2px solid #f9e076;
+          border-left: 2px solid #f9e076;
+        }
+        
+        .frame-corner-bl::before {
+          bottom: -2px;
+          left: -2px;
+        }
+        
+        .frame-corner-br {
+          bottom: 8px;
+          right: 8px;
+          border-bottom: 2px solid #f9e076;
+          border-right: 2px solid #f9e076;
+        }
+        
+        .frame-corner-br::before {
+          bottom: -2px;
+          right: -2px;
+        }
+        
+        .gold-text {
+          background: linear-gradient(to right, #d4af37, #f9e076, #d4af37);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-fill-color: transparent;
+          text-shadow: ${isDarkMode ? '0 2px 10px rgba(212, 175, 55, 0.3)' : '0 2px 5px rgba(0, 0, 0, 0.6)'};
+        }
+        
+        .hover-card {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: ${isDarkMode ? 'rgba(10, 10, 10, 0.9)' : 'rgba(248, 244, 232, 0.95)'};
+          backdrop-filter: blur(5px);
+          border-top: 1px solid rgba(212, 175, 55, 0.3);
+          z-index: 5;
+          box-shadow: ${isDarkMode ? 'none' : '0 -4px 10px rgba(0, 0, 0, 0.05)'};
+        }
+        
+        .hover-icon {
+          color: #d4af37;
+          transition: all 0.3s ease;
+        }
+        
+        .hover-icon:hover {
+          color: #f9e076;
+          transform: scale(1.2);
+        }
+        
+        .nav-item {
+          position: relative;
+        }
+        
+        .nav-item::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 50%;
+          width: 0;
+          height: 1px;
+          background: #d4af37;
+          transition: all 0.3s ease;
+          transform: translateX(-50%);
+        }
+        
+        .nav-item:hover::after {
+          width: 100%;
+        }
+        
+        .title-3d {
+          transform: perspective(500px) rotateX(10deg);
+          text-shadow: 
+            0 1px 0 #ccc,
+            0 2px 0 #c9c9c9,
+            0 3px 0 #bbb,
+            0 4px 0 #b9b9b9,
+            0 5px 0 #aaa,
+            0 6px 1px rgba(0,0,0,.1),
+            0 0 5px rgba(0,0,0,.1),
+            0 1px 3px rgba(0,0,0,.3),
+            0 3px 5px rgba(0,0,0,.2),
+            0 5px 10px rgba(0,0,0,.25),
+            0 10px 10px rgba(0,0,0,.2),
+            0 20px 20px rgba(0,0,0,.15);
+        }
+        
+        .tailwind-gold-text {
+          @apply font-bold text-amber-600 dark:text-yellow-400 drop-shadow-sm;
+        }
+        
+        .tailwind-gold-title {
+          @apply font-bold text-amber-600 dark:text-white drop-shadow-sm dark:drop-shadow-gold uppercase tracking-wide;
+        }
+        
+        .dark .drop-shadow-gold {
+          filter: drop-shadow(0 0 1px #d4af37) drop-shadow(0 0 2px #d4af37);
+        }
+        
+        .painting-card {
+          @apply transition-all duration-300 hover:scale-105 hover:rotate-1;
+        }
+        
+        .painting-image {
+          @apply transition-all duration-500 hover:scale-110;
+        }
+        
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0px); }
+        }
+        
+        .float-animation {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        .float-animation-delay-1 {
+          animation: float 6s ease-in-out 2s infinite;
+        }
+        
+        .float-animation-delay-2 {
+          animation: float 6s ease-in-out 4s infinite;
+        }
+        
+        /* Mobile specific styles */
+        @media (max-width: 640px) {
+          .float-animation,
+          .float-animation-delay-1,
+          .float-animation-delay-2 {
+            animation-duration: 8s;
+            animation-name: float;
+          }
+          
+          .luxurious-frame {
+            padding: 16px;
+          }
+          
+          .title-3d {
+            transform: perspective(400px) rotateX(8deg);
+          }
+        }
+
+        .gold-swirl {
+          background: linear-gradient(45deg, #f9e076, #ffa500, #bb9837, #ffd700);
+          animation: gradient-shift 8s ease infinite;
+          background-size: 400% 400%;
+          border-radius: 15px 5px 15px 5px;
+        }
+
+        .silver-wave {
+          background: linear-gradient(135deg, #ff6b6b, #e5e5e5, #4ecdc4, #ff6b6b);
+          animation: wave-animation 6s ease infinite;
+          background-size: 400% 400%;
+          border-radius: 10px 10px 35px 35px;
+        }
+
+        .bronze-leaves {
+          background: linear-gradient(90deg, #cd7f32, #ff9966, #ff7f50);
+          animation: leaf-sway 7s ease-in-out infinite;
+          background-size: 300% 300%;
+          border-radius: 30px 30px 5px 5px;
+        }
+
+        .rainbow-ripple {
+          background: linear-gradient(to right, #ff9966, #ff5e62, #00d2ff, #96c93d, #ff9966);
+          animation: rainbow-shift 10s linear infinite;
+          background-size: 500% 500%;
+          border-radius: 50% 20% 50% 20%;
+        }
+
+        .copper-twist {
+          background: linear-gradient(225deg, #b87333, #ff9966, #b87333);
+          animation: twist-turn 8s ease infinite;
+          background-size: 300% 300%;
+          border-radius: 8px 32px 8px 32px;
+        }
+
+        .emerald-dots {
+          background: radial-gradient(circle, #2ecc71, #1abc9c, #3498db);
+          animation: dot-pulse 9s ease-in-out infinite;
+          background-size: 200% 200%;
+          border-radius: 25px;
+        }
+
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        @keyframes wave-animation {
+          0% { background-position: 0% 50%; border-radius: 10px 10px 35px 35px; }
+          50% { background-position: 100% 50%; border-radius: 35px 35px 10px 10px; }
+          100% { background-position: 0% 50%; border-radius: 10px 10px 35px 35px; }
+        }
+
+        @keyframes leaf-sway {
+          0% { background-position: 0% 50%; transform: translateY(-1px); }
+          50% { background-position: 100% 50%; transform: translateY(1px); }
+          100% { background-position: 0% 50%; transform: translateY(-1px); }
+        }
+
+        @keyframes rainbow-shift {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 100% 50%; }
+        }
+
+        @keyframes twist-turn {
+          0% { background-position: 0% 50%; transform: scale(1); }
+          25% { transform: scale(1.01); }
+          50% { background-position: 100% 50%; transform: scale(1); }
+          75% { transform: scale(0.99); }
+          100% { background-position: 0% 50%; transform: scale(1); }
+        }
+
+        @keyframes dot-pulse {
+          0% { background-position: 0% 0%; background-size: 200% 200%; }
+          50% { background-position: 100% 100%; background-size: 250% 250%; }
+          100% { background-position: 0% 0%; background-size: 200% 200%; }
+        }
+
+        /* Featured paintings have continuous animations */
+        .featured-painting .float-vertical {
+          animation: float-v 3s ease-in-out infinite;
+        }
+
+        .featured-painting .rotate-gentle {
+          animation: rotate-g 4s ease infinite;
+        }
+
+        .featured-painting .pulse-subtle {
+          animation: pulse-s 2s ease-in-out infinite;
+        }
+
+        /* Other paintings only animate on hover */
+        .float-vertical:not(.featured-painting .float-vertical):hover {
+          animation: float-v 3s ease-in-out infinite;
+        }
+
+        .rotate-gentle:not(.featured-painting .rotate-gentle):hover {
+          animation: rotate-g 4s ease infinite;
+        }
+
+        .pulse-subtle:not(.featured-painting .pulse-subtle):hover {
+          animation: pulse-s 2s ease-in-out infinite;
+        }
+
+        .zoom-bounce:hover {
+          animation: zoom-b 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .spin-slow:hover {
+          animation: spin-s 6s linear infinite;
+        }
+
+        .wobble-fun:hover {
+          animation: wobble-f 2s ease-in-out infinite;
+        }
+
+        /* Add animation keyframes back */
+        @keyframes float-v {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
+          100% { transform: translateY(0); }
+        }
+
+        @keyframes rotate-g {
+          0% { transform: translateY(-2px); }
+          25% { transform: translateY(2px); }
+          75% { transform: translateY(-2px); }
+          100% { transform: translateY(0); }
+        }
+
+        @keyframes pulse-s {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+
+        @keyframes zoom-b {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.08); }
+          60% { transform: scale(0.98); }
+          100% { transform: scale(1); }
+        }
+
+        @keyframes spin-s {
+          0% { filter: brightness(1); }
+          50% { filter: brightness(1.1); }
+          100% { filter: brightness(1); }
+        }
+
+        @keyframes wobble-f {
+          0%, 100% { transform: translateX(0); }
+          15% { transform: translateX(-5px); }
+          30% { transform: translateX(5px); }
+          45% { transform: translateX(-5px); }
+          60% { transform: translateX(5px); }
+          75% { transform: translateX(-3px); }
+          90% { transform: translateX(3px); }
+        }
+      `}</style>
+
+      {/* Background Elements */}
+      {spotlight && (
+        <div className="spotlight"></div>
+      )}
+
+      {/* Dynamic Spotlight */}
+      <motion.div
+        className="fixed inset-0 pointer-events-none z-5"
+        animate={{
+          background: isDarkMode ? [
+            'radial-gradient(circle at 30% 20%, rgba(0,0,0,0) 5%, rgba(0,0,0,0.8) 70%)',
+            'radial-gradient(circle at 70% 20%, rgba(0,0,0,0) 5%, rgba(0,0,0,0.8) 70%)',
+            'radial-gradient(circle at 30% 70%, rgba(0,0,0,0) 5%, rgba(0,0,0,0.8) 70%)',
+            'radial-gradient(circle at 70% 70%, rgba(0,0,0,0) 5%, rgba(0,0,0,0.8) 70%)',
+            'radial-gradient(circle at 30% 20%, rgba(0,0,0,0) 5%, rgba(0,0,0,0.8) 70%)'
+          ] : [
+            'radial-gradient(circle at 30% 20%, rgba(137, 94, 38, 0) 5%, rgba(137, 94, 38, 0.15) 70%)',
+            'radial-gradient(circle at 70% 20%, rgba(137, 94, 38, 0) 5%, rgba(137, 94, 38, 0.15) 70%)',
+            'radial-gradient(circle at 30% 70%, rgba(137, 94, 38, 0) 5%, rgba(137, 94, 38, 0.15) 70%)',
+            'radial-gradient(circle at 70% 70%, rgba(137, 94, 38, 0) 5%, rgba(137, 94, 38, 0.15) 70%)',
+            'radial-gradient(circle at 30% 20%, rgba(137, 94, 38, 0) 5%, rgba(137, 94, 38, 0.15) 70%)'
+          ]
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        style={{ opacity: isDarkMode ? 0.6 : 0.6 }}
+      />
+
+      {/* Additional Light Mode Spotlight for better visibility */}
+      {!isDarkMode && (
+        <motion.div
+          className="fixed inset-0 pointer-events-none z-4"
+          animate={{
+            background: [
+              'radial-gradient(circle at 40% 30%, rgba(212, 175, 55, 0) 5%, rgba(212, 175, 55, 0.05) 40%, rgba(137, 94, 38, 0.1) 70%)',
+              'radial-gradient(circle at 60% 40%, rgba(212, 175, 55, 0) 5%, rgba(212, 175, 55, 0.05) 40%, rgba(137, 94, 38, 0.1) 70%)',
+              'radial-gradient(circle at 40% 60%, rgba(212, 175, 55, 0) 5%, rgba(212, 175, 55, 0.05) 40%, rgba(137, 94, 38, 0.1) 70%)',
+              'radial-gradient(circle at 60% 70%, rgba(212, 175, 55, 0) 5%, rgba(212, 175, 55, 0.05) 40%, rgba(137, 94, 38, 0.1) 70%)',
+              'radial-gradient(circle at 40% 30%, rgba(212, 175, 55, 0) 5%, rgba(212, 175, 55, 0.05) 40%, rgba(137, 94, 38, 0.1) 70%)'
+            ]
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{ opacity: 0.8 }}
+        />
+      )}
+
+      {/* Decorative Particles */}
+      <ParticleEffect />
+
+      <div className="relative border border-[rgba(212,175,55,0.3)] m-3 sm:m-5">
+        <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t border-l border-[#d4af37] opacity-40"></div>
+        <div className="absolute top-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-t border-r border-[#d4af37] opacity-40"></div>
+        <div className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-b border-l border-[#d4af37] opacity-40"></div>
+        <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b border-r border-[#d4af37] opacity-40"></div>
+
+        {/* Main Content */}
+        <main className="px-4 sm:px-6 py-4 relative z-10">
+          <div className="mx-auto max-w-screen-xl text-center">
+            <motion.h1
+              className="text-4xl sm:text-6xl md:text-8xl font-bold mb-6 sm:mb-8 tracking-wide relative z-10"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.2 }}
+              style={{
+                background: 'linear-gradient(to bottom, #f9e076 0%, #d4af37 50%, #8a7530 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: isDarkMode ? 'drop-shadow(0 10px 8px rgba(0, 0, 0, 0.8))' : 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6))',
+                transform: 'perspective(500px) rotateX(10deg)',
+                transformOrigin: 'center'
+              }}
+            >
+              ONLINE GALLERY
+            </motion.h1>
+
+            <motion.p
+              className={`text-xs sm:text-sm uppercase tracking-wider mb-6 sm:mb-8 max-w-2xl mx-auto px-2 ${isDarkMode ? "text-[#ccc]" : "text-[#2a2415] font-medium"}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.4 }}
+            >
+              HERE YOU CAN SEE THE MOST FAMOUS WORKS OF ART,<br className="hidden sm:block" />
+              LEARN THE HISTORY OF THEIR CREATION AND MUCH MORE
+            </motion.p>
+
+            <motion.div
+              className="flex justify-center items-center my-6 sm:my-8"
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ duration: 1, delay: 0.6 }}
+            >
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+              <div className="mx-3 sm:mx-4 w-2 h-2 rounded-full bg-[#d4af37]"></div>
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+            </motion.div>
+
+            {/* Search Bar */}
+            <motion.div
+              className="flex justify-center mb-8 sm:mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+            >
+              <div className="relative w-full max-w-md group px-4 sm:px-0">
+                <input
+                  type="text"
+                  placeholder="Search for artworks, artists, periods..."
+                  className={`w-full py-2 sm:py-3 px-3 sm:px-4 pl-10 sm:pl-12 border-2 focus:outline-none focus:border-[#f9e076] rounded-sm transition-all duration-300 text-sm sm:text-base ${isDarkMode
+                    ? "bg-[rgba(10,10,10,0.8)] border-[#d4af37] text-white placeholder-gray-400"
+                    : "bg-[#f9f6eb] border-[#d4af37] text-[#593c15] placeholder-[#8B6D2B] font-medium"
+                    }`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search className="absolute left-6 sm:left-4 top-3 sm:top-3.5 text-[#d4af37] group-hover:text-[#f9e076] transition-colors duration-300" size={16} />
+                <div className={`absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl bg-[#d4af37] ${!isDarkMode && "group-hover:opacity-70"}`}></div>
+              </div>
+            </motion.div>
+
+            <motion.button
+              className={`uppercase tracking-wider border-2 border-[#d4af37] py-2 sm:py-3 px-8 sm:px-12 mb-12 sm:mb-16 hover:bg-[#d4af37] hover:text-black transition-colors relative overflow-hidden group text-sm sm:text-base ${isDarkMode ? "text-[#d4af37]" : "text-[#d4af37] bg-[#f9f6eb] shadow-md"
+                }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleExploreClick}
+            >
+              <span className="relative z-10 font-semibold tracking-[2px] sm:tracking-[3px]">Explore Now</span>
+              <motion.span
+                className="absolute inset-0 bg-gradient-to-r from-[#d4af37] via-[#f9e076] to-[#d4af37] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                initial={{ x: "-100%" }}
+                whileHover={{ x: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+              <div className="absolute inset-0 -z-10 opacity-0 blur-xl bg-[#d4af37] group-hover:opacity-70 transition-opacity duration-500"></div>
+            </motion.button>
+
+            {/* Search Results */}
+            {searchQuery && renderSearchResults()}
+
+            {/* Gallery Layout - First Row */}
+            <div className="relative mb-12 sm:mb-16 gallery-section" ref={galleryRef}>
+              <div className={`absolute -top-12 sm:-top-14 left-1/2 transform -translate-x-1/2 px-6 sm:px-12 py-2 z-10 border-l-2 border-r-2 border-[#d4af37] ${isDarkMode ? "bg-[#0a0a0a]" : "bg-[#f9f6eb] shadow-lg"}`}>
+                <h2 className="text-base sm:text-lg uppercase tracking-[4px] sm:tracking-[6px] tailwind-gold-title">
+                  Featured Masterpieces
+                </h2>
+              </div>
+              <div className={`h-px w-full gold-gradient mb-16 sm:mb-20 ${!isDarkMode && "shadow-md"}`}></div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto px-4">
+                {paintings.map((painting, index) => (
+                  <motion.div
+                    key={painting.id}
+                    className={`flex flex-col items-center ${index === 1 ? 'md:mt-16' : ''} hover:z-10 featured-painting w-full`}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 + index * 0.2 }}
+                    whileHover={{ scale: 1.03 }}
+                  >
+                    <motion.div
+                      className={`mb-6 relative w-[280px] h-[380px] sm:w-[320px] sm:h-[420px] painting-card ${painting.hoverEffect} mx-auto`}
+                      whileHover={{
+                        boxShadow: isDarkMode
+                          ? "0 15px 30px rgba(0,0,0,0.8), 0 10px 20px rgba(212,175,55,0.3)"
+                          : "0 15px 30px rgba(0,0,0,0.2), 0 10px 20px rgba(212,175,55,0.5)",
+                      }}
+                      onHoverStart={() => setHoveredPainting(painting.id)}
+                      onHoverEnd={() => setHoveredPainting(null)}
+                    >
+                      <div className={`luxurious-frame ${painting.frameStyle} relative overflow-hidden`}>
+                        <div className="frame-corner frame-corner-tl"></div>
+                        <div className="frame-corner frame-corner-tr"></div>
+                        <div className="frame-corner frame-corner-bl"></div>
+                        <div className="frame-corner frame-corner-br"></div>
+                        <div className="frame-inner">
+                          <img
+                            src={painting.image}
+                            alt={painting.title}
+                            className="w-full h-full object-cover painting-image"
+                          />
+                        </div>
+
+                        <AnimatePresence>
+                          {hoveredPainting === painting.id && (
+                            <motion.div
+                              className="hover-card p-3"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 10 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-xs text-[#d4af37] font-medium">{painting.title}</h4>
+                                <div className="flex space-x-3">
+                                  <Heart
+                                    size={14}
+                                    className={`hover-icon ${likedPaintings.includes(painting.id) ? "text-[#f9e076] fill-[#f9e076]" : ""}`}
+                                    onClick={(e) => handleLikeClick(painting.id, e)}
+                                  />
+                                  <Share2
+                                    size={14}
+                                    className="hover-icon"
+                                    onClick={(e) => handleShareClick(painting, e)}
+                                  />
+                                  <Info
+                                    size={14}
+                                    className="hover-icon"
+                                    onClick={(e) => handleInfoClick(painting, e)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-between text-[10px] text-gray-400">
+                                <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.artist}</span>
+                                <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.year}</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                    <h3 className="text-sm uppercase tracking-wide font-medium text-center mb-1 tailwind-gold-title px-2">
+                      {painting.title}
+                    </h3>
+                    <p className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-[#3a2f1d] font-medium"}`}>{painting.artist}</p>
+                    <p className={`text-xs ${isDarkMode ? "text-gray-400" : "text-[#3a2f1d] font-medium"}`}>{painting.year}</p>
+                    <p className={`mt-3 text-center text-xs max-w-[280px] sm:max-w-[320px] px-2 ${isDarkMode ? "text-gray-400" : "text-[#593c15]"}`}>
+                      {painting.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Divider between gallery sections */}
+            <motion.div
+              className="flex justify-center items-center my-12 sm:my-20 relative"
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ duration: 1, delay: 1.2 }}
+            >
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+              <div className={`mx-3 sm:mx-4 rounded-full p-1.5 sm:p-2 border border-[#d4af37] ${isDarkMode ? "bg-[#0a0a0a]" : "bg-white shadow-md"}`}>
+                <ChevronDown size={16} className="text-[#d4af37]" />
+              </div>
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+            </motion.div>
+
+            {/* Gallery Layout - Second Row */}
+            <div className="relative mb-12 sm:mb-16">
+              <div className={`absolute -top-12 sm:-top-14 left-1/2 transform -translate-x-1/2 px-6 sm:px-12 py-2 z-10 border-l-2 border-r-2 border-[#d4af37] ${isDarkMode ? "bg-[#0a0a0a]" : "bg-[#f9f6eb] shadow-lg"}`}>
+                <h2 className="text-base sm:text-lg uppercase tracking-[4px] sm:tracking-[6px] font-bold"
+                  style={{
+                    color: isDarkMode ? '#ffffff' : '#a47e1b',
+                    textShadow: isDarkMode
+                      ? '0 0 1px #d4af37, 0 0 2px #d4af37'
+                      : '0 1px 0 rgba(0, 0, 0, 0.5)'
+                  }}>
+                  Historical Collection
+                </h2>
+              </div>
+              <div className={`h-px w-full gold-gradient mb-16 sm:mb-20 ${!isDarkMode && "shadow-md"}`}></div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-12 sm:mb-16 px-4">
+                {additionalPaintings.map((painting, index) => (
+                  <motion.div
+                    key={painting.id}
+                    className="flex flex-col items-center w-full"
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 1.2 + index * 0.2 }}
+                  >
+                    <motion.div
+                      className={`mb-6 relative w-[280px] h-[380px] sm:w-[320px] sm:h-[420px] ${painting.hoverEffect} mx-auto`}
+                      onHoverStart={() => setHoveredPainting(painting.id)}
+                      onHoverEnd={() => setHoveredPainting(null)}
+                    >
+                      <div className={`luxurious-frame ${painting.frameStyle} relative`}>
+                        <div className="frame-corner frame-corner-tl"></div>
+                        <div className="frame-corner frame-corner-tr"></div>
+                        <div className="frame-corner frame-corner-bl"></div>
+                        <div className="frame-corner frame-corner-br"></div>
+                        <div className="frame-inner">
+                          <img
+                            src={painting.image}
+                            alt={painting.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        <AnimatePresence>
+                          {hoveredPainting === painting.id && (
+                            <motion.div
+                              className="hover-card p-3"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 10 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-xs text-[#d4af37] font-medium">{painting.title}</h4>
+                                <div className="flex space-x-3">
+                                  <Heart
+                                    size={14}
+                                    className={`hover-icon ${likedPaintings.includes(painting.id) ? "text-[#f9e076] fill-[#f9e076]" : ""}`}
+                                    onClick={(e) => handleLikeClick(painting.id, e)}
+                                  />
+                                  <Share2
+                                    size={14}
+                                    className="hover-icon"
+                                    onClick={(e) => handleShareClick(painting, e)}
+                                  />
+                                  <Info
+                                    size={14}
+                                    className="hover-icon"
+                                    onClick={(e) => handleInfoClick(painting, e)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-between text-[10px] text-gray-400">
+                                <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.artist}</span>
+                                <span className={isDarkMode ? "" : "text-[#593c15]"}>{painting.year}</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                    <h3 className="text-sm uppercase tracking-wide font-medium text-center mb-1 px-2"
+                      style={{
+                        background: 'linear-gradient(to right, #d4af37, #f9e076, #d4af37)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        textShadow: isDarkMode ? '0 2px 10px rgba(212, 175, 55, 0.3)' : '0 1px 1px rgba(0, 0, 0, 0.8)'
+                      }}>
+                      {painting.title}
+                    </h3>
+                    <p className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-[#3a2f1d] font-medium"}`}>{painting.artist}</p>
+                    <p className={`text-xs ${isDarkMode ? "text-gray-400" : "text-[#3a2f1d] font-medium"}`}>{painting.year}</p>
+                    <p className={`mt-3 text-center text-xs max-w-[280px] sm:max-w-[320px] px-2 ${isDarkMode ? "text-gray-400" : "text-[#593c15]"}`}>
+                      {painting.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="max-w-4xl mx-auto my-12 sm:my-16 px-4 sm:px-6">
+                <div className={`p-6 sm:p-8 border border-[#d4af37] ${isDarkMode ? "bg-[rgba(10,10,10,0.6)]" : "bg-[rgba(248,244,232,0.7)]"}`}>
+                  <h3 className="text-lg sm:text-xl mb-4 text-center"
+                    style={{
+                      color: isDarkMode ? '#ffffff' : '#a47e1b',
+                      textShadow: isDarkMode
+                        ? '0 0 1px #d4af37, 0 0 2px #d4af37'
+                        : '0 1px 0 rgba(0, 0, 0, 0.5)'
+                    }}>
+                    The Art of Classical Painting
+                  </h3>
+                  <p className={`text-center mb-4 text-sm sm:text-base ${isDarkMode ? "text-gray-300" : "text-[#3a2f1d]"}`}>
+                    Classical paintings are more than just beautiful images—they're windows into history, showcasing the evolution of artistic techniques and cultural values through the centuries.
+                  </p>
+                  <p className={`text-center text-sm sm:text-base ${isDarkMode ? "text-gray-300" : "text-[#3a2f1d]"}`}>
+                    Each work in our collection has been carefully selected for its historical significance, technical brilliance, and emotional resonance. From Renaissance masterpieces to Baroque brilliance, our gallery celebrates the timeless appeal of classical art.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider between gallery sections */}
+            <motion.div
+              className="flex justify-center items-center my-12 sm:my-20 relative"
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ duration: 1, delay: 1.2 }}
+            >
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+              <div className={`mx-3 sm:mx-4 rounded-full p-1.5 sm:p-2 border border-[#d4af37] ${isDarkMode ? "bg-[#0a0a0a]" : "bg-white shadow-md"}`}>
+                <ChevronDown size={16} className="text-[#d4af37]" />
+              </div>
+              <div className={`h-px gold-gradient w-20 sm:w-32 ${!isDarkMode && "shadow-sm"}`}></div>
+            </motion.div>
+
+            {/* Explored Gallery Section */}
+            <motion.div
+              className="explored-gallery-section relative mt-16 sm:mt-24 mb-12 sm:mb-16"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.4 }}
+            >
+              <div className={`absolute -top-12 sm:-top-14 left-1/2 transform -translate-x-1/2 px-6 sm:px-12 py-2 z-10 border-l-2 border-r-2 border-[#d4af37] ${isDarkMode ? "bg-[#0a0a0a]" : "bg-[#f9f6eb] shadow-lg"}`}>
+                <h2 className="text-base sm:text-lg uppercase tracking-[4px] sm:tracking-[6px] font-bold"
+                  style={{
+                    color: isDarkMode ? '#ffffff' : '#a47e1b',
+                    textShadow: isDarkMode
+                      ? '0 0 1px #d4af37, 0 0 2px #d4af37'
+                      : '0 1px 0 rgba(0, 0, 0, 0.5)'
+                  }}>
+                  Explore More Art
+                </h2>
+              </div>
+              <div className={`h-px w-full gold-gradient mb-16 sm:mb-20 ${!isDarkMode && "shadow-md"}`}></div>
+
+              <div className="w-full max-w-[1400px] mx-auto px-4 py-4 sm:py-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-10 justify-items-center">
+                  {[...paintings, ...additionalPaintings].slice(0, 6).map((painting, index) => (
+                    <motion.div
+                      key={`explore-${painting.id}-${index}`}
+                      className="flex flex-col items-center w-full max-w-[150px] sm:max-w-[180px]"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 * index }}
+                    >
+                      <motion.div
+                        className={`mb-3 sm:mb-4 relative w-full h-[200px] sm:h-[240px] ${painting.hoverEffect} mx-auto`}
+                        whileHover={{
+                          scale: 1.1,
+                          boxShadow: isDarkMode
+                            ? "0 10px 20px rgba(0,0,0,0.8), 0 5px 15px rgba(212,175,55,0.3)"
+                            : "0 10px 20px rgba(0,0,0,0.2), 0 5px 15px rgba(212,175,55,0.5)",
+                        }}
+                        onHoverStart={() => setHoveredPainting(painting.id + 100)}
+                        onHoverEnd={() => setHoveredPainting(null)}
+                      >
+                        <div className={`luxurious-frame ${painting.frameStyle} relative overflow-hidden w-full h-full`} style={{ padding: '10px' }}>
+                          <div className="frame-inner w-full h-full">
+                            <img
+                              src={painting.image}
+                              alt={painting.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+
+                          <AnimatePresence>
+                            {hoveredPainting === painting.id + 100 && (
+                              <motion.div
+                                className="hover-card p-2"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <div className="flex justify-center items-center space-x-2">
+                                  <Heart
+                                    size={12}
+                                    className={`hover-icon ${likedPaintings.includes(painting.id) ? "text-[#f9e076] fill-[#f9e076]" : ""}`}
+                                    onClick={(e) => handleLikeClick(painting.id, e)}
+                                  />
+                                  <Info
+                                    size={12}
+                                    className="hover-icon"
+                                    onClick={(e) => handleInfoClick(painting, e)}
+                                  />
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+                      <h3 className="text-xs uppercase tracking-wide font-medium text-center w-full px-1"
+                        style={{
+                          color: isDarkMode ? '#ffffff' : '#a47e1b',
+                          textShadow: isDarkMode
+                            ? '0 0 1px #d4af37, 0 0 2px #d4af37'
+                            : '0 1px 0 rgba(0, 0, 0, 0.5)'
+                        }}>
+                        {painting.title.length > 12 ? painting.title.substring(0, 12) + '...' : painting.title}
+                      </h3>
+                      <p className={`text-xs text-center ${isDarkMode ? "text-gray-400" : "text-[#593c15]"}`}>{painting.artist}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Painting Info Modal */}
+            <AnimatePresence>
+              {showInfoModal && selectedPainting && (
+                <motion.div
+                  className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <div className="absolute inset-0 bg-black bg-opacity-70" onClick={() => setShowInfoModal(false)}></div>
+                  <motion.div
+                    className={`relative w-full max-w-lg p-4 sm:p-6 mx-4 border-2 border-[#d4af37] max-h-[90vh] overflow-y-auto ${isDarkMode ? "bg-[#0a0a0a]" : "bg-[#f9f6eb]"}`}
+                    initial={{ scale: 0.5, y: 50 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.5, y: 50 }}
+                    whileHover={{ boxShadow: "0 0 30px rgba(212, 175, 55, 0.3)" }}
+                  >
+                    <button
+                      className="absolute top-3 right-3 sm:top-4 sm:right-4 text-[#d4af37] hover:text-[#f9e076] text-xl font-bold transition-colors"
+                      onClick={() => setShowInfoModal(false)}
+                    >
+                      ×
+                    </button>
+                    <h2 className="text-lg sm:text-xl mb-4 tailwind-gold-title pr-8">{selectedPainting.title}</h2>
+                    <div className="flex flex-col md:flex-row mb-6">
+                      <motion.div
+                        className="w-full md:w-1/2 pr-0 md:pr-4 mb-4 md:mb-0"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <img
+                          src={selectedPainting.image}
+                          alt={selectedPainting.title}
+                          className="w-full h-auto border border-[#d4af37] painting-image"
+                        />
+                      </motion.div>
+                      <div className="w-full md:w-1/2 pl-0 md:pl-4">
+                        <p className={`mb-2 text-sm sm:text-base ${isDarkMode ? "text-[#ccc]" : "text-[#593c15]"}`}>
+                          <span className="tailwind-gold-text">Artist:</span> {selectedPainting.artist}
+                        </p>
+                        <p className={`mb-2 text-sm sm:text-base ${isDarkMode ? "text-[#ccc]" : "text-[#593c15]"}`}>
+                          <span className="tailwind-gold-text">Year:</span> {selectedPainting.year}
+                        </p>
+                        <p className={`mb-4 text-sm sm:text-base ${isDarkMode ? "text-[#ccc]" : "text-[#593c15]"}`}>
+                          <span className="tailwind-gold-text">Style:</span> Classical
+                        </p>
+                        <motion.p
+                          className={`text-xs sm:text-sm leading-relaxed ${isDarkMode ? "text-[#ccc]" : "text-[#593c15]"}`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          {selectedPainting.description}
+                        </motion.p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <motion.button
+                        className="text-xs sm:text-sm uppercase px-3 sm:px-4 py-1.5 sm:py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37] hover:text-black transition-colors"
+                        onClick={() => setShowInfoModal(false)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Close
+                      </motion.button>
+                      <div className="flex space-x-4">
+                        <Heart
+                          size={18}
+                          className={`hover-icon ${likedPaintings.includes(selectedPainting.id) ? "text-[#f9e076] fill-[#f9e076]" : ""}`}
+                          onClick={(e) => {
+                            handleLikeClick(selectedPainting.id, e);
+                          }}
+                        />
+                        <Share2
+                          size={18}
+                          className="hover-icon"
+                          onClick={(e) => handleShareClick(selectedPainting, e)}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
+
+      {/* Theme Switcher (Fixed Position) */}
+      <motion.button
+        onClick={() => setIsDarkMode(!isDarkMode)}
+        className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-opacity-80 border border-[#d4af37] shadow-lg transition-all ${isDarkMode ? "bg-black" : "bg-[#f9f6eb]/75"} text-[#d4af37]`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </motion.button>
+    </div>
+  );
+}
