@@ -1,1143 +1,1730 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Moon, Sun, Camera, Monitor, Smartphone, BarChart3, Check, X, AlertCircle, Info, Bell, CheckCircle, ArrowUp } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  Area,
+  AreaChart,
+  BarChart,
+  Bar,
+} from "recharts";
+import {
+  Moon,
+  Sun,
+  User,
+  Menu,
+  Activity,
+  Heart,
+  Award,
+  Calendar,
+  MapPin,
+  ChevronDown,
+  Clock,
+  TrendingUp,
+  BarChart as BarChartIcon,
+  Flame,
+  Plus,
+  Layers,
+  Compass,
+  PlusCircle,
+  Zap,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Toast = {
-  id: string;
-  message: string;
-  type: "success" | "info" | "warning" | "error";
-};
 
-type Service = {
-  id: string;
-  name: string;
-  basePrice: number;
+interface TrainingProgress {
+  type: string;
+  percentage: number;
+  details: string;
+  color: string;
   icon: React.ReactNode;
-  description: string;
-  color: {
-    light: string;
-    dark: string;
-  };
-};
+}
 
-type Extra = {
+interface HeartRateData {
+  time: number;
+  value: number;
+}
+
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+interface RunningActivity {
+  route: string;
+  startTime: string;
+  endTime: string;
+  distance: string;
+  distanceValue: number;
+  distanceUnit: string;
+  totalTime: string;
+  totalTimeValue: number;
+  totalSteps: string;
+  totalStepsValue: number;
+  totalCalories: string;
+  totalCaloriesValue: number;
+  averagePace: string;
+  coordinates: Coordinates[];
+  startCoordinate: Coordinates;
+  endCoordinate: Coordinates;
+  mapCenter: Coordinates;
+  mapZoom: number;
+}
+
+interface MealItem {
+  name: string;
+  description: string;
+  calories: number;
+  image: string;
+  time?: string;
+  healthScore: number;
+  dayOfWeek?: string;
+}
+
+interface MealData {
+  type: string;
+  isWeekly: boolean;
+  meals: MealItem[];
+  primaryMeal?: MealItem;
+  difficulty?: string;
+  duration?: string;
+  calories?: number;
+  carbs?: number;
+  protein?: number;
+  fats?: number;
+  healthScore?: number;
+}
+
+interface ProfileData {
+  name: string;
+  level: string;
+  points: string;
+  weight: string;
+  height: string;
+  age: string;
+  avatar: string;
+}
+
+interface DashboardMode {
   id: string;
   name: string;
-  price: number;
-  description: string;
+  isWeekly: boolean;
+  heartRate: number;
+  heartStatus: string;
+  healthScore: number;
+  healthStatus: string;
+  goalCompletion: number;
+  trainingProgress: TrainingProgress[];
+  heartRateData: HeartRateData[];
+  runningActivity: RunningActivity;
+  mealData: MealData;
+  weeklyHealthData?: {
+    day: string;
+    score: number;
+  }[];
+}
+
+const generateECGData = (
+  baseValue: number,
+  pattern: string
+): HeartRateData[] => {
+  const data: HeartRateData[] = [];
+
+  const patterns = {
+    normal: [0, 0, 0, 0, 5, 10, -5, -20, 80, -30, 10, 0, 0, 0, 0],
+    active: [0, 0, 0, 5, 15, -10, -25, 100, -40, 10, 0, 0, 0],
+    relaxed: [0, 0, 0, 0, 0, 3, 7, -3, -15, 60, -20, 5, 0, 0, 0, 0, 0],
+    moderate: [0, 0, 0, 8, 12, -7, -22, 85, -35, 12, 2, 0, 0, 0],
+  };
+
+  const selectedPattern =
+    patterns[pattern as keyof typeof patterns] || patterns.normal;
+  const amplitude = pattern === "active" ? 60 : pattern === "relaxed" ? 40 : 50;
+
+  for (let i = 0; i < 4; i++) {
+    selectedPattern.forEach((value, index) => {
+      data.push({
+        time: i * selectedPattern.length + index,
+        value: baseValue + (value * amplitude) / 100,
+      });
+    });
+  }
+
+  return data;
 };
 
-const services: Service[] = [
-  {
-    id: "photography",
-    name: "Photography",
-    basePrice: 800,
-    icon: <Camera size={24} />,
-    description: "Professional photography services for any occasion",
-    color: {
-      light: "from-pink-500 to-rose-500",
-      dark: "from-pink-600 to-rose-600",
+// Animation variants
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.4 } }
+};
+
+const slideInFromBottom = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+};
+
+const slideInFromLeft = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.5 } }
+};
+
+const slideInFromRight = {
+  hidden: { opacity: 0, x: 20 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.5 } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
     }
-  },
-  {
-    id: "web-design",
-    name: "Web Design",
-    basePrice: 1200,
-    icon: <Monitor size={24} />,
-    description: "Custom website design with responsive layouts",
-    color: {
-      light: "from-indigo-500 to-blue-500",
-      dark: "from-indigo-600 to-blue-600",
-    }
-  },
-  {
-    id: "marketing",
-    name: "Digital Marketing",
-    basePrice: 1500,
-    icon: <Smartphone size={24} />,
-    description: "Comprehensive digital marketing campaigns",
-    color: {
-      light: "from-emerald-500 to-teal-500",
-      dark: "from-emerald-600 to-teal-600",
-    }
-  },
-  {
-    id: "consulting",
-    name: "Business Consulting",
-    basePrice: 2000,
-    icon: <BarChart3 size={24} />,
-    description: "Expert business strategy and growth consulting",
-    color: {
-      light: "from-amber-500 to-yellow-500",
-      dark: "from-amber-600 to-yellow-600",
-    }
-  },
-];
+  }
+};
 
-const extras: Extra[] = [
-  {
-    id: "fast-delivery",
-    name: "Fast Delivery",
-    price: 250,
-    description: "Get your project completed within 5 business days",
-  },
-  {
-    id: "premium-style",
-    name: "Premium Style",
-    price: 350,
-    description: "Premium design elements and exclusive features",
-  },
-  {
-    id: "seo-optimization",
-    name: "SEO Optimization",
-    price: 300,
-    description: "Complete SEO setup to improve visibility",
-  },
-  {
-    id: "24-7-support",
-    name: "24/7 Support",
-    price: 450,
-    description: "Round-the-clock customer support",
-  },
-];
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { 
+    opacity: 1, 
+    scale: 1, 
+    transition: { 
+      type: "spring", 
+      stiffness: 300, 
+      damping: 20, 
+      duration: 0.5 
+    } 
+  }
+};
 
-export default function Home() {
-  const [selectedServiceIndex, setSelectedServiceIndex] = useState<number>(0);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [mounted, setMounted] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [formData, setFormData] = useState({ name: "", email: "" });
-  const [formErrors, setFormErrors] = useState({ name: "", email: "" });
-  const [showMobilePrice, setShowMobilePrice] = useState(true);
+const FitnessDashboard: React.FC = () => {
+  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [currentMode, setCurrentMode] = useState<string>("today");
+  const [mapType, setMapType] = useState<string>("roadmap");
+  const [mapZoom, setMapZoom] = useState<number>(14);
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string>("Manual addition is not available currently");
 
-  const priceSummaryRef = useRef<HTMLDivElement>(null);
-
-  const selectedService = services[selectedServiceIndex];
-
-  const addToast = (message: string, type: "success" | "info" | "warning" | "error" = "success") => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type }]);
-
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 3000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
+  const mapRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef<boolean>(false);
+  const startDragPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mapPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme("dark");
-    }
+    const hours = new Date().getHours();
+    setDarkMode(hours < 6 || hours >= 18);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
-    localStorage.setItem("theme", theme);
-
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [theme, mounted]);
+  }, [showToast]);
 
-  useEffect(() => {
-    let price = selectedService?.basePrice || 0;
-    selectedExtras.forEach((extraId) => {
-      const extra = extras.find((e) => e.id === extraId);
-      if (extra) {
-        price += extra.price;
-      }
-    });
+  const mealImages = {
+    salmon: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    chicken: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    salad: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    bowl: "https://images.unsplash.com/photo-1546793665-c74683f339c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    breakfast: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    lunch: "https://images.unsplash.com/photo-1547496502-affa22d38842?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    snack: "https://images.unsplash.com/photo-1585853131366-13d1e681e08e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    dinner2: "https://images.unsplash.com/photo-1574484284002-952d92456975?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    veggieBowl: "https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    pasta: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    curry: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+  };
 
-    if (billingCycle === "yearly") {
-      price = Math.round(price * 0.8);
-    }
+  const dashboardModes: DashboardMode[] = [
+    {
+      id: "today",
+      name: "Today",
+      isWeekly: false,
+      heartRate: 110,
+      heartStatus: "Normal",
+      healthScore: 82,
+      healthStatus: "Very Healthy",
+      goalCompletion: 75,
+      trainingProgress: [
+        {
+          type: "Cardio Training",
+          percentage: 85,
+          details: "5/6 sets of HIIT session",
+          color: "#BFDBFE",
+          icon: <Heart className="h-4 w-4 text-blue-500" />,
+        },
+        {
+          type: "Strength Training",
+          percentage: 75,
+          details: "4/5 sets of full-body strength circuit",
+          color: "#FEF08A",
+          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
+        },
+        {
+          type: "Flexibility Training",
+          percentage: 65,
+          details: "3/4 sets of yoga sessions",
+          color: "#BBF7D0",
+          icon: <Activity className="h-4 w-4 text-green-500" />,
+        },
+      ],
+      heartRateData: generateECGData(110, "normal"),
+      runningActivity: {
+        route: "Central Park Loop Trail",
+        startTime: "6:30 AM",
+        endTime: "7:20 AM",
+        distance: "5 miles (8 km)",
+        distanceValue: 5,
+        distanceUnit: "miles",
+        totalTime: "50 minutes",
+        totalTimeValue: 50,
+        totalSteps: "10,500 steps",
+        totalStepsValue: 10500,
+        totalCalories: "450 Cal",
+        totalCaloriesValue: 450,
+        averagePace: "10 minutes/mile",
+        coordinates: [
+          { lat: 40.764, lng: -73.973 },
+          { lat: 40.767, lng: -73.981 },
+          { lat: 40.772, lng: -73.979 },
+          { lat: 40.775, lng: -73.969 },
+          { lat: 40.771, lng: -73.965 },
+          { lat: 40.764, lng: -73.973 },
+        ],
+        startCoordinate: { lat: 40.764, lng: -73.973 },
+        endCoordinate: { lat: 40.764, lng: -73.973 },
+        mapCenter: { lat: 40.768, lng: -73.973 },
+        mapZoom: 14,
+      },
+      mealData: {
+        type: "Dinner",
+        isWeekly: false,
+        primaryMeal: {
+          name: "Lean & Green",
+          description: "Baked Salmon with Steamed Broccoli and Brown Rice",
+          calories: 450,
+          image: mealImages.salmon,
+          healthScore: 85,
+        },
+        meals: [],
+        difficulty: "Easy",
+        duration: "30 minutes",
+        calories: 450,
+        carbs: 40,
+        protein: 35,
+        fats: 15,
+        healthScore: 85,
+      },
+    },
+    // TODO: add more dashboard modes here
+    {
+      id: "yesterday",
+      name: "Yesterday",
+      isWeekly: false,
+      heartRate: 115,
+      heartStatus: "Active",
+      healthScore: 79,
+      healthStatus: "Healthy",
+      goalCompletion: 68,
+      trainingProgress: [
+        {
+          type: "Cardio Training",
+          percentage: 80,
+          details: "4/5 sets of treadmill intervals",
+          color: "#BFDBFE",
+          icon: <Heart className="h-4 w-4 text-blue-500" />,
+        },
+        {
+          type: "Strength Training",
+          percentage: 65,
+          details: "3/5 sets of upper body workout",
+          color: "#FEF08A",
+          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
+        },
+        {
+          type: "Flexibility Training",
+          percentage: 60,
+          details: "2/3 sets of stretching routines",
+          color: "#BBF7D0",
+          icon: <Activity className="h-4 w-4 text-green-500" />,
+        },
+      ],
+      heartRateData: generateECGData(115, "active"),
+      runningActivity: {
+        route: "Riverside Park Trail",
+        startTime: "7:15 AM",
+        endTime: "8:00 AM",
+        distance: "4.2 miles (6.8 km)",
+        distanceValue: 4.2,
+        distanceUnit: "miles",
+        totalTime: "45 minutes",
+        totalTimeValue: 45,
+        totalSteps: "9,800 steps",
+        totalStepsValue: 9800,
+        totalCalories: "410 Cal",
+        totalCaloriesValue: 410,
+        averagePace: "10.7 minutes/mile",
+        coordinates: [
+          { lat: 40.801, lng: -73.972 },
+          { lat: 40.807, lng: -73.975 },
+          { lat: 40.814, lng: -73.98 },
+          { lat: 40.819, lng: -73.974 },
+          { lat: 40.812, lng: -73.969 },
+          { lat: 40.801, lng: -73.972 },
+        ],
+        startCoordinate: { lat: 40.801, lng: -73.972 },
+        endCoordinate: { lat: 40.801, lng: -73.972 },
+        mapCenter: { lat: 40.81, lng: -73.975 },
+        mapZoom: 14,
+      },
+      mealData: {
+        type: "Dinner",
+        isWeekly: false,
+        primaryMeal: {
+          name: "Protein Power",
+          description: "Grilled Chicken with Quinoa and Roasted Vegetables",
+          calories: 520,
+          image: mealImages.chicken,
+          healthScore: 82,
+        },
+        meals: [],
+        difficulty: "Medium",
+        duration: "35 minutes",
+        calories: 520,
+        carbs: 45,
+        protein: 42,
+        fats: 18,
+        healthScore: 82,
+      },
+    },
+    {
+      id: "thisWeek",
+      name: "This Week",
+      isWeekly: true,
+      heartRate: 105,
+      heartStatus: "Relaxed",
+      healthScore: 85,
+      healthStatus: "Very Healthy",
+      goalCompletion: 80,
+      trainingProgress: [
+        {
+          type: "Cardio Training",
+          percentage: 90,
+          details: "15/16 cardio sessions completed",
+          color: "#BFDBFE",
+          icon: <Heart className="h-4 w-4 text-blue-500" />,
+        },
+        {
+          type: "Strength Training",
+          percentage: 85,
+          details: "12/14 strength sessions completed",
+          color: "#FEF08A",
+          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
+        },
+        {
+          type: "Flexibility Training",
+          percentage: 70,
+          details: "7/10 flexibility sessions completed",
+          color: "#BBF7D0",
+          icon: <Activity className="h-4 w-4 text-green-500" />,
+        },
+      ],
+      heartRateData: generateECGData(105, "relaxed"),
+      runningActivity: {
+        route: "Weekly Challenge Routes",
+        startTime: "Avg. 6:45 AM",
+        endTime: "Avg. 7:35 AM",
+        distance: "23.5 miles (37.8 km)",
+        distanceValue: 23.5,
+        distanceUnit: "miles",
+        totalTime: "235 minutes",
+        totalTimeValue: 235,
+        totalSteps: "48,900 steps",
+        totalStepsValue: 48900,
+        totalCalories: "2,150 Cal",
+        totalCaloriesValue: 2150,
+        averagePace: "10 minutes/mile",
+        coordinates: [
+          { lat: 40.73, lng: -73.997 },
+          { lat: 40.738, lng: -74.001 },
+          { lat: 40.742, lng: -73.989 },
+          { lat: 40.735, lng: -73.978 },
+          { lat: 40.725, lng: -73.985 },
+          { lat: 40.73, lng: -73.997 },
+        ],
+        startCoordinate: { lat: 40.73, lng: -73.997 },
+        endCoordinate: { lat: 40.73, lng: -73.997 },
+        mapCenter: { lat: 40.734, lng: -73.99 },
+        mapZoom: 13,
+      },
+      mealData: {
+        type: "Weekly Meal Plan",
+        isWeekly: true,
+        meals: [
+          {
+            name: "Mediterranean Bowl",
+            description: "Whole grains, vegetables, olive oil",
+            calories: 480,
+            image: mealImages.bowl,
+            healthScore: 90,
+            dayOfWeek: "Mon",
+          },
+          {
+            name: "Grilled Salmon",
+            description: "With roasted vegetables and quinoa",
+            calories: 520,
+            image: mealImages.salmon,
+            healthScore: 95,
+            dayOfWeek: "Tue",
+          },
+          {
+            name: "Chicken Salad",
+            description: "Mixed greens with grilled chicken",
+            calories: 420,
+            image: mealImages.chicken,
+            healthScore: 88,
+            dayOfWeek: "Wed",
+          },
+          {
+            name: "Veggie Stir-Fry",
+            description: "Tofu with mixed vegetables",
+            calories: 380,
+            image: mealImages.salad,
+            healthScore: 92,
+            dayOfWeek: "Thu",
+          },
+          {
+            name: "Grilled Fish",
+            description: "With steamed vegetables and brown rice",
+            calories: 450,
+            image: mealImages.dinner2,
+            healthScore: 94,
+            dayOfWeek: "Fri",
+          },
+          {
+            name: "Curry Bowl",
+            description: "Vegetable curry with brown rice",
+            calories: 490,
+            image: mealImages.curry,
+            healthScore: 87,
+            dayOfWeek: "Sat",
+          },
+          {
+            name: "Pasta Primavera",
+            description: "Whole wheat pasta with vegetables",
+            calories: 510,
+            image: mealImages.pasta,
+            healthScore: 86,
+            dayOfWeek: "Sun",
+          },
+        ],
+        healthScore: 90,
+      },
+      weeklyHealthData: [
+        { day: "Mon", score: 83 },
+        { day: "Tue", score: 85 },
+        { day: "Wed", score: 82 },
+        { day: "Thu", score: 88 },
+        { day: "Fri", score: 85 },
+        { day: "Sat", score: 87 },
+        { day: "Sun", score: 84 },
+      ],
+    },
+    {
+      id: "lastWeek",
+      name: "Last Week",
+      isWeekly: true,
+      heartRate: 112,
+      heartStatus: "Moderate",
+      healthScore: 77,
+      healthStatus: "Healthy",
+      goalCompletion: 65,
+      trainingProgress: [
+        {
+          type: "Cardio Training",
+          percentage: 75,
+          details: "12/16 cardio sessions completed",
+          color: "#BFDBFE",
+          icon: <Heart className="h-4 w-4 text-blue-500" />,
+        },
+        {
+          type: "Strength Training",
+          percentage: 60,
+          details: "9/14 strength sessions completed",
+          color: "#FEF08A",
+          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
+        },
+        {
+          type: "Flexibility Training",
+          percentage: 50,
+          details: "5/10 flexibility sessions completed",
+          color: "#BBF7D0",
+          icon: <Activity className="h-4 w-4 text-green-500" />,
+        },
+      ],
+      heartRateData: generateECGData(112, "moderate"),
+      runningActivity: {
+        route: "Last Week's Routes",
+        startTime: "Avg. 7:00 AM",
+        endTime: "Avg. 7:50 AM",
+        distance: "18.8 miles (30.3 km)",
+        distanceValue: 18.8,
+        distanceUnit: "miles",
+        totalTime: "200 minutes",
+        totalTimeValue: 200,
+        totalSteps: "40,500 steps",
+        totalStepsValue: 40500,
+        totalCalories: "1,850 Cal",
+        totalCaloriesValue: 1850,
+        averagePace: "10.6 minutes/mile",
+        coordinates: [
+          { lat: 40.75, lng: -73.98 },
+          { lat: 40.755, lng: -73.99 },
+          { lat: 40.765, lng: -73.985 },
+          { lat: 40.76, lng: -73.97 },
+          { lat: 40.745, lng: -73.975 },
+          { lat: 40.75, lng: -73.98 },
+        ],
+        startCoordinate: { lat: 40.75, lng: -73.98 },
+        endCoordinate: { lat: 40.75, lng: -73.98 },
+        mapCenter: { lat: 40.755, lng: -73.98 },
+        mapZoom: 13,
+      },
+      mealData: {
+        type: "Last Week's Meals",
+        isWeekly: true,
+        meals: [
+          {
+            name: "Asian Rice Bowl",
+            description: "Rice with vegetables and tofu",
+            calories: 450,
+            image: mealImages.bowl,
+            healthScore: 82,
+            dayOfWeek: "Mon",
+          },
+          {
+            name: "Grilled Chicken",
+            description: "With vegetables and sweet potato",
+            calories: 490,
+            image: mealImages.chicken,
+            healthScore: 78,
+            dayOfWeek: "Tue",
+          },
+          {
+            name: "Pasta Salad",
+            description: "Whole grain pasta with vegetables",
+            calories: 520,
+            image: mealImages.pasta,
+            healthScore: 75,
+            dayOfWeek: "Wed",
+          },
+          {
+            name: "Fish Tacos",
+            description: "Grilled fish with cabbage slaw",
+            calories: 480,
+            image: mealImages.salmon,
+            healthScore: 80,
+            dayOfWeek: "Thu",
+          },
+          {
+            name: "Stir Fry",
+            description: "Mixed vegetables with brown rice",
+            calories: 410,
+            image: mealImages.dinner2,
+            healthScore: 85,
+            dayOfWeek: "Fri",
+          },
+          {
+            name: "Avocado Toast",
+            description: "Whole grain bread with avocado",
+            calories: 390,
+            image: mealImages.veggieBowl,
+            healthScore: 82,
+            dayOfWeek: "Sat",
+          },
+          {
+            name: "Vegetable Curry",
+            description: "Curry with coconut milk and rice",
+            calories: 470,
+            image: mealImages.curry,
+            healthScore: 79,
+            dayOfWeek: "Sun",
+          },
+        ],
+        healthScore: 78,
+      },
+      weeklyHealthData: [
+        { day: "Mon", score: 75 },
+        { day: "Tue", score: 78 },
+        { day: "Wed", score: 74 },
+        { day: "Thu", score: 80 },
+        { day: "Fri", score: 78 },
+        { day: "Sat", score: 79 },
+        { day: "Sun", score: 77 },
+      ],
+    },
+  ];
 
-    setTotalPrice(price);
-  }, [selectedService, selectedExtras, billingCycle]);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    const handleScroll = () => {
-      if (priceSummaryRef.current) {
-        const rect = priceSummaryRef.current.getBoundingClientRect();
-        const isVisible = rect.top < window.innerHeight && rect.bottom >= 0;
-        setShowMobilePrice(!isVisible);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [mounted]);
-
-  const toggleExtra = (extraId: string) => {
-    const isAdding = !selectedExtras.includes(extraId);
-    setSelectedExtras((prev) =>
-      prev.includes(extraId)
-        ? prev.filter((id) => id !== extraId)
-        : [...prev, extraId]
+  const getCurrentModeData = (): DashboardMode => {
+    return (
+      dashboardModes.find((mode) => mode.id === currentMode) ||
+      dashboardModes[0]
     );
   };
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-  };
+  const modeData = getCurrentModeData();
 
-  const toggleBillingCycle = () => {
-    const newCycle = billingCycle === "monthly" ? "yearly" : "monthly";
-    setBillingCycle(newCycle);
-  };
+  const renderHealthScoreIndicators = () => {
+    const scoreSegments = [
+      { value: 20, color: "#BFDBFE", active: modeData.healthScore >= 20 },
+      { value: 40, color: "#93C5FD", active: modeData.healthScore >= 40 },
+      { value: 60, color: "#60A5FA", active: modeData.healthScore >= 60 },
+      { value: 80, color: "#3B82F6", active: modeData.healthScore >= 80 },
+      { value: 100, color: "#2563EB", active: modeData.healthScore >= 100 },
+    ];
 
-  const handleServiceSelect = (index: number) => {
-    if (index !== selectedServiceIndex) {
-      setSelectedServiceIndex(index);
-    }
-  };
-
-  const handleGetStarted = () => {
-    setShowConfirmation(true);
-  };
-
-  const validateForm = () => {
-    const errors = { name: "", email: "" };
-    let isValid = true;
-
-    if (!formData.name.trim()) {
-      errors.name = "Name is required";
-      isValid = false;
-    }
-
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = "Email is invalid";
-      isValid = false;
-    }
-
-    setFormErrors(errors);
-    return isValid;
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      addToast(`Thank you ${formData.name}! We'll contact you shortly.`, "success");
-      setShowConfirmation(false);
-
-      setFormData({ name: "", email: "" });
-    }
-  };
-
-  const bgPattern = theme === "light"
-    ? "bg-[url('https://images.unsplash.com/photo-1554629947-334ff61d85dc?q=80&w=1000&auto=format&fit=crop')] bg-no-repeat bg-right-top bg-fixed bg-cover"
-    : "bg-[url('https://images.unsplash.com/photo-1686425374911-e0d752e09806?q=80&w=1000&auto=format&fit=crop')] bg-no-repeat bg-right-top bg-fixed bg-cover";
-
-  const scrollToPriceSummary = () => {
-    priceSummaryRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  if (!mounted) return null;
-
-  return (
-    <div className={`min-h-screen ${bgPattern} ${theme === "light"
-      ? "bg-gradient-to-br from-slate-50 via-white to-indigo-50"
-      : "bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950"} 
-      transition-colors duration-500`}
-    >
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-        <AnimatePresence>
-          {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: -20, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.8 }}
-              className={`rounded-lg shadow-lg p-4 flex items-center justify-between max-w-md backdrop-blur-sm ${toast.type === "success" ? "bg-green-600/90 text-white" :
-                toast.type === "error" ? "bg-red-600/90 text-white" :
-                  toast.type === "warning" ? "bg-amber-600/90 text-white" :
-                    "bg-indigo-600/90 text-white"
-                }`}
-            >
-              <div className="flex items-center">
-                <span className="mr-3">
-                  {toast.type === "success" ? <CheckCircle size={18} /> :
-                    toast.type === "error" ? <AlertCircle size={18} /> :
-                      toast.type === "warning" ? <Bell size={18} /> :
-                        <Info size={18} />}
-                </span>
-                <p className="font-medium">{toast.message}</p>
-              </div>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="ml-4 text-white/80 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      <AnimatePresence>
-        {showConfirmation && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${theme === "light" ? "bg-white" : "bg-gray-900"}`}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 overflow-hidden">
-                  <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-indigo-500/20 blur-2xl"></div>
-                  <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-purple-500/20 blur-2xl"></div>
-                  <div className="absolute left-1/2 top-1/3 w-32 h-32 rounded-full bg-indigo-300/10 blur-xl transform -translate-x-1/2"></div>
-                  <div className="absolute left-1/4 bottom-1/4 w-24 h-24 rounded-full bg-purple-300/10 blur-lg"></div>
-                  <div className="absolute right-1/4 top-1/4 w-16 h-16 rounded-full bg-indigo-300/10 blur-md"></div>
-                </div>
-
-                <div className="relative p-3 sm:p-4 max-h-[85vh] overflow-y-auto scrollbar-thin">
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <div className="flex items-center">
-                      <div className={`p-1.5 sm:p-2 rounded-lg mr-2 sm:mr-3 ${theme === "light" ? "bg-indigo-100" : "bg-indigo-900/50"}`}>
-                        <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${theme === "light" ? "text-indigo-600" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <h2 className={`text-base sm:text-lg font-bold ${theme === "light" ? "text-gray-800" : "text-white"}`}>
-                        Complete Your Order
-                      </h2>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.1, backgroundColor: theme === "light" ? "rgba(243, 244, 246, 1)" : "rgba(31, 41, 55, 1)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowConfirmation(false)}
-                      className={`rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}
-                    >
-                      <X size={18} />
-                    </motion.button>
-                  </div>
-
-                  <motion.div
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-xl ${theme === "light"
-                      ? "bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-100"
-                      : "bg-gradient-to-br from-indigo-900/30 to-purple-900/20 border border-indigo-800/30"}`}
-                  >
-                    <h3 className={`font-medium mb-2 flex items-center text-xs sm:text-sm ${theme === "light" ? "text-indigo-700" : "text-indigo-300"}`}>
-                      <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      Order Summary
-                    </h3>
-                    <div className={`space-y-1.5 text-xs ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${theme === "light"
-                            ? "bg-white/80"
-                            : "bg-gray-800"}`}
-                          >
-                            {selectedService.icon}
-                          </div>
-                          <span className="font-medium">{selectedService.name}</span>
-                        </div>
-                        <span className={`font-bold ${theme === "light" ? "text-indigo-700" : "text-indigo-400"}`}>
-                          ${billingCycle === "monthly" ? selectedService.basePrice : Math.round(selectedService.basePrice * 0.8)}
-                        </span>
-                      </div>
-
-                      {selectedExtras.length > 0 && (
-                        <div className={`mt-2 pt-2 border-t ${theme === "light" ? "border-indigo-200/50" : "border-gray-700/50"}`}>
-                          <p className="text-[10px] uppercase mb-1.5 opacity-70">Selected Add-ons</p>
-                          <div className="max-h-24 overflow-y-auto pr-1">
-                            {selectedExtras.map(extraId => {
-                              const extra = extras.find(e => e.id === extraId);
-                              return extra && (
-                                <div key={extra.id} className="flex justify-between items-center text-xs py-0.5">
-                                  <span>{extra.name}</span>
-                                  <span>${extra.price}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className={`mt-2 pt-2 border-t ${theme === "light" ? "border-indigo-200/50" : "border-gray-700/50"}`}>
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">Billing Cycle:</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${billingCycle === "yearly"
-                            ? theme === "light" ? "bg-green-300 text-green-800" : "bg-green-900/30 text-green-400"
-                            : theme === "light" ? "bg-indigo-300 text-indigo-800" : "bg-indigo-900/30 text-indigo-400"}`}
-                          >
-                            {billingCycle === "monthly" ? "Monthly" : "Yearly (20% off)"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className={`mt-3 pt-2 border-t ${theme === "light" ? "border-indigo-200" : "border-gray-700"} flex justify-between items-center`}>
-                        <span className="font-bold text-sm sm:text-base">Total:</span>
-                        <div className="text-right">
-                          <span className={`font-bold text-sm sm:text-base ${theme === "light"
-                            ? "bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-                            : "bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"}`}
-                          >
-                            ${totalPrice}
-                          </span>
-                          <span className="text-[10px] ml-1">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  <motion.form
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    onSubmit={handleFormSubmit}
-                    className="space-y-3"
-                  >
-                    <div className="space-y-3">
-                      <div>
-                        <label htmlFor="name" className={`block text-xs font-medium mb-1 ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
-                          Your Name
-                        </label>
-                        <div className="relative">
-                          <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === "light" ? "text-gray-500" : "text-gray-400"}`}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </div>
-                          <input
-                            type="text"
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs ${theme === "light"
-                              ? "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-800"
-                              : "bg-gray-800 border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 text-white"} 
-                              focus:outline-none focus:ring-1 focus:ring-opacity-50 transition-all duration-200`}
-                            placeholder="Enter your name"
-                          />
-                        </div>
-                        {formErrors.name && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-1 text-xs text-red-500 flex items-center"
-                          >
-                            <AlertCircle size={12} className="mr-1" />
-                            {formErrors.name}
-                          </motion.p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label htmlFor="email" className={`block text-xs font-medium mb-1 ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
-                          Email Address
-                        </label>
-                        <div className="relative">
-                          <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === "light" ? "text-gray-500" : "text-gray-400"}`}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <input
-                            type="email"
-                            id="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs ${theme === "light"
-                              ? "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-800"
-                              : "bg-gray-800 border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 text-white"} 
-                              focus:outline-none focus:ring-1 focus:ring-opacity-50 transition-all duration-200`}
-                            placeholder="Enter your email"
-                          />
-                        </div>
-                        {formErrors.email && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-1 text-xs text-red-500 flex items-center"
-                          >
-                            <AlertCircle size={12} className="mr-1" />
-                            {formErrors.email}
-                          </motion.p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex gap-2">
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02, backgroundColor: theme === "light" ? "rgb(243, 244, 246)" : "rgb(55, 65, 81)" }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setShowConfirmation(false)}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-xs ${theme === "light"
-                          ? "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
-                          : "border-gray-700 text-gray-300 bg-gray-700 hover:bg-gray-800"} 
-                          transition-colors duration-200`}
-                      >
-                        Cancel
-                      </motion.button>
-
-                      <motion.button
-                        type="submit"
-                        whileHover={{ scale: 1.02, boxShadow: "0 10px 15px -3px rgba(99, 102, 241, 0.3), 0 4px 6px -4px rgba(99, 102, 241, 0.3)" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="relative overflow-hidden flex-1 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 
-                          hover:to-purple-500 text-white font-medium rounded-lg shadow-md text-xs
-                          hover:shadow-lg transition-all duration-200"
-                      >
-                        <span className="relative z-10 flex items-center justify-center">
-                          <CheckCircle size={14} className="mr-1" />
-                          Confirm Order
-                        </span>
-
-                        <motion.div
-                          className="absolute inset-0 rounded-lg pointer-events-none"
-                          initial={{ scale: 0, opacity: 0 }}
-                          whileTap={{
-                            scale: [0, 2],
-                            opacity: [0.5, 0],
-                          }}
-                          transition={{ duration: 0.5 }}
-                          style={{
-                            background: "radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%)",
-                            transformOrigin: "center"
-                          }}
-                        />
-                      </motion.button>
-                    </div>
-
-                    <div className={`mt-3 pt-3 border-t ${theme === "light" ? "border-gray-200" : "border-gray-800"}`}>
-                      <div className="flex items-center justify-center space-x-3 text-[10px]">
-                        <div className="flex items-center">
-                          <svg className={`w-3 h-3 mr-1 ${theme === "light" ? "text-green-600" : "text-green-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                          <span className={theme === "light" ? "text-gray-600" : "text-gray-400"}>Secure Payment</span>
-                        </div>
-                        <div className="flex items-center">
-                          <svg className={`w-3 h-3 mr-1 ${theme === "light" ? "text-green-600" : "text-green-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                          <span className={theme === "light" ? "text-gray-600" : "text-gray-400"}>Privacy Protected</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.form>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <header className="flex flex-col sm:flex-row justify-between items-center mb-6 max-w-7xl mx-auto gap-4">
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className={`text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r ${theme === "light"
-              ? "from-indigo-700 via-blue-600 to-indigo-800 bg-clip-text text-transparent"
-              : "from-indigo-400 via-pink-300 to-purple-300 bg-clip-text text-transparent"}`}
-          >
-            ESTIMATE YOUR COST
-          </motion.h1>
-
-          <div className={`flex justify-center items-center ${theme === "light"
-            ? "text-gray-700"
-            : "text-gray-200"}`}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className={`px-4 sm:px-6 py-3 rounded-full flex items-center ${theme === "light"
-                ? "bg-white shadow-lg border border-indigo-100 backdrop-blur-sm"
-                : "bg-gray-800/90 shadow-lg border-2 border-indigo-500/50 backdrop-blur-sm"}`}>
-              <span className={`mr-2 sm:mr-4 text-sm sm:text-base font-semibold transition-colors duration-300 ${billingCycle === "monthly"
-                ? theme === "light" ? "text-indigo-600 font-bold" : "text-white font-bold"
-                : theme === "light" ? "text-gray-400" : "text-gray-400"}`}>
-                Monthly
-              </span>
-              <div 
-                onClick={toggleBillingCycle}
-                className={`relative w-12 sm:w-14 h-6 sm:h-7 rounded-full cursor-pointer ${theme === "light"
-                  ? "bg-indigo-100"
-                  : "bg-indigo-900"}`}
-              >
-                <div 
-                  className={`absolute inset-0 rounded-full transition-colors duration-300 ${theme === "light"
-                    ? "border border-indigo-200"
-                    : "border-2 border-indigo-500"}`}
-                />
-                <div 
-                  className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full shadow-lg transform transition-transform duration-300 ${
-                    billingCycle === "yearly" 
-                      ? "translate-x-6 sm:translate-x-8 bg-gradient-to-r from-indigo-400 to-indigo-500" 
-                      : "translate-x-1 bg-gradient-to-r from-gray-400 to-gray-500"
-                  }`}
-                />
-              </div>
-              <span className={`ml-2 sm:ml-4 text-sm sm:text-base font-semibold transition-colors duration-300 ${billingCycle === "yearly"
-                ? theme === "light" ? "text-indigo-600 font-bold" : "text-white font-bold"
-                : theme === "light" ? "text-gray-400" : "text-gray-400"}`}>
-                Yearly
-              </span>
-            </motion.div>
-          </div>
-        </header>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={toggleTheme}
-          className={`fixed bottom-4 right-4 p-3 rounded-full ${theme === "light"
-            ? "bg-white/80 text-indigo-700 shadow-lg border border-indigo-100 backdrop-blur-sm"
-            : "bg-gray-800/80 text-indigo-200 shadow-lg border border-gray-700 backdrop-blur-sm"} 
-            hover:shadow-xl transition-all duration-300 z-50`}
-          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-        >
-          {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-        </motion.button>
-
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto">
-          <div className="lg:w-2/3 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className={`p-4 sm:p-6 mb-6 rounded-2xl ${theme === "light"
-                ? "bg-white/80 backdrop-blur-md shadow-xl border border-indigo-50"
-                : "bg-gray-900/80 backdrop-blur-md shadow-xl border border-gray-800"} 
-                transition-colors duration-300`}
-            >
-              <h2 className={`${theme === "light" ? "text-gray-800" : "text-gray-100"} text-lg font-semibold mb-4`}>
-                Select Service
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {services.map((service, index) => (
-                  <motion.div
-                    key={service.id}
-                    whileHover={{
-                      scale: selectedServiceIndex === index ? 1 : 1.02,
-                      boxShadow: selectedServiceIndex === index ? undefined : "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleServiceSelect(index)}
-                    animate={selectedServiceIndex === index ? {
-                      boxShadow: [
-                        "0 0 0 0px rgba(99, 102, 241, 0.4)",
-                        "0 0 0 4px rgba(99, 102, 241, 0.4)",
-                        "0 0 0 2px rgba(99, 102, 241, 0.2)"
-                      ]
-                    } : {}}
-                    transition={{
-                      boxShadow: { duration: 0.5, ease: "easeOut" }
-                    }}
-                    className={`relative p-4 rounded-xl text-left cursor-pointer transition-all duration-300 overflow-hidden h-full
-                      ${selectedServiceIndex === index
-                        ? theme === "light"
-                          ? "scale-105 z-10"
-                          : "scale-105 z-10"
-                        : "hover:shadow-md"
-                      }`}
-                    style={{
-                      boxShadow: selectedServiceIndex === index
-                        ? theme === "light"
-                          ? "0 4px 6px -1px rgba(99, 102, 241, 0.2), 0 2px 4px -1px rgba(99, 102, 241, 0.1), 0 0 0 4px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(79, 70, 229, 0.4)"
-                          : "0 4px 6px -1px rgba(99, 102, 241, 0.3), 0 2px 4px -1px rgba(99, 102, 241, 0.2), 0 0 0 4px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(79, 70, 229, 0.4)"
-                        : theme === "light"
-                          ? "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 0 2px rgba(229, 231, 235, 1)"
-                          : "0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(55, 65, 81, 1)",
-                      background: theme === "light"
-                        ? selectedServiceIndex === index
-                          ? "linear-gradient(to bottom right, rgba(238, 242, 255, 1), rgba(255, 255, 255, 1), rgba(238, 242, 255, 1))"
-                          : "#ffffff"
-                        : selectedServiceIndex === index
-                          ? "linear-gradient(to bottom right, rgba(67, 56, 202, 0.1), rgba(17, 24, 39, 1), rgba(67, 56, 202, 0.1))"
-                          : "rgb(31, 41, 55)"
-                    }}
-                  >
-                    {selectedServiceIndex === index && (
-                      <div className="absolute bottom-2 right-2 overflow-visible z-10">
-                        <div className={`px-2 py-0.5 rounded-full ${theme === "light" ? "bg-gradient-to-r from-indigo-600 to-purple-600" : "bg-gradient-to-r from-indigo-500 to-purple-500"} flex items-center justify-center shadow-sm border border-white/40`}>
-                          <span className="text-[10px] font-bold text-white tracking-wide">SELECTED</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-20 bg-gradient-to-br 
-                      ${selectedServiceIndex === index
-                        ? service.color.light + " opacity-60"
-                        : service.color.light + " opacity-20"
-                      }`}>
-                    </div>
-
-                    {selectedServiceIndex === index && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent shimmer"></div>
-                    )}
-
-                    <div className="flex h-full relative z-10">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center 
-                        ${selectedServiceIndex === index
-                          ? theme === "light"
-                            ? "bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md shadow-indigo-500/30 text-white"
-                            : "bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md shadow-indigo-500/30 text-white"
-                          : `bg-gradient-to-br ${service.color.light} ${theme === "light"
-                            ? "shadow-md text-white"
-                            : "shadow-lg text-white"}`
-                        }`}>
-                        <motion.div
-                          animate={{
-                            scale: selectedServiceIndex === index ? [1, 1.2, 1] : [1, 1.05, 1],
-                            opacity: [1, 0.8, 1]
-                          }}
-                          transition={{
-                            duration: selectedServiceIndex === index ? 1.5 : 2,
-                            repeat: Infinity,
-                            repeatType: "reverse",
-                            ease: "easeInOut",
-                            delay: index * 0.2
-                          }}
-                        >
-                          {service.icon}
-                        </motion.div>
-                      </div>
-
-                      <div className="ml-3 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className={`text-base font-bold ${selectedServiceIndex === index
-                            ? theme === "light"
-                              ? "text-indigo-700"
-                              : "text-indigo-300"
-                            : theme === "light"
-                              ? "text-gray-800"
-                              : "text-white"}`}
-                          >
-                            {service.name}
-                            {selectedServiceIndex === index && (
-                              <span className="ml-2 inline-flex items-center">
-                                <Check size={14} className={`${theme === "light" ? "text-indigo-600" : "text-indigo-400"}`} />
-                              </span>
-                            )}
-                          </h3>
-                          <p className={`text-xs mt-1 ${selectedServiceIndex === index
-                            ? theme === "light" ? "text-indigo-600" : "text-indigo-400"
-                            : theme === "light" ? "text-gray-500" : "text-gray-300"}`}>
-                            {service.description}
-                          </p>
-                        </div>
-
-                        <div className="mt-4 space-y-1 flex justify-between items-center mb-4">
-                          <div className="flex items-center mt-1">
-                            <span className={`text-xs font-semimedium ${selectedServiceIndex === index
-                              ? theme === "light" ? "text-indigo-700" : "text-indigo-400"
-                              : theme === "light" ? "text-gray-600" : "text-gray-400"
-                              }`}>
-                              Monthly:
-                            </span>
-                            <span className={`ml-2 text-xs font-bold ${selectedServiceIndex === index && billingCycle === "monthly"
-                              ? theme === "light"
-                                ? "bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-                                : "bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
-                              : selectedServiceIndex === index
-                                ? theme === "light" ? "text-indigo-700" : "text-indigo-400"
-                                : theme === "light" ? "text-indigo-600" : "text-indigo-400"
-                              }`}
-                            >
-                              ${service.basePrice}/mo
-                            </span>
-                          </div>
-                          <div className="flex  items-center">
-                            <span className={`text-xs font-semimedium ${selectedServiceIndex === index
-                              ? theme === "light" ? "text-indigo-700" : "text-indigo-400"
-                              : theme === "light" ? "text-gray-600" : "text-gray-400"
-                              }`}>
-                              Yearly:
-                            </span>
-                            <span className={`ml-2  text-xs font-bold ${selectedServiceIndex === index && billingCycle === "yearly"
-                              ? theme === "light"
-                                ? "bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-                                : "bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
-                              : selectedServiceIndex === index
-                                ? theme === "light" ? "text-indigo-700" : "text-indigo-400"
-                                : theme === "light" ? "text-indigo-600" : "text-indigo-400"
-                              }`}
-                            >
-                              ${Math.round(service.basePrice * 0.8)}/mo
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className={`p-4 sm:p-6 rounded-2xl ${theme === "light"
-                ? "bg-white/80 backdrop-blur-md shadow-xl border border-indigo-50"
-                : "bg-gray-900/80 backdrop-blur-md shadow-xl border border-gray-800"} 
-                transition-colors duration-300`}
-            >
-              <h2 className={`${theme === "light" ? "text-gray-800" : "text-gray-100"} text-lg font-semibold mb-4`}>
-                Add-Ons
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {extras.map((extra) => (
-                  <motion.div
-                    key={extra.id}
-                    whileHover={{
-                      y: -3,
-                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
-                    }}
-                    className={`rounded-xl transition-all duration-300 h-full border overflow-hidden
-                      ${selectedExtras.includes(extra.id)
-                        ? theme === "light"
-                          ? "bg-gradient-to-br from-indigo-50 to-white border-indigo-200 shadow-md"
-                          : "bg-gradient-to-br from-gray-800 to-gray-900 border-indigo-900 shadow-md"
-                        : theme === "light"
-                          ? "bg-white border-gray-100 shadow-sm"
-                          : "bg-gray-800 border-gray-700 shadow-sm"
-                      }`}
-                  >
-                    <label className="flex p-4 cursor-pointer w-full h-full">
-                      <div className="relative flex-none mr-3 pt-1">
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={selectedExtras.includes(extra.id)}
-                          onChange={() => toggleExtra(extra.id)}
-                        />
-                        <motion.div
-                          whileTap={{ scale: 0.9 }}
-                          className={`w-5 h-5 rounded-md border-2 transition-colors duration-300 flex items-center justify-center
-                            ${selectedExtras.includes(extra.id)
-                              ? theme === "light"
-                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 border-transparent"
-                                : "bg-gradient-to-r from-indigo-500 to-purple-600 border-transparent"
-                              : theme === "light"
-                                ? "bg-white border-indigo-300"
-                                : "bg-gray-800 border-indigo-500"}`}
-                        >
-                          {selectedExtras.includes(extra.id) && (
-                            <motion.svg
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="w-3 h-3 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </motion.svg>
-                          )}
-                        </motion.div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <p className={`font-semibold text-base ${theme === "light" ? "text-gray-800" : "text-white"}`}>
-                            {extra.name}
-                          </p>
-                          <motion.p
-                            animate={{
-                              scale: selectedExtras.includes(extra.id) ? [1, 1.1, 1] : 1,
-                            }}
-                            transition={{
-                              duration: 0.5,
-                              repeat: selectedExtras.includes(extra.id) ? 1 : 0,
-                            }}
-                            className={`font-bold text-base ml-2 ${selectedExtras.includes(extra.id)
-                              ? "bg-gradient-to-r from-indigo-600 to-pink-500 bg-clip-text text-transparent"
-                              : theme === "light" ? "text-indigo-600" : "text-indigo-400"
-                              }`}
-                          >
-                            +${extra.price}
-                          </motion.p>
-                        </div>
-                        <p className={`text-xs mt-1 ${theme === "light" ? "text-gray-600" : "text-gray-300"}`}>
-                          {extra.description}
-                        </p>
-                      </div>
-                    </label>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-
+    return (
+      <motion.div 
+        className="flex items-center space-x-2 w-full"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        {scoreSegments.map((segment, index) => (
           <motion.div
-            ref={priceSummaryRef}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="lg:w-1/3 w-full lg:sticky lg:top-10 self-start"
+            key={index}
+            variants={{
+              hidden: { opacity: 0, scaleX: 0 },
+              visible: { 
+                opacity: segment.active ? 1 : 0.3, 
+                scaleX: 1,
+                transition: { 
+                  duration: 0.5, 
+                  delay: index * 0.1,
+                  type: "spring",
+                  stiffness: 100
+                }
+              }
+            }}
+            className={`h-2 rounded-full origin-left`}
+            style={{
+              backgroundColor: segment.active
+                ? segment.color
+                : darkMode
+                ? "#4B5563"
+                : "#E5E7EB",
+              flex: 1,
+            }}
+          ></motion.div>
+        ))}
+      </motion.div>
+    );
+  };
+
+  const profileData: ProfileData = {
+    name: "Kalendra Wingman", 
+    level: "Advanced",
+    points: "14,750",
+    weight: "75 kg",
+    height: "175 cm",
+    age: "29 yrs",
+    avatar:
+      "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+  };
+
+  const CustomizedDot = (props: any) => {
+    const { cx, cy, payload, index } = props;
+
+    const getPatternValue = () => {
+      if (currentMode === "today") return 15;
+      if (currentMode === "yesterday") return 13;
+      if (currentMode === "thisWeek") return 17;
+      return 14;
+    };
+
+    const patternValue = getPatternValue();
+
+    if (payload.time % patternValue === 6) {
+      return <circle cx={cx} cy={cy} r={2} fill="#991B1B" />;
+    }
+    return null;
+  };
+
+  const ProgressCircle = ({
+    percentage,
+    color,
+    radius = 40,
+    strokeWidth = 8,
+    className = "",
+  }: {
+    percentage: number;
+    color: string;
+    radius?: number;
+    strokeWidth?: number;
+    className?: string;
+  }) => {
+    const normalizedRadius = radius - strokeWidth / 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+
+    return (
+      <svg height={radius * 2} width={radius * 2} className={className}>
+        <circle
+          stroke={darkMode ? "#374151" : "#E5E7EB"}
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+        />
+        <motion.circle
+          stroke={color}
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference + " " + circumference}
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${radius} ${radius})`}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ 
+            strokeDashoffset: circumference - (percentage / 100) * circumference 
+          }}
+          transition={{ 
+            duration: 1.5, 
+            ease: "easeInOut",
+            delay: 0.3
+          }}
+        />
+      </svg>
+    );
+  };
+
+
+  const renderWeeklyMealCard = () => {
+    const { mealData } = modeData;
+
+    return (
+      <div className={`rounded-xl shadow-xl overflow-hidden ${darkMode ? "bg-gray-800" : "bg-white"} transition-all duration-300 col-span-full lg:col-span-3`}>
+        <div className="p-4 md:p-5">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-lg flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-green-500" />
+              {mealData.type}
+            </h3>
+            <div className={`px-3 py-1 rounded-full text-xs ${darkMode ? "bg-gray-700 text-green-400" : "bg-green-100 text-green-800"}`}>
+              Avg. Score: {mealData.healthScore}/100
+            </div>
+          </div>
+
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-7 gap-3 mb-2"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
           >
-            <div className="rounded-2xl overflow-hidden shadow-2xl">
-              <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white relative overflow-hidden h-full">
-                <div className="absolute inset-0 overflow-hidden opacity-30">
-                  <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/20 blur-2xl"></div>
-                  <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-white/20 blur-2xl"></div>
-                  <div className="absolute left-1/2 top-1/3 w-32 h-32 rounded-full bg-white/20 blur-xl transform -translate-x-1/2"></div>
+            {mealData.meals.map((meal, idx) => (
+              <motion.div
+                key={idx}
+                className={`rounded-lg overflow-hidden shadow-sm ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-50 hover:bg-gray-100"} transition-all duration-200 hover:shadow-md cursor-pointer group`}
+                variants={scaleIn}
+                whileHover={{ 
+                  y: -5,
+                  transition: { duration: 0.2 }
+                }}
+              >
+                <div
+                  className="h-24 w-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300"
+                  style={{ backgroundImage: `url(${meal.image})` }}
+                ></div>
+                <div className="p-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`text-xs font-medium ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"} px-2 py-0.5 rounded`}>
+                      {meal.dayOfWeek}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {meal.calories} cal
+                    </span>
+                  </div>
+                  <h4 className="font-medium text-sm line-clamp-1">
+                    {meal.name}
+                  </h4>
+                  <p className="text-xs text-gray-500 line-clamp-1">
+                    {meal.description}
+                  </p>
+                  <div className="mt-1 h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ 
+                        width: `${meal.healthScore}%`,
+                        backgroundColor: meal.healthScore > 85 ? "#10B981" : "#60A5FA"
+                      }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                    ></motion.div>
+                  </div>
                 </div>
+              </motion.div>
+            ))}
+          </motion.div>
 
-                <div className="relative p-8 sm:p-10 h-full flex flex-col">
-                  <motion.div
-                    animate={{ opacity: [0.7, 1, 0.7] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="flex items-center"
-                  >
-                    <div className={`w-3 h-3 rounded-full mr-2 animate-pulse ${billingCycle === "monthly" ? "bg-green-400" : "bg-indigo-300"}`}></div>
-                    <h2 className="text-xl font-medium">
-                      {billingCycle === "monthly" ? "Monthly Billing" : "Yearly Billing"}
-                    </h2>
-                  </motion.div>
-
-                  <div className="mt-10 mb-4">
-                    <div className="text-indigo-100 font-medium mb-2">TOTAL COST</div>
-                    <div className="flex items-center">
-                      <motion.div
-                        key={totalPrice}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="flex items-baseline"
-                      >
-                        <span className="text-6xl font-bold">
-                          ${totalPrice}
-                        </span>
-                        <span className="text-xl ml-2 text-indigo-200">
-                          /{billingCycle === "monthly" ? "mo" : "yr"}
-                        </span>
-                      </motion.div>
-
-                      <AnimatePresence mode="wait">
-                        {billingCycle === "yearly" && (
-                          <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 30, delay: 0.2 }}
-                            className="ml-2 bg-green-500/90 text-white text-xs font-bold py-1 px-3 rounded-full flex"
-                          >
-                            <svg className="w-4 mt-0.5 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="ml-1 text-center">20% SAVED</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  <div className="mb-8 bg-white/10 rounded-lg p-5 backdrop-blur-sm">
-                    <h3 className="text-white font-medium mb-3 flex items-center">
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Price Breakdown
-                    </h3>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between border-b border-indigo-200/30 pb-2">
-                        <span className="text-indigo-100">Base Service</span>
-                        <span className="font-medium text-white">${selectedService?.basePrice}</span>
-                      </div>
-
-                      {selectedExtras.length > 0 ? (
-                        selectedExtras.map(extraId => {
-                          const extra = extras.find(e => e.id === extraId);
-                          return extra ? (
-                            <div key={extra.id} className="flex justify-between text-sm">
-                              <span className="text-indigo-100">{extra.name}</span>
-                              <span className="font-medium text-white">+${extra.price}</span>
-                            </div>
-                          ) : null;
-                        })
-                      ) : (
-                        <div className="text-indigo-100 italic">No add-ons selected</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 mb-8">
-                    <div className="flex items-start">
-                      <svg className="w-5 h-5 mr-3 text-indigo-100 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-indigo-100">No commitment required</p>
-                    </div>
-                    <div className="flex items-start">
-                      <svg className="w-5 h-5 mr-3 text-indigo-200 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-indigo-100">Cancel anytime with no fees</p>
-                    </div>
-                    <div className="flex items-start">
-                      <svg className="w-5 h-5 mr-3 text-indigo-200 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-indigo-100">Dedicated support team</p>
-                    </div>
-                  </div>
-
-                  <motion.button
-                    whileHover={{
-                      scale: 1.03,
-                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)",
-                      background: theme === "light"
-                        ? "linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(238,242,255,1) 100%)"
-                        : "linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(224,231,255,1) 100%)"
-                    }}
-                    whileTap={{
-                      scale: 0.97,
-                      boxShadow: "0 5px 15px -5px rgba(0, 0, 0, 0.1)"
-                    }}
-                    onClick={handleGetStarted}
-                    animate={{
-                      boxShadow: ["0 4px 6px -1px rgba(99, 102, 241, 0.1), 0 2px 4px -1px rgba(99, 102, 241, 0.06)",
-                        "0 8px 10px -3px rgba(99, 102, 241, 0.2), 0 4px 6px -2px rgba(99, 102, 241, 0.1)",
-                        "0 4px 6px -1px rgba(99, 102, 241, 0.1), 0 2px 4px -1px rgba(99, 102, 241, 0.06)"],
-                    }}
-                    transition={{
-                      boxShadow: {
-                        repeat: Infinity,
-                        duration: 2,
-                        ease: "easeInOut"
-                      }
-                    }}
-                    className="relative overflow-hidden group bg-white text-indigo-600 font-bold py-4 px-8 rounded-xl hover:bg-opacity-95 shadow-lg mb-8"
-                  >
-                    <span className="relative z-10">Get Started</span>
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      animate={{
-                        x: ["0%", "100%", "0%"],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear"
-                      }}
-                    />
-                    <motion.div
-                      className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500"
-                      initial={{ width: "0%" }}
-                      whileHover={{ width: "100%" }}
-                      transition={{ duration: 0.3 }}
-                    />
-
-                    <motion.div
-                      className="absolute inset-0 rounded-xl pointer-events-none"
-                      initial={{ scale: 0, opacity: 0 }}
-                      whileTap={{
-                        scale: [0, 1.5],
-                        opacity: [0.5, 0],
-                      }}
-                      transition={{ duration: 0.5 }}
-                      style={{
-                        background: "radial-gradient(circle, rgba(99,102,241,0.5) 0%, rgba(255,255,255,0) 70%)",
-                        transformOrigin: "center"
-                      }}
-                    />
-                  </motion.button>
-
-                  <div className="mt-auto pt-6 border-t border-indigo-200/50 text-center text-sm text-indigo-100">
-                    <p>© 2025 Service Price Calculator</p>
-                  </div>
+          <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center">
+              <div className="text-sm font-medium mr-2">
+                Nutritional Balance:
+              </div>
+              <div className="flex -space-x-1">
+                <div className="w-5 h-5 rounded-full bg-blue-400 flex items-center justify-center text-xs text-white font-bold">
+                  P
+                </div>
+                <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-xs text-white font-bold">
+                  C
+                </div>
+                <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center text-xs text-white font-bold">
+                  F
                 </div>
               </div>
+              <div className="ml-2 text-xs text-gray-500">35% | 45% | 20%</div>
             </div>
-          </motion.div>
+            <motion.button
+              onClick={() => {
+                setToastMessage("Manual meal addition is not available currently");
+                setShowToast(true);
+              }}
+              className={`flex items-center px-3 py-1.5 rounded-full text-xs ${darkMode
+                  ? "bg-green-700 text-white hover:bg-green-600"
+                  : "bg-green-500 text-white hover:bg-green-600"
+              } transition-colors duration-200 cursor-pointer`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <PlusCircle className="h-3.5 w-3.5 mr-1" />
+              Add Meal
+            </motion.button>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      <AnimatePresence>
-        {showMobilePrice && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="fixed bottom-0 left-0 right-0 lg:hidden z-40"
-          >
-            <div className={`py-3 px-4 ${theme === "light"
-              ? "bg-white/95 border-t border-indigo-100 shadow-lg backdrop-blur-sm"
-              : "bg-gray-900/95 border-t border-gray-800 shadow-lg backdrop-blur-sm"}`}
-            >
-              <div className="flex flex-col items-center">
-                <div className="mb-2">
-                  <p className={`text-xs text-center ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
-                    Total Price
-                  </p>
-                  <p className={`text-lg font-bold text-center ${theme === "light"
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
-                    : "bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"}`}
-                  >
-                    ${totalPrice}
-                    <span className="text-xs ml-1 font-normal">
-                      /{billingCycle === "monthly" ? "mo" : "yr"}
-                    </span>
-                    {billingCycle === "yearly" && (
-                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${theme === "light" ? "bg-green-100 text-green-800" : "bg-green-900/30 text-green-400"}`}>
-                        20% OFF
-                      </span>
-                    )}
-                  </p>
-                </div>
+  const renderDailyMealCard = () => {
+    const { mealData } = modeData;
+    const meal = mealData.primaryMeal!;
 
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={scrollToPriceSummary}
-                  className={`flex items-center py-2 px-5 rounded-lg ${theme === "light"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-indigo-500 text-white"} text-sm font-medium shadow-md`}
-                >
-                  <span>View Details</span>
-                  <ArrowUp size={14} className="ml-2 rotate-45" />
-                </motion.button>
+    return (
+      <div className={`rounded-xl shadow-xl overflow-hidden ${darkMode ? "bg-gray-800" : "bg-white"} transition-all duration-300 col-span-full lg:col-span-3`}>
+        <div className="flex flex-col md:flex-row">
+          <div className="w-full md:w-2/5 lg:w-1/3">
+            <motion.div
+              className="h-48 md:h-full bg-cover bg-center cursor-pointer"
+              style={{ backgroundImage: `url(${meal.image})` }}
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.5 }}
+            ></motion.div>
+          </div>
+          <div className="w-full md:w-3/5 lg:w-2/3 p-4 md:p-5">
+            <div className="flex justify-between items-center mb-3">
+              <div className={`px-3 py-1 rounded-full text-xs ${darkMode ? "bg-gray-700 text-green-400" : "bg-green-100 text-green-800"}`}>
+                {mealData.type}
               </div>
+              <div className="flex items-center text-xs text-gray-500">
+                <Clock className="h-3 w-3 mr-1" />
+                {mealData.duration}
+              </div>
+            </div>
+
+            <h3 className="font-semibold text-lg mb-1">{meal.name}</h3>
+            <p className="text-sm text-gray-500 mb-4">{meal.description}</p>
+
+            <motion.div 
+              className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
+              <motion.div 
+                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
+                variants={scaleIn}
+                whileHover={{ y: -3 }}
+              >
+                <div className="text-xs text-gray-500">Calories</div>
+                <div className="font-medium flex items-center">
+                  <Flame className="h-3 w-3 mr-1 text-orange-500" />
+                  {mealData.calories} cal
+                </div>
+              </motion.div>
+              <motion.div
+                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
+                variants={scaleIn}
+                whileHover={{ y: -3 }}
+              >
+                <div className="text-xs text-gray-500">Carbs</div>
+                <div className="font-medium flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></div>
+                  {mealData.carbs}g
+                </div>
+              </motion.div>
+              <motion.div
+                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
+                variants={scaleIn}
+                whileHover={{ y: -3 }}
+              >
+                <div className="text-xs text-gray-500">Protein</div>
+                <div className="font-medium flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-blue-400 mr-1"></div>
+                  {mealData.protein}g
+                </div>
+              </motion.div>
+              <motion.div
+                className={`p-3 rounded-lg ${
+                  darkMode ? "bg-gray-700" : "bg-gray-50"
+                } hover:shadow-md transition-shadow duration-200 cursor-pointer`}
+                variants={scaleIn}
+                whileHover={{ y: -3 }}
+              >
+                <div className="text-xs text-gray-500">Fats</div>
+                <div className="font-medium flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-green-400 mr-1"></div>
+                  {mealData.fats}g
+                </div>
+              </motion.div>
+            </motion.div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <div className="text-sm">Health Score:</div>
+                <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ 
+                      width: `${mealData.healthScore}%`,
+                      backgroundColor: (mealData.healthScore || 0) >= 80 ? "#10B981" : "#60A5FA"
+                    }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                  ></motion.div>
+                </div>
+                <div className="text-sm font-medium">
+                  {mealData.healthScore}/100
+                </div>
+              </div>
+
+              <motion.button
+                onClick={() => {
+                  setToastMessage("Manual meal addition is not available currently");
+                  setShowToast(true);
+                }}
+                className={`flex items-center px-3 py-1.5 rounded-full text-xs ${darkMode
+                  ? "bg-green-700 text-white hover:bg-green-600"
+                  : "bg-green-500 text-white hover:bg-green-600"
+                } transition-colors duration-200 cursor-pointer`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <PlusCircle className="h-3.5 w-3.5 mr-1" />
+                Add Meal
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const getThemeColors = () => {
+    return {
+      bgPrimary: darkMode ? "bg-gray-900" : "bg-gray-100",
+      bgSecondary: darkMode ? "bg-gray-800" : "bg-white",
+      textPrimary: darkMode ? "text-white" : "text-gray-800",
+      textSecondary: darkMode ? "text-gray-300" : "text-gray-600",
+      heartBeatCard: darkMode ? "bg-emerald-900 bg-opacity-30" : "bg-green-100",
+      healthScoreCard: darkMode ? "bg-blue-900 bg-opacity-30" : "bg-blue-100",
+      accent: darkMode ? "text-emerald-400" : "text-emerald-500",
+      accentHover: darkMode ? "hover:text-emerald-300" : "hover:text-emerald-600",
+      borderColor: darkMode ? "border-gray-700" : "border-gray-200",
+      menuHover: darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100",
+      shadow: darkMode
+        ? "shadow-lg shadow-gray-900/20"
+        : "shadow-xl shadow-gray-200/40",
+      buttonPrimary: darkMode
+        ? "bg-emerald-700 hover:bg-emerald-600 text-white"
+        : "bg-emerald-500 hover:bg-emerald-600 text-white",
+      buttonSecondary: darkMode
+        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+        : "bg-gray-200 hover:bg-gray-300 text-gray-700",
+      progressBg: darkMode ? "bg-gray-700" : "bg-gray-200",
+    };
+  };
+
+  const theme = getThemeColors();
+
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${theme.bgPrimary} ${theme.textPrimary}`}>
+      <AnimatePresence>
+        {showToast && (
+          <motion.div 
+            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className={`px-4 py-3 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center`}>
+              <div className={`mr-3 p-1 rounded-full ${
+                toastMessage.includes("Exercise") 
+                  ? darkMode ? 'bg-blue-900/30' : 'bg-blue-100' 
+                  : darkMode ? 'bg-amber-900/30' : 'bg-amber-100'
+              }`}>
+                {toastMessage.includes("Exercise") ? (
+                  <Activity className={`h-5 w-5 ${darkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <p className="text-sm font-medium">{toastMessage}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+      
+      <header className={`sticky top-0 z-50 ${theme.bgSecondary} bg-opacity-95 backdrop-blur-sm ${theme.shadow}`}>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <motion.div 
+              className="flex items-center space-x-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.div 
+                className={`h-10 w-10 rounded-xl flex items-center justify-center ${darkMode ? "bg-gradient-to-br from-emerald-500 to-blue-600" : "bg-gradient-to-br from-emerald-400 to-blue-500"} shadow-lg`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Zap className="h-6 w-6 text-white" />
+              </motion.div>
+              <motion.h1 
+                className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-blue-500"
+                whileHover={{ scale: 1.05 }}
+              >
+                FitTrack Pro
+              </motion.h1>
+            </motion.div>
+
+            <motion.div 
+              className="hidden md:flex items-center justify-center flex-1 max-w-md"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <div className={`flex p-1 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                {dashboardModes.map((mode, index) => (
+                  <motion.button
+                    key={mode.id}
+                    onClick={() => setCurrentMode(mode.id)}
+                    className={`text-sm font-medium py-2 px-4 rounded-full transition-all duration-200 cursor-pointer ${currentMode === mode.id
+                        ? `${darkMode ? "bg-gray-800" : "bg-white"} shadow-md ${theme.accent}`
+                        : darkMode
+                        ? "text-gray-300 hover:text-white"
+                        : "text-gray-500 hover:text-gray-800"
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    {mode.name}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="flex items-center space-x-3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-full ${theme.buttonSecondary} transition-colors duration-200 cursor-pointer`}
+                aria-label="Toggle dark mode"
+                whileHover={{ scale: 1.1, rotate: 15 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {darkMode ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </motion.button>
+
+              <motion.button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="md:hidden p-2 rounded-full text-gray-500 hover:text-gray-700 transition-colors duration-200 cursor-pointer"
+                aria-label="Open menu"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Menu className="h-5 w-5" />
+              </motion.button>
+            </motion.div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div 
+              className={`md:hidden ${theme.bgSecondary} py-4 px-4 shadow-md border-t ${theme.borderColor}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-3">Dashboard Mode</h3>
+                <motion.div 
+                  className="grid grid-cols-2 gap-2"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {dashboardModes.map((mode) => (
+                    <motion.button
+                      key={mode.id}
+                      onClick={() => {
+                        setCurrentMode(mode.id);
+                        setMenuOpen(false);
+                      }}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium ${currentMode === mode.id
+                          ? "bg-green-100 text-green-800"
+                          : darkMode
+                          ? "bg-gray-700 text-gray-300"
+                          : "bg-gray-100 text-gray-600"
+                      } transition-colors duration-200 cursor-pointer`}
+                      variants={fadeIn}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {mode.name}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      <main className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+          {modeData.isWeekly ? (
+            <motion.div
+              variants={slideInFromLeft}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: 0.5 }}
+              className="col-span-full lg:col-span-3"
+            >
+              {renderWeeklyMealCard()}
+            </motion.div>
+          ) : (
+            <motion.div
+              variants={slideInFromLeft}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: 0.5 }}
+              className="col-span-full lg:col-span-3"
+            >
+              {renderDailyMealCard()}
+            </motion.div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          {/* Progress Section */}
+          <motion.div 
+            className="flex flex-col h-full"
+            variants={slideInFromLeft}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <motion.div 
+              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.bgSecondary} transition-all duration-300 hover:shadow-2xl h-full`}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-lg font-semibold flex items-center">
+                  <BarChartIcon className={`h-5 w-5 mr-2 ${theme.accent}`} />
+                  Progress
+                </h2>
+              </div>
+
+              <div className="text-center mb-4">
+                <div className="text-4xl font-bold mb-1">
+                  {modeData.goalCompletion}%
+                </div>
+                <div className="text-sm text-gray-500">Goal Completion</div>
+              </div>
+
+              <div className="flex justify-center mb-6">
+                <div className="relative h-36 w-36 md:h-44 md:w-44">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ProgressCircle
+                      percentage={modeData.trainingProgress[0].percentage}
+                      color={modeData.trainingProgress[0].color}
+                      radius={70}
+                      strokeWidth={12}
+                    />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ProgressCircle
+                      percentage={modeData.trainingProgress[1].percentage}
+                      color={modeData.trainingProgress[1].color}
+                      radius={55}
+                      strokeWidth={12}
+                    />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ProgressCircle
+                      percentage={modeData.trainingProgress[2].percentage}
+                      color={modeData.trainingProgress[2].color}
+                      radius={40}
+                      strokeWidth={12}
+                    />
+                  </div>
+
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-2xl font-bold">
+                      {modeData.goalCompletion}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {modeData.trainingProgress.map((item, index) => (
+                  <div
+                    key={index}
+                    className={`space-y-1 ${theme.menuHover} px-3 py-2 rounded-lg transition-colors duration-200 cursor-pointer`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        {item.icon}
+                        <span className="text-sm font-medium ml-2">
+                          {item.type}
+                        </span>
+                      </div>
+                      <span className="text-sm font-medium">
+                        {item.percentage}%
+                      </span>
+                    </div>
+                    <div className="mt-1">
+                      <div className={`w-full ${theme.progressBg} rounded-full h-1.5`}>
+                        <div
+                          className="h-1.5 rounded-full transition-all duration-500 ease-out"
+                          style={{
+                            width: `${item.percentage}%`,
+                            backgroundColor: item.color,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className={`text-xs ${theme.textSecondary} pt-1`}>
+                      {item.details}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 text-center">
+                <motion.div 
+                  className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${darkMode ? "bg-green-700 text-white" : "bg-green-500 text-white"} cursor-pointer`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setToastMessage("Exercise list is not available in this preview");
+                    setShowToast(true);
+                  }}
+                >
+                  View All Exercises
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* middle column */}
+          <motion.div 
+            className="flex flex-col h-full space-y-4 md:space-y-6"
+            variants={fadeIn}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <motion.div 
+              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.heartBeatCard} transition-all duration-300 hover:shadow-2xl flex-1`}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-2">
+                  <Heart className="h-5 w-5 text-red-600" />
+                  <h2 className="text-lg font-semibold">Heart Beat</h2>
+                </div>
+              </div>
+
+              <div className="text-center mb-3">
+                <div className="flex items-center justify-center">
+                  <span className="text-4xl font-bold">
+                    {modeData.heartRate}
+                  </span>
+                  <span className="ml-2 text-sm">bpm</span>
+                </div>
+                <div className={`inline-block px-3 py-1 mt-2 rounded-full text-sm ${darkMode
+                    ? "bg-green-600 text-white"
+                    : "bg-indigo-100 text-green-800"
+                }`}>
+                  {modeData.heartStatus}
+                </div>
+              </div>
+
+              <div className="mt-3 text-sm text-center">
+                {currentMode === 'today' 
+                  ? `You are ${modeData.heartStatus.toLowerCase()} and ready for exercises!` 
+                  : modeData.isWeekly 
+                    ? `Your average heart rate was ${modeData.heartStatus.toLowerCase()} this week.`
+                    : `You were ${modeData.heartStatus.toLowerCase()} for exercises yesterday.`}
+              </div>
+
+              <div className="mt-3 h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={modeData.heartRateData}
+                    margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+                  >
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={darkMode ? "#fff" : "#000"}
+                      strokeWidth={1.5}
+                      dot={<CustomizedDot />}
+                      isAnimationActive={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.healthScoreCard} transition-all duration-300 hover:shadow-2xl flex-1`}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-2">
+                  <Award className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-lg font-semibold">Health Score</h2>
+                </div>
+              </div>
+
+              <div className="text-center mb-3">
+                <div className="text-4xl font-bold">
+                  {modeData.healthScore}%
+                </div>
+                <div className={`inline-block px-3 py-1 mt-2 rounded-full text-sm ${modeData.healthStatus === "Very Healthy"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-blue-200 text-blue-800"
+                }`}>
+                  {modeData.healthStatus}
+                </div>
+              </div>
+
+              <div className="mt-3">{renderHealthScoreIndicators()}</div>
+
+              <div className="mt-3 text-sm text-center">
+                Keep up your good work, Kalendra!
+              </div>
+
+              {modeData.isWeekly && modeData.weeklyHealthData ? (
+                <div className="mt-3 h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={modeData.weeklyHealthData}>
+                      <Bar
+                        dataKey="score"
+                        fill="#3B82F6"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <ResponsiveContainer width="100%" height={50}>
+                    <AreaChart
+                      data={[
+                        { value: modeData.healthScore * 0.8 },
+                        { value: modeData.healthScore * 0.9 },
+                        { value: modeData.healthScore * 0.85 },
+                        { value: modeData.healthScore * 0.95 },
+                        { value: modeData.healthScore },
+                      ]}
+                      margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="healthScoreGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#3B82F6"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#3B82F6"
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#3B82F6"
+                        fillOpacity={1}
+                        fill="url(#healthScoreGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+
+          {/* third column */}
+          <motion.div 
+            className="flex flex-col h-full"
+            variants={slideInFromRight}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <motion.div 
+              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.bgSecondary} transition-all duration-300 hover:shadow-2xl h-full`}
+              whileHover={{ y: -5 }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold flex items-center">
+                  <Flame className="h-5 w-5 mr-2 text-orange-500" />
+                  Today's Activity
+                </h2>
+                <div className={`flex items-center px-3 py-1 rounded-full text-xs ${darkMode
+                    ? "bg-green-700 text-white"
+                    : "bg-green-100 text-green-800"
+                }`}>
+                  <MapPin className="h-3 w-3 mr-1" />
+                  <span>Running</span>
+                </div>
+              </div>
+
+              <div className="mb-4 text-xs text-gray-500 flex justify-between">
+                <div>
+                  {modeData.runningActivity.startTime} -{" "}
+                  {modeData.runningActivity.endTime}
+                </div>
+              </div>
+
+              <div className="mb-4 font-medium">
+                {modeData.runningActivity.route}
+              </div>
+
+              {/* Map Container */}
+
+              <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
+                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
+                    <MapPin className="h-3 w-3 mr-1 text-blue-500" />
+                    Distance
+                  </div>
+                  <div className="text-base font-medium mt-1">
+                    {modeData.runningActivity.distance}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
+                    <Clock className="h-3 w-3 mr-1 text-purple-500" />
+                    Total Time
+                  </div>
+                  <div className="text-base font-medium mt-1">
+                    {modeData.runningActivity.totalTime}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
+                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
+                    <Activity className="h-3 w-3 mr-1 text-green-500" />
+                    Total Steps
+                  </div>
+                  <div className="text-base font-medium mt-1">
+                    {modeData.runningActivity.totalSteps}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
+                    <Flame className="h-3 w-3 mr-1 text-orange-500" />
+                    Total Calories
+                  </div>
+                  <div className="text-base font-medium mt-1">
+                    {modeData.runningActivity.totalCalories}
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                <div className={`text-sm ${theme.textSecondary}`}>
+                  Average Pace
+                </div>
+                <div className="text-base font-medium">
+                  {modeData.runningActivity.averagePace}
+                </div>
+                <div className={`mt-2 h-1.5 ${theme.progressBg} rounded-full overflow-hidden`}>
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full"
+                    style={{ width: "70%" }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-medium flex items-center">
+                    <User className="h-4 w-4 mr-2 text-indigo-500" />
+                    Profile
+                  </h3>
+                </div>
+                
+                <div className="flex items-center mb-4">
+                  <div className="mr-3">
+                    <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 shadow-md cursor-pointer">
+                      <img
+                        src={profileData.avatar}
+                        alt={profileData.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      {profileData.name}
+                    </h3>
+                    <div className="flex items-center mt-1 space-x-2">
+                      <div className={`px-2 py-0.5 rounded text-xs ${darkMode
+                          ? "bg-indigo-900 text-indigo-300"
+                          : "bg-indigo-100 text-indigo-800"
+                      }`}>
+                        {profileData.level}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                    <div className={`text-xs ${theme.textSecondary}`}>
+                      Weight
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {profileData.weight}
+                    </div>
+                  </div>
+                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                    <div className={`text-xs ${theme.textSecondary}`}>
+                      Height
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {profileData.height}
+                    </div>
+                  </div>
+                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
+                    <div className={`text-xs ${theme.textSecondary}`}>
+                      Age
+                    </div>
+                    <div className="text-sm font-semibold">
+                      {profileData.age}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </main>
+
+      <motion.footer 
+        className={`py-4 border-t ${theme.bgSecondary} ${theme.borderColor} shadow-inner mt-6`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className={`text-sm ${theme.textSecondary} mb-2 md:mb-0`}>
+              © 2025 FitTrack Pro. All rights reserved.
+            </div>
+            <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
+              <motion.a 
+                href="#" 
+                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
+                whileHover={{ scale: 1.05, x: 2 }}
+              >
+                Privacy Policy
+              </motion.a>
+              <motion.a 
+                href="#" 
+                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
+                whileHover={{ scale: 1.05, x: 2 }}
+              >
+                Terms of Service
+              </motion.a>
+              <motion.a 
+                href="#" 
+                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
+                whileHover={{ scale: 1.05, x: 2 }}
+              >
+                Contact
+              </motion.a>
+              <motion.a 
+                href="#" 
+                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
+                whileHover={{ scale: 1.05, x: 2 }}
+              >
+                Help & Support
+              </motion.a>
+            </div>
+          </div>
+        </div>
+      </motion.footer>
     </div>
   );
-}
+};
+
+export default FitnessDashboard;
