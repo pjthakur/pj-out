@@ -1,1730 +1,2257 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { Space_Grotesk, Playfair_Display, Outfit } from "next/font/google";
 import {
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  XAxis,
-  Area,
-  AreaChart,
-  BarChart,
-  Bar,
-} from "recharts";
-import {
+  Heart,
+  Share2,
+  Eye,
+  Palette,
+  GalleryVertical,
+  LogIn,
+  Upload,
+  Trash2,
+  Check,
+  X,
   Moon,
   Sun,
-  User,
-  Menu,
-  Activity,
-  Heart,
-  Award,
-  Calendar,
-  MapPin,
-  ChevronDown,
-  Clock,
-  TrendingUp,
-  BarChart as BarChartIcon,
-  Flame,
-  Plus,
-  Layers,
-  Compass,
-  PlusCircle,
-  Zap,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
+const playfairDisplay = Playfair_Display({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"] });
 
-interface TrainingProgress {
-  type: string;
-  percentage: number;
-  details: string;
-  color: string;
-  icon: React.ReactNode;
-}
+const DUMMY_ARTWORKS = [
+  {
+    id: "artwork-1",
+    title: "Ephemeral Bloom",
+    description:
+      "A fleeting digital blossom that challenges perceptions of beauty and impermanence in the virtual realm.",
+    image:
+      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=500&h=500&q=60&fit=crop",
+    likes: 1247,
+    views: 5623,
+    artistNotes:
+      "I created this piece by combining organic 3D modeling with AI-generated color palettes. The flower blooms and wilts in a 3D loop, symbolizing the transient nature of beauty in the digital age.",
+    tags: ["3D Art", "Generative Art", "Digital Art"],
+    dimensions: "1500 x 1000 px",
+    createdAt: "2024-03-15T10:30:00Z",
+  },
+  {
+    id: "artwork-2",
+    title: "Neon Dreamscape",
+    description:
+      "A vibrant, immersive world where neon lights and digital geometry create a surreal dreamscape.",
+    image:
+      "https://images.unsplash.com/photo-1536851101967-55988a52f455?w=500&h=500&q=60&fit=crop",
+    likes: 986,
+    views: 4219,
+    artistNotes:
+      "This artwork explores the intersection of digital architecture and neon aesthetics. I used a combination of Three.js and custom shaders to create the glowing geometry.",
+    tags: ["Digital Art", "Neon Art", "3D Art"],
+    dimensions: "2000 x 1500 px",
+    createdAt: "2024-02-20T14:45:00Z",
+  },
+  {
+    id: "artwork-3",
+    title: "Cybernetic Eye",
+    description:
+      "A conceptual artwork exploring the relationship between human vision and digital perception through a cybernetic eye motif.",
+    image:
+      "https://images.stockcake.com/public/0/2/9/02907f80-d192-47dd-9ea4-c6c1c01ae119_large/futuristic-eye-art-stockcake.jpg",
+    likes: 1562,
+    views: 7391,
+    artistNotes:
+      "This piece examines the fusion of biological and artificial vision. I employed a mix of 3D modeling and post-processing effects to achieve the cybernetic aesthetic.",
+    tags: ["Digital Art", "Cyberpunk", "Conceptual Art"],
+    dimensions: "1800 x 1200 px",
+    createdAt: "2024-01-10T09:15:00Z",
+  },
+  {
+    id: "artwork-4",
+    title: "Data Visualization",
+    description:
+      "A visual representation of complex data structures transformed into an abstract digital landscape.",
+    image: "https://i.ytimg.com/vi/pcnvp8llj5A/maxresdefault.jpg",
+    likes: 893,
+    views: 3987,
+    artistNotes:
+      "I developed a custom data visualization algorithm to transform raw data into this abstract landscape. The colors represent different data clusters.",
+    tags: ["Data Art", "Digital Art", "Abstract"],
+    dimensions: "2500 x 2000 px",
+    createdAt: "2023-12-05T16:20:00Z",
+  },
+  {
+    id: "artwork-5",
+    title: "Virtual Fragment",
+    description:
+      "A digital abstraction exploring the concept of fractured identity in virtual spaces.",
+    image:
+      "https://fubar.space/wp-content/uploads/2024/10/2024-fubar-bckg-hd_flat.png",
+    likes: 674,
+    views: 3124,
+    artistNotes:
+      "This artwork uses algorithmic fragmentation to explore digital identity. The scattered elements represent the fractured self in virtual environments.",
+    tags: ["Digital Art", "Abstract", "Conceptual"],
+    dimensions: "1200 x 800 px",
+    createdAt: "2023-11-15T11:10:00Z",
+  },
+  {
+    id: "artwork-6",
+    title: "Neon Uprising",
+    description:
+      "A vibrant digital artwork capturing the energy of a neon-lit urban uprising.",
+    image:
+      "https://img.artiversehub.ai/online/2025/2/16/f4c955f9-f172-41fa-8df1-65c8f469413a_1305143.png",
+    likes: 1453,
+    views: 6235,
+    artistNotes:
+      "I created this piece by layering multiple neon elements in a dynamic composition. The artwork represents the power of collective action in urban environments.",
+    tags: ["Digital Art", "Neon", "Urban Art"],
+    dimensions: "3000 x 2000 px",
+    createdAt: "2023-10-20T15:25:00Z",
+  },
+  {
+    id: "artwork-7",
+    title: "Cybernetic Dreams",
+    description:
+      "A futuristic digital artwork merging human and machine elements in a neon-infused dreamscape.",
+    image:
+      "https://images.stockcake.com/public/3/2/b/32b84cb7-c585-4dba-8b2a-54bab0c82c07_large/neon-robot-art-stockcake.jpg",
+    likes: 2198,
+    views: 9432,
+    artistNotes:
+      "This artwork explores the intersection of human consciousness and artificial intelligence. I used a combination of 3D rendering and AI-assisted techniques to create the surreal landscape.",
+    tags: ["Digital Art", "Cyberpunk", "AI Art"],
+    dimensions: "2800 x 1800 px",
+    createdAt: "2023-09-15T10:05:00Z",
+  },
+  {
+    id: "artwork-8",
+    title: "Digital Displacement",
+    description:
+      "A conceptual artwork examining the effects of digital technology on human perception and reality.",
+    image:
+      "https://news.mit.edu/sites/default/files/images/202306/MIT-3Q-GenerativeAI-01-press.jpg",
+    likes: 1873,
+    views: 7654,
+    artistNotes:
+      "I created this piece by manipulating digital artifacts and glitches to create a distorted reality effect. The artwork questions the reliability of digital information.",
+    tags: ["Digital Art", "Conceptual", "Glitch Art"],
+    dimensions: "2200 x 1500 px",
+    createdAt: "2023-08-10T14:30:00Z",
+  },
+  {
+    id: "artwork-9",
+    title: "Quantum Entanglement",
+    description:
+      "An abstract representation of quantum physics principles visualized through digital art.",
+    image:
+      "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=500&h=500&q=60&fit=crop",
+    likes: 2304,
+    views: 8971,
+    artistNotes:
+      "This piece attempts to visualize the mysterious world of quantum mechanics through abstract forms and ethereal connections.",
+    tags: ["Digital Art", "Science Art", "Abstract"],
+    dimensions: "2400 x 1600 px",
+    createdAt: "2023-07-05T09:45:00Z",
+  },
+  {
+    id: "artwork-10",
+    title: "Fractal Dimensions",
+    description:
+      "A mesmerizing exploration of mathematical beauty through fractal patterns and geometric shapes.",
+    image:
+      "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=500&h=500&q=60&fit=crop",
+    likes: 1876,
+    views: 7562,
+    artistNotes:
+      "I used mathematical algorithms to generate recursive patterns that create infinite visual depth and complexity.",
+    tags: ["Digital Art", "Geometric", "Mathematics"],
+    dimensions: "2600 x 1800 px",
+    createdAt: "2023-06-20T11:20:00Z",
+  },
+  {
+    id: "artwork-11",
+    title: "Ethereal Landscapes",
+    description:
+      "Dreamlike digital landscapes that blur the line between reality and imagination.",
+    image:
+      "https://images.unsplash.com/photo-1519638831568-d9897f54ed69?w=500&h=500&q=60&fit=crop",
+    likes: 1543,
+    views: 6389,
+    artistNotes:
+      "These landscapes are created by blending photography with digital painting techniques to create surreal environments.",
+    tags: ["Digital Art", "Surreal", "Landscape"],
+    dimensions: "3200 x 1800 px",
+    createdAt: "2023-05-15T14:10:00Z",
+  },
+  {
+    id: "artwork-12",
+    title: "Neural Networks",
+    description:
+      "Visual interpretation of artificial neural networks and machine learning concepts.",
+    image:
+      "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?w=500&h=500&q=60&fit=crop",
+    likes: 2067,
+    views: 9128,
+    artistNotes:
+      "This artwork visualizes how artificial intelligence processes and learns from data through interconnected nodes.",
+    tags: ["Digital Art", "AI Art", "Technology"],
+    dimensions: "2800 x 2000 px",
+    createdAt: "2023-04-10T16:55:00Z",
+  },
+];
 
-interface HeartRateData {
-  time: number;
-  value: number;
-}
-
-interface Coordinates {
-  lat: number;
-  lng: number;
-}
-
-interface RunningActivity {
-  route: string;
-  startTime: string;
-  endTime: string;
-  distance: string;
-  distanceValue: number;
-  distanceUnit: string;
-  totalTime: string;
-  totalTimeValue: number;
-  totalSteps: string;
-  totalStepsValue: number;
-  totalCalories: string;
-  totalCaloriesValue: number;
-  averagePace: string;
-  coordinates: Coordinates[];
-  startCoordinate: Coordinates;
-  endCoordinate: Coordinates;
-  mapCenter: Coordinates;
-  mapZoom: number;
-}
-
-interface MealItem {
-  name: string;
-  description: string;
-  calories: number;
-  image: string;
-  time?: string;
-  healthScore: number;
-  dayOfWeek?: string;
-}
-
-interface MealData {
-  type: string;
-  isWeekly: boolean;
-  meals: MealItem[];
-  primaryMeal?: MealItem;
-  difficulty?: string;
-  duration?: string;
-  calories?: number;
-  carbs?: number;
-  protein?: number;
-  fats?: number;
-  healthScore?: number;
-}
-
-interface ProfileData {
-  name: string;
-  level: string;
-  points: string;
-  weight: string;
-  height: string;
-  age: string;
-  avatar: string;
-}
-
-interface DashboardMode {
+interface Artwork {
   id: string;
-  name: string;
-  isWeekly: boolean;
-  heartRate: number;
-  heartStatus: string;
-  healthScore: number;
-  healthStatus: string;
-  goalCompletion: number;
-  trainingProgress: TrainingProgress[];
-  heartRateData: HeartRateData[];
-  runningActivity: RunningActivity;
-  mealData: MealData;
-  weeklyHealthData?: {
-    day: string;
-    score: number;
-  }[];
+  title: string;
+  description: string;
+  image: string;
+  likes: number;
+  views: number;
+  artistNotes: string;
+  tags: string[];
+  dimensions: string;
+  createdAt: string;
 }
 
-const generateECGData = (
-  baseValue: number,
-  pattern: string
-): HeartRateData[] => {
-  const data: HeartRateData[] = [];
+interface ArtworkCardProps {
+  artwork: Artwork;
+  index: number;
+  hoveredArtwork: string | null;
+  setHoveredArtwork: (id: string | null) => void;
+  onLike: (id: string) => void;
+  onShare: (artwork: Artwork) => void;
+  onViewDetails: (artwork: Artwork) => void;
+  isDarkMode: boolean;
+  likedArtworks: string[];
+}
 
-  const patterns = {
-    normal: [0, 0, 0, 0, 5, 10, -5, -20, 80, -30, 10, 0, 0, 0, 0],
-    active: [0, 0, 0, 5, 15, -10, -25, 100, -40, 10, 0, 0, 0],
-    relaxed: [0, 0, 0, 0, 0, 3, 7, -3, -15, 60, -20, 5, 0, 0, 0, 0, 0],
-    moderate: [0, 0, 0, 8, 12, -7, -22, 85, -35, 12, 2, 0, 0, 0],
+interface ArtworkDetails {
+  artwork: Artwork;
+  codeModalOpen: boolean;
+  shareModalOpen: boolean;
+  liked: boolean;
+  likeCount: number;
+  animationKey: number;
+}
+
+interface AdminPanelProps {
+  artworks: Artwork[];
+  onAddArtwork: (artwork: Artwork) => void;
+  onDeleteArtwork: (id: string) => void;
+  isDarkMode: boolean;
+  onLogout: () => void;
+}
+
+interface NewArtwork {
+  title: string;
+  description: string;
+  image: string;
+  artistNotes: string;
+  tags: string[];
+  dimensions: string;
+}
+
+interface TagOption {
+  label: string;
+  value: string;
+}
+
+const tagOptions: TagOption[] = [
+  { label: "3D Art", value: "3d-art" },
+  { label: "Abstract", value: "abstract" },
+  { label: "AI Art", value: "ai-art" },
+  { label: "Conceptual", value: "conceptual" },
+  { label: "Cyberpunk", value: "cyberpunk" },
+  { label: "Data Art", value: "data-art" },
+  { label: "Digital Art", value: "digital-art" },
+  { label: "Generative Art", value: "generative-art" },
+  { label: "Glitch Art", value: "glitch-art" },
+  { label: "Neon Art", value: "neon-art" },
+  { label: "Urban Art", value: "urban-art" },
+];
+
+const AdminPanel: React.FC<AdminPanelProps> = ({
+  artworks,
+  onAddArtwork,
+  onDeleteArtwork,
+  isDarkMode,
+  onLogout,
+}) => {
+  const [newArtwork, setNewArtwork] = useState<NewArtwork>({
+    title: "",
+    description: "",
+    image: "",
+    artistNotes: "",
+    tags: [],
+    dimensions: "",
+  });
+
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (uploadModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [uploadModalOpen]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setNewArtwork((prev) => ({ ...prev, [name]: value }));
   };
 
-  const selectedPattern =
-    patterns[pattern as keyof typeof patterns] || patterns.normal;
-  const amplitude = pattern === "active" ? 60 : pattern === "relaxed" ? 40 : 50;
+  const handleTagChange = (selectedOptions: TagOption[]) => {
+    setNewArtwork((prev) => ({
+      ...prev,
+      tags: selectedOptions.map((option) => option.value),
+    }));
+  };
 
-  for (let i = 0; i < 4; i++) {
-    selectedPattern.forEach((value, index) => {
-      data.push({
-        time: i * selectedPattern.length + index,
-        value: baseValue + (value * amplitude) / 100,
-      });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !newArtwork.title ||
+      !newArtwork.description ||
+      !newArtwork.image ||
+      !newArtwork.artistNotes ||
+      !newArtwork.dimensions
+    ) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
+    const artworkToAdd: Artwork = {
+      id: `artwork-${Date.now()}`,
+      title: newArtwork.title,
+      description: newArtwork.description,
+      image: newArtwork.image,
+      artistNotes: newArtwork.artistNotes,
+      tags: newArtwork.tags,
+      dimensions: newArtwork.dimensions,
+      likes: 0,
+      views: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    onAddArtwork(artworkToAdd);
+
+    // Reset the form
+    setNewArtwork({
+      title: "",
+      description: "",
+      image: "",
+      artistNotes: "",
+      tags: [],
+      dimensions: "",
     });
-  }
-
-  return data;
-};
-
-// Animation variants
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.4 } }
-};
-
-const slideInFromBottom = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-};
-
-const slideInFromLeft = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.5 } }
-};
-
-const slideInFromRight = {
-  hidden: { opacity: 0, x: 20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.5 } }
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { 
-    opacity: 1, 
-    scale: 1, 
-    transition: { 
-      type: "spring", 
-      stiffness: 300, 
-      damping: 20, 
-      duration: 0.5 
-    } 
-  }
-};
-
-const FitnessDashboard: React.FC = () => {
-  const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [menuOpen, setMenuOpen] = useState<boolean>(false);
-  const [currentMode, setCurrentMode] = useState<string>("today");
-  const [mapType, setMapType] = useState<string>("roadmap");
-  const [mapZoom, setMapZoom] = useState<number>(14);
-  const [showToast, setShowToast] = useState<boolean>(false);
-  const [toastMessage, setToastMessage] = useState<string>("Manual addition is not available currently");
-
-  const mapRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef<boolean>(false);
-  const startDragPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const mapPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const hours = new Date().getHours();
-    setDarkMode(hours < 6 || hours >= 18);
-  }, []);
-
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
-
-  const mealImages = {
-    salmon: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    chicken: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    salad: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    bowl: "https://images.unsplash.com/photo-1546793665-c74683f339c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    breakfast: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    lunch: "https://images.unsplash.com/photo-1547496502-affa22d38842?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    snack: "https://images.unsplash.com/photo-1585853131366-13d1e681e08e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    dinner2: "https://images.unsplash.com/photo-1574484284002-952d92456975?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    veggieBowl: "https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    pasta: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    curry: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+    
+    // Close the modal after successful submission
+    setUploadModalOpen(false);
   };
 
-  const dashboardModes: DashboardMode[] = [
-    {
-      id: "today",
-      name: "Today",
-      isWeekly: false,
-      heartRate: 110,
-      heartStatus: "Normal",
-      healthScore: 82,
-      healthStatus: "Very Healthy",
-      goalCompletion: 75,
-      trainingProgress: [
-        {
-          type: "Cardio Training",
-          percentage: 85,
-          details: "5/6 sets of HIIT session",
-          color: "#BFDBFE",
-          icon: <Heart className="h-4 w-4 text-blue-500" />,
-        },
-        {
-          type: "Strength Training",
-          percentage: 75,
-          details: "4/5 sets of full-body strength circuit",
-          color: "#FEF08A",
-          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
-        },
-        {
-          type: "Flexibility Training",
-          percentage: 65,
-          details: "3/4 sets of yoga sessions",
-          color: "#BBF7D0",
-          icon: <Activity className="h-4 w-4 text-green-500" />,
-        },
-      ],
-      heartRateData: generateECGData(110, "normal"),
-      runningActivity: {
-        route: "Central Park Loop Trail",
-        startTime: "6:30 AM",
-        endTime: "7:20 AM",
-        distance: "5 miles (8 km)",
-        distanceValue: 5,
-        distanceUnit: "miles",
-        totalTime: "50 minutes",
-        totalTimeValue: 50,
-        totalSteps: "10,500 steps",
-        totalStepsValue: 10500,
-        totalCalories: "450 Cal",
-        totalCaloriesValue: 450,
-        averagePace: "10 minutes/mile",
-        coordinates: [
-          { lat: 40.764, lng: -73.973 },
-          { lat: 40.767, lng: -73.981 },
-          { lat: 40.772, lng: -73.979 },
-          { lat: 40.775, lng: -73.969 },
-          { lat: 40.771, lng: -73.965 },
-          { lat: 40.764, lng: -73.973 },
-        ],
-        startCoordinate: { lat: 40.764, lng: -73.973 },
-        endCoordinate: { lat: 40.764, lng: -73.973 },
-        mapCenter: { lat: 40.768, lng: -73.973 },
-        mapZoom: 14,
-      },
-      mealData: {
-        type: "Dinner",
-        isWeekly: false,
-        primaryMeal: {
-          name: "Lean & Green",
-          description: "Baked Salmon with Steamed Broccoli and Brown Rice",
-          calories: 450,
-          image: mealImages.salmon,
-          healthScore: 85,
-        },
-        meals: [],
-        difficulty: "Easy",
-        duration: "30 minutes",
-        calories: 450,
-        carbs: 40,
-        protein: 35,
-        fats: 15,
-        healthScore: 85,
-      },
-    },
-    // TODO: add more dashboard modes here
-    {
-      id: "yesterday",
-      name: "Yesterday",
-      isWeekly: false,
-      heartRate: 115,
-      heartStatus: "Active",
-      healthScore: 79,
-      healthStatus: "Healthy",
-      goalCompletion: 68,
-      trainingProgress: [
-        {
-          type: "Cardio Training",
-          percentage: 80,
-          details: "4/5 sets of treadmill intervals",
-          color: "#BFDBFE",
-          icon: <Heart className="h-4 w-4 text-blue-500" />,
-        },
-        {
-          type: "Strength Training",
-          percentage: 65,
-          details: "3/5 sets of upper body workout",
-          color: "#FEF08A",
-          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
-        },
-        {
-          type: "Flexibility Training",
-          percentage: 60,
-          details: "2/3 sets of stretching routines",
-          color: "#BBF7D0",
-          icon: <Activity className="h-4 w-4 text-green-500" />,
-        },
-      ],
-      heartRateData: generateECGData(115, "active"),
-      runningActivity: {
-        route: "Riverside Park Trail",
-        startTime: "7:15 AM",
-        endTime: "8:00 AM",
-        distance: "4.2 miles (6.8 km)",
-        distanceValue: 4.2,
-        distanceUnit: "miles",
-        totalTime: "45 minutes",
-        totalTimeValue: 45,
-        totalSteps: "9,800 steps",
-        totalStepsValue: 9800,
-        totalCalories: "410 Cal",
-        totalCaloriesValue: 410,
-        averagePace: "10.7 minutes/mile",
-        coordinates: [
-          { lat: 40.801, lng: -73.972 },
-          { lat: 40.807, lng: -73.975 },
-          { lat: 40.814, lng: -73.98 },
-          { lat: 40.819, lng: -73.974 },
-          { lat: 40.812, lng: -73.969 },
-          { lat: 40.801, lng: -73.972 },
-        ],
-        startCoordinate: { lat: 40.801, lng: -73.972 },
-        endCoordinate: { lat: 40.801, lng: -73.972 },
-        mapCenter: { lat: 40.81, lng: -73.975 },
-        mapZoom: 14,
-      },
-      mealData: {
-        type: "Dinner",
-        isWeekly: false,
-        primaryMeal: {
-          name: "Protein Power",
-          description: "Grilled Chicken with Quinoa and Roasted Vegetables",
-          calories: 520,
-          image: mealImages.chicken,
-          healthScore: 82,
-        },
-        meals: [],
-        difficulty: "Medium",
-        duration: "35 minutes",
-        calories: 520,
-        carbs: 45,
-        protein: 42,
-        fats: 18,
-        healthScore: 82,
-      },
-    },
-    {
-      id: "thisWeek",
-      name: "This Week",
-      isWeekly: true,
-      heartRate: 105,
-      heartStatus: "Relaxed",
-      healthScore: 85,
-      healthStatus: "Very Healthy",
-      goalCompletion: 80,
-      trainingProgress: [
-        {
-          type: "Cardio Training",
-          percentage: 90,
-          details: "15/16 cardio sessions completed",
-          color: "#BFDBFE",
-          icon: <Heart className="h-4 w-4 text-blue-500" />,
-        },
-        {
-          type: "Strength Training",
-          percentage: 85,
-          details: "12/14 strength sessions completed",
-          color: "#FEF08A",
-          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
-        },
-        {
-          type: "Flexibility Training",
-          percentage: 70,
-          details: "7/10 flexibility sessions completed",
-          color: "#BBF7D0",
-          icon: <Activity className="h-4 w-4 text-green-500" />,
-        },
-      ],
-      heartRateData: generateECGData(105, "relaxed"),
-      runningActivity: {
-        route: "Weekly Challenge Routes",
-        startTime: "Avg. 6:45 AM",
-        endTime: "Avg. 7:35 AM",
-        distance: "23.5 miles (37.8 km)",
-        distanceValue: 23.5,
-        distanceUnit: "miles",
-        totalTime: "235 minutes",
-        totalTimeValue: 235,
-        totalSteps: "48,900 steps",
-        totalStepsValue: 48900,
-        totalCalories: "2,150 Cal",
-        totalCaloriesValue: 2150,
-        averagePace: "10 minutes/mile",
-        coordinates: [
-          { lat: 40.73, lng: -73.997 },
-          { lat: 40.738, lng: -74.001 },
-          { lat: 40.742, lng: -73.989 },
-          { lat: 40.735, lng: -73.978 },
-          { lat: 40.725, lng: -73.985 },
-          { lat: 40.73, lng: -73.997 },
-        ],
-        startCoordinate: { lat: 40.73, lng: -73.997 },
-        endCoordinate: { lat: 40.73, lng: -73.997 },
-        mapCenter: { lat: 40.734, lng: -73.99 },
-        mapZoom: 13,
-      },
-      mealData: {
-        type: "Weekly Meal Plan",
-        isWeekly: true,
-        meals: [
-          {
-            name: "Mediterranean Bowl",
-            description: "Whole grains, vegetables, olive oil",
-            calories: 480,
-            image: mealImages.bowl,
-            healthScore: 90,
-            dayOfWeek: "Mon",
-          },
-          {
-            name: "Grilled Salmon",
-            description: "With roasted vegetables and quinoa",
-            calories: 520,
-            image: mealImages.salmon,
-            healthScore: 95,
-            dayOfWeek: "Tue",
-          },
-          {
-            name: "Chicken Salad",
-            description: "Mixed greens with grilled chicken",
-            calories: 420,
-            image: mealImages.chicken,
-            healthScore: 88,
-            dayOfWeek: "Wed",
-          },
-          {
-            name: "Veggie Stir-Fry",
-            description: "Tofu with mixed vegetables",
-            calories: 380,
-            image: mealImages.salad,
-            healthScore: 92,
-            dayOfWeek: "Thu",
-          },
-          {
-            name: "Grilled Fish",
-            description: "With steamed vegetables and brown rice",
-            calories: 450,
-            image: mealImages.dinner2,
-            healthScore: 94,
-            dayOfWeek: "Fri",
-          },
-          {
-            name: "Curry Bowl",
-            description: "Vegetable curry with brown rice",
-            calories: 490,
-            image: mealImages.curry,
-            healthScore: 87,
-            dayOfWeek: "Sat",
-          },
-          {
-            name: "Pasta Primavera",
-            description: "Whole wheat pasta with vegetables",
-            calories: 510,
-            image: mealImages.pasta,
-            healthScore: 86,
-            dayOfWeek: "Sun",
-          },
-        ],
-        healthScore: 90,
-      },
-      weeklyHealthData: [
-        { day: "Mon", score: 83 },
-        { day: "Tue", score: 85 },
-        { day: "Wed", score: 82 },
-        { day: "Thu", score: 88 },
-        { day: "Fri", score: 85 },
-        { day: "Sat", score: 87 },
-        { day: "Sun", score: 84 },
-      ],
-    },
-    {
-      id: "lastWeek",
-      name: "Last Week",
-      isWeekly: true,
-      heartRate: 112,
-      heartStatus: "Moderate",
-      healthScore: 77,
-      healthStatus: "Healthy",
-      goalCompletion: 65,
-      trainingProgress: [
-        {
-          type: "Cardio Training",
-          percentage: 75,
-          details: "12/16 cardio sessions completed",
-          color: "#BFDBFE",
-          icon: <Heart className="h-4 w-4 text-blue-500" />,
-        },
-        {
-          type: "Strength Training",
-          percentage: 60,
-          details: "9/14 strength sessions completed",
-          color: "#FEF08A",
-          icon: <TrendingUp className="h-4 w-4 text-yellow-500" />,
-        },
-        {
-          type: "Flexibility Training",
-          percentage: 50,
-          details: "5/10 flexibility sessions completed",
-          color: "#BBF7D0",
-          icon: <Activity className="h-4 w-4 text-green-500" />,
-        },
-      ],
-      heartRateData: generateECGData(112, "moderate"),
-      runningActivity: {
-        route: "Last Week's Routes",
-        startTime: "Avg. 7:00 AM",
-        endTime: "Avg. 7:50 AM",
-        distance: "18.8 miles (30.3 km)",
-        distanceValue: 18.8,
-        distanceUnit: "miles",
-        totalTime: "200 minutes",
-        totalTimeValue: 200,
-        totalSteps: "40,500 steps",
-        totalStepsValue: 40500,
-        totalCalories: "1,850 Cal",
-        totalCaloriesValue: 1850,
-        averagePace: "10.6 minutes/mile",
-        coordinates: [
-          { lat: 40.75, lng: -73.98 },
-          { lat: 40.755, lng: -73.99 },
-          { lat: 40.765, lng: -73.985 },
-          { lat: 40.76, lng: -73.97 },
-          { lat: 40.745, lng: -73.975 },
-          { lat: 40.75, lng: -73.98 },
-        ],
-        startCoordinate: { lat: 40.75, lng: -73.98 },
-        endCoordinate: { lat: 40.75, lng: -73.98 },
-        mapCenter: { lat: 40.755, lng: -73.98 },
-        mapZoom: 13,
-      },
-      mealData: {
-        type: "Last Week's Meals",
-        isWeekly: true,
-        meals: [
-          {
-            name: "Asian Rice Bowl",
-            description: "Rice with vegetables and tofu",
-            calories: 450,
-            image: mealImages.bowl,
-            healthScore: 82,
-            dayOfWeek: "Mon",
-          },
-          {
-            name: "Grilled Chicken",
-            description: "With vegetables and sweet potato",
-            calories: 490,
-            image: mealImages.chicken,
-            healthScore: 78,
-            dayOfWeek: "Tue",
-          },
-          {
-            name: "Pasta Salad",
-            description: "Whole grain pasta with vegetables",
-            calories: 520,
-            image: mealImages.pasta,
-            healthScore: 75,
-            dayOfWeek: "Wed",
-          },
-          {
-            name: "Fish Tacos",
-            description: "Grilled fish with cabbage slaw",
-            calories: 480,
-            image: mealImages.salmon,
-            healthScore: 80,
-            dayOfWeek: "Thu",
-          },
-          {
-            name: "Stir Fry",
-            description: "Mixed vegetables with brown rice",
-            calories: 410,
-            image: mealImages.dinner2,
-            healthScore: 85,
-            dayOfWeek: "Fri",
-          },
-          {
-            name: "Avocado Toast",
-            description: "Whole grain bread with avocado",
-            calories: 390,
-            image: mealImages.veggieBowl,
-            healthScore: 82,
-            dayOfWeek: "Sat",
-          },
-          {
-            name: "Vegetable Curry",
-            description: "Curry with coconut milk and rice",
-            calories: 470,
-            image: mealImages.curry,
-            healthScore: 79,
-            dayOfWeek: "Sun",
-          },
-        ],
-        healthScore: 78,
-      },
-      weeklyHealthData: [
-        { day: "Mon", score: 75 },
-        { day: "Tue", score: 78 },
-        { day: "Wed", score: 74 },
-        { day: "Thu", score: 80 },
-        { day: "Fri", score: 78 },
-        { day: "Sat", score: 79 },
-        { day: "Sun", score: 77 },
-      ],
-    },
-  ];
-
-  const getCurrentModeData = (): DashboardMode => {
-    return (
-      dashboardModes.find((mode) => mode.id === currentMode) ||
-      dashboardModes[0]
-    );
+  const toggleUploadModal = () => {
+    setUploadModalOpen(!uploadModalOpen);
+    setNewArtwork({
+      title: "",
+      description: "",
+      image: "",
+      artistNotes: "",
+      tags: [],
+      dimensions: "",
+    });
   };
-
-  const modeData = getCurrentModeData();
-
-  const renderHealthScoreIndicators = () => {
-    const scoreSegments = [
-      { value: 20, color: "#BFDBFE", active: modeData.healthScore >= 20 },
-      { value: 40, color: "#93C5FD", active: modeData.healthScore >= 40 },
-      { value: 60, color: "#60A5FA", active: modeData.healthScore >= 60 },
-      { value: 80, color: "#3B82F6", active: modeData.healthScore >= 80 },
-      { value: 100, color: "#2563EB", active: modeData.healthScore >= 100 },
-    ];
-
-    return (
-      <motion.div 
-        className="flex items-center space-x-2 w-full"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-      >
-        {scoreSegments.map((segment, index) => (
-          <motion.div
-            key={index}
-            variants={{
-              hidden: { opacity: 0, scaleX: 0 },
-              visible: { 
-                opacity: segment.active ? 1 : 0.3, 
-                scaleX: 1,
-                transition: { 
-                  duration: 0.5, 
-                  delay: index * 0.1,
-                  type: "spring",
-                  stiffness: 100
-                }
-              }
-            }}
-            className={`h-2 rounded-full origin-left`}
-            style={{
-              backgroundColor: segment.active
-                ? segment.color
-                : darkMode
-                ? "#4B5563"
-                : "#E5E7EB",
-              flex: 1,
-            }}
-          ></motion.div>
-        ))}
-      </motion.div>
-    );
-  };
-
-  const profileData: ProfileData = {
-    name: "Kalendra Wingman", 
-    level: "Advanced",
-    points: "14,750",
-    weight: "75 kg",
-    height: "175 cm",
-    age: "29 yrs",
-    avatar:
-      "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-  };
-
-  const CustomizedDot = (props: any) => {
-    const { cx, cy, payload, index } = props;
-
-    const getPatternValue = () => {
-      if (currentMode === "today") return 15;
-      if (currentMode === "yesterday") return 13;
-      if (currentMode === "thisWeek") return 17;
-      return 14;
-    };
-
-    const patternValue = getPatternValue();
-
-    if (payload.time % patternValue === 6) {
-      return <circle cx={cx} cy={cy} r={2} fill="#991B1B" />;
-    }
-    return null;
-  };
-
-  const ProgressCircle = ({
-    percentage,
-    color,
-    radius = 40,
-    strokeWidth = 8,
-    className = "",
-  }: {
-    percentage: number;
-    color: string;
-    radius?: number;
-    strokeWidth?: number;
-    className?: string;
-  }) => {
-    const normalizedRadius = radius - strokeWidth / 2;
-    const circumference = normalizedRadius * 2 * Math.PI;
-
-    return (
-      <svg height={radius * 2} width={radius * 2} className={className}>
-        <circle
-          stroke={darkMode ? "#374151" : "#E5E7EB"}
-          fill="transparent"
-          strokeWidth={strokeWidth}
-          r={normalizedRadius}
-          cx={radius}
-          cy={radius}
-        />
-        <motion.circle
-          stroke={color}
-          fill="transparent"
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference + " " + circumference}
-          r={normalizedRadius}
-          cx={radius}
-          cy={radius}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${radius} ${radius})`}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ 
-            strokeDashoffset: circumference - (percentage / 100) * circumference 
-          }}
-          transition={{ 
-            duration: 1.5, 
-            ease: "easeInOut",
-            delay: 0.3
-          }}
-        />
-      </svg>
-    );
-  };
-
-
-  const renderWeeklyMealCard = () => {
-    const { mealData } = modeData;
-
-    return (
-      <div className={`rounded-xl shadow-xl overflow-hidden ${darkMode ? "bg-gray-800" : "bg-white"} transition-all duration-300 col-span-full lg:col-span-3`}>
-        <div className="p-4 md:p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-lg flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-green-500" />
-              {mealData.type}
-            </h3>
-            <div className={`px-3 py-1 rounded-full text-xs ${darkMode ? "bg-gray-700 text-green-400" : "bg-green-100 text-green-800"}`}>
-              Avg. Score: {mealData.healthScore}/100
-            </div>
-          </div>
-
-          <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-7 gap-3 mb-2"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {mealData.meals.map((meal, idx) => (
-              <motion.div
-                key={idx}
-                className={`rounded-lg overflow-hidden shadow-sm ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-50 hover:bg-gray-100"} transition-all duration-200 hover:shadow-md cursor-pointer group`}
-                variants={scaleIn}
-                whileHover={{ 
-                  y: -5,
-                  transition: { duration: 0.2 }
-                }}
-              >
-                <div
-                  className="h-24 w-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300"
-                  style={{ backgroundImage: `url(${meal.image})` }}
-                ></div>
-                <div className="p-2">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-xs font-medium ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"} px-2 py-0.5 rounded`}>
-                      {meal.dayOfWeek}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {meal.calories} cal
-                    </span>
-                  </div>
-                  <h4 className="font-medium text-sm line-clamp-1">
-                    {meal.name}
-                  </h4>
-                  <p className="text-xs text-gray-500 line-clamp-1">
-                    {meal.description}
-                  </p>
-                  <div className="mt-1 h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ 
-                        width: `${meal.healthScore}%`,
-                        backgroundColor: meal.healthScore > 85 ? "#10B981" : "#60A5FA"
-                      }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                    ></motion.div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div className="flex items-center">
-              <div className="text-sm font-medium mr-2">
-                Nutritional Balance:
-              </div>
-              <div className="flex -space-x-1">
-                <div className="w-5 h-5 rounded-full bg-blue-400 flex items-center justify-center text-xs text-white font-bold">
-                  P
-                </div>
-                <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-xs text-white font-bold">
-                  C
-                </div>
-                <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center text-xs text-white font-bold">
-                  F
-                </div>
-              </div>
-              <div className="ml-2 text-xs text-gray-500">35% | 45% | 20%</div>
-            </div>
-            <motion.button
-              onClick={() => {
-                setToastMessage("Manual meal addition is not available currently");
-                setShowToast(true);
-              }}
-              className={`flex items-center px-3 py-1.5 rounded-full text-xs ${darkMode
-                  ? "bg-green-700 text-white hover:bg-green-600"
-                  : "bg-green-500 text-white hover:bg-green-600"
-              } transition-colors duration-200 cursor-pointer`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <PlusCircle className="h-3.5 w-3.5 mr-1" />
-              Add Meal
-            </motion.button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDailyMealCard = () => {
-    const { mealData } = modeData;
-    const meal = mealData.primaryMeal!;
-
-    return (
-      <div className={`rounded-xl shadow-xl overflow-hidden ${darkMode ? "bg-gray-800" : "bg-white"} transition-all duration-300 col-span-full lg:col-span-3`}>
-        <div className="flex flex-col md:flex-row">
-          <div className="w-full md:w-2/5 lg:w-1/3">
-            <motion.div
-              className="h-48 md:h-full bg-cover bg-center cursor-pointer"
-              style={{ backgroundImage: `url(${meal.image})` }}
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.5 }}
-            ></motion.div>
-          </div>
-          <div className="w-full md:w-3/5 lg:w-2/3 p-4 md:p-5">
-            <div className="flex justify-between items-center mb-3">
-              <div className={`px-3 py-1 rounded-full text-xs ${darkMode ? "bg-gray-700 text-green-400" : "bg-green-100 text-green-800"}`}>
-                {mealData.type}
-              </div>
-              <div className="flex items-center text-xs text-gray-500">
-                <Clock className="h-3 w-3 mr-1" />
-                {mealData.duration}
-              </div>
-            </div>
-
-            <h3 className="font-semibold text-lg mb-1">{meal.name}</h3>
-            <p className="text-sm text-gray-500 mb-4">{meal.description}</p>
-
-            <motion.div 
-              className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4"
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-            >
-              <motion.div 
-                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
-                variants={scaleIn}
-                whileHover={{ y: -3 }}
-              >
-                <div className="text-xs text-gray-500">Calories</div>
-                <div className="font-medium flex items-center">
-                  <Flame className="h-3 w-3 mr-1 text-orange-500" />
-                  {mealData.calories} cal
-                </div>
-              </motion.div>
-              <motion.div
-                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
-                variants={scaleIn}
-                whileHover={{ y: -3 }}
-              >
-                <div className="text-xs text-gray-500">Carbs</div>
-                <div className="font-medium flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></div>
-                  {mealData.carbs}g
-                </div>
-              </motion.div>
-              <motion.div
-                className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}
-                variants={scaleIn}
-                whileHover={{ y: -3 }}
-              >
-                <div className="text-xs text-gray-500">Protein</div>
-                <div className="font-medium flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-400 mr-1"></div>
-                  {mealData.protein}g
-                </div>
-              </motion.div>
-              <motion.div
-                className={`p-3 rounded-lg ${
-                  darkMode ? "bg-gray-700" : "bg-gray-50"
-                } hover:shadow-md transition-shadow duration-200 cursor-pointer`}
-                variants={scaleIn}
-                whileHover={{ y: -3 }}
-              >
-                <div className="text-xs text-gray-500">Fats</div>
-                <div className="font-medium flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-green-400 mr-1"></div>
-                  {mealData.fats}g
-                </div>
-              </motion.div>
-            </motion.div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                <div className="text-sm">Health Score:</div>
-                <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ 
-                      width: `${mealData.healthScore}%`,
-                      backgroundColor: (mealData.healthScore || 0) >= 80 ? "#10B981" : "#60A5FA"
-                    }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                  ></motion.div>
-                </div>
-                <div className="text-sm font-medium">
-                  {mealData.healthScore}/100
-                </div>
-              </div>
-
-              <motion.button
-                onClick={() => {
-                  setToastMessage("Manual meal addition is not available currently");
-                  setShowToast(true);
-                }}
-                className={`flex items-center px-3 py-1.5 rounded-full text-xs ${darkMode
-                  ? "bg-green-700 text-white hover:bg-green-600"
-                  : "bg-green-500 text-white hover:bg-green-600"
-                } transition-colors duration-200 cursor-pointer`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <PlusCircle className="h-3.5 w-3.5 mr-1" />
-                Add Meal
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const getThemeColors = () => {
-    return {
-      bgPrimary: darkMode ? "bg-gray-900" : "bg-gray-100",
-      bgSecondary: darkMode ? "bg-gray-800" : "bg-white",
-      textPrimary: darkMode ? "text-white" : "text-gray-800",
-      textSecondary: darkMode ? "text-gray-300" : "text-gray-600",
-      heartBeatCard: darkMode ? "bg-emerald-900 bg-opacity-30" : "bg-green-100",
-      healthScoreCard: darkMode ? "bg-blue-900 bg-opacity-30" : "bg-blue-100",
-      accent: darkMode ? "text-emerald-400" : "text-emerald-500",
-      accentHover: darkMode ? "hover:text-emerald-300" : "hover:text-emerald-600",
-      borderColor: darkMode ? "border-gray-700" : "border-gray-200",
-      menuHover: darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100",
-      shadow: darkMode
-        ? "shadow-lg shadow-gray-900/20"
-        : "shadow-xl shadow-gray-200/40",
-      buttonPrimary: darkMode
-        ? "bg-emerald-700 hover:bg-emerald-600 text-white"
-        : "bg-emerald-500 hover:bg-emerald-600 text-white",
-      buttonSecondary: darkMode
-        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-        : "bg-gray-200 hover:bg-gray-300 text-gray-700",
-      progressBg: darkMode ? "bg-gray-700" : "bg-gray-200",
-    };
-  };
-
-  const theme = getThemeColors();
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${theme.bgPrimary} ${theme.textPrimary}`}>
-      <AnimatePresence>
-        {showToast && (
-          <motion.div 
-            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+    <div
+      className={`rounded-xl shadow-lg shadow-purple-500/10 overflow-hidden border ${
+        isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"
+      }`}
+    >
+      <div
+        className={`flex justify-between items-center p-6 border-b ${
+          isDarkMode ? "border-gray-800" : "border-gray-200"
+        }`}
+      >
+        <h2
+          className={`text-xl font-bold flex items-center gap-2 ${
+            isDarkMode ? "text-white" : "text-gray-900"
+          }`}
+        >
+          <Palette className="w-6 h-6 text-purple-400" />
+          Admin Panel
+        </h2>
+        <div className="flex items-center gap-4">
+          <motion.button
+            onClick={toggleUploadModal}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors duration-300 flex items-center gap-2 cursor-pointer"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
           >
-            <div className={`px-4 py-3 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} border ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center`}>
-              <div className={`mr-3 p-1 rounded-full ${
-                toastMessage.includes("Exercise") 
-                  ? darkMode ? 'bg-blue-900/30' : 'bg-blue-100' 
-                  : darkMode ? 'bg-amber-900/30' : 'bg-amber-100'
-              }`}>
-                {toastMessage.includes("Exercise") ? (
-                  <Activity className={`h-5 w-5 ${darkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </div>
-              <p className="text-sm font-medium">{toastMessage}</p>
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Upload New Artwork</span>
+          </motion.button>
+          
+          <motion.button
+            onClick={onLogout}
+            className="bg-gray-700 hover:bg-gray-800 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors duration-300 flex items-center gap-2 cursor-pointer"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <LogIn className="w-4 h-4 transform rotate-180" />
+            <span className="hidden sm:inline">Logout</span>
+          </motion.button>
+        </div>
+      </div>
+
+      {uploadModalOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className={`rounded-xl shadow-2xl w-full max-w-2xl border flex flex-col ${
+              isDarkMode
+                ? "bg-gray-900 border-gray-800"
+                : "bg-white border-gray-200"
+            } max-h-[90vh]`}
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+          >
+            <div
+              className={`flex justify-between items-center p-6 border-b flex-shrink-0 ${
+                isDarkMode ? "border-gray-800" : "border-gray-200"
+              }`}
+            >
+              <h3
+                className={`text-xl font-bold ${
+                  isDarkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                Upload New Artwork
+              </h3>
+              <motion.button
+                onClick={toggleUploadModal}
+                className={`p-1 rounded-full transition-colors cursor-pointer ${
+                  isDarkMode
+                    ? "text-gray-400 hover:bg-gray-700 hover:text-white"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
+
+            <div className="overflow-y-auto">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="title"
+                    className={`text-sm font-medium block ${
+                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="title"
+                    type="text"
+                    name="title"
+                    value={newArtwork.title}
+                    onChange={handleInputChange}
+                    className={`w-full border rounded-lg p-3 ${
+                      isDarkMode
+                        ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                        : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                    placeholder="Artwork title"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="description"
+                    className={`text-sm font-medium block ${
+                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={newArtwork.description}
+                    onChange={handleInputChange}
+                    className={`w-full border rounded-lg p-3 ${
+                      isDarkMode
+                        ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                        : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                    placeholder="Artwork description"
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="image"
+                    className={`text-sm font-medium block ${
+                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Image URL <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="image"
+                    type="url"
+                    name="image"
+                    value={newArtwork.image}
+                    onChange={handleInputChange}
+                    className={`w-full border rounded-lg p-3 ${
+                      isDarkMode
+                        ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                        : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                    placeholder="https://example.com/image.jpg"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="dimensions"
+                      className={`text-sm font-medium block ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      Dimensions <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="dimensions"
+                      type="text"
+                      name="dimensions"
+                      value={newArtwork.dimensions}
+                      onChange={handleInputChange}
+                      className={`w-full border rounded-lg p-3 ${
+                        isDarkMode
+                          ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                          : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                      } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                      placeholder="e.g., 1920 x 1080 px"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="tags"
+                      className={`text-sm font-medium block ${
+                        isDarkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      Tags
+                    </label>
+                    <select
+                      id="tags"
+                      multiple
+                      value={newArtwork.tags}
+                      onChange={(e) =>
+                        handleTagChange(
+                          Array.from(e.target.selectedOptions, (option) => ({
+                            label: option.text,
+                            value: option.value,
+                          }))
+                        )
+                      }
+                      className={`w-full border rounded-lg p-3 cursor-pointer h-24 ${
+                        isDarkMode
+                          ? "bg-gray-800 border-gray-700 text-white"
+                          : "bg-gray-50 border-gray-300 text-gray-900"
+                      } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                    >
+                      {tagOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="artistNotes"
+                    className={`text-sm font-medium block ${
+                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Artist Notes <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="artistNotes"
+                    name="artistNotes"
+                    value={newArtwork.artistNotes}
+                    onChange={handleInputChange}
+                    className={`w-full border rounded-lg p-3 ${
+                      isDarkMode
+                        ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                        : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                    placeholder="Notes about the artwork"
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <motion.button
+                    type="button"
+                    onClick={toggleUploadModal}
+                    className={`font-medium py-2 px-4 rounded-lg transition-colors duration-300 cursor-pointer ${
+                      isDarkMode
+                        ? "text-gray-300 hover:bg-gray-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300 cursor-pointer"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Upload Artwork
+                  </motion.button>
+                </div>
+              </form>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-      
-      <header className={`sticky top-0 z-50 ${theme.bgSecondary} bg-opacity-95 backdrop-blur-sm ${theme.shadow}`}>
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <motion.div 
-              className="flex items-center space-x-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <motion.div 
-                className={`h-10 w-10 rounded-xl flex items-center justify-center ${darkMode ? "bg-gradient-to-br from-emerald-500 to-blue-600" : "bg-gradient-to-br from-emerald-400 to-blue-500"} shadow-lg`}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Zap className="h-6 w-6 text-white" />
-              </motion.div>
-              <motion.h1 
-                className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-blue-500"
-                whileHover={{ scale: 1.05 }}
-              >
-                FitTrack Pro
-              </motion.h1>
-            </motion.div>
+        </motion.div>
+      )}
 
-            <motion.div 
-              className="hidden md:flex items-center justify-center flex-1 max-w-md"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <div className={`flex p-1 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                {dashboardModes.map((mode, index) => (
-                  <motion.button
-                    key={mode.id}
-                    onClick={() => setCurrentMode(mode.id)}
-                    className={`text-sm font-medium py-2 px-4 rounded-full transition-all duration-200 cursor-pointer ${currentMode === mode.id
-                        ? `${darkMode ? "bg-gray-800" : "bg-white"} shadow-md ${theme.accent}`
-                        : darkMode
-                        ? "text-gray-300 hover:text-white"
-                        : "text-gray-500 hover:text-gray-800"
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    {mode.name}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
+      <div className="p-6">
+        <h3
+          className={`text-lg font-semibold mb-4 ${
+            isDarkMode ? "text-white" : "text-gray-900"
+          }`}
+        >
+          Manage Artworks
+        </h3>
 
-            <motion.div 
-              className="flex items-center space-x-3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <motion.button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-full ${theme.buttonSecondary} transition-colors duration-200 cursor-pointer`}
-                aria-label="Toggle dark mode"
-                whileHover={{ scale: 1.1, rotate: 15 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                {darkMode ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-              </motion.button>
-
-              <motion.button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="md:hidden p-2 rounded-full text-gray-500 hover:text-gray-700 transition-colors duration-200 cursor-pointer"
-                aria-label="Open menu"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <Menu className="h-5 w-5" />
-              </motion.button>
-            </motion.div>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div 
-              className={`md:hidden ${theme.bgSecondary} py-4 px-4 shadow-md border-t ${theme.borderColor}`}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="mb-4">
-                <h3 className="text-sm font-medium mb-3">Dashboard Mode</h3>
-                <motion.div 
-                  className="grid grid-cols-2 gap-2"
-                  variants={staggerContainer}
-                  initial="hidden"
-                  animate="visible"
+        <div
+          className={`overflow-x-auto rounded-lg border ${
+            isDarkMode ? "border-gray-800" : "border-gray-200"
+          }`}
+        >
+          <table className="min-w-full divide-y ${isDarkMode ? 'divide-gray-800' : 'divide-gray-200'}">
+            <thead className={isDarkMode ? "bg-gray-800" : "bg-gray-50"}>
+              <tr>
+                <th
+                  scope="col"
+                  className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    isDarkMode ? "text-gray-300" : "text-gray-500"
+                  }`}
                 >
-                  {dashboardModes.map((mode) => (
-                    <motion.button
-                      key={mode.id}
-                      onClick={() => {
-                        setCurrentMode(mode.id);
-                        setMenuOpen(false);
-                      }}
-                      className={`py-2 px-3 rounded-lg text-sm font-medium ${currentMode === mode.id
-                          ? "bg-green-100 text-green-800"
-                          : darkMode
-                          ? "bg-gray-700 text-gray-300"
-                          : "bg-gray-100 text-gray-600"
-                      } transition-colors duration-200 cursor-pointer`}
-                      variants={fadeIn}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {mode.name}
-                    </motion.button>
-                  ))}
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
-
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-          {modeData.isWeekly ? (
-            <motion.div
-              variants={slideInFromLeft}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.5 }}
-              className="col-span-full lg:col-span-3"
+                  Title
+                </th>
+                <th
+                  scope="col"
+                  className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    isDarkMode ? "text-gray-300" : "text-gray-500"
+                  }`}
+                >
+                  Views
+                </th>
+                <th
+                  scope="col"
+                  className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    isDarkMode ? "text-gray-300" : "text-gray-500"
+                  }`}
+                >
+                  Likes
+                </th>
+                <th
+                  scope="col"
+                  className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    isDarkMode ? "text-gray-300" : "text-gray-500"
+                  }`}
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              className={`divide-y ${
+                isDarkMode
+                  ? "bg-gray-900 divide-gray-800"
+                  : "bg-white divide-gray-200"
+              }`}
             >
-              {renderWeeklyMealCard()}
-            </motion.div>
-          ) : (
-            <motion.div
-              variants={slideInFromLeft}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.5 }}
-              className="col-span-full lg:col-span-3"
-            >
-              {renderDailyMealCard()}
-            </motion.div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Progress Section */}
-          <motion.div 
-            className="flex flex-col h-full"
-            variants={slideInFromLeft}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <motion.div 
-              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.bgSecondary} transition-all duration-300 hover:shadow-2xl h-full`}
-              whileHover={{ y: -5 }}
-            >
-              <div className="flex justify-between items-center mb-5">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <BarChartIcon className={`h-5 w-5 mr-2 ${theme.accent}`} />
-                  Progress
-                </h2>
-              </div>
-
-              <div className="text-center mb-4">
-                <div className="text-4xl font-bold mb-1">
-                  {modeData.goalCompletion}%
-                </div>
-                <div className="text-sm text-gray-500">Goal Completion</div>
-              </div>
-
-              <div className="flex justify-center mb-6">
-                <div className="relative h-36 w-36 md:h-44 md:w-44">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <ProgressCircle
-                      percentage={modeData.trainingProgress[0].percentage}
-                      color={modeData.trainingProgress[0].color}
-                      radius={70}
-                      strokeWidth={12}
-                    />
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <ProgressCircle
-                      percentage={modeData.trainingProgress[1].percentage}
-                      color={modeData.trainingProgress[1].color}
-                      radius={55}
-                      strokeWidth={12}
-                    />
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <ProgressCircle
-                      percentage={modeData.trainingProgress[2].percentage}
-                      color={modeData.trainingProgress[2].color}
-                      radius={40}
-                      strokeWidth={12}
-                    />
-                  </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-2xl font-bold">
-                      {modeData.goalCompletion}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {modeData.trainingProgress.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`space-y-1 ${theme.menuHover} px-3 py-2 rounded-lg transition-colors duration-200 cursor-pointer`}
+              {artworks.length > 0 ? (
+                artworks.map((artwork) => (
+                  <motion.tr
+                    key={artwork.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className={`transition-colors duration-200 ${
+                      isDarkMode ? "hover:bg-gray-800/50" : "hover:bg-gray-50"
+                    }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        {item.icon}
-                        <span className="text-sm font-medium ml-2">
-                          {item.type}
-                        </span>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-16 h-16 rounded-lg overflow-hidden flex items-center justify-center ${
+                            isDarkMode ? "bg-gray-800" : "bg-gray-100"
+                          }`}
+                        >
+                          <img
+                            src={artwork.image}
+                            alt={artwork.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <div
+                            className={`text-sm font-medium ${
+                              isDarkMode ? "text-white" : "text-gray-900"
+                            }`}
+                          >
+                            {artwork.title}
+                          </div>
+                          <div
+                            className={`text-xs ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            {artwork.dimensions}
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium">
-                        {item.percentage}%
+                    </td>
+                    <td
+                      className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        isDarkMode ? "text-gray-300" : "text-gray-900"
+                      }`}
+                    >
+                      {artwork.views}
+                    </td>
+                    <td
+                      className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        isDarkMode ? "text-gray-300" : "text-gray-900"
+                      }`}
+                    >
+                      {artwork.likes}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <motion.button
+                        onClick={() => onDeleteArtwork(artwork.id)}
+                        className="text-red-500 hover:text-red-400 cursor-pointer"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4}>
+                    <div
+                      className={`flex flex-col items-center justify-center py-12 ${
+                        isDarkMode
+                          ? "bg-gray-900 text-gray-400"
+                          : "bg-white text-gray-500"
+                      }`}
+                    >
+                      <svg
+                        className="w-12 h-12 mb-4 text-purple-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          fill="none"
+                        />
+                        <line
+                          x1="8"
+                          y1="8"
+                          x2="16"
+                          y2="16"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                        <line
+                          x1="16"
+                          y1="8"
+                          x2="8"
+                          y2="16"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="text-lg font-semibold mb-1">
+                        No artworks found
+                      </span>
+                      <span className="text-sm">
+                        Get started by uploading your first artwork!
                       </span>
                     </div>
-                    <div className="mt-1">
-                      <div className={`w-full ${theme.progressBg} rounded-full h-1.5`}>
-                        <div
-                          className="h-1.5 rounded-full transition-all duration-500 ease-out"
-                          style={{
-                            width: `${item.percentage}%`,
-                            backgroundColor: item.color,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className={`text-xs ${theme.textSecondary} pt-1`}>
-                      {item.details}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-6 text-center">
-                <motion.div 
-                  className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${darkMode ? "bg-green-700 text-white" : "bg-green-500 text-white"} cursor-pointer`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setToastMessage("Exercise list is not available in this preview");
-                    setShowToast(true);
-                  }}
-                >
-                  View All Exercises
-                </motion.div>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* middle column */}
-          <motion.div 
-            className="flex flex-col h-full space-y-4 md:space-y-6"
-            variants={fadeIn}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <motion.div 
-              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.heartBeatCard} transition-all duration-300 hover:shadow-2xl flex-1`}
-              whileHover={{ y: -5 }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <Heart className="h-5 w-5 text-red-600" />
-                  <h2 className="text-lg font-semibold">Heart Beat</h2>
-                </div>
-              </div>
-
-              <div className="text-center mb-3">
-                <div className="flex items-center justify-center">
-                  <span className="text-4xl font-bold">
-                    {modeData.heartRate}
-                  </span>
-                  <span className="ml-2 text-sm">bpm</span>
-                </div>
-                <div className={`inline-block px-3 py-1 mt-2 rounded-full text-sm ${darkMode
-                    ? "bg-green-600 text-white"
-                    : "bg-indigo-100 text-green-800"
-                }`}>
-                  {modeData.heartStatus}
-                </div>
-              </div>
-
-              <div className="mt-3 text-sm text-center">
-                {currentMode === 'today' 
-                  ? `You are ${modeData.heartStatus.toLowerCase()} and ready for exercises!` 
-                  : modeData.isWeekly 
-                    ? `Your average heart rate was ${modeData.heartStatus.toLowerCase()} this week.`
-                    : `You were ${modeData.heartStatus.toLowerCase()} for exercises yesterday.`}
-              </div>
-
-              <div className="mt-3 h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={modeData.heartRateData}
-                    margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
-                  >
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={darkMode ? "#fff" : "#000"}
-                      strokeWidth={1.5}
-                      dot={<CustomizedDot />}
-                      isAnimationActive={true}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.healthScoreCard} transition-all duration-300 hover:shadow-2xl flex-1`}
-              whileHover={{ y: -5 }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <Award className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-lg font-semibold">Health Score</h2>
-                </div>
-              </div>
-
-              <div className="text-center mb-3">
-                <div className="text-4xl font-bold">
-                  {modeData.healthScore}%
-                </div>
-                <div className={`inline-block px-3 py-1 mt-2 rounded-full text-sm ${modeData.healthStatus === "Very Healthy"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-blue-200 text-blue-800"
-                }`}>
-                  {modeData.healthStatus}
-                </div>
-              </div>
-
-              <div className="mt-3">{renderHealthScoreIndicators()}</div>
-
-              <div className="mt-3 text-sm text-center">
-                Keep up your good work, Kalendra!
-              </div>
-
-              {modeData.isWeekly && modeData.weeklyHealthData ? (
-                <div className="mt-3 h-20">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={modeData.weeklyHealthData}>
-                      <Bar
-                        dataKey="score"
-                        fill="#3B82F6"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <XAxis
-                        dataKey="day"
-                        tick={{ fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="mt-3">
-                  <ResponsiveContainer width="100%" height={50}>
-                    <AreaChart
-                      data={[
-                        { value: modeData.healthScore * 0.8 },
-                        { value: modeData.healthScore * 0.9 },
-                        { value: modeData.healthScore * 0.85 },
-                        { value: modeData.healthScore * 0.95 },
-                        { value: modeData.healthScore },
-                      ]}
-                      margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
-                    >
-                      <defs>
-                        <linearGradient
-                          id="healthScoreGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#3B82F6"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#3B82F6"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#3B82F6"
-                        fillOpacity={1}
-                        fill="url(#healthScoreGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                  </td>
+                </tr>
               )}
-            </motion.div>
-          </motion.div>
-
-          {/* third column */}
-          <motion.div 
-            className="flex flex-col h-full"
-            variants={slideInFromRight}
-            initial="hidden"
-            animate="visible"
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <motion.div 
-              className={`rounded-xl ${theme.shadow} p-4 md:p-6 ${theme.bgSecondary} transition-all duration-300 hover:shadow-2xl h-full`}
-              whileHover={{ y: -5 }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <Flame className="h-5 w-5 mr-2 text-orange-500" />
-                  Today's Activity
-                </h2>
-                <div className={`flex items-center px-3 py-1 rounded-full text-xs ${darkMode
-                    ? "bg-green-700 text-white"
-                    : "bg-green-100 text-green-800"
-                }`}>
-                  <MapPin className="h-3 w-3 mr-1" />
-                  <span>Running</span>
-                </div>
-              </div>
-
-              <div className="mb-4 text-xs text-gray-500 flex justify-between">
-                <div>
-                  {modeData.runningActivity.startTime} -{" "}
-                  {modeData.runningActivity.endTime}
-                </div>
-              </div>
-
-              <div className="mb-4 font-medium">
-                {modeData.runningActivity.route}
-              </div>
-
-              {/* Map Container */}
-
-              <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
-                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
-                    <MapPin className="h-3 w-3 mr-1 text-blue-500" />
-                    Distance
-                  </div>
-                  <div className="text-base font-medium mt-1">
-                    {modeData.runningActivity.distance}
-                  </div>
-                </div>
-                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
-                    <Clock className="h-3 w-3 mr-1 text-purple-500" />
-                    Total Time
-                  </div>
-                  <div className="text-base font-medium mt-1">
-                    {modeData.runningActivity.totalTime}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
-                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
-                    <Activity className="h-3 w-3 mr-1 text-green-500" />
-                    Total Steps
-                  </div>
-                  <div className="text-base font-medium mt-1">
-                    {modeData.runningActivity.totalSteps}
-                  </div>
-                </div>
-                <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                  <div className={`text-sm ${theme.textSecondary} flex items-center`}>
-                    <Flame className="h-3 w-3 mr-1 text-orange-500" />
-                    Total Calories
-                  </div>
-                  <div className="text-base font-medium mt-1">
-                    {modeData.runningActivity.totalCalories}
-                  </div>
-                </div>
-              </div>
-
-              <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                <div className={`text-sm ${theme.textSecondary}`}>
-                  Average Pace
-                </div>
-                <div className="text-base font-medium">
-                  {modeData.runningActivity.averagePace}
-                </div>
-                <div className={`mt-2 h-1.5 ${theme.progressBg} rounded-full overflow-hidden`}>
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full"
-                    style={{ width: "70%" }}
-                  ></div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-base font-medium flex items-center">
-                    <User className="h-4 w-4 mr-2 text-indigo-500" />
-                    Profile
-                  </h3>
-                </div>
-                
-                <div className="flex items-center mb-4">
-                  <div className="mr-3">
-                    <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 shadow-md cursor-pointer">
-                      <img
-                        src={profileData.avatar}
-                        alt={profileData.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold">
-                      {profileData.name}
-                    </h3>
-                    <div className="flex items-center mt-1 space-x-2">
-                      <div className={`px-2 py-0.5 rounded text-xs ${darkMode
-                          ? "bg-indigo-900 text-indigo-300"
-                          : "bg-indigo-100 text-indigo-800"
-                      }`}>
-                        {profileData.level}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                    <div className={`text-xs ${theme.textSecondary}`}>
-                      Weight
-                    </div>
-                    <div className="text-sm font-semibold">
-                      {profileData.weight}
-                    </div>
-                  </div>
-                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                    <div className={`text-xs ${theme.textSecondary}`}>
-                      Height
-                    </div>
-                    <div className="text-sm font-semibold">
-                      {profileData.height}
-                    </div>
-                  </div>
-                  <div className={`p-2 py-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} hover:shadow-md transition-shadow duration-200 cursor-pointer`}>
-                    <div className={`text-xs ${theme.textSecondary}`}>
-                      Age
-                    </div>
-                    <div className="text-sm font-semibold">
-                      {profileData.age}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+            </tbody>
+          </table>
         </div>
-      </main>
-
-      <motion.footer 
-        className={`py-4 border-t ${theme.bgSecondary} ${theme.borderColor} shadow-inner mt-6`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className={`text-sm ${theme.textSecondary} mb-2 md:mb-0`}>
-              © 2025 FitTrack Pro. All rights reserved.
-            </div>
-            <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
-              <motion.a 
-                href="#" 
-                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
-                whileHover={{ scale: 1.05, x: 2 }}
-              >
-                Privacy Policy
-              </motion.a>
-              <motion.a 
-                href="#" 
-                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
-                whileHover={{ scale: 1.05, x: 2 }}
-              >
-                Terms of Service
-              </motion.a>
-              <motion.a 
-                href="#" 
-                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
-                whileHover={{ scale: 1.05, x: 2 }}
-              >
-                Contact
-              </motion.a>
-              <motion.a 
-                href="#" 
-                className={`text-sm ${theme.textSecondary} ${theme.accentHover} transition-colors duration-200 cursor-pointer`}
-                whileHover={{ scale: 1.05, x: 2 }}
-              >
-                Help & Support
-              </motion.a>
-            </div>
-          </div>
-        </div>
-      </motion.footer>
+      </div>
     </div>
   );
 };
 
-export default FitnessDashboard;
+const ArtworkCard: React.FC<ArtworkCardProps> = ({
+  artwork,
+  index,
+  hoveredArtwork,
+  setHoveredArtwork,
+  onLike,
+  onShare,
+  onViewDetails,
+  isDarkMode,
+  likedArtworks,
+}) => {
+  const isHovered = hoveredArtwork === artwork.id;
+
+  return (
+    <motion.div
+      className={`group relative rounded-xl shadow-lg shadow-purple-500/10 overflow-hidden border cursor-pointer h-full flex flex-col ${
+        isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"
+      }`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: isHovered ? 1.05 : 1,
+        boxShadow: isHovered
+          ? "0 25px 50px -12px rgba(168,85,247,0.4)"
+          : isDarkMode
+          ? "0 4px 6px -1px rgba(0,0,0,0.1)"
+          : "0 4px 6px -1px rgba(0,0,0,0.1)",
+      }}
+      transition={{
+        duration: 0.3,
+        delay: index * 0.05,
+        scale: { duration: 0.2 },
+      }}
+      onMouseEnter={() => setHoveredArtwork(artwork.id)}
+      onMouseLeave={() => setHoveredArtwork(null)}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+      onClick={() => onViewDetails(artwork)}
+    >
+      <div
+        className={`aspect-[4/3] w-full relative overflow-hidden ${
+          isDarkMode ? "bg-gray-800" : "bg-gray-100"
+        }`}
+      >
+        <img
+          src={artwork.image}
+          alt={artwork.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+          {artwork.tags.length > 0 && (
+            <div className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              {artwork.tags[0]}
+            </div>
+          )}
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-0 transition-transform duration-300">
+          <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg line-clamp-1">
+            {artwork.title}
+          </h3>
+          <p className="text-xs text-gray-200 mb-4 line-clamp-2 drop-shadow-md h-8">
+            {artwork.description}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLike(artwork.id);
+                }}
+                className="flex items-center gap-2 text-pink-400 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Heart
+                  className={`w-4 h-4 ${likedArtworks.includes(artwork.id) ? "fill-current" : ""}`}
+                />
+                <span className="text-sm font-medium">{artwork.likes}</span>
+              </motion.button>
+
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare(artwork);
+                }}
+                className="text-gray-200 bg-white/10 backdrop-blur-md p-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Share2 className="w-4 h-4" />
+              </motion.button>
+            </div>
+
+            <div className="flex items-center gap-2 text-gray-200 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
+              <Eye className="w-4 h-4" />
+              <span className="text-sm font-medium">{artwork.views}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const ArtworkDetailsModal: React.FC<{
+  details: ArtworkDetails;
+  onClose: () => void;
+  onLike: (id: string) => void;
+  onShare: (artwork: Artwork) => void;
+  isDarkMode: boolean;
+}> = ({ details, onClose, onLike, onShare, isDarkMode }) => {
+  const { artwork, liked, likeCount } = details;
+
+  const handleLike = () => {
+    onLike(artwork.id);
+  };
+
+  const handleShareClick = () => {
+    onShare(artwork);
+  };
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm cursor-pointer p-4 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className={`rounded-xl shadow-2xl w-full max-w-5xl mx-auto border overflow-hidden ${
+          isDarkMode
+            ? "bg-gray-900 border-gray-800"
+            : "bg-white border-gray-200"
+        } my-4 max-h-[90vh] flex flex-col`}
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 flex justify-end p-3 bg-opacity-80 backdrop-blur-sm border-b border-gray-800">
+          <motion.button
+            onClick={onClose}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1.5 rounded-lg transition-colors duration-300 flex items-center gap-1.5 cursor-pointer text-sm"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <X className="w-4 h-4" />
+            Close
+          </motion.button>
+        </div>
+
+        <div className="overflow-y-auto flex-grow">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6">
+            <div className="relative">
+              <img
+                src={artwork.image}
+                alt={artwork.title}
+                className="w-full h-auto max-h-[50vh] object-cover rounded-lg mx-auto"
+              />
+
+              <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    onClick={handleLike}
+                    className="flex items-center gap-2 text-pink-400 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${liked ? "fill-current" : ""}`}
+                    />
+                    <span className="text-sm font-medium">{likeCount}</span>
+                  </motion.button>
+
+                  <motion.button
+                    onClick={handleShareClick}
+                    className="text-gray-200 bg-white/10 backdrop-blur-md p-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </motion.button>
+                </div>
+
+                <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white">
+                  {artwork.dimensions}
+                </span>
+              </div>
+            </div>
+
+            <div className="pb-4">
+              <div className="flex flex-col justify-between mb-4">
+                <h3
+                  className={`text-2xl sm:text-3xl font-bold mb-1 ${
+                    isDarkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  {artwork.title}
+                </h3>
+                <span
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {new Date(artwork.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <h4
+                  className={`text-lg font-semibold mb-2 flex items-center gap-2 ${
+                    isDarkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  <Palette className="w-4 h-4 text-purple-400" />
+                  Artist Notes
+                </h4>
+                <p
+                  className={`leading-relaxed ${
+                    isDarkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  {artwork.artistNotes}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 mt-4">
+                {artwork.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      isDarkMode
+                        ? "bg-gray-800 text-gray-300"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const LoginPanel: React.FC<{
+  onLogin: (username: string, password: string) => boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+  isDarkMode: boolean;
+}> = ({ onLogin, error, setError, isDarkMode }) => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (onLogin(username, password)) {
+      setUsername("");
+      setPassword("");
+    } else {
+      setError("Invalid username or password");
+    }
+  };
+
+  return (
+    <motion.div
+      className={`rounded-xl shadow-lg shadow-purple-500/10 overflow-hidden border h-full flex flex-col ${
+        isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"
+      }`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="p-6 flex flex-col h-full">
+        <h2
+          className={`text-2xl font-bold mb-6 flex items-center gap-2 ${
+            isDarkMode ? "text-white" : "text-gray-900"
+          }`}
+        >
+          <LogIn className="w-6 h-6 text-purple-400" />
+          Admin Login
+        </h2>
+
+        {error && (
+          <motion.div
+            className="bg-red-500/20 border border-red-500/30 text-red-400 p-3 rounded-lg mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-grow">
+          <div className="space-y-5 flex-grow">
+            <div>
+              <label
+                htmlFor="username"
+                className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={`w-full border rounded-lg p-3 ${
+                  isDarkMode
+                    ? "bg-gray-800 border-gray-700 text-white"
+                    : "bg-gray-50 border-gray-300 text-gray-900"
+                } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                placeholder="Enter your username"
+                required
+                autoComplete="username"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full border rounded-lg p-3 ${
+                    isDarkMode
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-gray-50 border-gray-300 text-gray-900"
+                  } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                  placeholder="Enter your password"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`absolute right-3 top-3 cursor-pointer transition-colors ${
+                    isDarkMode
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-grow"></div>
+          </div>
+
+          {(() => {
+            if (typeof window !== "undefined") {
+              if (username === "" && password === "") {
+                setUsername("admin");
+                setPassword("password");
+              }
+            }
+            return null;
+          })()}
+
+          <motion.button
+            type="submit"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-300 mt-6 cursor-pointer text-lg"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            Login
+          </motion.button>
+        </form>
+      </div>
+    </motion.div>
+  );
+};
+
+const Gallery: React.FC<{
+  artworks: Artwork[];
+  hoveredArtwork: string | null;
+  setHoveredArtwork: (id: string | null) => void;
+  onLike: (id: string) => void;
+  onShare: (artwork: Artwork) => void;
+  onViewDetails: (artwork: Artwork) => void;
+  isDarkMode: boolean;
+  likedArtworks: string[];
+}> = ({
+  artworks,
+  hoveredArtwork,
+  setHoveredArtwork,
+  onLike,
+  onShare,
+  onViewDetails,
+  isDarkMode,
+  likedArtworks,
+}) => {
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [0, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [0.95, 1]);
+  const y = useTransform(scrollYProgress, [0, 0.2], [50, 0]);
+
+  return (
+    <motion.section
+      className={`min-h-screen py-24 px-4 sm:px-6 lg:px-8 ${
+        isDarkMode ? "bg-gray-950" : "bg-gray-50"
+      }`}
+      style={{ opacity, scale, y }}
+    >
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div
+            className="inline-block mb-6"
+            whileHover={{ scale: 1.05, y: -5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <div className="w-16 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto mb-6 rounded-full"></div>
+            <h2
+              className={`text-5xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent mb-4 leading-relaxed ${spaceGrotesk.className}`}
+            >
+              Digital Artworks
+            </h2>
+            <p
+              className={`text-xl max-w-2xl mx-auto ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Explore our curated collection of digital art, where technology
+              and creativity converge to create immersive visual experiences.
+            </p>
+          </motion.div>
+        </motion.div>
+
+        {artworks.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-fr">
+            {artworks.map((artwork, index) => (
+              <motion.div
+                key={artwork.id}
+                className="h-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                whileHover={{ y: -5 }}
+                layout
+              >
+                <ArtworkCard
+                  artwork={artwork}
+                  index={index}
+                  hoveredArtwork={hoveredArtwork}
+                  setHoveredArtwork={setHoveredArtwork}
+                  onLike={onLike}
+                  onShare={onShare}
+                  onViewDetails={onViewDetails}
+                  isDarkMode={isDarkMode}
+                  likedArtworks={likedArtworks}
+                />
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 mb-6 shadow-lg">
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                />
+                <line
+                  x1="8"
+                  y1="8"
+                  x2="16"
+                  y2="16"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="16"
+                  y1="8"
+                  x2="8"
+                  y2="16"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            <div className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+              No artworks found
+            </div>
+            <div className="text-base text-gray-500 dark:text-gray-400 mb-4">
+              Get started by uploading your first artwork!
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.section>
+  );
+};
+
+const Hero: React.FC<{
+  scrollToGallery: () => void;
+  artworks: Artwork[];
+  isDarkMode: boolean;
+}> = ({ scrollToGallery, artworks, isDarkMode }) => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [featuredArtwork, setFeaturedArtwork] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFeaturedArtwork((prev) => (prev + 1) % artworks.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [artworks.length]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      setMousePosition({ x: event.clientX, y: event.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  const { scrollYProgress } = useScroll();
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
+  const y = useTransform(scrollYProgress, [0, 0.2], [0, -50]);
+
+  return (
+    <motion.section
+      className={`min-h-[90vh] relative overflow-hidden ${
+        isDarkMode ? "bg-gray-950" : "bg-gray-300"
+      }`}
+      style={{ opacity, scale, y }}
+    >
+      <div
+        className={`absolute inset-0 z-0 ${
+          isDarkMode
+            ? "bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950"
+            : "bg-gradient-to-b from-purple-50 via-indigo-50 to-purple-50"
+        }`}
+      ></div>
+
+      <div className="absolute inset-0 overflow-hidden">
+        {artworks.map((artwork, index) => (
+          <motion.div
+            key={artwork.id}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: featuredArtwork === index ? 1 : 0,
+              scale: featuredArtwork === index ? 1 : 0.95,
+              y: featuredArtwork === index ? 0 : 30,
+            }}
+            transition={{
+              duration: 0.3,
+              opacity: { duration: 0.3 },
+              scale: { duration: 0.3 },
+              y: { duration: 0.3 },
+            }}
+          >
+            <div className="w-full h-full relative">
+              <img
+                src={artwork.image}
+                alt={artwork.title}
+                className="w-full h-full object-cover"
+              />
+              <div
+                className={`absolute inset-0 ${
+                  isDarkMode
+                    ? "bg-gradient-to-t from-black/90 via-black/60 to-black/30"
+                    : "bg-gradient-to-t from-gray-900/90 via-gray-900/60 to-gray-900/30"
+                }`}
+              ></div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="h-screen w-full flex items-center justify-center relative px-4 sm:px-6 lg:px-8 z-10">
+        <motion.div
+          className="max-w-5xl w-full"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className="text-center">
+            <motion.div
+              className="inline-block mb-6"
+              whileHover={{ scale: 1.05, y: -5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="w-16 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto mb-6 rounded-full"></div>
+              <h1
+                className={`text-6xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent mb-6 leading-relaxed drop-shadow-lg ${spaceGrotesk.className}`}
+              >
+                Digital Art Gallery
+              </h1>
+              <p
+                className={`text-xl max-w-2xl mx-auto drop-shadow-md text-white`}
+              >
+                Explore our curated collection of digital art, where technology
+                and creativity converge to create immersive visual experiences.
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-wrap justify-center gap-4 mt-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <motion.button
+                onClick={scrollToGallery}
+                className={`px-8 py-4 rounded-lg font-medium text-lg transition-colors duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/20 cursor-pointer ${
+                  isDarkMode
+                    ? "bg-white text-gray-900 hover:bg-gray-200"
+                    : "bg-gray-900 text-white hover:bg-gray-800"
+                }`}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <GalleryVertical className="w-5 h-5 text-purple-400" />
+                Explore Gallery
+              </motion.button>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
+        animate={{
+          y: [0, 10, 0],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <span
+            className={`text-xs ${
+              isDarkMode ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
+            Scroll Down
+          </span>
+          <div
+            className={`w-5 h-10 rounded-full border-2 flex justify-center p-1 ${
+              isDarkMode ? "border-gray-400" : "border-gray-600"
+            }`}
+          >
+            <motion.div
+              className={`w-1 h-2 rounded-full ${
+                isDarkMode ? "bg-gray-400" : "bg-gray-600"
+              }`}
+              animate={{
+                y: [0, 15, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "easeInOut",
+              }}
+            />
+          </div>
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+};
+
+const ArtworkShareModal: React.FC<{
+  artwork: Artwork;
+  onClose: () => void;
+  isDarkMode: boolean;
+}> = ({ artwork, onClose, isDarkMode }) => {
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = `${window.location.origin}/artwork/${artwork.id}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm cursor-pointer p-4 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className={`rounded-xl shadow-2xl w-full max-w-md mx-auto border overflow-hidden ${
+          isDarkMode
+            ? "bg-gray-900 border-gray-800"
+            : "bg-white border-gray-200"
+        } my-4`}
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 sm:p-6">
+          <div className="flex justify-between items-center mb-4 sm:mb-6">
+            <h3
+              className={`text-lg sm:text-xl font-bold ${
+                isDarkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Share Artwork
+            </h3>
+            <motion.button
+              onClick={onClose}
+              className={`cursor-pointer transition-colors ${
+                isDarkMode
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <X className="w-5 h-5" />
+            </motion.button>
+          </div>
+
+          <div className="space-y-4">
+            <div
+              className={`rounded-lg p-3 sm:p-4 flex items-center justify-between ${
+                isDarkMode ? "bg-gray-800" : "bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div
+                  className={`w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                  }`}
+                >
+                  <img
+                    src={artwork.image}
+                    alt={artwork.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="overflow-hidden">
+                  <p
+                    className={`text-sm font-medium truncate ${
+                      isDarkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    {artwork.title}
+                  </p>
+                  <p
+                    className={`text-xs truncate ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    {artwork.dimensions}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label
+                className={`text-sm font-medium block ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Share Link
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className={`w-full border rounded-lg p-3 cursor-pointer ${
+                    isDarkMode
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-gray-50 border-gray-300 text-gray-900"
+                  } focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-sm`}
+                  onClick={(e) => e.currentTarget.select()}
+                />
+                <motion.button
+                  onClick={handleCopyLink}
+                  className={`sm:flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                    copied ? "opacity-75 cursor-not-allowed" : ""
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={copied}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4" />
+                      Copy Link
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <p
+                className={`text-sm mb-3 ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Or share on
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <motion.a
+                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(
+                    shareUrl
+                  )}&text=${encodeURIComponent(artwork.title)}`}
+                  target="_blank"
+                  className="bg-[#1DA1F2] hover:bg-[#0d95e8] text-white px-4 py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+                  </svg>
+                  Twitter
+                </motion.a>
+
+                <motion.a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                    shareUrl
+                  )}`}
+                  target="_blank"
+                  className="bg-[#1877F2] hover:bg-[#1565d8] text-white px-4 py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z" />
+                  </svg>
+                  Facebook
+                </motion.a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const Page: React.FC = () => {
+  const [artworks, setArtworks] = useState<Artwork[]>(DUMMY_ARTWORKS);
+  const [hoveredArtwork, setHoveredArtwork] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [likedArtworks, setLikedArtworks] = useState<string[]>([]);
+  const [likeCounts, setLikeCounts] = useState(
+    artworks.reduce((acc, artwork) => {
+      acc[artwork.id] = artwork.likes;
+      return acc;
+    }, {} as Record<string, number>)
+  );
+  const [viewCounts, setViewCounts] = useState(
+    artworks.reduce((acc, artwork) => {
+      acc[artwork.id] = artwork.views;
+      return acc;
+    }, {} as Record<string, number>)
+  );
+  const [artworkDetails, setArtworkDetails] = useState<ArtworkDetails | null>(
+    null
+  );
+  const [animationKey, setAnimationKey] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  const galleryRef = useRef<HTMLDivElement>(null);
+
+  // Prevent background scrolling when modals are open
+  useEffect(() => {
+    if (artworkDetails || shareModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [artworkDetails, shareModalOpen]);
+
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = "smooth";
+    return () => {
+      document.documentElement.style.scrollBehavior = "auto";
+    };
+  }, []);
+
+  const scrollToGallery = () => {
+    galleryRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const heroSection = document.getElementById("hero");
+      const gallerySection = document.getElementById("gallery");
+
+      if (!heroSection || !gallerySection) return;
+
+      const heroHeight = heroSection.offsetHeight;
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
+
+      if (scrollPosition < heroHeight * 0.7) {
+        setActiveSection("hero");
+      } else if (
+        scrollPosition >= heroHeight * 0.7 &&
+        scrollPosition < heroHeight + gallerySection.offsetHeight * 0.7
+      ) {
+        setActiveSection("gallery");
+      } else {
+        setActiveSection(null);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleLogin = (username: string, password: string) => {
+    if (username === "admin" && password === "password") {
+      setIsAuthenticated(true);
+      setError(null);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAddArtwork = (artwork: Artwork) => {
+    setArtworks((prev) => [artwork, ...prev]);
+  };
+
+  const handleDeleteArtwork = (id: string) => {
+    setArtworks((prev) => prev.filter((artwork) => artwork.id !== id));
+  };
+
+  const handleLike = (id: string) => {
+    // Check if artwork is already liked
+    const isAlreadyLiked = likedArtworks.includes(id);
+    
+    // Update like counts based on toggle behavior
+    setLikeCounts((prev) => ({
+      ...prev,
+      [id]: isAlreadyLiked ? (prev[id] || 0) - 1 : (prev[id] || 0) + 1,
+    }));
+
+    // Update liked artworks list
+    if (isAlreadyLiked) {
+      setLikedArtworks((prev) => prev.filter((artworkId) => artworkId !== id));
+    } else {
+      setLikedArtworks((prev) => [...prev, id]);
+    }
+
+    // Update artworks state with new like count
+    setArtworks((prev) =>
+      prev.map((artwork) =>
+        artwork.id === id
+          ? { 
+              ...artwork, 
+              likes: isAlreadyLiked 
+                ? (likeCounts[id] || artwork.likes) - 1 
+                : (likeCounts[id] || artwork.likes) + 1 
+            }
+          : artwork
+      )
+    );
+
+    // Update artwork details if open
+    if (artworkDetails && artworkDetails.artwork.id === id) {
+      setArtworkDetails({
+        ...artworkDetails,
+        liked: !isAlreadyLiked,
+        likeCount: isAlreadyLiked 
+          ? (artworkDetails.likeCount || 0) - 1 
+          : (artworkDetails.likeCount || 0) + 1,
+      });
+    }
+  };
+
+  const handleViewDetails = (artwork: Artwork) => {
+    setAnimationKey((prev) => prev + 1);
+
+    // Increment view count when details are opened
+    const newViewCount = (viewCounts[artwork.id] || artwork.views) + 1;
+    
+    // Update view counts
+    setViewCounts((prev) => ({
+      ...prev,
+      [artwork.id]: newViewCount,
+    }));
+
+    // Update artworks with new view count
+    setArtworks((prev) =>
+      prev.map((a) =>
+        a.id === artwork.id
+          ? { ...a, views: newViewCount }
+          : a
+      )
+    );
+
+    // Set artwork details with updated view count
+    setArtworkDetails({
+      artwork: {
+        ...artwork,
+        views: newViewCount,
+      },
+      codeModalOpen: false,
+      shareModalOpen: false,
+      liked: likedArtworks.includes(artwork.id),
+      likeCount: likeCounts[artwork.id] || artwork.likes,
+      animationKey,
+    });
+  };
+
+  const handleCloseDetails = () => {
+    setArtworkDetails(null);
+  };
+
+  const handleShare = (artwork: Artwork) => {
+    setSelectedArtwork(artwork);
+    setShareModalOpen(true);
+  };
+
+  const handleCloseShareModal = () => {
+    setShareModalOpen(false);
+    setSelectedArtwork(null);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <div className={`${outfit.className} transition-colors duration-300`}>
+      <motion.div
+        className={`fixed top-6 left-1/2 -translate-x-1/2 backdrop-blur-md px-6 py-3 rounded-lg flex items-center gap-4 z-50 border shadow-lg shadow-purple-500/10 ${
+          isDarkMode
+            ? "bg-gray-900/90 border-gray-800"
+            : "bg-white/90 border-gray-200"
+        }`}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.a
+          href="#"
+          className={`text-lg font-bold transition-colors cursor-pointer ${
+            activeSection === "hero"
+              ? "text-purple-400"
+              : isDarkMode
+              ? "text-white hover:text-purple-400"
+              : "text-gray-700 hover:text-purple-600"
+          }`}
+          whileHover={{ scale: 1.05, y: -5 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          Home
+        </motion.a>
+
+        <motion.a
+          href="#gallery"
+          className={`text-lg font-bold transition-colors cursor-pointer ${
+            activeSection === "gallery"
+              ? "text-purple-400"
+              : isDarkMode
+              ? "text-white hover:text-purple-400"
+              : "text-gray-700 hover:text-purple-600"
+          }`}
+          whileHover={{ scale: 1.05, y: -5 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          Gallery
+        </motion.a>
+
+        {isAuthenticated && (
+          <>
+            <motion.div
+              className={`w-px h-6 bg-gradient-to-b from-transparent to-transparent ${
+                isDarkMode ? "via-gray-600" : "via-gray-400"
+              }`}
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+            />
+
+            <motion.a
+              href="#admin"
+              className={`text-lg font-bold transition-colors cursor-pointer ${
+                isDarkMode
+                  ? "text-white hover:text-purple-400"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Admin Panel
+            </motion.a>
+          </>
+        )}
+
+        <motion.div
+          className={`w-px h-6 bg-gradient-to-b from-transparent to-transparent ${
+            isDarkMode ? "via-gray-600" : "via-gray-400"
+          }`}
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        />
+
+        <motion.button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className={`p-2 rounded-lg transition-colors cursor-pointer ${
+            isDarkMode
+              ? "text-white hover:text-purple-400"
+              : "text-gray-700 hover:text-purple-600"
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5" />
+          ) : (
+            <Moon className="w-5 h-5" />
+          )}
+        </motion.button>
+      </motion.div>
+
+      <main>
+        <section id="hero">
+          <Hero
+            scrollToGallery={scrollToGallery}
+            artworks={artworks}
+            isDarkMode={isDarkMode}
+          />
+        </section>
+
+        <section id="gallery" ref={galleryRef}>
+          <Gallery
+            artworks={artworks}
+            hoveredArtwork={hoveredArtwork}
+            setHoveredArtwork={setHoveredArtwork}
+            onLike={handleLike}
+            onShare={handleShare}
+            onViewDetails={handleViewDetails}
+            isDarkMode={isDarkMode}
+            likedArtworks={likedArtworks}
+          />
+        </section>
+
+        {isAuthenticated && (
+          <section
+            id="admin"
+            className={`py-16 px-4 sm:px-6 lg:px-8 ${
+              isDarkMode ? "bg-gray-950" : "bg-gray-50"
+            }`}
+          >
+            <div className="max-w-7xl mx-auto">
+              <AdminPanel
+                artworks={artworks}
+                onAddArtwork={handleAddArtwork}
+                onDeleteArtwork={handleDeleteArtwork}
+                isDarkMode={isDarkMode}
+                onLogout={handleLogout}
+              />
+            </div>
+          </section>
+        )}
+
+        {!isAuthenticated && (
+          <section
+            className={`py-16 px-4 sm:px-6 lg:px-8 ${
+              isDarkMode ? "bg-gray-950" : "bg-gray-50"
+            }`}
+          >
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="h-full"
+              >
+                <LoginPanel
+                  onLogin={handleLogin}
+                  error={error}
+                  setError={setError}
+                  isDarkMode={isDarkMode}
+                />
+              </motion.div>
+
+              <motion.div
+                className={`rounded-xl shadow-lg shadow-purple-500/10 overflow-hidden border h-full flex flex-col ${
+                  isDarkMode
+                    ? "bg-gray-900 border-gray-800"
+                    : "bg-white border-gray-200"
+                }`}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                <div className="p-6 flex flex-col h-full">
+                  <h2
+                    className={`text-2xl font-bold mb-6 flex items-center gap-2 ${
+                      isDarkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    <Palette className="w-6 h-6 text-purple-400" />
+                    Artwork Guidelines
+                  </h2>
+
+                  <div className="space-y-5 flex-grow">
+                    <div>
+                      <h3
+                        className={`text-lg font-semibold mb-2 ${
+                          isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        Rights and Usage
+                      </h3>
+                      <ul
+                        className={`space-y-1 ${
+                          isDarkMode ? "text-gray-300" : "text-gray-700"
+                        }`}
+                      >
+                        <li>* My artworks are for personal use only. </li>
+                        <li>
+                          * Commercial use is not allowed without prior
+                          permission.
+                        </li>
+                        <li>
+                          * Please respect the copyright and usage rights of the
+                          artworks.
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="flex-grow flex flex-col justify-end">
+                      <div
+                        className={`mt-6 p-4 rounded-lg border border-purple-500/30 ${
+                          isDarkMode ? "bg-gray-800" : "bg-purple-50"
+                        }`}
+                      >
+                        <h3
+                          className={`text-lg font-semibold mb-3 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
+                        >
+                          Admin Access
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p
+                              className={`text-sm font-medium mb-1 ${
+                                isDarkMode ? "text-gray-400" : "text-gray-600"
+                              }`}
+                            >
+                              Username:
+                            </p>
+                            <p className="text-lg font-mono text-purple-400">
+                              admin
+                            </p>
+                          </div>
+                          <div>
+                            <p
+                              className={`text-sm font-medium mb-1 ${
+                                isDarkMode ? "text-gray-400" : "text-gray-600"
+                              }`}
+                            >
+                              Password:
+                            </p>
+                            <p className="text-lg font-mono text-purple-400">
+                              password
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        )}
+      </main>
+
+      <footer
+        className={`border-t py-12 px-4 sm:px-6 lg:px-8 ${
+          isDarkMode
+            ? "bg-gray-950 border-gray-800"
+            : "bg-gray-50 border-gray-200"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-wrap gap-6">
+            <a
+              href="#"
+              className={`transition-colors font-medium cursor-pointer ${
+                isDarkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-600 hover:text-purple-600"
+              }`}
+            >
+              Privacy
+            </a>
+            <a
+              href="#"
+              className={`transition-colors font-medium cursor-pointer ${
+                isDarkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-600 hover:text-purple-600"
+              }`}
+            >
+              Terms
+            </a>
+            <a
+              href="#"
+              className={`transition-colors font-medium cursor-pointer ${
+                isDarkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-600 hover:text-purple-600"
+              }`}
+            >
+              Support
+            </a>
+          </div>
+        </div>
+      </footer>
+
+      {artworkDetails && (
+        <ArtworkDetailsModal
+          details={artworkDetails}
+          onClose={handleCloseDetails}
+          onLike={handleLike}
+          onShare={handleShare}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
+      {shareModalOpen && selectedArtwork && (
+        <ArtworkShareModal
+          artwork={selectedArtwork}
+          onClose={handleCloseShareModal}
+          isDarkMode={isDarkMode}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Page;
