@@ -1,3008 +1,1640 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home,
-  User,
-  MessageCircle,
-  Search,
-  Moon,
-  Sun,
-  Heart,
-  MessageSquare,
-  Image as ImageIcon,
-  Send,
-  X,
+  Sun, Moon, RefreshCw, Info, Lightbulb, Check, Brain,
+  Keyboard, Award, Target, Shuffle, Crown,
+  Medal, Settings, Clock, Trophy, ChevronRight
 } from "lucide-react";
-import { Poppins } from 'next/font/google';
-import { motion, AnimatePresence } from 'framer-motion';
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'], 
-  display: 'swap',
-});
-
-
-interface UserType {
-  id: number | string;
-  name: string;
-  username: string;
-  avatar: string;
-  bio?: string;
-  role?: string;
-  company?: string;
-  location?: string;
-  experience?: {
-    role: string;
-    company: string;
-    duration: string;
-  }[];
-  following?: boolean;
-  followsYou?: boolean;
-  posts?: number;
-  followers?: number;
-  following_count?: number;
-}
-
-interface ReactionType {
-  "👍"?: number;
-  "❤️"?: number;
-  "😂"?: number;
-  "😮"?: number;
-  "😢"?: number;
-  "😠"?: number;
-  [key: string]: number | undefined;
-}
-
-interface CommentType {
-  id: number;
-  userId: number | string;
-  content: string;
-  time: string;
-}
-
-interface PostType {
-  id: number;
-  userId: number | string;
-  content: string;
-  image?: string;
-  likes: number;
-  comments: number;
-  commentsList?: CommentType[];
-  time: string;
-  liked: boolean;
-  reactions: ReactionType;
-  userReaction: string | null;
-  isEditing?: boolean;
-  showComments?: boolean;
-}
-
-interface MessageType {
-  id: number;
-  sender: number | string;
-  content: string;
-  time: string;
-  read: boolean;
-  image?: string;
-}
-
-interface ChatType {
-  id: number;
-  userId: number;
-  messages: MessageType[];
-}
-
-const initialUsers = [
-  {
-    id: 1,
-    name: "David Chen",
-    username: "@davidc",
-    avatar: "https://media.istockphoto.com/id/1369199360/photo/portrait-of-a-handsome-young-businessman-working-in-office.webp?a=1&b=1&s=612x612&w=0&k=20&c=bcGyGG1qPMyxl3rw4TCVwbJLZTPabFg4twsVFDy-ixs=",
-    bio: "Senior Software Engineer @Google | Previously @Microsoft",
-    role: "Software Engineer",
-    company: "Google",
-    location: "San Francisco, CA",
-    experience: [
-      {
-        role: "Senior Software Engineer",
-        company: "Google",
-        duration: "2020 - Present"
-      },
-      {
-        role: "Software Engineer",
-        company: "Microsoft",
-        duration: "2017 - 2020"
-      }
+export default function Home() {
+  const [theme, setTheme] = useState("light");
+  const [words] = useState({
+    easy: [
+      "apple", "banana", "cherry", "dragon", "elephant",
+      "flower", "giraffe", "hamster", "igloo", "jungle"
     ],
-    following: false,
-    posts: 42,
-    followers: 124,
-    following_count: 98,
-  },
-  {
-    id: 2,
-    name: "Sarah Parker",
-    username: "@sarahp",
-    avatar: "https://images.unsplash.com/photo-1602233158242-3ba0ac4d2167?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8R2lybHxlbnwwfHwwfHx8MA%3D%3D",
-    bio: "Product Designer @Apple | Design Systems Enthusiast",
-    role: "Product Designer", 
-    company: "Apple",
-    location: "Cupertino, CA",
-    experience: [
-      {
-        role: "Senior Product Designer",
-        company: "Apple",
-        duration: "2019 - Present"
-      },
-      {
-        role: "UX Designer",
-        company: "Twitter",
-        duration: "2016 - 2019"
-      }
+    medium: [
+      "abstract", "business", "calendar", "database", "exercise",
+      "festival", "graduate", "heritage", "industry", "journey"
     ],
-    following: true,
-    posts: 67,
-    followers: 230,
-    following_count: 115,
-  },
-  {
-    id: 3,
-    name: "Michael",
-    username: "@michaelt",
-    avatar: "https://images.unsplash.com/photo-1742518424556-839a9846adee?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8SGFuZHNvbWUlMjBndXl8ZW58MHx8MHx8fDA%3D",
-    bio: "Tech Lead @Netflix | Cloud Architecture & Distributed Systems",
-    role: "Technical Lead",
-    company: "Netflix",
-    location: "Los Angeles, CA",
-    experience: [
-      {
-        role: "Technical Lead",
-        company: "Netflix",
-        duration: "2021 - Present"
-      },
-      {
-        role: "Senior Developer",
-        company: "Amazon",
-        duration: "2018 - 2021"
-      }
-    ],
-    following: false,
-    posts: 28,
-    followers: 89,
-    following_count: 102,
-  },
-];
-
-const initialPosts: PostType[] = [
-  {
-    id: 1,
-    userId: 1,
-    content:
-      "Just finished my morning meditation at google. Starting the day with clarity and purpose makes all the difference.",
-    image:
-      "https://images.unsplash.com/photo-1551808525-51a94da548ce?q=80&w=2007&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    likes: 24,
-    comments: 2,
-    commentsList: [
-      {
-        id: 1,
-        userId: 2,
-        content: "This is so inspiring! I need to start doing this.",
-        time: "1h ago",
-      },
-      {
-        id: 2,
-        userId: 3,
-        content: "Morning meditation changed my life too!",
-        time: "30m ago",
-      },
-    ],
-    time: "2h ago",
-    liked: false,
-    reactions: {
-      "👍": 15,
-      "❤️": 8,
-      "😂": 3,
-    },
-    userReaction: null,
-    showComments: false,
-  },
-  {
-    id: 2,
-    userId: 2,
-    content:
-      "Writing at my favorite café today. There is something magical about the ambient noise that boosts creativity.",
-    image:
-      "https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Y2FmZXxlbnwwfHwwfHx8MA%3D%3D",
-    likes: 42,
-    comments: 1,
-    commentsList: [
-      {
-        id: 1,
-        userId: 3,
-        content: "Which café is this? Looks amazing!",
-        time: "3h ago",
-      },
-    ],
-    time: "4h ago",
-    liked: true,
-    reactions: {
-      "👍": 24,
-      "❤️": 12,
-      "😂": 6,
-    },
-    userReaction: "❤️",
-    showComments: false,
-  },
-  {
-    id: 3,
-    userId: 3,
-    content:
-      "Excited to share my latest project! Building tech that helps people connect more meaningfully.",
-    likes: 18,
-    comments: 0,
-    commentsList: [],
-    time: "1d ago",
-    liked: false,
-    reactions: {
-      "👍": 10,
-      "❤️": 5,
-      "😂": 3,
-    },
-    userReaction: null,
-    showComments: false,
-  },
-];
-
-const initialChats: ChatType[] = [
-  {
-    id: 1,
-    userId: 1,
-    messages: [
-      {
-        id: 1,
-        sender: 1,
-        content: "Hey, how are you doing today?",
-        time: "10:30 AM",
-        read: false,
-      },
-      {
-        id: 2,
-        sender: "me",
-        content: "Doing well, thanks! Just working on a new project.",
-        time: "10:35 AM",
-        read: true,
-      },
-      {
-        id: 3,
-        sender: 1,
-        content: "That sounds exciting! What kind of project?",
-        time: "10:38 AM",
-        read: false,
-      },
-    ],
-  },
-  {
-    id: 2,
-    userId: 2,
-    messages: [
-      {
-        id: 1,
-        sender: 2,
-        content: "Loved your recent post about mindfulness!",
-        time: "9:15 AM",
-        read: true,
-      },
-      {
-        id: 2,
-        sender: "me",
-        content: "Thanks Maya! Been practicing daily meditation.",
-        time: "9:20 AM",
-        read: true,
-        image:
-          "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8bWVkaXRhdGlvbnxlbnwwfHwwfHx8MA%3D%3D",
-      },
-      {
-        id: 3,
-        sender: 2,
-        content: "This is beautiful! Where do you usually meditate?",
-        time: "9:25 AM",
-        read: false,
-      },
-      {
-        id: 4,
-        sender: "me",
-        content: "",
-        time: "9:30 AM",
-        read: true,
-        image:
-          "https://images.unsplash.com/photo-1470115636492-6d2b56f9146d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8c3VucmlzZXxlbnwwfHwwfHx8MA%3D%3D",
-      },
-    ],
-  },
-  {
-    id: 3,
-    userId: 3,
-    messages: [
-      {
-        id: 1,
-        sender: 3,
-        content: "Are you attending the tech conference next week?",
-        time: "Yesterday",
-        read: false,
-      },
-      {
-        id: 2,
-        sender: "me",
-        content: "Yes, I will be there! Looking forward to it.",
-        time: "Yesterday",
-        read: true,
-      },
-    ],
-  },
-];
-
-const reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "😠"];
-
-export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [page, setPage] = useState("home");
-  const [users, setUsers] = useState<UserType[]>(initialUsers);
-  const [posts, setPosts] = useState<PostType[]>(initialPosts);
-  const [chats, setChats] = useState<ChatType[]>(initialChats);
-  const [activeChat, setActiveChat] = useState<number | null>(null);
-  const [newMessage, setNewMessage] = useState("");
-  const [newPost, setNewPost] = useState("");
-  const [newPostImage, setNewPostImage] = useState<string | null>(null);
-  const [newMessageImage, setNewMessageImage] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showFollowers, setShowFollowers] = useState(false);
-  const [showFollowing, setShowFollowing] = useState(false);
-  const [currentUser] = useState<UserType>({
-    id: "me",
-    name: "You",
-    username: "@you",
-    avatar:
-      "https://images.unsplash.com/photo-1599144065776-ea8ed38cb56e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fEhuYWRzb21lJTIwZ3V5fGVufDB8fDB8fHww",
+    hard: [
+      "ambiguous", "benevolent", "cognizant", "delimitate", "exacerbate",
+      "faciliate", "gregarious", "hypothesis", "juxtapose", "knowledge"
+    ]
   });
-  const [editingPostId, setEditingPostId] = useState<number | null>(null);
-  const [editPostContent, setEditPostContent] = useState("");
-  const [showPostOptions, setShowPostOptions] = useState<number | null>(null);
-  const [newComment, setNewComment] = useState<{ [key: number]: string }>({});
-  const [scrolled, setScrolled] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
-  const [mounted, setMounted] = useState(false);
-  
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-  
-  useEffect(() => {
-    setUsers(
-      users.map((user) => {
-        return { ...user, followsYou: user.id === 2 };
-      })
-    );
-  }, []);
-
-  const toggleFollow = (userId: number | string) => {
-    setUsers(
-      users.map((user) =>
-        user.id === userId ? { ...user, following: !user.following } : user
-      )
-    );
-  };
-
-  const toggleLike = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            liked: !post.liked,
-            likes: post.liked ? post.likes - 1 : post.likes + 1,
-          };
-        }
-        return post;
-      })
-    );
-  };
-
-  const sendMessage = () => {
-    if (newMessage.trim() === "" && !newMessageImage) return;
-
-    const updatedChats = chats.map((chat) => {
-      if (chat.id === activeChat) {
-        return {
-          ...chat,
-          messages: [
-            ...chat.messages,
-            {
-              id: chat.messages.length + 1,
-              sender: "me",
-              content: newMessage,
-              image: newMessageImage || undefined,
-              time: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              read: true,
-            } as MessageType,
-          ],
-        };
-      }
-      return chat;
-    });
-
-    setChats(updatedChats);
-    setNewMessage("");
-    setNewMessageImage(null);
-  };
-
-  const createPost = () => {
-    if (newPost.trim() === "" && !newPostImage) return;
-
-    const newPostObj: PostType = {
-      id: posts.length + 1,
-      userId: "me",
-      content: newPost,
-      image: newPostImage || undefined,
-      likes: 0,
-      comments: 0,
-      commentsList: [],
-      time: "Just now",
-      liked: false,
-      reactions: {},
-      userReaction: null,
-      showComments: false,
-    };
-
-    setPosts([newPostObj, ...posts]);
-    setNewPost("");
-    setNewPostImage(null);
-  };
-
-  const toggleComments = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            showComments: !post.showComments,
-          };
-        }
-        return post;
-      })
-    );
-  };
-
-  const addComment = (postId: number) => {
-    const commentContent = newComment[postId];
-    if (!commentContent || commentContent.trim() === "") return;
-
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const newCommentObj: CommentType = {
-            id: (post.commentsList?.length || 0) + 1,
-            userId: "me",
-            content: commentContent,
-            time: "Just now",
-          };
-
-          return {
-            ...post,
-            comments: post.comments + 1,
-            commentsList: [...(post.commentsList || []), newCommentObj],
-          };
-        }
-        return post;
-      })
-    );
-
-    setNewComment({ ...newComment, [postId]: "" });
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewPostImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  // Add word definitions/clues for each difficulty level
+  const [wordDefinitions] = useState({
+    easy: {
+      "apple": "A red or green fruit that keeps the doctor away",
+      "banana": "A yellow curved fruit with a peel",
+      "cherry": "Small red fruit often on top of ice cream",
+      "dragon": "A mythical fire-breathing creature",
+      "elephant": "The largest land mammal with a trunk",
+      "flower": "Colorful plant bloom that smells nice",
+      "giraffe": "Tallest animal with a very long neck",
+      "hamster": "Small rodent kept as a pet in a cage",
+      "igloo": "Ice house built in the Arctic",
+      "jungle": "Dense forest in tropical regions"
+    },
+    medium: {
+      "abstract": "Existing in thought rather than physical form",
+      "business": "Commercial activity or enterprise",
+      "calendar": "System to organize days and months",
+      "database": "Organized collection of information",
+      "exercise": "Physical activity for fitness",
+      "festival": "Celebration or special event",
+      "graduate": "Complete studies and earn a degree",
+      "heritage": "Things passed down from previous generations",
+      "industry": "Economic activity of manufacturing goods",
+      "journey": "Travel from one place to another"
+    },
+    hard: {
+      "ambiguous": "Open to more than one interpretation",
+      "benevolent": "Kind and generous in nature",
+      "cognizant": "Having knowledge or awareness",
+      "delimitate": "Establish boundaries or limits",
+      "exacerbate": "Make a problem or situation worse",
+      "faciliate": "Make an action or process easier",
+      "gregarious": "Fond of company; sociable",
+      "hypothesis": "Proposed explanation requiring more testing",
+      "juxtapose": "Place or deal with close together for contrast",
+      "knowledge": "Awareness or familiarity gained by experience"
     }
-  };
+  });
+  const [difficulty, setDifficulty] = useState("easy");
+  const [currentWord, setCurrentWord] = useState("");
+  const [scrambledWord, setScrambledWord] = useState("");
+  const [userGuess, setUserGuess] = useState("");
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [score, setScore] = useState(0);
+  const [wrongGuess, setWrongGuess] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [playerName, setPlayerName] = useState("Neo");
+  const [hasEnteredName, setHasEnteredName] = useState(true);
+  const [landingAnimationComplete, setLandingAnimationComplete] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showTestimonials, setShowTestimonials] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(60); // 60 seconds = 1 minute
+  const [timerActive, setTimerActive] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [correctWord, setCorrectWord] = useState("");
+  const [points, setPoints] = useState(0);
+  const [timeBonus, setTimeBonus] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [startTime] = useState(60); // Initial timer value in seconds
+  const [hint, setHint] = useState("");
+  const [currentDefinition, setCurrentDefinition] = useState("");
 
-  const removeUploadedImage = () => {
-    setNewPostImage(null);
-  };
+  // Sample leaderboard data
+  const [leaderboard] = useState([
+    { name: "Alex", score: 350, rank: 1, difficulty: "hard", wordsCompleted: 12 },
+    { name: "Taylor", score: 310, rank: 2, difficulty: "medium", wordsCompleted: 15 },
+    { name: "Jordan", score: 280, rank: 3, difficulty: "hard", wordsCompleted: 9 },
+    { name: "Casey", score: 230, rank: 4, difficulty: "medium", wordsCompleted: 11 },
+    { name: "Riley", score: 210, rank: 5, difficulty: "easy", wordsCompleted: 21 },
+    { name: "Priyansh", score: 200, rank: 5, difficulty: "easy", wordsCompleted: 21 },
+  ]);
 
-  const getUserById = (userId: string | number): UserType => {
-    if (userId === "me") return currentUser;
-    return (
-      users.find((user) => user.id === userId) || {
-        id: 0,
-        name: "Unknown",
-        username: "@unknown",
-        avatar: "",
-      }
-    );
-  };
+  // Add new state for game over
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+  const [wordsCompleted, setWordsCompleted] = useState(0);
 
-  const openUserProfile = (userId: string | number) => {
-    const user = getUserById(userId);
-    setSelectedUser(userId === "me" ? null : user);
-    setShowProfileModal(true);
-  };
+  useEffect(() => {
+    // Get theme from localStorage on initial load
+    const savedTheme = localStorage.getItem("wordPuzzleTheme") || "light";
+    setTheme(savedTheme);
 
-  const addReaction = (postId: number, emoji: string) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const updatedReactions = { ...post.reactions };
-  
-          if (post.userReaction === emoji) {
-            updatedReactions[emoji] = Math.max(0, (updatedReactions[emoji] || 0) - 1);
-            return {
-              ...post,
-              userReaction: null,
-              reactions: updatedReactions,
-            };
-          } else {
-            if (post.userReaction) {
-              updatedReactions[post.userReaction] = Math.max(
-                0,
-                (updatedReactions[post.userReaction] || 0) - 1
-              );
-            }
-            updatedReactions[emoji] = (updatedReactions[emoji] || 0) + 1;
-            return {
-              ...post,
-              userReaction: emoji,
-              reactions: updatedReactions,
-            };
+    // Get player name from localStorage if available
+    const savedName = localStorage.getItem("wordPuzzlePlayerName") || "";
+    if (savedName) {
+      setPlayerName(savedName);
+      setHasEnteredName(true);
+    }
+
+    // Get saved difficulty if available
+    const savedDifficulty = localStorage.getItem("wordPuzzleDifficulty") || "easy";
+    setDifficulty(savedDifficulty);
+
+    // Get saved score if available
+    const savedScore = localStorage.getItem("wordPuzzleScore");
+    if (savedScore) {
+      setScore(parseInt(savedScore, 10));
+    }
+
+    // Get a random word and scramble it
+    getNewWord(savedDifficulty);
+  }, []);
+
+  // When the player name is entered (game starts), start the timer
+  useEffect(() => {
+    if (hasEnteredName) {
+      startTimer();
+    }
+  }, [hasEnteredName]);
+
+  useEffect(() => {
+    let timerInterval: NodeJS.Timeout | null = null;
+
+    if (timerActive && timeRemaining > 0) {
+      timerInterval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            // Game Over when time expires
+            setIsGameOver(true);
+            setFinalScore(score);
+            setWordsCompleted(Math.floor(score / (difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30)));
+            return 0;
           }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [timerActive, timeRemaining, score, difficulty]);
+
+  const getNewWord = (difficultyLevel = difficulty) => {
+    const currentWordList = words[difficultyLevel as keyof typeof words];
+    const randomIndex = Math.floor(Math.random() * currentWordList.length);
+    const word = currentWordList[randomIndex];
+    setCurrentWord(word);
+    setScrambledWord(scrambleWord(word));
+    setUserGuess("");
+    setIsCorrect(false);
+    setShowHint(false);
+    setWrongGuess(false);
+
+    // Get the definition or clue for the selected word
+    const definitions = wordDefinitions[difficultyLevel as keyof typeof wordDefinitions];
+    const wordDef = definitions[word as keyof typeof definitions] || `A ${word.length}-letter word`;
+    setCurrentDefinition(wordDef);
+
+    // Generate advanced hint for the word
+    const advancedHint = generateHint(word);
+    setHint(advancedHint);
+
+    // Reset and start timer when a new word is presented
+    resetTimer();
+    startTimer();
+  };
+
+  // Generate a more helpful hint based on word structure
+  const generateHint = (word: string): string => {
+    // First level hint - first and last letter
+    if (word.length <= 5) {
+      return `The word starts with "${word[0].toUpperCase()}" and ends with "${word[word.length - 1]}".`;
+    }
+    // More advanced hint for longer words
+    else {
+      // For medium and hard words, reveal a bit more structure
+      let pattern = '';
+      for (let i = 0; i < word.length; i++) {
+        if (i === 0 || i === word.length - 1 || i === Math.floor(word.length / 2)) {
+          pattern += word[i].toUpperCase();
+        } else {
+          pattern += '_ ';
         }
-        return post;
-      })
-    );
-  };
-  
-
-  const getTotalReactions = (reactions: ReactionType): number => {
-    return Object.values(reactions).reduce(
-      (sum: number, count) => sum + (count || 0),
-      0
-    );
-  };
-
-  const getReactionSummary = (reactions: ReactionType): string => {
-    const total = getTotalReactions(reactions);
-    if (total === 0) return "0 reactions";
-
-    const emojis = Object.keys(reactions).filter(
-      (emoji) => reactions[emoji] && reactions[emoji]! > 0
-    );
-    return `${emojis.slice(0, 3).join(" ")} ${total} reactions`;
-  };
-
-  const startEditingPost = (post: PostType) => {
-    setEditingPostId(post.id);
-    setEditPostContent(post.content);
-  };
-
-  const saveEditedPost = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            content: editPostContent,
-          };
-        }
-        return post;
-      })
-    );
-    setEditingPostId(null);
-    setEditPostContent("");
-  };
-
-  const cancelEditingPost = () => {
-    setEditingPostId(null);
-    setEditPostContent("");
-  };
-
-  const deletePost = (postId: number) => {
-    setPosts(posts.filter((post) => post.id !== postId));
-  };
-
-  const isFollowing = (userId: number | string) => {
-    const user = users.find((u) => u.id === userId);
-    return user ? user.following : false;
-  };
-
-  const getFollowers = () => {
-    return users.filter((user) => user.followsYou);
-  };
-
-  const getFollowing = () => {
-    return users.filter((user) => user.following);
-  };
-
-  const markMessagesAsRead = (chatId: number) => {
-    setChats(
-      chats.map((chat) => {
-        if (chat.id === chatId) {
-          return {
-            ...chat,
-            messages: chat.messages.map((message) => ({
-              ...message,
-              read: true,
-            })),
-          };
-        }
-        return chat;
-      })
-    );
-  };
-
-  const hasUnreadMessages = (chatId: number): boolean => {
-    const chat = chats.find((c) => c.id === chatId);
-    if (!chat) return false;
-
-    return chat.messages.some(
-      (message) => message.sender !== "me" && !message.read
-    );
-  };
-
-  const getUnreadCount = (chatId: number): number => {
-    const chat = chats.find((c) => c.id === chatId);
-    if (!chat) return 0;
-
-    return chat.messages.filter(
-      (message) => message.sender !== "me" && !message.read
-    ).length;
-  };
-
-  const handleMessageImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewMessageImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      }
+      return `Word pattern: ${pattern}`;
     }
   };
 
-  const removeMessageImage = () => {
-    setNewMessageImage(null);
+  const scrambleWord = (word: string): string => {
+    const wordArray = word.split("");
+    let scrambled = wordArray.sort(() => Math.random() - 0.5).join("");
+
+    // Make sure scrambled word is different from original
+    while (scrambled === word) {
+      scrambled = wordArray.sort(() => Math.random() - 0.5).join("");
+    }
+
+    return scrambled;
   };
+
+  // Update the function that formats timer display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleGuess();
+  };
+
+  const handleNextWord = () => {
+    setShowResult(false);
+    getNewWord();
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("wordPuzzleTheme", newTheme);
+  };
+
+  const getHint = () => {
+    setShowHint(true);
+  };
+
+  const toggleInstructionsModal = () => {
+    setShowInstructionsModal(!showInstructionsModal);
+  };
+
+  // Add useEffect to prevent body scrolling when modal is open
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null; 
-
-  const ProfileModal = () => {
-    if (!showProfileModal) return null;
-
-    useEffect(() => {
-      // Prevent scrolling on the background when modal is open
+    const isAnyModalOpen = showInstructionsModal || showLeaderboard || isGameOver || showResult;
+    
+    if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
-      
-      // Re-enable scrolling when modal is closed
-      return () => {
-        document.body.style.overflow = 'auto';
-      };
-    }, []);
+    } else {
+      document.body.style.overflow = 'auto';
+    }
 
-    const userToShow = selectedUser || currentUser;
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [showInstructionsModal, showLeaderboard, isGameOver, showResult]);
+
+  const handleNameSubmit = (name: string) => {
+    if (name.trim()) {
+      setPlayerName(name.trim());
+      setHasEnteredName(true);
+      localStorage.setItem("wordPuzzlePlayerName", name.trim());
+    }
+  };
+
+  const changeDifficulty = (newDifficulty: string) => {
+    setDifficulty(newDifficulty);
+    localStorage.setItem("wordPuzzleDifficulty", newDifficulty);
+    getNewWord(newDifficulty);
+    // Timer will restart automatically via getNewWord
+  };
+
+  // Update color variables for better aesthetics and consistency
+  const glassCard = theme === "light"
+    ? "bg-white/60 backdrop-blur-lg border border-white/60 shadow-xl"
+    : "bg-black/40 backdrop-blur-lg border border-gray-700/60 shadow-xl";
+
+  const glassCardDarker = theme === "light"
+    ? "bg-white/80 backdrop-blur-lg border border-white/70 shadow-xl"
+    : "bg-black/60 backdrop-blur-lg border border-gray-700/70 shadow-xl";
+
+  const bgGradient = theme === "light"
+    ? "bg-gradient-to-br from-pink-200 via-purple-200 to-blue-200"
+    : "bg-gradient-to-br from-indigo-950 via-purple-950 to-gray-900";
+
+  const textColor = theme === "light" ? "text-gray-800" : "text-gray-100";
+
+  const buttonPrimary = theme === "light"
+    ? "bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/30"
+    : "bg-gradient-to-r from-violet-400 to-fuchsia-500 hover:from-violet-500 hover:to-fuchsia-600 text-white shadow-lg shadow-violet-500/20";
+
+  const buttonSecondary = theme === "light"
+    ? "bg-white/80 hover:bg-white/100 text-gray-800 shadow-md border border-gray-200/60"
+    : "bg-gray-800/80 hover:bg-gray-800/100 text-gray-200 shadow-md border border-gray-700/60";
+
+  const inputBg = theme === "light"
+    ? "bg-white/80 border border-gray-200/70 shadow-inner"
+    : "bg-gray-800/80 border border-gray-700/70 shadow-inner";
+
+  const hintBg = theme === "light"
+    ? "bg-amber-500/10 text-amber-800 border border-amber-200/50"
+    : "bg-amber-800/30 text-amber-200 border border-amber-700/50";
+
+  // Update sidebar panel styling for consistency
+  const sidebarPanel = theme === "light"
+    ? "bg-white/70 backdrop-blur-lg border-l border-white/60 shadow-xl"
+    : "bg-black/50 backdrop-blur-lg border-l border-gray-700/60 shadow-xl";
+
+  // Instructions step styles
+  const instructionCard = theme === "light"
+    ? "bg-white/80 border border-white/60 shadow-md"
+    : "bg-gray-800/80 border border-gray-700/60 shadow-md";
+
+  // Landing screen component
+  const LandingScreen = () => {
+    const [localPlayerName, setLocalPlayerName] = useState(playerName);
+
+    const handleLocalNameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (localPlayerName.trim()) {
+        setPlayerName(localPlayerName);
+        setHasEnteredName(true);
+        localStorage.setItem("wordPuzzlePlayerName", localPlayerName);
+      }
+    };
 
     return (
-      <AnimatePresence>
-        {showProfileModal && (
-          <motion.div 
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          background: theme === 'light'
+            ? 'linear-gradient(135deg, rgba(255,182,255,0.3), rgba(158,208,255,0.3))'
+            : 'linear-gradient(135deg, rgba(88,28,135,0.3), rgba(30,64,175,0.3))'
+        }}
+      >
+        <motion.div
+          className={`${glassCardDarker} rounded-3xl p-8 w-full max-w-lg shadow-2xl relative overflow-hidden`}
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.9, y: 20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
+          {/* Decorative elements */}
+          <div className="absolute w-32 h-32 rounded-full bg-pink-400/20 blur-2xl -top-16 -left-16"></div>
+          <div className="absolute w-32 h-32 rounded-full bg-blue-400/20 blur-2xl -bottom-16 -right-16"></div>
+
+          <motion.div
+            className="text-center mb-8"
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <motion.div
+              className="flex justify-center mb-4"
+              animate={{
+                rotate: [0, -10, 10, -10, 0],
+                scale: [1, 1.1, 1, 1.1, 1]
+              }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+            >
+              <Shuffle className="w-16 h-16 text-purple-500" />
+            </motion.div>
+            <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+              Word Puzzle
+            </h1>
+            <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+              Challenge your mind with word scrambles!
+            </p>
+          </motion.div>
+
+          {/* <form onSubmit={handleLocalNameSubmit} className="space-y-6">
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <label className="block text-sm font-medium mb-2">Enter Your Name</label>
+            <input
+              type="text"
+              value={localPlayerName}
+              onChange={(e) => setLocalPlayerName(e.target.value)}
+              className={`w-full p-4 rounded-xl ${inputBg} text-center text-xl`}
+              placeholder="Type your name here..."
+              required
+              minLength={2}
+            />
+          </motion.div>
+
+          <motion.button
+            type="submit"
+            className={`w-full py-4 px-6 rounded-xl ${buttonPrimary} font-medium text-lg flex items-center justify-center gap-3 relative overflow-hidden`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Target size={24} />
+            Start Playing
+            <motion.div
+              className="absolute inset-0 bg-white/20"
+              initial={{ x: '-100%' }}
+              whileHover={{ x: '100%' }}
+              transition={{ duration: 0.8 }}
+            />
+          </motion.button>
+        </form> */}
+
+          <motion.div
+            className="mt-8 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            transition={{ delay: 0.8 }}
           >
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-white/10 backdrop-blur-md"
-              onClick={() => {
-                setShowProfileModal(false);
-                setSelectedUser(null);
-              }}
-            ></motion.div>
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className={`relative max-w-lg w-full mx-auto rounded-xl shadow-2xl overflow-hidden transition-all transform ${darkMode ? "bg-gray-800" : "bg-white"}`}
-            >
-              <button 
-                onClick={() => {
-                  setShowProfileModal(false);
-                  setSelectedUser(null);
-                }}
-                className="absolute top-4 right-4 cursor-pointer p-1 rounded-full text-black hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
-              >
-                <X size={24} />
-              </button>
-              
-              <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
-              <div className="p-6 relative">
-                <div className="absolute -top-10 left-6 w-20 h-20 rounded-full border-4 overflow-hidden bg-white border-white">
-                  <img
-                    src={userToShow.avatar}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="mt-12">
-                  <h2 className="text-xl font-bold">{userToShow.name}</h2>
-                  <p className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    {userToShow.username}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed">
-                    {userToShow.bio || "Digital creator and positive vibes spreader. Mindfulness advocate."}
-                  </p>
-                  <div className="flex gap-4 mt-3">
-                    <div>
-                      <span className="font-bold">
-                        {userToShow.id === "me" 
-                          ? posts.filter(post => post.userId === "me").length 
-                          : userToShow.posts || 0}
-                      </span>{" "}
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Posts
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold">
-                        {userToShow.id === "me" 
-                          ? getFollowers().length 
-                          : userToShow.followers || 0}
-                      </span>{" "}
-                      <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Followers
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold">
-                        {userToShow.id === "me" 
-                          ? getFollowing().length 
-                          : userToShow.following_count || 0}
-                      </span>{" "}
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Following
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {userToShow.id !== "me" && (
-                    <div className="mt-4">
-                      <button
-                        onClick={() => toggleFollow(userToShow.id)}
-                        className={`px-4 py-2 rounded-full cursor-pointer font-medium transition-all ${
-                          isFollowing(userToShow.id)
-                            ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                            : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                        }`}
-                      >
-                        {isFollowing(userToShow.id) ? "Following" : "Follow"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                {userToShow.id === "me" && (
-                  <>
-                    <div className="mt-6 grid grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                        <h3 className="font-semibold mb-2">Followers</h3>
-                        <div className="space-y-2 max-h-[200px] overflow-auto scrollbar-hide">
-                          {getFollowers().length > 0 ? (
-                            getFollowers().map(user => (
-                              <div key={user.id} className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full overflow-hidden">
-                                  <img 
-                                    src={user.avatar} 
-                                    alt={user.name} 
-                                    className="w-full h-full object-cover" 
-                                  />
-                                </div>
-                                <span>{user.name}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No followers yet</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                        <h3 className="font-semibold mb-2">Following</h3>
-                        <div className="space-y-2 max-h-[200px] overflow-auto scrollbar-hide">
-                          {getFollowing().length > 0 ? (
-                            getFollowing().map(user => (
-                              <div key={user.id} className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full overflow-hidden">
-                                  <img 
-                                    src={user.avatar} 
-                                    alt={user.name} 
-                                    className="w-full h-full object-cover" 
-                                  />
-                                </div>
-                                <span>{user.name}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">Not following anyone yet</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <h3 className="font-semibold mb-2">Settings</h3>
-                      <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                        <div className="flex items-center justify-between">
-                          <span>Dark Mode</span>
-                          <button
-                            onClick={toggleDarkMode}
-                            className={`w-12 h-6 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out ${
-                              darkMode
-                                ? "bg-gradient-to-r from-indigo-500 to-purple-600"
-                                : "bg-gray-300"
-                            }`}
-                          >
-                            <div
-                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                                darkMode ? "translate-x-6" : "translate-x-0"
-                              }`}
-                            ></div>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
+            <p className="text-sm flex items-center justify-center gap-2">
+              <Brain size={16} />
+              <span className="italic">Train your brain with word puzzles!</span>
+            </p>
           </motion.div>
-        )}
-      </AnimatePresence>
-    );
+        </motion.div>
+      </motion.div>
+    )
   };
- 
 
+  const startTimer = () => {
+    setTimeRemaining(startTime);
+    setTimerActive(true);
+    setIsTimerActive(true);
+  };
 
+  const resetTimer = () => {
+    setTimerActive(false);
+    setTimeRemaining(startTime);
+    setIsTimerActive(false);
+  };
+
+  const handleTimerToggle = () => {
+    // Timer is now automatic and can't be toggled by the user
+    // This function is now just a placeholder
+  };
+
+  const reshuffleWord = () => {
+    if (!isCorrect) {
+      setScrambledWord(scrambleWord(currentWord));
+      // Reset and restart timer when word is reshuffled
+      // resetTimer();
+      // startTimer();
+    }
+  };
+
+  const handleSkip = () => {
+    // Skip current word and get a new one
+    getNewWord();
+  };
+
+  const handleGuess = () => {
+    if (!playerName.trim()) {
+      alert("Please enter your name first!");
+      return;
+    }
+
+    if (userGuess.toLowerCase() === currentWord.toLowerCase()) {
+      setIsCorrect(true);
+
+      // Calculate score based on difficulty, time remaining, and whether hint was used
+      let pointsEarned = 0;
+      switch (difficulty) {
+        case "easy":
+          pointsEarned = 10;
+          break;
+        case "medium":
+          pointsEarned = 20;
+          break;
+        case "hard":
+          pointsEarned = 30;
+          break;
+      }
+
+      // Time bonus: Up to 5 points based on time remaining
+      const timeBonusPoints = Math.floor((timeRemaining / startTime) * 5);
+
+      // Penalty for using hint
+      if (showHint) {
+        pointsEarned = Math.floor(pointsEarned * 0.7); // 30% penalty
+      }
+
+      const totalPoints = pointsEarned + timeBonusPoints;
+
+      setTimeBonus(timeBonusPoints);
+      setPoints(totalPoints);
+      setScore(prevScore => prevScore + totalPoints);
+
+      // Update localStorage
+      localStorage.setItem("wordPuzzleScore", (score + totalPoints).toString());
+
+      // Update leaderboard
+      const playerEntry = {
+        name: playerName,
+        score: score + totalPoints,
+        difficulty,
+        wordsCompleted: 1, // This would need to be tracked more accurately
+      };
+
+      // This is where you would update your database/storage
+      // For now, we're just showing the result modal
+
+      // Stop the timer when they get it right
+      setTimerActive(false);
+      setIsTimerActive(false);
+
+      // Show the result modal
+      setCorrectWord(currentWord);
+      setShowResult(true);
+    } else {
+      // Wrong guess animation
+      setWrongGuess(true);
+      setTimeout(() => {
+        setWrongGuess(false);
+      }, 500);
+    }
+  };
+
+  const handleLeaderboardClick = () => {
+    setShowLeaderboard(true);
+  };
+
+  const handleHintClick = () => {
+    setShowHint(!showHint);
+  };
+
+  const handleReshuffle = () => {
+    reshuffleWord();
+  };
+
+  const handleRestart = () => {
+    setScore(0);
+    setTimeRemaining(startTime);
+    setTimerActive(false);
+    setIsGameOver(false);
+    setIsCorrect(false);
+    setShowHint(false);
+    setUserGuess("");
+    getNewWord();
+  };
 
   return (
-    <div
-      className={`min-h-screen flex flex-col ${poppins.className} ${
-        darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
-      }`}
-    >
-      <header
-        className={`fixed top-0 w-full z-10 py-3 backdrop-blur-md transition-all duration-300 ${
-          darkMode
-            ? scrolled
-              ? "bg-gray-900/30 shadow-md"
-              : "bg-gray-900"
-            : scrolled
-            ? "bg-white/20 shadow-md"
-            : "bg-white"
-        }`}
-      >
-        <div className="max-w-[1440px] mx-auto px-4 flex justify-between items-center">
-          <h1
-            onClick={() => setPage("home")}
-            className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent cursor-pointer transition-transform hover:scale-105"
-          >
-            Experiences
-          </h1>
+    <div className={`min-h-screen ${bgGradient} ${textColor} font-['Quicksand',sans-serif] transition-colors duration-300 relative overflow-hidden`}>
+      {/* Decorative floating bubbles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[
+          { width: 60, height: 60, left: 20, top: 15 },
+          { width: 45, height: 45, left: 80, top: 30 },
+          { width: 70, height: 50, left: 40, top: 70 },
+          { width: 50, height: 50, left: 70, top: 60 },
+          { width: 40, height: 55, left: 30, top: 50 },
+          { width: 55, height: 40, left: 60, top: 40 },
+          { width: 65, height: 65, left: 50, top: 20 },
+          { width: 35, height: 35, left: 90, top: 80 }
+        ].map((bubble, index) => (
+          <motion.div
+            key={index}
+            className={`absolute rounded-full ${theme === "light"
+              ? "bg-gradient-to-r from-purple-300/30 to-pink-300/30"
+              : "bg-gradient-to-r from-purple-900/20 to-pink-900/20"
+              }`}
+            style={{
+              width: `${bubble.width}px`,
+              height: `${bubble.height}px`,
+              left: `${bubble.left}%`,
+              top: `${bubble.top}%`,
+            }}
+            animate={{
+              y: [0, -20, 0],
+              x: [0, 10, 0],
+              rotate: [0, 180, 360],
+            }}
+            transition={{
+              duration: 10 + index * 2,
+              repeat: Infinity,
+              repeatType: "reverse",
+              delay: index * 0.5,
+            }}
+          />
+        ))}
+      </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full cursor-pointer text-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <div
-              className="w-8 h-8 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
-              onClick={() => {
-                setSelectedUser(null);
-                if (window.innerWidth >= 1024) {
-                  setShowProfileModal(true);
-                } else {
-                  setPage("profile");
-                }
+      {/* Website Logo at Top */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`w-full py-2 flex justify-center items-center ${theme === "light"
+          ? "bg-gradient-to-r from-violet-200/90 via-fuchsia-200/90 to-pink-200/90"
+          : "bg-gradient-to-r from-violet-950/90 via-fuchsia-950/90 to-indigo-950/90"} shadow-md border-b ${theme === "light" ? "border-violet-300/50" : "border-violet-900/50"}`}
+      >
+        <div className="container mx-auto px-4 flex items-center justify-center">
+          <div className="flex items-center justify-center gap-4">
+            <motion.div
+              animate={{
+                rotate: [0, 5, -5, 5, 0],
+                scale: [1, 1.1, 1, 1.1, 1]
               }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                repeatDelay: 1
+              }}
+              className="relative"
             >
-              <img
-                src={currentUser.avatar}
-                alt="Your profile"
-                className="w-full h-full object-cover"
-              />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-500 flex items-center justify-center shadow-md">
+                <Shuffle className="w-8 h-8 text-white" />
+              </div>
+              <motion.div
+                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center shadow-sm"
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <span className="font-bold text-amber-900 text-xs">W</span>
+              </motion.div>
+              <motion.div
+                className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-violet-500 border-2 border-white flex items-center justify-center shadow-sm"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="font-bold text-white text-xs">P</span>
+              </motion.div>
+            </motion.div>
+            <div>
+              <h1 className={`text-2xl md:text-3xl font-extrabold ${theme === "light"
+                ? "bg-gradient-to-r from-violet-700 via-fuchsia-600 to-pink-600 bg-clip-text text-transparent"
+                : "bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent"}`}
+              >
+                Word Puzzle
+              </h1>
+              <p className={`text-xs italic font-medium ${theme === "light" ? "text-violet-800" : "text-violet-300"}`}>
+                Unscramble & Train Your Brain!
+              </p>
             </div>
           </div>
         </div>
-      </header>
+      </motion.div>
 
-      <main className="pt-16 pb-16 sm:pb-0 px-2 sm:px-4">
-        {page === "home" && (
-          <div className="max-w-[1440px] mx-auto flex flex-col lg:flex-row px-0 sm:px-4 py-4 gap-4">
-            <div className="hidden sm:block w-full lg:w-1/5 order-2 lg:order-1 lg:sticky lg:top-20 self-start overflow-y-auto max-h-[calc(100vh-6rem)] scrollbar-hide">
-              <div
-                className={`rounded-lg ${
-                  darkMode ? "bg-gray-800" : "bg-white"
-                } shadow mb-4 overflow-hidden transition-all hover:shadow-lg`}
-              >
-                <div className="p-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-white font-bold border-2 border-indigo-500">
-                      <img
-                        src={currentUser.avatar}
-                        alt="Your profile"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold">You</h2>
-                      <p
-                        className={`${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        @you
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`flex justify-around mb-4 p-4 rounded-lg ${
-                      darkMode ? "bg-gray-700" : "bg-gray-100"
-                    }`}
-                  >
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">
-                        {getFollowers().length}
-                      </p>
-                      <p
-                        className={`text-xs ${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        Followers
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">
-                        {getFollowing().length}
-                      </p>
-                      <p
-                        className={`text-xs ${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        Following
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div
-                      className={`rounded-lg ${
-                        darkMode ? "bg-gray-700" : "bg-gray-100"
-                      } overflow-hidden transition-all hover:bg-opacity-90`}
-                    >
-                      <button
-                        onClick={() => setShowFollowers(!showFollowers)}
-                        className="flex items-center justify-between w-full p-4 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                          </svg>
-                          <span className="font-medium">Followers</span>
-                        </div>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 transform ${
-                            showFollowers ? "rotate-180" : ""
-                          } transition-transform`}
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                      {showFollowers && (
-                        <div className="px-4 pb-4">
-                          <div className="space-y-2 max-h-[200px] overflow-auto scrollbar-hide">
-                            {getFollowers().map((user) => (
-                              <div
-                                key={user.id}
-                                className="flex items-center justify-between"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-8 h-8 rounded-full overflow-hidden cursor-pointer"
-                                    onClick={() => openUserProfile(user.id)}
-                                  >
-                                    <img
-                                      src={user.avatar}
-                                      alt={user.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <div>
-                                    <p 
-                                      className="font-medium text-sm cursor-pointer hover:underline"
-                                      onClick={() => openUserProfile(user.id)}
-                                    >
-                                      {user.name}
-                                    </p>
-                                    <p
-                                      className={`text-xs ${
-                                        darkMode
-                                          ? "text-gray-400"
-                                          : "text-gray-500"
-                                      }`}
-                                    >
-                                      {user.username}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            {getFollowers().length === 0 && (
-                              <p className="text-sm text-gray-500">
-                                No followers yet
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={`rounded-lg ${
-                        darkMode ? "bg-gray-700" : "bg-gray-100"
-                      } overflow-hidden transition-all hover:bg-opacity-90`}
-                    >
-                      <button
-                        onClick={() => setShowFollowing(!showFollowing)}
-                        className="flex items-center justify-between w-full p-4 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
-                          </svg>
-                          <span className="font-medium">Following</span>
-                        </div>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 transform ${
-                            showFollowing ? "rotate-180" : ""
-                          } transition-transform`}
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                      {showFollowing && (
-                        <div className="px-4 pb-4">
-                          <div className="space-y-2 max-h-[200px] overflow-auto scrollbar-hide">
-                            {getFollowing().map((user) => (
-                              <div
-                                key={user.id}
-                                className="flex items-center justify-between"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-8 h-8 rounded-full overflow-hidden cursor-pointer"
-                                    onClick={() => openUserProfile(user.id)}
-                                  >
-                                    <img
-                                      src={user.avatar}
-                                      alt={user.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <div>
-                                    <p 
-                                      className="font-medium text-sm cursor-pointer hover:underline"
-                                      onClick={() => openUserProfile(user.id)}
-                                    >
-                                      {user.name}
-                                    </p>
-                                    <p
-                                      className={`text-xs ${
-                                        darkMode
-                                          ? "text-gray-400"
-                                          : "text-gray-500"
-                                      }`}
-                                    >
-                                      {user.username}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => toggleFollow(user.id)}
-                                  className={`px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800 cursor-pointer hover:bg-gray-300 transition-colors`}
-                                >
-                                  Unfollow
-                                </button>
-                              </div>
-                            ))}
-                            {getFollowing().length === 0 && (
-                              <p className="text-sm text-gray-500">
-                                Not following anyone yet
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={`rounded-lg ${
-                        darkMode ? "bg-gray-700" : "bg-gray-100"
-                      } overflow-hidden transition-all hover:bg-opacity-90`}
-                    >
-                      <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="flex items-center justify-between w-full p-4 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span className="font-medium">Settings</span>
-                        </div>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 transform ${
-                            showSettings ? "rotate-180" : ""
-                          } transition-transform`}
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                      {showSettings && (
-                        <div className="px-4 pb-4 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span>Dark Mode</span>
-                            <button
-                              onClick={toggleDarkMode}
-                              className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${
-                                darkMode
-                                  ? "bg-gradient-to-r from-indigo-500 to-purple-600"
-                                  : "bg-gray-300"
-                              }`}
-                            >
-                              <div
-                                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                                  darkMode ? "translate-x-6" : "translate-x-0"
-                                }`}
-                              ></div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`rounded-lg ${
-                  darkMode ? "bg-gray-800" : "bg-white"
-                } shadow p-4 transition-all hover:shadow-lg overflow-auto max-h-[300px] scrollbar-hide`}
-              >
-                <h3 className="font-bold mb-3">Suggested for you</h3>
-                <div className="space-y-3">
-                  {users
-                    .filter((user) => !user.following)
-                    .slice(0, 3)
-                    .map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-10 h-10 rounded-full overflow-hidden cursor-pointer"
-                            onClick={() => openUserProfile(user.id)}
-                          >
-                            <img
-                              src={user.avatar}
-                              alt={user.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <p 
-                              className="font-medium cursor-pointer hover:underline"
-                              onClick={() => openUserProfile(user.id)}
-                            >
-                              {user.name}
-                            </p>
-                            <p
-                              className={`text-xs ${
-                                darkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
-                            >
-                              {user.username}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => toggleFollow(user.id)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-all ${
-                            user.following
-                              ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                              : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                          }`}
-                        >
-                          {user.following ? "Following" : "Follow"}
-                        </button>
-                      </div>
-                    ))}
-                  {users.filter((user) => !user.following).length === 0 && (
-                    <p className="text-sm text-gray-500">
-                      No suggestions available
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full lg:w-3/5 order-1 lg:order-2 self-start overflow-y-auto max-h-[calc(100vh-6rem)] scrollbar-hide">
-              <div
-                className={`p-4 mb-4 rounded-lg ${
-                  darkMode ? "bg-gray-800" : "bg-white"
-                } shadow transition-all hover:shadow-md`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                    <img
-                      src={currentUser.avatar}
-                      alt="Your profile"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      className={`w-full p-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-base ${
-                        darkMode
-                          ? "bg-gray-700 text-white"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                      placeholder="What's on your mind?"
-                      rows={3}
-                      value={newPost}
-                      onChange={(e) => setNewPost(e.target.value)}
-                    ></textarea>
-
-                    {newPostImage && (
-                      <div className="relative mt-2 rounded-lg overflow-hidden h-40">
-                        <img
-                          src={newPostImage}
-                          alt="Upload preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          onClick={removeUploadedImage}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-gray-800 bg-opacity-70 text-white hover:bg-opacity-90 transition-colors"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center mt-2">
-                      <label
-                        className={`p-2 rounded-full ${
-                          darkMode
-                            ? "text-gray-300 hover:bg-gray-700"
-                            : "text-gray-600 hover:bg-gray-100"
-                        } cursor-pointer transition-colors`}
-                      >
-                        <ImageIcon size={20} />
-                        <input
-                          type="file"
-                          className="hidden p-2"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                        />
-                      </label>
-                      <button
-                        onClick={createPost}
-                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-full font-medium cursor-pointer transition-all transform hover:scale-105 text-sm"
-                      >
-                        Post
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {posts.map((post) => {
-                  const postUser = getUserById(post.userId);
-                  const isCurrentUserPost = post.userId === "me";
-                  const isEditing = post.id === editingPostId;
-                  const totalReactions = getTotalReactions(post.reactions);
-
-                  return (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`w-full p-4 rounded-lg ${
-                        darkMode ? "bg-gray-800" : "bg-white"
-                      } shadow transition-all hover:shadow-md`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
-                            onClick={() => openUserProfile(post.userId)}
-                          >
-                            <img
-                              src={postUser.avatar}
-                              alt={postUser.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <div
-                              className="font-medium cursor-pointer hover:underline"
-                              onClick={() => openUserProfile(post.userId)}
-                            >
-                              {postUser.name}
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                darkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
-                            >
-                              {post.time}
-                            </div>
-                          </div>
-                        </div>
-
-                        {!isCurrentUserPost && (
-                          <button
-                            onClick={() => toggleFollow(post.userId)}
-                            className={`px-3 py-1 cursor-pointer rounded-full text-sm font-medium transition-colors ${
-                              isFollowing(post.userId)
-                                ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                                : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                            }`}
-                          >
-                            {isFollowing(post.userId) ? "Following" : "Follow"}
-                          </button>
-                        )}
-
-                        {isCurrentUserPost && (
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowPostOptions(
-                                  showPostOptions === post.id ? null : post.id
-                                );
-                              }}
-                              className={`p-1 rounded-full ${
-                                darkMode
-                                  ? "hover:bg-gray-700"
-                                  : "hover:bg-gray-200"
-                              } transition-colors`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                              </svg>
-                            </button>
-                            {showPostOptions === post.id && (
-                              <div
-                                className={`absolute right-0 mt-1 w-40 rounded-md shadow-lg z-10 ${
-                                  darkMode ? "bg-gray-700" : "bg-white"
-                                }`}
-                              >
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      startEditingPost(post);
-                                      setShowPostOptions(null);
-                                    }}
-                                    className="flex w-full items-center px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 mr-2"
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
-                                    >
-                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                    </svg>
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      deletePost(post.id);
-                                      setShowPostOptions(null);
-                                    }}
-                                    className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 mr-2"
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    Delete
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {post.id === editingPostId ? (
-                        <div className="mb-3">
-                          <textarea
-                            className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                              darkMode
-                                ? "bg-gray-700 text-white"
-                                : "bg-gray-100 text-gray-900"
-                            }`}
-                            rows={3}
-                            value={editPostContent}
-                            onChange={(e) =>
-                              setEditPostContent(e.target.value)
-                            }
-                          ></textarea>
-                          <div className="flex justify-end gap-2 mt-2">
-                            <button
-                              onClick={cancelEditingPost}
-                              className="px-3 py-1 rounded text-sm bg-gray-300 text-gray-800 cursor-pointer hover:bg-gray-400 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => saveEditedPost(post.id)}
-                              className="px-3 py-1 rounded text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white cursor-pointer transition-colors"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="mb-3 break-words text-base leading-relaxed">{post.content}</p>
-                      )}
-
-                      {post.image && (
-                        <div className="mb-3 rounded-lg overflow-hidden max-h-[50vh]">
-                          <img
-                            src={post.image}
-                            alt="Post"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-
-                      {totalReactions > 0 && (
-                        <div
-                          className={`flex items-center mb-2 text-sm ${
-                            darkMode ? "text-gray-300" : "text-gray-600"
-                          }`}
-                        >
-                          <div className="flex mr-2">
-                            {Object.keys(post.reactions)
-                              .filter(
-                                (emoji) =>
-                                  post.reactions[emoji] &&
-                                  post.reactions[emoji]! > 0
-                              )
-                              .slice(0, 3)
-                              .map((emoji) => (
-                                <span key={emoji} className="mr-1">
-                                  {emoji}
-                                </span>
-                              ))}
-                          </div>
-                          <span>{totalReactions} reactions</span>
-                        </div>
-                      )}
-
-                      <div
-                        className={`flex border-t ${
-                          darkMode
-                            ? "bg-gray-800 border-gray-600"
-                            : "bg-white border-gray-200"
-                        } rounded py-2 mb-2`}
-                      >
-                        <div className="flex justify-between w-full md:px-2 px-0">
-                          <motion.button
-                            onClick={() => addReaction(post.id, "👍")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "👍" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">👍</span>
-                          </motion.button>
-                          <motion.button
-                            onClick={() => addReaction(post.id, "❤️")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "❤️" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">❤️</span>
-                          </motion.button>
-                          <motion.button
-                            onClick={() => addReaction(post.id, "😂")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😂" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">😂</span>
-                          </motion.button>
-                          <motion.button
-                            onClick={() => addReaction(post.id, "😮")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😮" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">😮</span>
-                          </motion.button>
-                          <motion.button
-                            onClick={() => addReaction(post.id, "😢")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😢" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">😢</span>
-                          </motion.button>
-                          <motion.button
-                            onClick={() => addReaction(post.id, "😠")}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😠" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                          >
-                            <span className="text-xl">😠</span>
-                          </motion.button>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center mb-3">
-                        <div
-                          className={`text-sm ${
-                            darkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          {post.comments > 0
-                            ? `${post.comments} comments`
-                            : "0 comments"}
-                        </div>
-                        <button
-                          onClick={() => toggleComments(post.id)}
-                          className="flex items-center gap-1 cursor-pointer hover:text-indigo-500 transition-colors"
-                        >
-                          <MessageSquare
-                            size={18}
-                            className={`${
-                              darkMode ? "text-gray-300" : "text-gray-600"
-                            } mr-1`}
-                          />
-                          <span>{post.comments}</span>
-                        </button>
-                      </div>
-
-                      {post.showComments && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className={`mt-3 pt-3 border-t ${
-                            darkMode ? "border-gray-700" : "border-gray-200"
-                          }`}
-                        >
-                          <div className="space-y-3 mb-3">
-                            {post.commentsList &&
-                            post.commentsList.length > 0 ? (
-                              post.commentsList.map((comment) => {
-                                const commentUser = getUserById(
-                                  comment.userId
-                                );
-                                return (
-                                  <div
-                                    key={comment.id}
-                                    className="flex gap-2"
-                                  >
-                                    <div 
-                                      className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 cursor-pointer"
-                                      onClick={() => openUserProfile(comment.userId)}
-                                    >
-                                      <img
-                                        src={commentUser.avatar}
-                                        alt={commentUser.name}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div
-                                      className={`flex-1 p-2 rounded-lg ${
-                                        darkMode
-                                          ? "bg-gray-700"
-                                          : "bg-gray-100"
-                                      }`}
-                                    >
-                                      <div className="flex justify-between items-start">
-                                        <span 
-                                          className="font-medium cursor-pointer hover:underline"
-                                          onClick={() => openUserProfile(comment.userId)}
-                                        >
-                                          {commentUser.name}
-                                        </span>
-                                        <span
-                                          className={`text-xs ${
-                                            darkMode
-                                              ? "text-gray-400"
-                                              : "text-gray-500"
-                                          }`}
-                                        >
-                                          {comment.time}
-                                        </span>
-                                      </div>
-                                      <p className="text-sm mt-1 break-words leading-relaxed">
-                                        {comment.content}
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <p className="text-sm text-center text-gray-500">
-                                No comments yet. Be the first to comment!
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                              <img
-                                src={currentUser.avatar}
-                                alt={currentUser.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  className={`flex-1 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                                    darkMode
-                                      ? "bg-gray-700 text-white"
-                                      : "bg-gray-100 text-gray-900"
-                                  }`}
-                                  placeholder="Write a comment..."
-                                  value={newComment[post.id] || ""}
-                                  onChange={(e) =>
-                                    setNewComment({
-                                      ...newComment,
-                                      [post.id]: e.target.value,
-                                    })
-                                  }
-                                  onKeyPress={(e) =>
-                                    e.key === "Enter" && addComment(post.id)
-                                  }
-                                />
-                                <button
-                                  disabled={!newComment[post.id]?.trim()}
-                                  onClick={() => addComment(post.id)}
-                                  className="p-2 rounded-full cursor-pointer text-indigo-500 hover:text-indigo-600 disabled:opacity-50 transition-colors"
-                                >
-                                  <Send size={20} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="hidden lg:block lg:w-1/5 order-3 lg:sticky lg:top-20 self-start h-[calc(100vh-6rem)] overflow-hidden">
-              <div
-                className={`rounded-lg ${
-                  darkMode ? "bg-gray-800" : "bg-white"
-                } shadow overflow-hidden transition-all hover:shadow-lg h-full flex flex-col`}
-              >
-                <div
-                  className={`p-3 border-b flex items-center gap-1 ${
-                    darkMode ? "border-gray-700" : "border-gray-200"
-                  }`}
-                >
-                  <div className=" flex px-3 py-2">
-                    <MessageCircle
-                      size={24}
-                      className={`${
-                        darkMode ? "text-indigo-400" : "text-indigo-500"
-                      } mr-1`}
-                    />
-                    <h3 className="font-bold text-lg">Messages</h3>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {!activeChat ? (
-                    <div className="overflow-y-auto flex-1 scrollbar-hide min-h-[450px]">
-                      <div className="space-y-1">
-                        {chats.map((chat) => {
-                          const chatUser = getUserById(chat.userId);
-                          const lastMessage =
-                            chat.messages[chat.messages.length - 1];
-                          const hasUnread = hasUnreadMessages(chat.id);
-                          const unreadCount = getUnreadCount(chat.id);
-                          return (
-                            <div
-                              key={chat.id}
-                              onClick={() => {
-                                setActiveChat(chat.id);
-                                markMessagesAsRead(chat.id);
-                              }}
-                              className={`py-2 px-3 flex items-center gap-3 cursor-pointer hover:bg-opacity-80 transition-colors ${
-                                darkMode
-                                  ? "hover:bg-gray-700"
-                                  : "hover:bg-gray-100"
-                              } ${
-                                hasUnread
-                                  ? darkMode
-                                    ? "bg-indigo-900/20"
-                                    : "bg-indigo-50"
-                                  : ""
-                              }`}
-                            >
-                              <div className="relative">
-                                <div className="w-10 h-10 rounded-full overflow-hidden">
-                                  <img
-                                    src={chatUser.avatar}
-                                    alt={chatUser.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                {hasUnread && (
-                                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs">
-                                    {unreadCount}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium">
-                                  {chatUser.name}
-                                </div>
-                                <div
-                                  className={`text-sm truncate ${
-                                    hasUnread ? "font-semibold" : ""
-                                  } ${
-                                    darkMode ? "text-gray-400" : "text-gray-500"
-                                  }`}
-                                >
-                                  {lastMessage.sender === "me" ? "You: " : ""}
-                                  {lastMessage.content ||
-                                    ("image" in lastMessage && lastMessage.image
-                                      ? "[Image]"
-                                      : "")}
-                                </div>
-                              </div>
-                              <div
-                                className={`text-xs ${
-                                  hasUnread ? "font-bold text-indigo-500" : ""
-                                } ${
-                                  darkMode ? "text-gray-400" : "text-gray-500"
-                                }`}
-                              >
-                                {lastMessage.time}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col h-full">
-                      <div
-                        className={`p-3 border-b flex items-center gap-3 ${
-                          darkMode ? "border-gray-700" : "border-gray-200"
-                        }`}
-                      >
-                        <button
-                          onClick={() => setActiveChat(null)}
-                          className={`p-1 rounded-full ${
-                            darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-                          } transition-colors`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-6 w-6 cursor-pointer"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 19l-7-7 7-7"
-                            />
-                          </svg>
-                        </button>
-                        <div 
-                          className="w-10 h-10 rounded-full overflow-hidden cursor-pointer"
-                          onClick={() => openUserProfile(chats.find((c) => c.id === activeChat)?.userId || 0)}
-                        >
-                          <img
-                            src={
-                              getUserById(
-                                chats.find((c) => c.id === activeChat)
-                                  ?.userId || 0
-                              ).avatar
-                            }
-                            alt="Contact"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div 
-                          className="font-medium cursor-pointer hover:underline"
-                          onClick={() => openUserProfile(chats.find((c) => c.id === activeChat)?.userId || 0)}
-                        >
-                          {
-                            getUserById(
-                              chats.find((c) => c.id === activeChat)?.userId ||
-                                0
-                            ).name
-                          }
-                        </div>
-                      </div>
-
-                      <div className="overflow-y-auto flex-1 scrollbar-hide min-h-[450px] p-3 space-y-2">
-                        {chats
-                          .find((c) => c.id === activeChat)
-                          ?.messages.map((message) => (
-                            <div
-                              key={message.id}
-                              className={`flex ${
-                                message.sender === "me"
-                                  ? "justify-end"
-                                  : "justify-start"
-                              }`}
-                            >
-                              <div
-                                className={`max-w-xs break-words rounded-lg p-2 text-sm ${
-                                  message.sender === "me"
-                                    ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-br-none"
-                                    : darkMode
-                                    ? "bg-gray-700 rounded-bl-none"
-                                    : "bg-gray-200 rounded-bl-none"
-                                }`}
-                              >
-                                {message.content && (
-                                  <p className="mb-2 whitespace-pre-wrap break-words leading-relaxed">
-                                    {message.content}
-                                  </p>
-                                )}
-                                {message.image && (
-                                  <div className="rounded-lg overflow-hidden mb-2">
-                                    <img
-                                      src={message.image}
-                                      alt="Message attachment"
-                                      className="w-full max-h-40 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                      onClick={() =>
-                                        window.open(message.image, "_blank")
-                                      }
-                                    />
-                                  </div>
-                                )}
-                                <div className="flex justify-between items-center">
-                                  <div
-                                    className={`text-xs mt-1 ${
-                                      message.sender === "me"
-                                        ? "text-indigo-100"
-                                        : darkMode
-                                        ? "text-gray-400"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    {message.time}
-                                  </div>
-                                  {message.sender === "me" && (
-                                    <div className="text-xs ml-2">
-                                      {message.read ? (
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          className="h-3 w-3 text-indigo-100"
-                                          viewBox="0 0 20 20"
-                                          fill="currentColor"
-                                        >
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                      ) : (
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          className="h-3 w-3 text-indigo-100"
-                                          viewBox="0 0 20 20"
-                                          fill="currentColor"
-                                        >
-                                          <path d="M10 2a8 8 0 100 16 8 8 0 000-16z" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-
-                      <div
-                        className={`p-3 border-t ${
-                          darkMode ? "border-gray-700" : "border-gray-200"
-                        }`}
-                      >
-                        {newMessageImage && (
-                          <div className="relative mb-3 rounded-lg overflow-hidden">
-                            <img
-                              src={newMessageImage}
-                              alt="Message attachment"
-                              className="w-full max-h-32 object-cover rounded-lg"
-                            />
-                            <button
-                              onClick={removeMessageImage}
-                              className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-800 bg-opacity-70 text-white cursor-pointer hover:bg-opacity-90 transition-opacity"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 w-full overflow-hidden">
-                          <label
-                            className={`p-2 rounded-full ${
-                              darkMode
-                                ? "hover:bg-gray-700 text-gray-300"
-                                : "hover:bg-gray-100 text-gray-600"
-                            } cursor-pointer transition-colors`}
-                          >
-                            <ImageIcon size={20} />
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={handleMessageImageUpload}
-                            />
-                          </label>
-                          <input
-                            type="text"
-                            className={`flex-1 p-2 outline-none rounded-full text-sm truncate min-w-0 transition-all ${
-                              darkMode
-                                ? "bg-gray-700 text-white"
-                                : "bg-gray-100 text-gray-900"
-                            }`}
-                            placeholder="Type a message..."
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyPress={(e) =>
-                              e.key === "Enter" && sendMessage()
-                            }
-                          />
-
-                          <button
-                            onClick={sendMessage}
-                            disabled={newMessage.trim() === "" && !newMessageImage}
-                            className="p-2 rounded-full cursor-pointer text-indigo-500 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                          >
-                            <Send size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {page === "chat" && (
-          <div className="w-full max-w-lg mx-auto px-2 sm:px-4 h-[calc(100vh-8rem)]">
-            <div
-              className={`h-full rounded-lg ${
-                darkMode ? "bg-gray-800" : "bg-white"
-              } shadow overflow-hidden transition-all hover:shadow-md flex flex-col`}
-            >
-              <div
-                className={`p-3 border-b flex items-center justify-between ${
-                  darkMode ? "border-gray-700" : "border-gray-200"
-                }`}
-              >
-                <h3 className="font-bold">Messages</h3>
-              </div>
-
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {!activeChat ? (
-                  <div className="overflow-y-auto flex-1 scrollbar-hide">
-                    <div className="space-y-1">
-                      {chats.map((chat) => {
-                        const chatUser = getUserById(chat.userId);
-                        const lastMessage =
-                          chat.messages[chat.messages.length - 1];
-                        const hasUnread = hasUnreadMessages(chat.id);
-                        const unreadCount = getUnreadCount(chat.id);
-
-                        return (
-                          <div
-                            key={chat.id}
-                            onClick={() => {
-                              setActiveChat(chat.id);
-                              markMessagesAsRead(chat.id);
-                            }}
-                            className={`py-3 px-4 flex items-center gap-3 cursor-pointer transition-colors ${
-                              darkMode
-                                ? "hover:bg-gray-700"
-                                : "hover:bg-gray-100"
-                            } ${
-                              hasUnread
-                                ? darkMode
-                                  ? "bg-amber-900/20"
-                                  : "bg-amber-50"
-                                : ""
-                            }`}
-                          >
-                            <div className="relative">
-                              <div 
-                                className="w-12 h-12 rounded-full overflow-hidden cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openUserProfile(chat.userId);
-                                }}
-                              >
-                                <img
-                                  src={chatUser.avatar}
-                                  alt={chatUser.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              {hasUnread && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs">
-                                  {unreadCount}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className={`font-medium ${
-                                  hasUnread ? "font-semibold" : ""
-                                }`}
-                              >
-                                {chatUser.name}
-                              </div>
-                              <div
-                                className={`text-sm truncate ${
-                                  hasUnread ? "font-semibold" : ""
-                                } ${
-                                  darkMode ? "text-gray-400" : "text-gray-500"
-                                }`}
-                              >
-                                {lastMessage.sender === "me" ? "You: " : ""}
-                                {lastMessage.content ||
-                                  ("image" in lastMessage && lastMessage.image
-                                    ? "[Image]"
-                                    : "")}
-                              </div>
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                hasUnread ? "font-bold text-indigo-500" : ""
-                              } ${
-                                darkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
-                            >
-                              {lastMessage.time}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col h-full">
-                    <div
-                      className={`p-3 border-b flex items-center gap-3 ${
-                        darkMode ? "border-gray-700" : "border-gray-200"
-                      }`}
-                    >
-                      <button
-                        onClick={() => setActiveChat(null)}
-                        className={`p-1 rounded-full ${
-                          darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-                        } transition-colors`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <div 
-                        className="w-10 h-10 rounded-full overflow-hidden cursor-pointer"
-                        onClick={() => openUserProfile(chats.find((c) => c.id === activeChat)?.userId || 0)}
-                      >
-                        <img
-                          src={
-                            getUserById(
-                              chats.find((c) => c.id === activeChat)
-                                ?.userId || 0
-                            ).avatar
-                          }
-                          alt="Contact"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div 
-                        className="font-medium cursor-pointer hover:underline"
-                        onClick={() => openUserProfile(chats.find((c) => c.id === activeChat)?.userId || 0)}
-                      >
-                        {
-                          getUserById(
-                            chats.find((c) => c.id === activeChat)?.userId || 0
-                          ).name
-                        }
-                      </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide min-h-[450px]">
-                      {chats
-                        .find((c) => c.id === activeChat)
-                        ?.messages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`flex ${
-                              message.sender === "me"
-                                ? "justify-end"
-                                : "justify-start"
-                            }`}
-                          >
-                            <div
-                              className={`max-w-[75%] rounded-lg p-3 ${
-                                message.sender === "me"
-                                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-br-none"
-                                  : darkMode
-                                  ? "bg-gray-700 rounded-bl-none"
-                                  : "bg-gray-200 rounded-bl-none"
-                              }`}
-                            >
-                              {message.content && (
-                                <p className="mb-2 break-words">
-                                  {message.content}
-                                </p>
-                              )}
-                              {message.image && (
-                                <div className="rounded-lg overflow-hidden mb-2">
-                                  <img
-                                    src={message.image}
-                                    alt="Message attachment"
-                                    className="w-full max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                    onClick={() =>
-                                      window.open(message.image, "_blank")
-                                    }
-                                  />
-                                </div>
-                              )}
-                              <div className="flex justify-between items-center">
-                                <div
-                                  className={`text-xs mt-1 ${
-                                    message.sender === "me"
-                                      ? "text-indigo-100"
-                                      : darkMode
-                                      ? "text-gray-400"
-                                      : "text-gray-500"
-                                  }`}
-                                >
-                                  {message.time}
-                                </div>
-                                {message.sender === "me" && (
-                                  <div className="text-xs ml-2">
-                                    {message.read ? (
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-3 w-3 text-indigo-100"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                      >
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
-                                    ) : (
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-3 w-3 text-indigo-100"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                      >
-                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16z" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-
-                    <div
-                      className={`p-3 ${darkMode ? "bg-gray-800" : "bg-white"}`}
-                    >
-                      {newMessageImage && (
-                        <div className="relative mb-3 rounded-lg overflow-hidden">
-                          <img
-                            src={newMessageImage}
-                            alt="Message attachment"
-                            className="w-full max-h-40 object-cover rounded-lg"
-                          />
-                          <button
-                            onClick={removeMessageImage}
-                            className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-800 bg-opacity-70 text-white cursor-pointer hover:bg-opacity-90 transition-opacity"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <label
-                          className={`p-2 rounded-full ${
-                            darkMode
-                              ? "hover:bg-gray-700 text-gray-300"
-                              : "hover:bg-gray-100 text-gray-600"
-                          } cursor-pointer transition-colors`}
-                        >
-                          <ImageIcon size={20} />
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleMessageImageUpload}
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          className={`flex-1 p-2 outline-none rounded-full focus:ring-2 focus:ring-amber-500 transition-all ${
-                            darkMode
-                              ? "bg-gray-700 text-white"
-                              : "bg-gray-100 text-gray-900"
-                          }`}
-                          placeholder="Type a message..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                        />
-                        <button
-                          onClick={sendMessage}
-                          disabled={newMessage.trim() === "" && !newMessageImage}
-                          className="p-2 rounded-full text-amber-500 cursor-pointer hover:text-amber-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                        >
-                          <Send size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <nav
-        className={`fixed bottom-0 w-full py-2 px-4 flex justify-around lg:hidden ${
-          darkMode
-            ? "bg-gray-800 border-t border-gray-700"
-            : "bg-white border-t border-gray-200"
-        } z-10`}
+      <motion.button
+        onClick={toggleInstructionsModal}
+        className={`fixed bottom-4 left-4 p-3 rounded-full ${buttonSecondary} z-50 lg:hidden`}
+        whileHover={{ scale: 1.1, rotate: [0, 10, -10, 0] }}
+        whileTap={{ scale: 0.9 }}
+        aria-label="Show instructions"
       >
-        <button
-          onClick={() => setPage("home")}
-          className={`p-2 rounded-full cursor-pointer transition-colors ${
-            page === "home"
-              ? "text-indigo-500"
-              : darkMode
-              ? "text-gray-400 hover:text-gray-300"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <Home size={24} />
-        </button>
-        <button
-          onClick={() => setPage("chat")}
-          className={`p-2 rounded-full cursor-pointer transition-colors ${
-            page === "chat"
-              ? "text-indigo-500"
-              : darkMode
-              ? "text-gray-400 hover:text-gray-300"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <MessageCircle size={24} />
-        </button>
-        <button
-          onClick={() => {
-            setSelectedUser(null);
-            setPage("profile");
-          }}
-          className={`p-2 rounded-full cursor-pointer transition-colors ${
-            page === "profile"
-              ? "text-indigo-500"
-              : darkMode
-              ? "text-gray-400 hover:text-gray-300"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <User size={24} />
-        </button>
-      </nav>
+        <Info size={20} />
+      </motion.button>
+      <motion.button
+        onClick={toggleTheme}
+        className={`fixed bottom-6 right-6 z-50 p-3 rounded-full border ${theme === "light" ? "bg-white border-gray-200" : "bg-gray-800 border-gray-700"}`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+      >
+        {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+      </motion.button>
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-48px)] overflow-hidden">
+        <div className="flex-1 px-4 py-2 relative overflow-auto">
+          {/* Landing Screen */}
+          {/* <AnimatePresence>
+            {!hasEnteredName && <LandingScreen />}
+          </AnimatePresence> */}
 
-      {page === "profile" && (
-        <div className="w-full max-w-lg mx-auto px-2 sm:px-4">
-          <div
-            className={`rounded-lg ${
-              darkMode ? "bg-gray-800" : "bg-white"
-            } shadow overflow-hidden mb-4 transition-all hover:shadow-md`}
-          >
-            <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
-            <div className="p-4 relative">
-              <div className="absolute -top-10 left-4 w-20 h-20 rounded-full border-4 overflow-hidden bg-white border-white">
-                <img
-                  src={currentUser.avatar}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
+          {/* Main Game Content */}
+          {hasEnteredName && (
+            <div className="flex mt-2 flex-col lg:flex-row gap-5">
+              {/* Leaderboard - Left Side */}
+              <div className={`w-full lg:w-80 ${theme === "light"
+                ? "bg-white/90 border border-violet-200"
+                : "bg-gray-900/90 border border-violet-900"} backdrop-blur-md rounded-xl shadow-md p-4 mb-5 lg:mb-0 order-3 lg:order-1 h-fit`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Trophy className={`w-5 h-5 ${theme === "light" ? "text-amber-500" : "text-amber-400"}`} />
+                  <h2 className={`text-lg font-bold ${theme === "light" ? "text-violet-900" : "text-violet-300"}`}>
+                    Leaderboard
+                  </h2>
+                </div>
+                <p className={`text-xs mb-3 ${theme === "light" ? "text-violet-700" : "text-violet-400"}`}>
+                  Top players with the most points
+                </p>
+
+                <div className="space-y-2.5">
+                  {leaderboard.slice(0, 6).map((entry, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`flex items-center justify-between p-3 rounded-lg ${index === 0
+                        ? theme === "light" ? "bg-amber-50 border border-amber-200" : "bg-amber-950/40 border border-amber-800"
+                        : index === 1
+                          ? theme === "light" ? "bg-gray-100 border border-gray-200" : "bg-gray-800/60 border border-gray-700"
+                          : index === 2
+                            ? theme === "light" ? "bg-orange-50 border border-orange-200" : "bg-orange-950/40 border border-orange-800"
+                            : theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0
+                          ? "bg-amber-200 text-amber-900"
+                          : index === 1
+                            ? "bg-gray-200 text-gray-800"
+                            : index === 2
+                              ? "bg-orange-200 text-orange-900"
+                              : theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"
+                          }`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>
+                            {entry.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${entry.difficulty === "easy"
+                              ? theme === "light" ? "bg-green-100 text-green-800" : "bg-green-950/60 text-green-400"
+                              : entry.difficulty === "medium"
+                                ? theme === "light" ? "bg-blue-100 text-blue-800" : "bg-blue-950/60 text-blue-400"
+                                : theme === "light" ? "bg-red-100 text-red-800" : "bg-red-950/60 text-red-400"
+                              }`}>
+                              {entry.difficulty.charAt(0).toUpperCase() + entry.difficulty.slice(1)}
+                            </span>
+                            <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
+                              {entry.wordsCompleted || "5"} words
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-sm font-bold ${index === 0
+                        ? "bg-amber-200/70 text-amber-900"
+                        : index === 1
+                          ? "bg-gray-200/70 text-gray-800"
+                          : index === 2
+                            ? "bg-orange-200/70 text-orange-900"
+                            : theme === "light" ? "bg-violet-200/70 text-violet-900" : "bg-violet-800/70 text-violet-200"
+                        }`}>
+                        {entry.score} pts
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {leaderboard.length === 0 && (
+                    <div className={`p-6 rounded-lg text-center ${theme === "light" ? "bg-gray-50 text-gray-500" : "bg-gray-800/50 text-gray-400"}`}>
+                      <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium text-sm">No players yet</p>
+                      <p className="text-xs mt-1">Be the first to get on the leaderboard!</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="mt-12">
-                <h2 className="text-xl font-bold">{currentUser.name}</h2>
-                <p
-                  className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}
+
+              {/* Central Game Area */}
+              <div className="flex flex-col flex-1 order-1 lg:order-2">
+                {/* Welcome Banner */}
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`w-full mx-auto ${theme === "light"
+                    ? "bg-white/90 border border-violet-200"
+                    : "bg-gray-900/90 border border-violet-900"} backdrop-blur-md rounded-xl shadow-md p-2 mb-2 flex items-center justify-between`}
                 >
-                  {currentUser.username}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed">
-                  Digital creator and positive vibes spreader. Mindfulness
-                  advocate.
-                </p>
-                <div className="flex gap-4 mt-3">
-                  <div>
-                    <span className="font-bold">
-                      {posts.filter((post) => post.userId === "me").length}
-                    </span>{" "}
-                    <span
-                      className={`${
-                        darkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Posts
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <Target size={18} className="text-purple-500" />
+                    <span className="font-medium text-sm">Welcome, {playerName}!</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Award size={18} className="text-yellow-500" />
+                    <span className="font-bold">{score}</span>
+                  </div>
+                </motion.div>
+
+                {/* Difficulty Selector */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className={`w-full mx-auto ${theme === "light"
+                    ? "bg-white/90 border border-violet-200"
+                    : "bg-gray-900/90 border border-violet-900"} backdrop-blur-md rounded-xl shadow-md p-2 mb-2`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Settings size={16} className="text-blue-500" />
+                      <span className="text-sm font-medium">Difficulty</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => changeDifficulty("easy")}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${difficulty === "easy"
+                          ? "bg-green-500 text-white shadow-md"
+                          : theme === "light" ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-green-900/30 text-green-300 hover:bg-green-800/50"
+                          }`}
+                      >
+                        Easy
+                      </button>
+                      <button
+                        onClick={() => changeDifficulty("medium")}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${difficulty === "medium"
+                          ? "bg-yellow-500 text-white shadow-md"
+                          : theme === "light" ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-yellow-900/30 text-yellow-300 hover:bg-yellow-800/50"
+                          }`}
+                      >
+                        Medium
+                      </button>
+                      <button
+                        onClick={() => changeDifficulty("hard")}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${difficulty === "hard"
+                          ? "bg-red-500 text-white shadow-md"
+                          : theme === "light" ? "bg-red-100 text-red-800 hover:bg-red-200" : "bg-red-900/30 text-red-300 hover:bg-red-800/50"
+                          }`}
+                      >
+                        Hard
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Main Game Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className={`w-full mx-auto ${theme === "light"
+                    ? "bg-white/90 border border-violet-200"
+                    : "bg-gray-900/90 border border-violet-900"} backdrop-blur-md rounded-xl shadow-lg overflow-hidden relative`}
+                >
+                  {/* Decorative floating orbs */}
+                  <div className="absolute w-20 h-20 rounded-full bg-pink-400/30 blur-xl -top-5 -left-5 animate-pulse"></div>
+                  <div className="absolute w-16 h-16 rounded-full bg-blue-400/30 blur-xl -bottom-4 -right-4 animate-pulse" style={{ animationDelay: "1s" }}></div>
+                  <div className="absolute w-12 h-12 rounded-full bg-purple-400/30 blur-xl top-1/2 -right-6 animate-pulse" style={{ animationDelay: "1.5s" }}></div>
+
+                  <div className="p-4 relative">
+                    {/* Game Stats - Add new section at top */}
+                    <div className="mb-3 grid grid-cols-3 gap-2">
+                      <div className={`p-3 rounded-lg ${theme === "light"
+                        ? "bg-violet-50 border border-violet-200"
+                        : "bg-violet-950/30 border border-violet-800"} flex flex-col items-center justify-center`}>
+                        <span className="text-xs opacity-70 mb-1">Current Level</span>
+                        <span className={`text-lg font-bold ${difficulty === "easy"
+                          ? theme === "light" ? "text-green-600" : "text-green-400"
+                          : difficulty === "medium"
+                            ? theme === "light" ? "text-yellow-600" : "text-yellow-400"
+                            : theme === "light" ? "text-red-600" : "text-red-400"
+                          }`}>
+                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className={`p-3 rounded-lg ${theme === "light"
+                        ? "bg-violet-50 border border-violet-200"
+                        : "bg-violet-950/30 border border-violet-800"} flex flex-col items-center justify-center`}>
+                        <span className="text-xs opacity-70 mb-1">Current Score</span>
+                        <span className="text-lg font-bold">
+                          {score}
+                        </span>
+                      </div>
+
+                      <div className={`p-3 rounded-lg ${theme === "light"
+                        ? "bg-violet-50 border border-violet-200"
+                        : "bg-violet-950/30 border border-violet-800"} flex flex-col items-center justify-center`}>
+                        <span className="text-xs opacity-70 mb-1">Words Solved</span>
+                        <span className="text-lg font-bold">
+                          {Math.floor(
+                            (score) / (
+                              difficulty === "easy" ? 10 :
+                                difficulty === "medium" ? 20 : 30
+                            )
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Timer and Shuffle Controls */}
+                    <div className="flex flex-wrap justify-center gap-2 mb-4">
+                      <motion.div
+                        className={`relative flex flex-col items-center justify-center rounded-lg px-3 py-2 ${isTimerActive && timeRemaining <= 15
+                          ? `${theme === "light"
+                            ? "bg-red-100 text-red-800 border border-red-300"
+                            : "bg-red-950/70 text-red-300 border border-red-800"}`
+                          : isTimerActive
+                            ? `${theme === "light"
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : "bg-amber-950/70 text-amber-300 border border-amber-800"}`
+                            : `${theme === "light"
+                              ? "bg-violet-100 text-violet-800 border border-violet-300"
+                              : "bg-violet-950/70 text-violet-300 border border-violet-800"}`
+                          } transition-all duration-300 shadow-sm`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <motion.div
+                            animate={isTimerActive ? {
+                              rotate: [0, 360],
+                              scale: [1, 1.2, 1],
+                            } : {}}
+                            transition={isTimerActive ? {
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatType: "loop",
+                            } : {}}
+                          >
+                            <Clock className={`w-5 h-5 ${isTimerActive && timeRemaining <= 15
+                              ? "text-red-500"
+                              : ""
+                              }`} />
+                          </motion.div>
+                          <span className={`font-semibold text-sm ${isTimerActive && timeRemaining <= 15
+                            ? theme === "light" ? "text-red-600" : "text-red-400"
+                            : ""
+                            }`}>
+                            {formatTime(timeRemaining)}
+                          </span>
+                        </div>
+                        {/* <span className="text-xs font-medium">Time</span> */}
+                      </motion.div>
+
+                      <motion.button
+                        onClick={handleReshuffle}
+                        disabled={isCorrect}
+                        className={`flex items-center justify-center px-3 py-2 rounded-lg ${isCorrect
+                          ? "opacity-50 cursor-not-allowed"
+                          : theme === "light"
+                            ? "bg-blue-100 text-blue-800 border border-blue-300"
+                            : "bg-blue-950/70 text-blue-300 border border-blue-800"
+                          } shadow-sm`}
+                        whileHover={!isCorrect ? { scale: 1.05 } : {}}
+                        whileTap={!isCorrect ? { scale: 0.95 } : {}}
+                      >
+                        <motion.div
+                          animate={{
+                            rotate: [0, -360],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            repeatType: "loop",
+                            ease: "easeInOut",
+                            repeatDelay: 3
+                          }}
+                        >
+                          <RefreshCw className="w-5 h-5 mr-1" />
+                        </motion.div>
+                        <span className="text-xs font-medium">Shuffle</span>
+                      </motion.button>
+
+                      <motion.button
+                        onClick={handleSkip}
+                        disabled={isCorrect}
+                        className={`flex items-center justify-center px-3 py-2 rounded-lg ${isCorrect
+                          ? "opacity-50 cursor-not-allowed"
+                          : theme === "light"
+                            ? "bg-purple-100 text-purple-800 border border-purple-300"
+                            : "bg-purple-950/70 text-purple-300 border border-purple-800"
+                          } shadow-sm`}
+                        whileHover={!isCorrect ? { scale: 1.05 } : {}}
+                        whileTap={!isCorrect ? { scale: 0.95 } : {}}
+                      >
+                        <motion.div
+                          animate={{
+                            x: [0, 2, 0],
+                          }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity,
+                            repeatType: "loop",
+                          }}
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </motion.div>
+                        <span className="text-xs font-medium">Skip</span>
+                      </motion.button>
+                    </div>
+
+                    {/* Scrambled Word Display with Background */}
+                    <div className={`mb-4 p-4 rounded-xl flex flex-col items-center justify-center ${theme === "light"
+                      ? "bg-gradient-to-br from-fuchsia-50 to-violet-50 border border-violet-200"
+                      : "bg-gradient-to-br from-fuchsia-950/20 to-violet-950/20 border border-violet-800"} shadow-inner`}>
+                      <div className="mb-4">
+                        <span className={`text-xs uppercase tracking-wider font-medium ${theme === "light" ? "text-violet-600/70" : "text-violet-400/70"}`}>
+                          Unscramble This Word
+                        </span>
+                      </div>
+
+                      <motion.div
+                        className="flex flex-wrap justify-center gap-2 mb-4"
+                        animate={{ scale: [1, 1.02, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                      >
+                        {scrambledWord.split('').map((letter, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`w-10 h-10 flex items-center justify-center text-xl font-bold rounded-lg ${theme === "light"
+                              ? "bg-white/80 border-2 border-violet-300 text-violet-900 shadow-md"
+                              : "bg-gray-800/80 border-2 border-violet-700 text-violet-300 shadow-md"}`}
+                          >
+                            {letter.toUpperCase()}
+                          </motion.div>
+                        ))}
+                      </motion.div>
+
+                      {/* Word Definition/Clue */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className={`w-full p-3 rounded-lg mb-3 text-center ${theme === "light"
+                          ? "bg-indigo-100/70 border border-indigo-200 text-indigo-900"
+                          : "bg-indigo-900/30 border border-indigo-800 text-indigo-300"}`}
+                      >
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <Brain size={16} className={theme === "light" ? "text-indigo-600" : "text-indigo-400"} />
+                          <span className={`text-xs font-medium ${theme === "light" ? "text-indigo-600" : "text-indigo-400"}`}>
+                            WORD CLUE
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium italic">
+                          "{currentDefinition}"
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        animate={{
+                          rotate: [0, 10, -10, 10, -10, 0],
+                        }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${theme === "light"
+                          ? "bg-fuchsia-100 text-fuchsia-700"
+                          : "bg-fuchsia-900/30 text-fuchsia-300"}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Brain size={14} />
+                          <span>{scrambledWord.length} letters</span>
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    {!isCorrect ? (
+                      <form onSubmit={handleSubmit} className="w-full mx-auto">
+                        <div className="mb-4">
+                          <div className="relative">
+                            <motion.input
+                              type="text"
+                              value={userGuess}
+                              onChange={(e) => setUserGuess(e.target.value)}
+                              className={`w-full p-3 px-10 rounded-lg ${theme === "light"
+                                ? "bg-white border border-violet-200 text-violet-900 placeholder-violet-400"
+                                : "bg-gray-800 border border-violet-700 text-violet-100 placeholder-violet-500"} text-center text-base shadow-inner focus:ring-2 focus:ring-violet-400 focus:outline-none transition-all`}
+                              placeholder="Type your guess"
+                              animate={wrongGuess ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                              transition={{ duration: 0.5 }}
+                            />
+                            <Keyboard size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 opacity-50" />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 w-full mb-4">
+                          <motion.button
+                            type="submit"
+                            className={`w-full py-2.5 px-4 rounded-lg ${theme === "light"
+                              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                              : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"} text-sm font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all`}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Check size={16} />
+                            Check
+                          </motion.button>
+
+                          <motion.button
+                            type="button"
+                            onClick={handleHintClick}
+                            className={`py-2.5 px-4 rounded-lg ${showHint
+                              ? theme === "light"
+                                ? "bg-gradient-to-r from-amber-600 to-yellow-600 text-white"
+                                : "bg-gradient-to-r from-amber-700 to-yellow-700 text-white"
+                              : theme === "light"
+                                ? "bg-gradient-to-r from-amber-400 to-yellow-400 text-white"
+                                : "bg-gradient-to-r from-amber-500 to-yellow-500 text-white"} text-sm font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all`}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <motion.div
+                              animate={{
+                                y: [0, -2, 0],
+                                opacity: [1, 0.8, 1],
+                              }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
+                            >
+                              <Lightbulb size={16} />
+                            </motion.div>
+                            {showHint ? "Hide" : "Hint?"}
+                          </motion.button>
+                        </div>
+
+                        {/* Hint Content - Only show when hint is toggled */}
+                        <AnimatePresence>
+                          {showHint && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className={`p-4 rounded-lg ${theme === "light"
+                                ? "bg-amber-50 border border-amber-200"
+                                : "bg-amber-950/20 border border-amber-900"}`}
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <Lightbulb className={`w-5 h-5 ${theme === "light" ? "text-amber-500" : "text-amber-400"}`} />
+                                <span className={`font-medium ${theme === "light" ? "text-amber-700" : "text-amber-300"}`}>
+                                  Extra Hint
+                                </span>
+                              </div>
+                              <p className={`text-sm ${theme === "light" ? "text-amber-800" : "text-amber-300"}`}>{hint}</p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </form>
+                    ) : (
+                      <AnimatePresence>
+                        <motion.div
+                          className="flex flex-col items-center"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{
+                            duration: 0.5,
+                            type: "spring",
+                            stiffness: 200
+                          }}
+                        >
+                          <motion.div
+                            className="flex items-center gap-2 mb-3"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <motion.div
+                              animate={{
+                                rotate: [0, 10, -10, 10, -10, 0],
+                                scale: [1, 1.2, 1, 1.2, 1]
+                              }}
+                              transition={{ duration: 1.5 }}
+                              className="text-3xl">🎉</motion.div>
+                            <p className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-600">
+                              You got it!
+                            </p>
+                            <motion.div
+                              animate={{
+                                rotate: [0, -10, 10, -10, 10, 0],
+                                scale: [1, 1.2, 1, 1.2, 1]
+                              }}
+                              transition={{ duration: 1.5 }}
+                              className="text-3xl">🎉</motion.div>
+                          </motion.div>
+
+                          <motion.p
+                            className="mb-4 text-base"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                          >
+                            The word was: <span className="font-bold">{currentWord}</span>
+                          </motion.p>
+
+                          <motion.button
+                            onClick={handleNextWord}
+                            className={`py-2.5 px-5 rounded-lg ${theme === "light"
+                              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                              : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"} text-sm font-medium flex items-center gap-2 shadow-md hover:shadow-lg transition-all`}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.98 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.7 }}
+                          >
+                            <RefreshCw size={16} />
+                            Next Word
+                          </motion.button>
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right sidebar for desktop view - How to Play */}
+        <div className={`hidden lg:block w-1/4 overflow-y-auto`}>
+          <div className="p-4">
+            {/* How to Play Panel with enhanced UI */}
+            <div className={`w-full ${theme === "light"
+                ? "bg-white/90 border border-violet-200"
+                : "bg-gray-900/90 border border-violet-900"} backdrop-blur-md rounded-xl shadow-md p-4 mb-5 h-fit`}>
+              <div className="flex items-center gap-2 mb-3">
+                <Info className={`w-5 h-5 ${theme === "light" ? "text-blue-500" : "text-blue-400"}`} />
+                <h2 className={`text-lg font-bold ${theme === "light" ? "text-violet-900" : "text-violet-300"}`}>
+                  How to Play
+                </h2>
+              </div>
+              <p className={`text-xs mb-3 ${theme === "light" ? "text-violet-700" : "text-violet-400"}`}>
+                Unscramble words and earn points
+              </p>
+
+              <div className="space-y-2.5">
+                <motion.div
+                  className={`flex items-center gap-3 p-3 rounded-lg ${theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"}`}>
+                    <Shuffle size={16} />
                   </div>
                   <div>
-                    <span className="font-bold">{getFollowers().length}</span>{" "}
-                    <span
-                      className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Followers
-                    </span>
+                    <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>Unscramble</p>
+                    <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Figure out the original word from the jumbled letters.</p>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className={`flex items-center gap-3 p-3 rounded-lg ${theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"}`}>
+                    <Keyboard size={16} />
                   </div>
                   <div>
-                    <span className="font-bold">{getFollowing().length}</span>{" "}
-                    <span
-                      className={`${
-                        darkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Following
-                    </span>
+                    <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>Type Answer</p>
+                    <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Enter your guess and click "Check".</p>
                   </div>
+                </motion.div>
+
+                <motion.div
+                  className={`flex items-center gap-3 p-3 rounded-lg ${theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"}`}>
+                    <Lightbulb size={16} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>Use Hints</p>
+                    <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Get clues when you're stuck.</p>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className={`flex items-center gap-3 p-3 rounded-lg ${theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"}`}>
+                    <Award size={16} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>Score points</p>
+                    <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Earn 10 points for each correct answer.</p>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className={`flex items-center gap-3 p-3 rounded-lg ${theme === "light" ? "bg-violet-50 border border-violet-200" : "bg-violet-950/40 border border-violet-800"}`}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "light" ? "bg-violet-200 text-violet-900" : "bg-violet-800 text-violet-200"}`}>
+                    <Target size={16} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${theme === "light" ? "text-gray-900" : "text-gray-100"}`}>Have Fun!</p>
+                    <p className={`text-xs ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>Challenge yourself and improve your vocabulary.</p>
+                  </div>
+                </motion.div>
+              </div>
+
+              <div className="mt-4">
+                <div className={`p-3 rounded-lg ${theme === "light" ? "bg-violet-50 text-violet-800 border border-violet-200" : "bg-violet-950/30 text-violet-300 border border-violet-800"}`}>
+                  <p className="text-center text-xs flex items-center gap-1 justify-center">
+                    <Brain size={14} />
+                    <span className="font-semibold italic">
+                      "Word puzzles improve cognitive skills!"
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="mb-16">
-            <div className="flex border-b mb-4">
-              <button
-                className={`flex-1 py-2 font-medium text-base border-b-2 border-indigo-500 text-indigo-500 cursor-pointer`}
+        {/* Mobile Instructions Modal */}
+        <AnimatePresence>
+          {showInstructionsModal && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInstructionsModal(false)}
+            >
+              <motion.div
+                className={`${glassCardDarker} rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto`}
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                Posts
-              </button>
-            </div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <Info size={24} className="text-blue-500" />
+                    How to Play
+                  </h2>
 
-            <div className="space-y-4 mb-5">
-              {posts.filter((post) => post.userId === "me").length > 0 ? (
-                posts
-                  .filter((post) => post.userId === "me")
-                  .map((post) => {
-                    const postUser = getUserById(post.userId);
-                    const isCurrentUserPost = post.userId === "me";
-                    const isEditing = post.id === editingPostId;
-                    const totalReactions = getTotalReactions(post.reactions);
-
-                    return (
-                      <div
-                        key={post.id}
-                        className={`w-full p-4 rounded-lg ${
-                          darkMode ? "bg-gray-800" : "bg-white"
-                        } shadow transition-all hover:shadow-md`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden">
-                              <img
-                                src={postUser.avatar}
-                                alt={postUser.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div>
-                              <div className="font-medium">{postUser.name}</div>
-                              <div
-                                className={`text-xs ${
-                                  darkMode ? "text-gray-400" : "text-gray-500"
-                                }`}
-                              >
-                                {post.time}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowPostOptions(
-                                  showPostOptions === post.id ? null : post.id
-                                );
-                              }}
-                              className={`p-1 rounded-full ${
-                                darkMode
-                                  ? "hover:bg-gray-700"
-                                  : "hover:bg-gray-200"
-                              } transition-colors`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                              </svg>
-                            </button>
-                            {showPostOptions === post.id && (
-                              <div
-                                className={`absolute right-0 mt-1 w-40 rounded-md shadow-lg z-10 ${
-                                  darkMode ? "bg-gray-700" : "bg-white"
-                                }`}
-                              >
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      startEditingPost(post);
-                                      setShowPostOptions(null);
-                                    }}
-                                    className="flex w-full items-center px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 mr-2"
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
-                                    >
-                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                    </svg>
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      deletePost(post.id);
-                                      setShowPostOptions(null);
-                                    }}
-                                    className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4 mr-2"
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    Delete
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {post.id === editingPostId ? (
-                          <div className="mb-3">
-                            <textarea
-                              className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                                darkMode
-                                  ? "bg-gray-700 text-white"
-                                  : "bg-gray-100 text-gray-900"
-                              }`}
-                              rows={3}
-                              value={editPostContent}
-                              onChange={(e) =>
-                                setEditPostContent(e.target.value)
-                              }
-                            ></textarea>
-                            <div className="flex justify-end gap-2 mt-2">
-                              <button
-                                onClick={cancelEditingPost}
-                                className="px-3 py-1 rounded text-sm bg-gray-300 text-gray-800 cursor-pointer hover:bg-gray-400 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => saveEditedPost(post.id)}
-                                className="px-3 py-1 rounded text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white cursor-pointer transition-colors"
-                              >
-                                Save
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="mb-3 break-words text-base leading-relaxed">{post.content}</p>
-                        )}
-
-                        {post.image && (
-                          <div className="mb-3 rounded-lg overflow-hidden max-h-[50vh]">
-                            <img
-                              src={post.image}
-                              alt="Post"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-
-                        {totalReactions > 0 && (
-                          <div
-                            className={`flex items-center mb-2 text-sm ${
-                              darkMode ? "text-gray-300" : "text-gray-600"
-                            }`}
-                          >
-                            <div className="flex mr-2">
-                              {Object.keys(post.reactions)
-                                .filter(
-                                  (emoji) =>
-                                    post.reactions[emoji] &&
-                                    post.reactions[emoji]! > 0
-                                )
-                                .slice(0, 3)
-                                .map((emoji) => (
-                                  <span key={emoji} className="mr-1">
-                                    {emoji}
-                                  </span>
-                                ))}
-                            </div>
-                            <span>{totalReactions} reactions</span>
-                          </div>
-                        )}
-
-                        <div
-                          className={`flex border-t ${
-                            darkMode
-                              ? "bg-gray-800 border-gray-600"
-                              : "bg-white border-gray-200"
-                          } rounded py-2 mb-2`}
-                        >
-                          <div className="flex justify-between w-full md:px-2 px-0">
-                            <motion.button
-                              onClick={() => addReaction(post.id, "👍")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "👍" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">👍</span>
-                            </motion.button>
-                            <motion.button
-                              onClick={() => addReaction(post.id, "❤️")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "❤️" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">❤️</span>
-                            </motion.button>
-                            <motion.button
-                              onClick={() => addReaction(post.id, "😂")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😂" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">😂</span>
-                            </motion.button>
-                            <motion.button
-                              onClick={() => addReaction(post.id, "😮")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😮" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">😮</span>
-                            </motion.button>
-                            <motion.button
-                              onClick={() => addReaction(post.id, "😢")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😢" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">😢</span>
-                            </motion.button>
-                            <motion.button
-                              onClick={() => addReaction(post.id, "😠")}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`flex items-center justify-center py-1 px-1 md:px-4 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                              post.userReaction === "😠" 
-                                ? `${darkMode ? "bg-indigo-900/30" : "bg-indigo-50"}`
-                                : ""
-                            }`}
-                            >
-                              <span className="text-xl">😠</span>
-                            </motion.button>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center mb-3">
-                          <div
-                            className={`text-sm ${
-                              darkMode ? "text-gray-400" : "text-gray-500"
-                            }`}
-                          >
-                            {post.comments > 0
-                              ? `${post.comments} comments`
-                              : "0 comments"}
-                          </div>
-                          <button
-                            onClick={() => toggleComments(post.id)}
-                            className="flex items-center gap-1 cursor-pointer hover:text-indigo-500 transition-colors"
-                          >
-                            <MessageSquare
-                              size={18}
-                              className={`${
-                                darkMode ? "text-gray-300" : "text-gray-600"
-                              } mr-1`}
-                            />
-                            <span>{post.comments}</span>
-                          </button>
-                        </div>
-
-                        {post.showComments && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className={`mt-3 pt-3 border-t ${
-                              darkMode ? "border-gray-700" : "border-gray-200"
-                            }`}
-                          >
-                            <div className="space-y-3 mb-3">
-                              {post.commentsList &&
-                              post.commentsList.length > 0 ? (
-                                post.commentsList.map((comment) => {
-                                  const commentUser = getUserById(
-                                    comment.userId
-                                  );
-                                  return (
-                                    <div
-                                      key={comment.id}
-                                      className="flex gap-2"
-                                    >
-                                      <div 
-                                        className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 cursor-pointer"
-                                        onClick={() => openUserProfile(comment.userId)}
-                                      >
-                                        <img
-                                          src={commentUser.avatar}
-                                          alt={commentUser.name}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      </div>
-                                      <div
-                                        className={`flex-1 p-2 rounded-lg ${
-                                          darkMode
-                                            ? "bg-gray-700"
-                                            : "bg-gray-100"
-                                        }`}
-                                      >
-                                        <div className="flex justify-between items-start">
-                                          <span 
-                                            className="font-medium cursor-pointer hover:underline"
-                                            onClick={() => openUserProfile(comment.userId)}
-                                          >
-                                            {commentUser.name}
-                                          </span>
-                                          <span
-                                            className={`text-xs ${
-                                              darkMode
-                                                ? "text-gray-400"
-                                                : "text-gray-500"
-                                            }`}
-                                          >
-                                            {comment.time}
-                                          </span>
-                                        </div>
-                                        <p className="text-sm mt-1 break-words leading-relaxed">
-                                          {comment.content}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <p className="text-sm text-center text-gray-500">
-                                  No comments yet. Be the first to comment!
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="flex gap-2">
-                              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                                <img
-                                  src={currentUser.avatar}
-                                  alt={currentUser.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    className={`flex-1 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                                      darkMode
-                                        ? "bg-gray-700 text-white"
-                                        : "bg-gray-100 text-gray-900"
-                                    }`}
-                                    placeholder="Write a comment..."
-                                    value={newComment[post.id] || ""}
-                                    onChange={(e) =>
-                                      setNewComment({
-                                        ...newComment,
-                                        [post.id]: e.target.value,
-                                      })
-                                    }
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && addComment(post.id)
-                                    }
-                                  />
-                                  <button
-                                    disabled={!newComment[post.id]?.trim()}
-                                    onClick={() => addComment(post.id)}
-                                    className="p-2 rounded-full cursor-pointer text-indigo-500 hover:text-indigo-600 disabled:opacity-50 transition-colors"
-                                  >
-                                    <Send size={20} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    );
-                  })
-              ) : (
-                <div
-                  className={`p-6 text-center rounded-lg ${
-                    darkMode ? "bg-gray-800" : "bg-white"
-                  } shadow transition-all hover:shadow-md`}
-                >
-                  <p className="text-lg mb-4">
-                    You haven't posted anything yet
-                  </p>
                   <button
-                    onClick={() => setPage("home")}
-                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 cursor-pointer text-white rounded-full transition-all transform hover:scale-105"
+                    onClick={() => setShowInstructionsModal(false)}
+                    className="text-2xl"
                   >
-                    Create your first post
+                    &times;
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <ProfileModal />
-      
-      <style jsx global>{`
-        /* Hide scrollbar for Chrome, Safari and Opera */
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Hide scrollbar for IE, Edge and Firefox */
-        .scrollbar-hide {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
-        }
-      `}</style>
+
+                <div className="space-y-4 mb-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className={`p-3 rounded-xl ${instructionCard} flex gap-3 items-center`}
+                  >
+                    <Shuffle size={22} className="text-purple-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">1. Unscramble the word</p>
+                      <p className="text-sm">Figure out the original word from jumbled letters.</p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className={`p-3 rounded-xl ${instructionCard} flex gap-3 items-center`}
+                  >
+                    <Keyboard size={22} className="text-indigo-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">2. Type your answer</p>
+                      <p className="text-sm">Enter your guess and click "Check".</p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className={`p-3 rounded-xl ${instructionCard} flex gap-3 items-center`}
+                  >
+                    <Lightbulb size={22} className="text-yellow-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">3. Use hints if needed</p>
+                      <p className="text-sm">Get a hint showing the first letter and word length.</p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className={`p-3 rounded-xl ${instructionCard} flex gap-3 items-center`}
+                  >
+                    <Award size={22} className="text-emerald-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">4. Score points</p>
+                      <p className="text-sm">Earn 10 points for each correct answer.</p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className={`p-3 rounded-xl ${instructionCard} flex gap-3 items-center`}
+                  >
+                    <Target size={22} className="text-pink-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">5. Have fun!</p>
+                      <p className="text-sm">Challenge yourself and improve your vocabulary.</p>
+                    </div>
+                  </motion.div>
+                </div>
+
+                <motion.button
+                  onClick={() => setShowInstructionsModal(false)}
+                  className={`w-full py-3 px-6 rounded-lg ${buttonPrimary} font-medium flex items-center justify-center gap-2`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Check size={20} />
+                  Got it!
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Leaderboard Modal */}
+        <AnimatePresence>
+          {showLeaderboard && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLeaderboard(false)}
+            >
+              <motion.div
+                className={`${glassCardDarker} rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto`}
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <Crown size={24} className="text-yellow-500" />
+                    Leaderboard
+                  </h2>
+
+                  <button
+                    onClick={() => setShowLeaderboard(false)}
+                    className="text-2xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {/* Your current ranking */}
+                  <div className={`p-4 rounded-xl ${theme === "light" ? "bg-indigo-100" : "bg-indigo-900/30"} border ${theme === "light" ? "border-indigo-200" : "border-indigo-700"}`}>
+                    <p className="text-sm text-center mb-2">Your Current Ranking</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <Medal size={24} className="text-indigo-500" />
+                      <p className="text-xl font-bold">{
+                        leaderboard.findIndex(player => player.score < score) + 1 || leaderboard.length + 1
+                      }</p>
+                    </div>
+                  </div>
+
+                  {/* Leaderboard list */}
+                  <div className={`rounded-xl overflow-hidden ${theme === "light" ? "bg-white/80" : "bg-black/40"} border ${theme === "light" ? "border-gray-100" : "border-gray-700"}`}>
+                    <div className="grid grid-cols-4 text-sm font-medium p-3 border-b border-gray-200">
+                      <div>Rank</div>
+                      <div className="col-span-2">Player</div>
+                      <div className="text-right">Score</div>
+                    </div>
+
+                    {leaderboard.map((player, index) => (
+                      <div
+                        key={index}
+                        className={`grid grid-cols-4 p-3 text-sm ${player.name === playerName ?
+                          theme === "light" ? "bg-indigo-50" : "bg-indigo-900/20" :
+                          index % 2 === 0 ?
+                            theme === "light" ? "bg-gray-50" : "bg-gray-800/20" : ""
+                          } ${index !== leaderboard.length - 1 ? "border-b border-gray-200" : ""}`}
+                      >
+                        <div className="flex items-center">
+                          {player.rank <= 3 ? (
+                            <Crown size={16} className={
+                              player.rank === 1 ? "text-yellow-500" :
+                                player.rank === 2 ? "text-gray-400" : "text-amber-700"
+                            } />
+                          ) : (
+                            player.rank
+                          )}
+                        </div>
+                        <div className="col-span-2 font-medium">{player.name}</div>
+                        <div className="text-right">{player.score}</div>
+                      </div>
+                    ))}
+
+                    {/* Add player to leaderboard */}
+                    {score > 0 && !leaderboard.find(p => p.name === playerName) && (
+                      <div className={`grid grid-cols-4 p-3 text-sm ${theme === "light" ? "bg-indigo-50" : "bg-indigo-900/20"} border-t border-indigo-200`}>
+                        <div>{leaderboard.findIndex(player => player.score < score) + 1 || leaderboard.length + 1}</div>
+                        <div className="col-span-2 font-medium">{playerName} (You)</div>
+                        <div className="text-right">{score}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <motion.button
+                  onClick={() => setShowLeaderboard(false)}
+                  className={`w-full py-3 px-6 rounded-lg ${buttonPrimary} font-medium flex items-center justify-center gap-2`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Check size={20} />
+                  Close
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Game Over Modal */}
+        <AnimatePresence>
+          {isGameOver && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className={`${glassCardDarker} rounded-3xl p-8 w-full max-w-md shadow-2xl relative overflow-hidden`}
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                {/* Decorative elements */}
+                <div className="absolute w-32 h-32 rounded-full bg-red-400/20 blur-2xl -top-16 -left-16"></div>
+                <div className="absolute w-32 h-32 rounded-full bg-blue-400/20 blur-2xl -bottom-16 -right-16"></div>
+
+                <motion.div
+                  className="text-center mb-8"
+                  initial={{ y: -20 }}
+                  animate={{ y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <motion.div
+                    className="flex justify-center mb-4"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                    }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Clock className="w-16 h-16 text-red-500" />
+                  </motion.div>
+                  <h2 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600">
+                    Time's Up!
+                  </h2>
+                  <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+                    Great effort! Here's how you did:
+                  </p>
+                </motion.div>
+
+                <div className="space-y-4 mb-8">
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className={`p-4 rounded-xl ${theme === "light"
+                      ? "bg-violet-50 border border-violet-200"
+                      : "bg-violet-950/30 border border-violet-800"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="w-5 h-5 text-yellow-500" />
+                        <span className="font-medium">Final Score</span>
+                      </div>
+                      <span className="text-xl font-bold">{finalScore}</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className={`p-4 rounded-xl ${theme === "light"
+                      ? "bg-violet-50 border border-violet-200"
+                      : "bg-violet-950/30 border border-violet-800"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-5 h-5 text-green-500" />
+                        <span className="font-medium">Words Completed</span>
+                      </div>
+                      <span className="text-xl font-bold">{wordsCompleted}</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className={`p-4 rounded-xl ${theme === "light"
+                      ? "bg-violet-50 border border-violet-200"
+                      : "bg-violet-950/30 border border-violet-800"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-5 h-5 text-blue-500" />
+                        <span className="font-medium">Difficulty</span>
+                      </div>
+                      <span className="text-xl font-bold capitalize">{difficulty}</span>
+                    </div>
+                  </motion.div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <motion.button
+                    onClick={handleRestart}
+                    className={`w-full py-3 px-6 rounded-xl ${buttonPrimary} font-medium flex items-center justify-center gap-2`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <RefreshCw size={20} />
+                    Play Again
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
