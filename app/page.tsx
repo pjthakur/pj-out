@@ -1,858 +1,1886 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import React from "react";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Moon, Sun, ChevronRight, Heart, Info, ArrowLeft, CheckCircle, Twitter, Facebook, Linkedin, Instagram, CheckCircle2, CircleCheck, Check } from "lucide-react";
-import { Inter, Quicksand, Satisfy } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'] });
-const quicksand = Quicksand({ subsets: ['latin'] });
-const satisfy = Satisfy({ weight: "400", subsets: ['latin'] });
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search, Heart, Menu, User, Sun, Moon, MapPin, Star, X, Calendar,
+  Users, Gift, Globe, Phone, Mail, ChevronLeft, ChevronRight,
+  LogIn, UserPlus, Coffee, Wifi, Tv, Car, Wind, DollarSign, Shield,
+  Flag, Newspaper, Lightbulb, Briefcase, Lock, MessageCircle,
+  FileText, Map, Check, Waves, Bed, Droplet, Sparkles, Award,
+  Compass, TrendingUp, Zap, ThumbsUp, Info
+} from "lucide-react";
 
-const blogPosts = [
-  {
-    id: 1,
-    title: "Beginning the Journey",
-    date: "January 15, 2023",
-    readTime: "5 min read",
-    quote: "Every great story begins with a single step into the unknown.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
-    highlight: true,
-    likes: 42,
-    description: "The journey began on a cold winter morning, with nothing but a backpack and a sense of adventure. I remember standing at the edge of my comfort zone, heart racing with both fear and excitement. What lay ahead was unknown, but that's exactly what made it so appealing. This first step would lead to a thousand more, each one taking me further into experiences I could never have imagined. The beginning of any journey is special - it's filled with pure potential and endless possibilities.",
-  },
-  {
-    id: 2,
-    title: "The Unexpected Turn",
-    date: "March 23, 2023",
-    readTime: "8 min read",
-    quote: "Sometimes the best adventures come from taking the wrong path.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1505765050516-f72dcac9c60e",
-    highlight: true,
-    likes: 29,
-    description: "I was supposed to head east, following the carefully planned route I had mapped out weeks before. Instead, I found myself heading north, having misread a critical sign at a fork in the road. By the time I realized my mistake, I was hours off course. But this wrong turn led me to a hidden waterfall that wasn't on any tourist map, and to a small village where I was welcomed like family. Had I stuck to my original plan, I would have missed this entire experience. Sometimes, getting lost is the best way to find exactly what you need.",
-  },
-  {
-    id: 3,
-    title: "Finding Hidden Treasures",
-    date: "May 7, 2023",
-    readTime: "6 min read",
-    quote: "The most valuable discoveries are often hiding in plain sight.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1533577116850-9cc66cad8a9b",
-    highlight: true,
-    likes: 37,
-    description: "The old bookstore looked unassuming from the outside - just another dusty shop on a quiet street. I almost walked past it, but something about the faded sign caught my eye. Inside, shelves stretched from floor to ceiling, packed with volumes of every shape and size. In the corner, a stack of worn journals turned out to be handwritten accounts from a 19th-century explorer. The shopkeeper told me they'd been sitting there for years, with customers passing them by in favor of newer, shinier books. I spent hours poring over these forgotten treasures, each page revealing insights from a world long gone.",
-  },
-  {
-    id: 4,
-    title: "Challenges Overcome",
-    date: "July 19, 2023",
-    readTime: "10 min read",
-    quote: "The mountain seemed impossible until I reached the summit.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1454982523318-4b6396f39d3a",
-    highlight: true,
-    likes: 51,
-    description: "The ascent was brutal. My lungs burned with each breath of thin mountain air, and my muscles screamed for rest. Three times I considered turning back, convinced I had reached my limit. Each time, I promised myself just ten more minutes of effort before making the final decision. Those ten-minute extensions stretched into hours of grueling climb. When I finally reached the summit, the view that greeted me was worth every moment of suffering. Standing above the clouds, looking out at peaks extending to the horizon, I understood something profound about challenges - they're not obstacles to our journey, but essential parts of it.",
-  },
-  {
-    id: 5,
-    title: "Lessons Learned",
-    date: "October 4, 2023",
-    readTime: "7 min read",
-    quote: "Growth comes from embracing both success and failure equally.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1695548303337-7ca0759400d0?q=80",
-    highlight: true,
-    likes: 46,
-    description: "Looking back on six months of travel, I realized that my most valuable experiences weren't what I had expected. The perfectly executed plans were pleasant but forgettable. It was the disasters that taught me the most - the missed connections that led to unexpected friendships, the language barriers that taught me new ways to communicate, the lost belongings that showed me how little I actually needed. I had collected more than souvenirs; I had gathered lessons that would shape how I approached life. The journey had changed me in ways I was only beginning to understand, forging resilience and perspective through both triumphs and setbacks.",
-  },
-  {
-    id: 6,
-    title: "New Horizons",
-    date: "December 31, 2023",
-    readTime: "9 min read",
-    quote: "As one chapter ends, another begins with endless possibilities.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e",
-    highlight: true,
-    likes: 39,
-    description: "Standing at the harbor watching the last sunset of the year, I felt a profound sense of completion. The journey that had begun twelve months ago had come full circle, yet I was nowhere near the same person who had set out with such uncertainty. As the sun dipped below the horizon, painting the sky in brilliant oranges and purples, I knew this wasn't an ending but a transition. Tomorrow would bring a new year, new paths to explore, and new stories to create. The most exciting part of any journey is that moment when you realize it never truly ends - it just evolves into something new. With gratitude for the road traveled and excitement for what lay ahead, I welcomed the coming dawn.",
-  },
-  {
-    id: 7,
-    title: "The Northern Lights",
-    date: "February 12, 2024",
-    readTime: "8 min read",
-    quote: "Standing beneath the aurora, I finally understood what magic felt like.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1483347756197-71ef80e95f73",
-    highlight: true,
-    likes: 64,
-    description: "The anticipation had built for days as we waited for the perfect conditions. Clear skies, solar activity, and the right location all had to align. When it finally happened, no photograph or video could capture the reality of standing beneath those dancing lights. Green and purple waves rippled across the sky, shifting and transforming with hypnotic beauty. The locals said that the lights were the spirits of ancestors looking down, and in that moment, it was easy to believe in something greater than ourselves. Time seemed to stand still as we watched in silent awe, the cold forgotten as the heavens put on their spectacular show. It was a humbling reminder of how small we are, and how wondrous our world can be.",
-  },
-  {
-    id: 8,
-    title: "Desert Dreams",
-    date: "April 5, 2024",
-    readTime: "6 min read",
-    quote: "In the silence of the dunes, even whispers echo for eternity.",
-    color: "bg-teal-100 dark:bg-teal-900/60",
-    accent: "from-teal-400 to-cyan-500",
-    image: "https://images.unsplash.com/photo-1509316785289-025f5b846b35",
-    highlight: true,
-    likes: 27,
-    description: "The desert had always called to me, its vast emptiness promising a kind of clarity that I couldn't find in the chaos of city life. I arrived at the edge of the sand sea as the heat of the day began to wane. With each step into the dunes, the sounds of civilization fell away until all that remained was the whisper of sand shifting beneath my feet and the sound of my own breath. As night fell, the temperature dropped dramatically, and the sky revealed a canopy of stars undiminished by artificial light. Lying on the still-warm sand, I felt both infinitely small beneath that cosmic display and strangely connected to everything. The desert wasn't empty as I had thought - it was full of subtle life and ancient wisdom, speaking to those quiet enough to listen.",
-  },
-];
+import { FaHome, FaFacebook, FaGoogle, FaApple, FaBook } from "react-icons/fa";
+// Import Inter font for a more modern look
+import { Inter } from 'next/font/google';
 
-interface TimelinePointProps {
-  isHighlight: boolean;
-  isInView: boolean;
-  year?: string;
-  currentTheme: string;
-}
-
-const TimelinePoint: React.FC<TimelinePointProps> = ({ isHighlight, isInView, year, currentTheme }) => (
-  <div className="relative">
-    <div
-      className={`${isHighlight ? 'h-14 w-14' : 'h-10 w-10'} relative z-20 flex items-center justify-center transition-all duration-500 -ml-6`}
-    >
-      {isHighlight ? (
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className={`absolute inset-0 rounded-lg rotate-45 ${currentTheme === "dark"
-            ? "bg-gradient-to-br from-teal-400 to-cyan-600 shadow-lg shadow-teal-500/20"
-            : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/20"}`}
-        />
-      ) : (
-        <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          className={`absolute inset-0 rounded-md rotate-45 ${currentTheme === "dark"
-            ? "bg-gray-800 border border-gray-700"
-            : "bg-white border border-gray-200 shadow-sm"}`}
-        />
-      )}
-
-      {/* Icon or symbol inside the marker */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="relative z-10 text-center"
-      >
-        {isHighlight ? (
-          <CheckCircle2 size={20} className={`text-white`} />
-        ) : (
-          <div className={`h-2 w-2 rounded-full ${currentTheme === "dark" ? "bg-teal-400" : "bg-teal-500"}`}></div>
-        )}
-      </motion.div>
-    </div>
-
-    {isHighlight && (
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={isInView ? { scale: 1 } : { scale: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className={`absolute -inset-2 rounded-lg rotate-45 ${currentTheme === "dark"
-          ? "bg-teal-400/10"
-          : "bg-teal-500/10"
-          }`}
-      />
-    )}
-
-    {year && (
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className={`absolute left-16 sm:left-20 top-1/2 -translate-y-1/2 text-xl sm:text-2xl font-bold bg-gradient-to-r ${currentTheme === "dark"
-          ? "from-teal-300 to-cyan-500"
-          : "from-teal-600 to-cyan-700"
-          } bg-clip-text text-transparent`}
-      >
-        {year}
-      </motion.div>
-    )}
-  </div>
-);
-
-// Timeline connector component
-interface TimelineConnectorProps {
-  isActive: boolean;
-  currentTheme: string;
-}
-
-const TimelineConnector: React.FC<TimelineConnectorProps> = ({ isActive, currentTheme }) => (
-  <motion.div
-    initial={{ height: 0 }}
-    animate={{ height: "100%" }}
-    transition={{ duration: 0.5 }}
-    className={`absolute left-7 top-0 bottom-0 ${isActive
-      ? currentTheme === "dark"
-        ? "w-[2px] bg-gradient-to-b from-teal-400 via-teal-500 to-teal-400/70"
-        : "w-[2px] bg-gradient-to-b from-teal-500 via-teal-600 to-teal-500/70"
-      : "w-[1px] border-dashed border-l border-gray-300 dark:border-gray-700"
-      } z-10`}
-  ></motion.div>
-);
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export default function Home() {
   const [theme, setTheme] = useState("light");
-  const [mounted, setMounted] = useState(false);
-  const [activePost, setActivePost] = useState(0);
-  const [showMobileDescription, setShowMobileDescription] = useState(false);
-  const [selectedMobilePost, setSelectedMobilePost] = useState<number | null>(null);
-  const [showFullStory, setShowFullStory] = useState(false);
-  const [fullStoryPost, setFullStoryPost] = useState<number | null>(null);
-  const [isFooterVisible, setIsFooterVisible] = useState(false);
-  const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [searchValue, setSearchValue] = useState("");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [selectedListing, setSelectedListing] = useState<number | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [bookingStatus, setBookingStatus] = useState<null | "success" | "error">(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedListingId, setSelectedListingId] = useState<number | null>(null);
+  const [showAllProperties, setShowAllProperties] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userProfile, setUserProfile] = useState({
+    name: "",
+    email: "",
+    avatar: "https://ui-avatars.com/api/?background=random"
+  });
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    show: false,
+    message: '',
+    type: 'info'
+  });
 
-  const { scrollYProgress } = useScroll();
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
-  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [1, 0.8, 0.6]);
+  // New state for form validation
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [formSuccess, setFormSuccess] = useState("");
+  const [authFormData, setAuthFormData] = useState({
+    name: "",
+    email: "",
+    password: ""
+  });
+  const [bookingFormData, setBookingFormData] = useState({
+    checkin: "",
+    checkout: "",
+    guests: "1",
+    name: "",
+    email: "",
+    phone: "",
+    notes: ""
+  });
 
-  // Observer for each post to determine which is currently active
-  const postRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const descriptionRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLElement>(null);
-  const bottomPointRef = useRef<HTMLDivElement>(null);
+  // Add state for offer modal and selected offer
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<null | {
+    title: string;
+    description: string;
+    image: string;
+    offerLabel: string;
+    offerColor: string;
+    relatedListingId: number;
+  }>(null);
 
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem("theme") || "light";
+    // Check for system preference
+    const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Check localStorage or use system preference
+    const savedTheme = localStorage.getItem("theme") || (systemPrefersDark ? "dark" : "light");
     setTheme(savedTheme);
-    document.documentElement.classList.toggle("dark", savedTheme === "dark");
 
-    // Load liked posts from localStorage if available
-    try {
-      const savedLikedPosts = localStorage.getItem("likedPosts");
-      if (savedLikedPosts) {
-        setLikedPosts(new Set(JSON.parse(savedLikedPosts)));
+    // Apply theme to document
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(savedTheme);
+
+    const savedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+    setFavorites(savedFavorites);
+
+    // Enable smooth scroll globally
+    document.documentElement.style.scrollBehavior = 'smooth';
+  }, []);
+
+  // Add event listener to handle clicks outside the user menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showUserMenu && !target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
       }
-    } catch (error) {
-      console.error("Error loading liked posts:", error);
-    }
-
-    // Create an array to store refs
-    postRefs.current = Array(blogPosts.length).fill(null);
-
-    // Scroll handler to check post positions
-    const handleScroll = () => {
-      // Description top position is approximately where the fixed description sits
-      const descriptionTopPosition = 100;
-      // Trigger earlier by increasing the threshold - activate when posts are approaching
-      const earlyTriggerOffset = 200;
-
-      // Check if we're at the bottom of the page
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const bodyHeight = document.body.offsetHeight;
-      const scrollThreshold = 300; // How close to the bottom to consider "at bottom"
-
-      // Check if footer is visible in viewport
-      if (footerRef.current) {
-        const footerRect = footerRef.current.getBoundingClientRect();
-        // If footer is visible or close to visible
-        setIsFooterVisible(footerRect.top < window.innerHeight - 100);
-      }
-
-      if (bottomPointRef.current && scrollPosition > bodyHeight - scrollThreshold) {
-        // If close to bottom, set the last post as active
-        setActivePost(blogPosts.length - 1);
-        return;
-      }
-
-      // Check each post's position for active post
-      let foundActive = false;
-
-      postRefs.current.forEach((ref, index) => {
-        if (ref && !foundActive) {
-          const rect = ref.getBoundingClientRect();
-          // Trigger when post approaches the viewport from below or is just entering
-          if (rect.top <= descriptionTopPosition + earlyTriggerOffset && rect.top >= -100) {
-            setActivePost(index);
-            foundActive = true;
-          }
-        }
-      });
     };
 
-    // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
-
-    // Initial check
-    handleScroll();
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [mounted, blogPosts.length]);
+  }, [showUserMenu]);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
+
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(newTheme);
   };
 
-  const handlePostClick = (index: number) => {
-    setSelectedMobilePost(index);
-    setShowMobileDescription(true);
+  const toggleFavorite = (id: number) => {
+    const newFavorites = favorites.includes(id)
+      ? favorites.filter(fav => fav !== id)
+      : [...favorites, id];
+
+    setFavorites(newFavorites);
+    localStorage.setItem("favorites", JSON.stringify(newFavorites));
   };
 
-  const handleReadFullStory = (index: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setFullStoryPost(index);
-    setShowFullStory(true);
-    document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
   };
 
-  const closeFullStory = () => {
-    setShowFullStory(false);
-    document.body.style.overflow = ''; // Restore scrolling
+  const clearSearch = () => {
+    setSearchValue("");
   };
 
-  const toggleLike = (postId: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click event
-    
-    // Create a new Set from the current liked posts
-    const newLikedPosts = new Set(likedPosts);
-    
-    // Toggle the post ID in the set
-    if (newLikedPosts.has(postId)) {
-      newLikedPosts.delete(postId);
-    } else {
-      newLikedPosts.add(postId);
+  const openAuthModal = (mode: "login" | "signup") => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+  };
+
+  const openListingDetail = (id: number) => {
+    setSelectedListing(id);
+    setCurrentImageIndex(0);
+  };
+
+  const closeListingDetail = () => {
+    setSelectedListing(null);
+  };
+
+  const nextImage = () => {
+    if (!selectedListing) return;
+    const listing = listings.find(l => l.id === selectedListing);
+    if (!listing) return;
+    setCurrentImageIndex((prev) => (prev + 1) % listing.images.length);
+  };
+
+  const prevImage = () => {
+    if (!selectedListing) return;
+    const listing = listings.find(l => l.id === selectedListing);
+    if (!listing) return;
+    setCurrentImageIndex((prev) => (prev - 1 + listing.images.length) % listing.images.length);
+  };
+
+  // Add new function for booking
+  const handleBooking = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simulate booking process
+    const isSuccess = Math.random() > 0.3; // 70% success rate
+
+    setBookingStatus(isSuccess ? "success" : "error");
+  };
+
+  const listings = [
+    {
+      id: 1,
+      title: "Modern Beachfront Villa",
+      location: "Malibu, California",
+      price: 350,
+      rating: 4.9,
+      reviews: 128,
+      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+
+      ],
+      description: "Experience the ultimate luxury beachfront villa with breathtaking ocean views. This spacious property features 4 bedrooms, a private pool, and direct beach access.",
+      amenities: ["Pool", "WiFi", "Kitchen", "Beach access", "Air conditioning", "Parking"],
+      type: "Beach",
+      guests: 8,
+      bedrooms: 4,
+      beds: 5,
+      baths: 3.5
+    },
+    {
+      id: 2,
+      title: "Cozy Mountain Cabin",
+      location: "Aspen, Colorado",
+      price: 225,
+      rating: 4.8,
+      reviews: 95,
+      image: "https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1265&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1265&q=80",
+
+      ],
+      description: "Nestled in the heart of the mountains, this charming cabin offers a perfect retreat for those seeking tranquility and natural beauty. Enjoy breathtaking views and cozy evenings by the fireplace.",
+      amenities: ["Fireplace", "WiFi", "Hot tub", "Kitchen", "Heating", "Mountain view"],
+      type: "Mountain",
+      guests: 4,
+      bedrooms: 2,
+      beds: 3,
+      baths: 2
+    },
+    {
+      id: 3,
+      title: "Urban Loft Apartment",
+      location: "New York City, NY",
+      price: 280,
+      rating: 4.7,
+      reviews: 112,
+      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+
+      ],
+      description: "This stylish loft in the heart of NYC offers the perfect urban getaway. Featuring exposed brick walls, high ceilings, and modern furnishings, it's just steps away from popular restaurants and attractions.",
+      amenities: ["WiFi", "Cable TV", "Kitchen", "Washer/Dryer", "Air conditioning", "Elevator"],
+      type: "City",
+      guests: 2,
+      bedrooms: 1,
+      beds: 1,
+      baths: 1
+    },
+    {
+      id: 4,
+      title: "Lakefront Retreat",
+      location: "Lake Tahoe, Nevada",
+      price: 295,
+      rating: 4.9,
+      reviews: 87,
+      image: "https://images.unsplash.com/photo-1464146072230-91cabc968266?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1464146072230-91cabc968266?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+
+      ],
+      description: "Unwind at this peaceful lakefront property with stunning views of Lake Tahoe. Enjoy your morning coffee on the deck overlooking the water or take a short walk to the private beach.",
+      amenities: ["Lake view", "Private beach", "Fireplace", "Boat dock", "BBQ grill", "WiFi"],
+      type: "Lake",
+      guests: 6,
+      bedrooms: 3,
+      beds: 4,
+      baths: 2
+    },
+    {
+      id: 5,
+      title: "Tropical Island Bungalow",
+      location: "Maui, Hawaii",
+      price: 420,
+      rating: 5.0,
+      reviews: 152,
+      image: "https://images.unsplash.com/photo-1552873547-b88e7b2760e2?q=80&w=2070&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1552873547-b88e7b2760e2?q=80&w=2070&auto=format&fit=crop&q=80",
+
+      ],
+      description: "Paradise awaits at this luxurious Hawaiian bungalow. With direct beach access and breathtaking ocean views, this property offers the ultimate tropical getaway experience.",
+      amenities: ["Ocean view", "Beach access", "Pool", "Air conditioning", "WiFi", "Outdoor shower"],
+      type: "Beach",
+      guests: 4,
+      bedrooms: 2,
+      beds: 2,
+      baths: 2.5
+    },
+    {
+      id: 6,
+      title: "Countryside Villa",
+      location: "Tuscany, Italy",
+      price: 310,
+      rating: 4.8,
+      reviews: 79,
+      image: "https://images.unsplash.com/photo-1542928658-22251e208ac1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1542928658-22251e208ac1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80",
+
+      ],
+      description: "Experience the authentic Italian lifestyle in this stunning Tuscan villa surrounded by vineyards and olive groves. Enjoy panoramic countryside views and savor the local cuisine.",
+      amenities: ["Vineyard view", "Pool", "Wine cellar", "Garden", "Fireplace", "WiFi"],
+      type: "Countryside",
+      guests: 10,
+      bedrooms: 5,
+      beds: 7,
+      baths: 4
+    },
+  ];
+
+  const filters = ["All", "Beach", "Mountain", "City", "Lake", "Countryside"];
+
+  // Filter listings based on both category and search term
+  const filteredListings = listings
+    .filter(listing => activeFilter === "All" || listing.type === activeFilter)
+    .filter(listing =>
+      searchValue === "" ||
+      listing.title.toLowerCase().includes(searchValue.toLowerCase()) ||
+      listing.location.toLowerCase().includes(searchValue.toLowerCase()) ||
+      listing.type.toLowerCase().includes(searchValue.toLowerCase())
+    );
+
+  const selectedListingData = selectedListing ? listings.find(listing => listing.id === selectedListing) : null;
+
+  // New functions for form handling
+  const handleAuthInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setAuthFormData({
+      ...authFormData,
+      [id]: value
+    });
+
+    // Clear error when user types
+    if (formErrors[id]) {
+      setFormErrors({
+        ...formErrors,
+        [id]: ""
+      });
     }
-    
-    // Update state and localStorage
-    setLikedPosts(newLikedPosts);
-    try {
-      localStorage.setItem("likedPosts", JSON.stringify(Array.from(newLikedPosts)));
-    } catch (error) {
-      console.error("Error saving liked posts:", error);
+  };
+
+  const handleBookingInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setBookingFormData({
+      ...bookingFormData,
+      [id]: value
+    });
+
+    // Clear error when user types
+    if (formErrors[id]) {
+      setFormErrors({
+        ...formErrors,
+        [id]: ""
+      });
     }
   };
 
-  if (!mounted) return null;
+  const validateAuthForm = () => {
+    let errors: { [key: string]: string } = {};
+    let isValid = true;
+
+    if (authMode === "signup" && !authFormData.name.trim()) {
+      errors.name = "Name is required";
+      isValid = false;
+    }
+
+    if (!authFormData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(authFormData.email)) {
+      errors.email = "Email is invalid";
+      isValid = false;
+    }
+
+    if (!authFormData.password.trim()) {
+      errors.password = "Password is required";
+      isValid = false;
+    } else if (authFormData.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const validateBookingForm = () => {
+    let errors: { [key: string]: string } = {};
+    let isValid = true;
+
+    if (!bookingFormData.checkin) {
+      errors.checkin = "Check-in date is required";
+      isValid = false;
+    }
+
+    if (!bookingFormData.checkout) {
+      errors.checkout = "Check-out date is required";
+      isValid = false;
+    }
+
+    // Add validation for dates
+    if (bookingFormData.checkin && bookingFormData.checkout) {
+      const checkinDate = new Date(bookingFormData.checkin);
+      const checkoutDate = new Date(bookingFormData.checkout);
+      
+      // Make sure checkout is after checkin
+      if (checkoutDate <= checkinDate) {
+        errors.checkout = "Check-out date must be after check-in date";
+        isValid = false;
+      }
+      
+      // Make sure checkin is not in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (checkinDate < today) {
+        errors.checkin = "Check-in date cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    if (!bookingFormData.name.trim()) {
+      errors.name = "Name is required";
+      isValid = false;
+    }
+
+    if (!bookingFormData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(bookingFormData.email)) {
+      errors.email = "Email is invalid";
+      isValid = false;
+    }
+
+    if (!bookingFormData.phone.trim()) {
+      errors.phone = "Phone number is required";
+      isValid = false;
+    } else if (!/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/im.test(bookingFormData.phone)) {
+      errors.phone = "Phone number is invalid";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSuccess("");
+
+    if (validateAuthForm()) {
+      // Simulate auth success (would call API in real app)
+      setTimeout(() => {
+        setFormSuccess(authMode === "login" ? "Login successful!" : "Account created successfully!");
+        
+        // On successful authentication
+        setIsAuthenticated(true);
+        setUserProfile({
+          name: authFormData.name || "User",
+          email: authFormData.email,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(authFormData.name || authFormData.email)}&background=random`
+        });
+        
+        // Clear form after success
+        setTimeout(() => {
+          setShowAuthModal(false);
+          setFormSuccess("");
+          setAuthFormData({
+            name: "",
+            email: "",
+            password: ""
+          });
+        }, 2000);
+      }, 1000);
+    }
+  };
+
+  const handleBookingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSuccess("");
+
+    if (validateBookingForm()) {
+      // Simulate booking process
+      setTimeout(() => {
+        const isSuccess = Math.random() > 0.3; // 70% success rate
+        setBookingStatus(isSuccess ? "success" : "error");
+
+        if (isSuccess) {
+          // Reset form on success
+          setBookingFormData({
+            checkin: "",
+            checkout: "",
+            guests: "1",
+            name: "",
+            email: "",
+            phone: "",
+            notes: ""
+          });
+        }
+      }, 1000);
+    }
+  };
+
+  // Add offer data (can be moved to a better place if needed)
+  const specialOffers = [
+    {
+      title: 'Summer Escape Deal',
+      description: 'Book a beach property for 5+ nights and receive a 20% discount. Enjoy the sun, sand, and exclusive amenities at our top-rated beachfront villas.',
+      image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
+      offerLabel: '20% OFF',
+      offerColor: 'bg-rose-600',
+      relatedListingId: 1,
+    },
+    {
+      title: 'Luxury Retreat Package',
+      description: 'Book a luxury property and receive a complimentary room upgrade. Experience the best in comfort and style at our premium listings.',
+      image: 'https://images.unsplash.com/photo-1610641818989-c2051b5e2cfd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
+      offerLabel: 'FREE UPGRADE',
+      offerColor: 'bg-indigo-600',
+      relatedListingId: 3,
+    },
+  ];
+
+  // Smooth scroll handler for menu links
+  const handleMenuClick = (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
+    e.preventDefault();
+    const el = document.querySelector(target);
+    if (el) {
+      const yOffset = -150;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  // Show toast notification
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({
+      show: true,
+      message,
+      type
+    });
+
+    // Auto hide toast after 3 seconds
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  // Function to handle social login buttons
+  const handleSocialLogin = (provider: string) => {
+    showToast(`${provider} login is not available at this time`, 'info');
+  };
 
   return (
-    <div className={`${inter.className} min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gradient-to-b from-blue-50 via-teal-50 to-emerald-50 text-gray-800"} transition-colors duration-300`}>
-      {/* Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
-        {theme === "dark" ? (
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 via-transparent to-transparent" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-t from-teal-100/30 via-cyan-100/20 to-transparent" />
-        )}
+    <div className={`min-h-screen ${inter.variable} font-sans ${theme === "dark" ? "dark bg-gray-950 text-gray-100" : "bg-gray-50 text-gray-900"} transition-colors duration-200`}>
+      <header className={`sticky top-0 z-50 ${theme === 'dark' ? 'bg-gray-900/90 border-gray-800' : 'bg-white/90 border-gray-200'} backdrop-blur-md shadow-sm border-b`}>
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className={`font-bold text-2xl mr-2 tracking-tight ${theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}`}
+            >
+              StayAway
+              <span className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}>.</span>
+            </motion.div>
+          </div>
 
-        {/* Light rays effect (visible in both themes) */}
-        <div className="absolute inset-0 overflow-hidden opacity-30 mix-blend-overlay pointer-events-none">
-          <div className="absolute -inset-[10%] rotate-45 opacity-20">
-            <div className="w-full h-[20px] bg-white blur-xl transform -rotate-45 translate-y-[400px] opacity-30"></div>
-            <div className="w-full h-[40px] bg-white blur-xl transform -rotate-45 translate-y-[800px] opacity-10"></div>
-            <div className="w-full h-[5px] bg-white blur-sm transform -rotate-45 translate-y-[300px] opacity-30"></div>
+          <div className="hidden md:flex items-center space-x-6">
+            <a href="#popular" onClick={e => handleMenuClick(e, '#popular')} className={`font-medium transition ${theme === 'dark' ? 'text-gray-300 hover:text-rose-500' : 'text-gray-800 hover:text-rose-600'}`}>
+              Popular
+            </a>
+
+            <a href="#recommended" onClick={e => handleMenuClick(e, '#recommended')} className={`font-medium transition ${theme === 'dark' ? 'text-gray-300 hover:text-rose-500' : 'text-gray-800 hover:text-rose-600'}`}>
+              Recommended
+            </a>
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full transition ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-800 ' : 'text-gray-700 hover:bg-gray-100 '}`}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            
+            {isAuthenticated ? (
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="relative flex items-center focus:outline-none"
+                  aria-label="User menu"
+                >
+                  <img 
+                    src={userProfile.avatar} 
+                    alt="User avatar" 
+                    className="w-10 h-10 rounded-full border-2 border-rose-500" 
+                  />
+                </button>
+                
+                {showUserMenu && (
+                  <div className={`absolute right-0 mt-2 w-48 py-2 rounded-lg shadow-lg z-50 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+                    <div className={`px-4 py-2 border-b ${theme === 'dark' ? 'border-gray-700 text-white' : 'border-gray-200 text-gray-800'}`}>
+                      <p className="font-medium text-sm">{userProfile.name}</p>
+                      <p className="text-xs truncate">{userProfile.email}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsAuthenticated(false);
+                        setUserProfile({
+                          name: "",
+                          email: "",
+                          avatar: "https://ui-avatars.com/api/?background=random"
+                        });
+                        setShowUserMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'}`}
+                    >
+                      <LogIn className="inline-block mr-2 w-4 h-4 rotate-180" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => openAuthModal("login")}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-full font-medium transition"
+              >
+                Sign in
+              </button>
+            )}
+          </div>
+
+          <button
+            className={`md:hidden ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Menu"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+      </header>
+
+      {/* Hero Section with Search */}
+      <section className={`relative bg-gradient-to-br ${theme === 'dark' ? 'from-gray-900 to-gray-800' : 'from-indigo-100 to-rose-100'} pt-16 pb-24 px-4`}>
+        <div className="container mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+          >
+            <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4 leading-tight`}>
+              Find Your Perfect <span className={theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}>Stay</span>
+            </h1>
+            <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} max-w-2xl mx-auto`}>
+              Discover amazing places to stay around the world, with exclusive deals and personalized recommendations.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-4 rounded-2xl shadow-lg max-w-4xl mx-auto`}
+          >
+            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative">
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Where</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    placeholder="Destination, city, or property"
+                    className={`w-full py-3 pl-10 pr-3 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'} focus:outline-none focus:ring-2 focus:ring-rose-500`}
+                  />
+                  <MapPin size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Check-in / Check-out</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    placeholder="Add dates"
+                    className={`w-full py-3 pl-10 pr-3 rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'} focus:outline-none focus:ring-2 focus:ring-rose-500`}
+                  />
+                  <Calendar size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                </div>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+
+        <div className={`absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t ${theme === 'dark' ? 'from-gray-950' : 'from-gray-50'} to-transparent`}></div>
+      </section>
+
+      {/* Filter bar */}
+      <div className={`sticky top-16 z-40 shadow-sm border-b ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+        <div className="container mx-auto px-4 py-3">
+          <div className="overflow-x-auto hide-scrollbar p-1">
+            <div className="flex space-x-4">
+              {filters.map((filter) => (
+                <motion.button
+                  key={filter}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center ${activeFilter === filter
+                    ? 'bg-rose-600 text-white'
+                    : theme === 'dark'
+                      ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                >
+                  {filter === "All" && <Compass size={16} className="mr-2" />}
+                  {filter === "Beach" && <Waves size={16} className="mr-2" />}
+                  {filter === "Mountain" && <TrendingUp size={16} className="mr-2" />}
+                  {filter === "City" && <FaHome size={16} className="mr-2" />}
+                  {filter === "Lake" && <Droplet size={16} className="mr-2" />}
+                  {filter === "Countryside" && <Wind size={16} className="mr-2" />}
+                  {filter}
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/30 dark:bg-black/20 border-b border-teal-200/50 dark:border-white/10">
-        <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-          <div className="flex items-center">
-            <h1 className={`text-2xl font-bold ${satisfy.className} ${theme === "dark" ? "text-white" : "text-teal-700"}`}>
-              Journey<span className={theme === "dark" ? "text-teal-400" : "text-teal-500"}>Timeline</span>
-            </h1>
-          </div>
-          <div className="flex items-center">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${theme === "dark" ? "bg-gray-800/50 hover:bg-gray-700/50" : "bg-teal-100 hover:bg-teal-200"} transition-all duration-300 hover:shadow-md`}
-              aria-label="Toggle theme"
+      <main className="container mx-auto px-4 py-8 min-h-screen">
+        {/* Popular Properties Section */}
+        <section id="popular" className="mb-16">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+            <div className="flex-column items-center mb-2 sm:mb-0">
+              <h2 className={`text-2xl font-bold mb-1 flex items-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <Star className="mr-2 text-yellow-500" size={24} />
+                Popular Properties
+              </h2>
+              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Most booked properties this month</p>
+            </div>
+            <button 
+              onClick={() => {
+                setSearchValue("");
+                setActiveFilter("All");
+                setShowAllProperties(true);
+                // Scroll to all properties section
+                const allPropertiesSection = document.getElementById('all-properties');
+                if (allPropertiesSection) {
+                  allPropertiesSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className={`font-medium hover:underline flex items-center ${theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}`}
             >
-              {theme === "dark" ?
-                <Sun size={18} className="text-teal-400" /> :
-                <Moon size={18} className="text-teal-700" />
-              }
+              View all <ChevronRight size={16} className="ml-1" />
             </button>
           </div>
-        </div>
-      </header>
 
-      <main className="container mx-auto relative z-10 flex flex-wrap min-h-screen">
-        {/* Left sidebar - hidden on mobile */}
-        <div className="hidden md:block md:w-1/6 pt-8 pr-0 md:pr-4 px-4 md:px-0">
-          <div className="sticky top-20 space-y-12">
-            <div>
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className={`text-3xl md:text-4xl mb-4 font-bold ${theme === "dark" ? "text-white" : "text-teal-800"} ${quicksand.className}`}
+          {filteredListings.length === 0 && activeFilter !== "All" ? (
+            <div className={`rounded-xl p-6 border text-center mx-auto w-16 h-16 mb-4 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-rose-900' : 'bg-rose-100'}`}>
+                <X size={24} className={theme === 'dark' ? 'text-rose-400' : 'text-rose-600'} />
+              </div>
+              <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>No {activeFilter} Properties</h3>
+              <p className={theme === 'dark' ? 'text-gray-400 mb-4' : 'text-gray-600 mb-4'}>
+                We couldn't find any {activeFilter.toLowerCase()} properties. Try another category or check back later.
+              </p>
+              <button
+                onClick={() => setActiveFilter("All")}
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition"
               >
-                About<br />Journey
-              </motion.h2>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: 48 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-                className={`h-1 bg-gradient-to-r ${theme === "dark" ? "from-teal-400 to-cyan-600" : "from-teal-400 to-cyan-600"} rounded-full mb-4`}
-              ></motion.div>
-              <p className={`${theme === "dark" ? "text-white/70" : "text-gray-700"}`}>Follow the timeline of this incredible story as it unfolds through time.</p>
+                View All Properties
+              </button>
             </div>
-
-            <div>
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className={`text-3xl md:text-4xl mb-4 font-bold ${theme === "dark" ? "text-white" : "text-teal-800"} ${quicksand.className}`}
-              >
-                Travel<br />Stories
-              </motion.h2>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: 48 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-                className={`h-1 bg-gradient-to-r ${theme === "dark" ? "from-teal-400 to-cyan-600" : "from-teal-400 to-cyan-600"} rounded-full mb-4`}
-              ></motion.div>
-              <p className={`${theme === "dark" ? "text-white/70" : "text-gray-700"}`}>Discover adventures and experiences captured in this chronological collection of travel tales.</p>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Main timeline - full width on mobile */}
-        <div className="w-full xl:w-[50%] pt-8 pb-16 md:pb-32 px-4">
-          <div className="relative mx-auto max-w-full md:max-w-2xl lg:max-w-2xl xl:ml-auto xl:mr-8">
-            {/* Main timeline line */}
-            <div className={`absolute left-7 top-0 bottom-0 w-[1px] border-l border-dashed ${theme === "dark" ? "border-gray-700" : "border-gray-300"} z-0`}></div>
-
-            {/* Year marker - top */}
-            <div className="relative mb-16 sm:mb-24 pl-6">
-              <TimelinePoint isHighlight={true} isInView={true} year="2023" currentTheme={theme} />
-            </div>
-
-            {/* Timeline events */}
-            {blogPosts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                ref={(el) => {
-                  postRefs.current[index] = el;
-                  return undefined;
-                }}
-                className="relative mb-16 sm:mb-28 pl-6"
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.8, delay: index * 0.15 }}
-              >
-                {/* Timeline connector from previous point */}
-                <TimelineConnector isActive={activePost >= index} currentTheme={theme} />
-
-                {/* Timeline point */}
-                <TimelinePoint
-                  isHighlight={post.highlight}
-                  isInView={true}
-                  year={index === 4 ? "2024" : undefined}
-                  currentTheme={theme}
-                />
-
-                {/* Content */}
-                <div className="relative ml-10 sm:ml-20">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                    className={`rounded-xl overflow-hidden shadow-xl ${activePost === index ? theme === "dark" ? 'ring-2 ring-teal-400' : 'ring-2 ring-teal-500' : ''} transition-all duration-300 transform perspective-1000`}
-                    onClick={() => handleReadFullStory(index)}
-                    style={{
-                      boxShadow: theme === "dark"
-                        ? "0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3) inset"
-                        : "0 10px 30px -10px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 0, 0, 0.05) inset"
-                    }}
-                  >
-                    {/* Glass overlay */}
-                    <div className="absolute inset-0 backdrop-blur-sm bg-white/5 z-0"></div>
-
-                    {/* Card background */}
-                    <div className={`absolute inset-0 ${theme === "dark"
-                      ? "bg-gradient-to-br from-gray-800/90 to-gray-900/90"
-                      : "bg-gradient-to-br from-white/90 to-white/70"}`}>
+          ) : (
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6`}>
+              {filteredListings.slice(0, 4).map((listing) => (
+                <motion.div
+                  key={listing.id}
+                  whileHover={{ y: -5 }}
+                  className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border cursor-pointer group ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                  onClick={() => openListingDetail(listing.id)}
+                >
+                  <div className="relative">
+                    <img
+                      src={listing.image}
+                      alt={listing.title}
+                      className="w-full h-48 sm:h-56 object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(listing.id);
+                        }}
+                        className="p-2 rounded-full bg-white/90 hover:bg-white shadow-sm transition"
+                        aria-label="Add to favorites"
+                      >
+                        <Heart
+                          size={18}
+                          className={favorites.includes(listing.id) ? 'fill-rose-500 text-rose-500' : 'text-gray-600'}
+                        />
+                      </button>
                     </div>
-
-                    <div className={`${post.highlight ? "flex flex-col md:flex-row" : "block"} relative z-10`}>
-                      {/* Image */}
-                      {post.highlight && (
-                        <div className={`${post.highlight ? "w-full md:w-2/5" : "w-full"} h-48 md:h-auto relative overflow-hidden`}>
-                          <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-black/40 to-transparent z-10"></div>
-                          <motion.img
-                            whileHover={{ scale: 1.1 }}
-                            transition={{ duration: 0.8 }}
-                            src={`${post.image}?auto=format&fit=crop&w=800&q=80`}
-                            alt={post.title}
-                            className="w-full h-full object-cover transition-transform duration-700"
-                          />
-                          {/* Colored overlay for active post */}
-                          {activePost === index && (
-                            <div className="absolute inset-0 bg-teal-500/10 dark:bg-teal-500/10 mix-blend-overlay z-10"></div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Content */}
-                      <div className={`${post.highlight ? "w-full md:w-3/5 p-6" : "p-6"} relative`}>
-                        {activePost === index && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute right-1 top-1 h-6 w-6 flex items-center justify-center"
-                          >
-                            <div className="absolute h-full w-full bg-teal-400/20 dark:bg-teal-400/10 rounded-md rotate-45 animate-diamond-pulse"></div>
-                            <div className="absolute h-6 w-6 bg-teal-400/30 dark:bg-teal-400/20 rounded-sm rotate-45"></div>
-                            <div className="h-4 w-4 bg-teal-400 dark:bg-teal-400 rounded-sm rotate-45 shadow-lg"></div>
-                          </motion.div>
-                        )}
-
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className={`text-xl md:text-2xl font-bold ${quicksand.className} ${post.highlight ? theme === "dark" ? "bg-gradient-to-r from-teal-300 to-cyan-500 bg-clip-text text-transparent" : "bg-gradient-to-r from-teal-600 to-cyan-700 bg-clip-text text-transparent" : theme === "dark" ? "text-white" : "text-gray-800"}`}>
-                            {post.title}
-                          </h3>
-                          {post.highlight && (
-                            <button 
-                              onClick={(e) => toggleLike(post.id, e)}
-                              className="flex items-center group transition-all duration-300"
-                            >
-                              <Heart 
-                                size={16} 
-                                className={`${likedPosts.has(post.id) ? "text-red-500" : "text-gray-400 group-hover:text-red-400"} mr-1 transition-colors duration-300`} 
-                                fill={likedPosts.has(post.id) ? "currentColor" : "none"} 
-                              />
-                              <span className={`text-xs ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                                {likedPosts.has(post.id) ? post.likes + 1 : post.likes}
-                              </span>
-                            </button>
-                          )}
-                        </div>
-
-                        <div className={`flex items-center mb-3 text-sm gap-3 ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                          <div className="flex items-center">
-                            <Calendar size={12} className="mr-1" />
-                            <span>{post.date}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Clock size={12} className="mr-1" />
-                            <span>{post.readTime}</span>
-                          </div>
-                        </div>
-
-                        <p className={`${theme === "dark" ? "text-white/90" : "text-gray-700"} italic mb-4 line-clamp-2`}>{post.quote}</p>
-
-                        <div className="flex items-center justify-between">
-                          <motion.button
-                            whileHover={{ x: 5 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`flex items-center text-sm font-medium ${post.highlight ? theme === "dark" ? "text-teal-400" : "text-teal-600" : theme === "dark" ? "text-white/80" : "text-gray-700"} group`}
-                          >
-                            <span>Read full story</span>
-                            <ChevronRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
-                          </motion.button>
-                        </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
+                      <div className="flex items-center">
+                        <Star size={14} className="text-yellow-400 mr-1" />
+                        <span className="text-sm font-medium">{listing.rating} · {listing.reviews} reviews</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className={`font-bold text-lg mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{listing.title}</h3>
+                    <div className={`flex items-center text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <MapPin size={14} className="mr-1 flex-shrink-0" />
+                      <span className="truncate">{listing.location}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      {listing.amenities.slice(0, 3).map((amenity, i) => (
+                        <span key={i} className={`text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{amenity}</span>
+                      ))}
+                      {listing.amenities.length > 3 && (
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          +{listing.amenities.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>${listing.price}</span>
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}> / night</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedListingId(listing.id);
+                          setShowBookingModal(true);
+                        }}
+                        className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                      >
+                        Book now
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </section>
+
+
+
+        {/* Recommended Properties Section */}
+        <section id="recommended" className="mb-16">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+            <div className="flex-column items-center mb-2 sm:mb-0">
+              <h2 className={`text-2xl font-bold mb-1 flex items-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <ThumbsUp className="mr-2 text-indigo-500" size={24} />
+                Recommended For You
+              </h2>
+              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Personalized suggestions based on your preferences</p>
+            </div>
+            <button 
+              onClick={() => {
+                setSearchValue("");
+                setActiveFilter("All");
+                setShowAllProperties(true);
+                // Scroll to all properties section
+                const allPropertiesSection = document.getElementById('all-properties');
+                if (allPropertiesSection) {
+                  allPropertiesSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className={`font-medium hover:underline flex items-center ${theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}`}
+            >
+              View all <ChevronRight size={16} className="ml-1" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredListings.slice(1, 5).map((listing) => (
+              <motion.div
+                key={listing.id}
+                whileHover={{ y: -5 }}
+                className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border cursor-pointer group ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                onClick={() => openListingDetail(listing.id)}
+              >
+                <div className="relative">
+                  <img
+                    src={listing.image}
+                    alt={listing.title}
+                    className="w-full h-48 sm:h-56 object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(listing.id);
+                      }}
+                      className="p-2 rounded-full bg-white/90 hover:bg-white shadow-sm transition"
+                      aria-label="Add to favorites"
+                    >
+                      <Heart
+                        size={18}
+                        className={favorites.includes(listing.id) ? "fill-rose-500 text-rose-500" : "text-gray-600"}
+                      />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
+                    <div className="flex items-center">
+                      <Star size={14} className="text-yellow-400 mr-1" />
+                      <span className="text-sm font-medium">{listing.rating} · {listing.reviews} reviews</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className={`font-bold text-lg mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{listing.title}</h3>
+                  <div className={`flex items-center text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <MapPin size={14} className="mr-1 flex-shrink-0" />
+                    <span className="truncate">{listing.location}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {listing.amenities.slice(0, 3).map((amenity, i) => (
+                      <span key={i} className={`text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{amenity}</span>
+                    ))}
+                    {listing.amenities.length > 3 && (
+                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        +{listing.amenities.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>${listing.price}</span>
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}> / night</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedListingId(listing.id);
+                        setShowBookingModal(true);
+                      }}
+                      className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                    >
+                      Book now
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))}
+          </div>
+        </section>
 
-            {/* Final timeline connector to bottom point */}
-            <div className="relative pl-6 mb-16 sm:mb-28">
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: "100%" }}
-                transition={{ duration: 0.5 }}
-                className={`absolute left-7 top-0 bottom-0 ${activePost === blogPosts.length - 1
-                  ? theme === "dark"
-                    ? "w-[2px] bg-gradient-to-b from-teal-400 via-teal-500 to-teal-400/70"
-                    : "w-[2px] bg-gradient-to-b from-teal-500 via-teal-600 to-teal-500/70"
-                  : "w-[1px] border-dashed border-l border-gray-300 dark:border-gray-700"
-                  } z-10`}
-                style={{
-                  position: 'absolute',
-                  left: '7px',
-                  top: '-10px',
-                  height: 'calc(100% + 10px)'
-                }}
-              ></motion.div>
-            </div>
-
-            {/* Bottom timeline point */}
-            <div ref={bottomPointRef} className="relative pl-6 mb-10 md:mb-20">
-              <div className="h-10 w-10 relative z-20 flex items-center justify-center">
-                <div className={`absolute inset-0 rounded-md rotate-45 ${activePost === blogPosts.length - 1
-                  ? theme === "dark"
-                    ? "bg-gradient-to-br from-teal-400 to-cyan-600 shadow-lg shadow-teal-500/20"
-                    : "bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/20"
-                  : theme === "dark"
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-200 shadow-sm"
-                  }`}>
+        {/* "All Properties" Section - show when search/filter is active */}
+        <section id="all-properties" className="mb-16">
+          {(searchValue || activeFilter !== "All" || showAllProperties) && (
+            <>
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {searchValue ? `Search results for "${searchValue}"` :
+                      activeFilter !== "All" ? `${activeFilter} properties` :
+                        "All properties"}
+                  </h2>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                    {filteredListings.length} {filteredListings.length === 1 ? 'property' : 'properties'} found
+                  </p>
                 </div>
-                {activePost === blogPosts.length - 1 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="relative z-10"
+                {(searchValue || activeFilter !== "All" || showAllProperties) && (
+                  <button
+                    onClick={() => {
+                      setSearchValue("");
+                      setActiveFilter("All");
+                      setShowAllProperties(false);
+                    }}
+                    className={`font-medium hover:underline flex items-center ${theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}`}
                   >
-                    <Check size={18} className="text-white" />
-                  </motion.div>
-                ) : (
-                  <div className={`h-2 w-2 rounded-full ${theme === "dark" ? "bg-teal-400" : "bg-teal-500"}`}></div>
+                    Clear filters <X size={16} className="ml-1" />
+                  </button>
                 )}
               </div>
 
-              {activePost === blogPosts.length - 1 && (
+              {filteredListings.length === 0 ? (
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.4, delay: 0.2 }}
-                  className={`absolute -inset-2 rounded-lg rotate-45 ${theme === "dark"
-                    ? "bg-teal-400/10"
-                    : "bg-teal-500/10"
-                    }`}
-                  style={{ top: "50%", left: "26px", transform: "translateY(-50%) rotate(45deg)", width: "40px", height: "40px" }}
-                />
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`flex flex-col items-center justify-center py-16 px-4 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                >
+                  <img
+                    src="https://illustrations.popsy.co/gray/digital-nomad.svg"
+                    alt="No results"
+                    className={`w-64 h-64 mb-6 ${theme === 'dark' ? 'invert' : ''}`}
+                  />
+                  <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>No properties found</h3>
+                  <p className={`mb-6 text-center max-w-md ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    We couldn't find any properties matching your search criteria. Try adjusting your filters or search terms.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchValue("");
+                      setActiveFilter("All");
+                      setShowAllProperties(false);
+                    }}
+                    className="px-6 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition flex items-center"
+                  >
+                    <X size={16} className="mr-2" />
+                    Clear filters
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                >
+                  {filteredListings.map((listing) => (
+                    <motion.div
+                      key={listing.id}
+                      whileHover={{ y: -5 }}
+                      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border cursor-pointer group ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                      onClick={() => openListingDetail(listing.id)}
+                    >
+                      <div className="relative">
+                        <img
+                          src={listing.image}
+                          alt={listing.title}
+                          className="w-full h-48 sm:h-56 object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute top-3 right-3 z-10 flex flex-col space-y-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(listing.id);
+                            }}
+                            className="p-2 rounded-full bg-white/90 hover:bg-white shadow-sm transition"
+                            aria-label="Add to favorites"
+                          >
+                            <Heart
+                              size={18}
+                              className={favorites.includes(listing.id) ? "fill-rose-500 text-rose-500" : "text-gray-600"}
+                            />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white p-4">
+                          <div className="flex items-center">
+                            <Star size={14} className="text-yellow-400 mr-1" />
+                            <span className="text-sm font-medium">{listing.rating} · {listing.reviews} reviews</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className={`font-bold text-lg mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{listing.title}</h3>
+                        <div className={`flex items-center text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                          <MapPin size={14} className="mr-1 flex-shrink-0" />
+                          <span className="truncate">{listing.location}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          {listing.amenities.slice(0, 3).map((amenity, i) => (
+                            <span key={i} className={`text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
+                              {amenity}
+                            </span>
+                          ))}
+                          {listing.amenities.length > 3 && (
+                            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              +{listing.amenities.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>${listing.price}</span>
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}> / night</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedListingId(listing.id);
+                              setShowBookingModal(true);
+                            }}
+                            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                          >
+                            Book now
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right content area - description panel (only visible on xl screens and up) */}
-        <div className="hidden xl:block xl:w-[45%] pt-8 pl-0 pr-4">
-          <div
-            ref={descriptionRef}
-            className={`backdrop-blur-md ${theme === "dark" ? "bg-gradient-to-br from-gray-800/40 to-gray-900/40" : "bg-gradient-to-br from-white/60 to-teal-50/60"} border ${theme === "dark" ? "border-white/10" : "border-teal-200/50"} rounded-xl p-8 max-w-md transition-all duration-300 shadow-xl ${theme === "dark" ? "shadow-black/30" : "shadow-teal-900/10"}`}
-            style={{
-              position: 'fixed',
-              width: 'calc(42% - 2rem)',
-              maxWidth: '520px',
-              right: '1.5rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              boxShadow: theme === "dark"
-                ? "0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 0, 0, 0.3) inset"
-                : "0 20px 40px -15px rgba(0, 0, 0, 0.15), 0 0 15px rgba(0, 0, 0, 0.05) inset",
-              zIndex: 30
-            }}
-          >
-            {/* Small diagonal decorative line */}
-            <div className="absolute top-0 left-0 w-16 h-1 bg-gradient-to-r from-transparent to-teal-400 dark:to-teal-400 transform rotate-45 translate-x-6 -translate-y-0.5"></div>
-
-            <div className="flex justify-between items-start">
-              <motion.h2
-                key={`title-${activePost}`}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`text-2xl font-bold mb-4 ${theme === "dark" ? "bg-gradient-to-r from-teal-300 to-cyan-500 bg-clip-text text-transparent" : "bg-gradient-to-r from-teal-600 to-cyan-700 bg-clip-text text-transparent"} ${quicksand.className}`}
-              >
-                {blogPosts[activePost].title}
-              </motion.h2>
-              
-              <button 
-                onClick={(e) => toggleLike(blogPosts[activePost].id, e)}
-                className="flex items-center group transition-all duration-300"
-              >
-                <Heart 
-                  size={18} 
-                  className={`${likedPosts.has(blogPosts[activePost].id) ? "text-red-500" : "text-gray-400 group-hover:text-red-400"} mr-1 transition-colors duration-300`} 
-                  fill={likedPosts.has(blogPosts[activePost].id) ? "currentColor" : "none"} 
-                />
-                <span className={`text-xs ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                  {likedPosts.has(blogPosts[activePost].id) ? blogPosts[activePost].likes + 1 : blogPosts[activePost].likes}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex items-center mb-4 text-sm gap-3 pb-4 border-b border-teal-200/20 dark:border-white/10">
-              <div className={`flex items-center ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                <Calendar size={14} className="mr-1" />
-                <span>{blogPosts[activePost].date}</span>
-              </div>
-              <div className={`flex items-center ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                <Clock size={14} className="mr-1" />
-                <span>{blogPosts[activePost].readTime}</span>
-              </div>
-            </div>
-
-            {/* Quote section */}
-            <div className="mb-4 pl-3 border-l-2 border-teal-400/30 dark:border-teal-400/30 italic">
-              <p className={`${theme === "dark" ? "text-white/80" : "text-gray-600"} text-sm`}>"{blogPosts[activePost].quote}"</p>
-            </div>
-
-            <motion.div
-              key={`content-${activePost}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-              className={`space-y-3 ${theme === "dark" ? "text-white/80" : "text-gray-700"} text-base max-h-[300px] overflow-y-auto pr-4 styled-scrollbar`}
-            >
-              <p className="leading-relaxed">{blogPosts[activePost].description}</p>
-            </motion.div>
-
-            {/* Read more button */}
-            <div className="mt-6 text-right">
-              <motion.button
-                whileHover={{ scale: 1.03, x: 5 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleReadFullStory(activePost)}
-                className={`inline-flex items-center px-4 py-2 rounded-lg ${theme === "dark"
-                  ? "bg-gradient-to-r from-teal-400/20 to-cyan-500/20 hover:from-teal-400/30 hover:to-cyan-500/30 text-teal-300"
-                  : "bg-gradient-to-r from-teal-100 to-cyan-100 hover:from-teal-200 hover:to-cyan-200 text-teal-700"}`}
-              >
-                Read full story
-                <ChevronRight size={16} className="ml-1 transition-transform duration-300 group-hover:translate-x-1" />
-              </motion.button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+        </section>
       </main>
 
-      {/* Full Story Modal - Completely redesigned for better responsiveness */}
+      <footer className={`py-16 border-t ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+            <div className="lg:col-span-2">
+              <div className={`font-bold text-2xl mb-6 tracking-tight ${theme === 'dark' ? 'text-rose-500' : 'text-rose-600'}`}>
+                StayAway<span className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}>.</span>
+              </div>
+              <p className={`mb-6 max-w-md ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Find your perfect accommodation worldwide. From cozy apartments to luxury villas, we've got the perfect place for your next adventure.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                  <FaFacebook size={20} />
+                </a>
+                <a href="#" className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                  <FaGoogle size={20} />
+                </a>
+                <a href="#" className={`p-2 rounded-full transition ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                  <FaApple size={20} />
+                </a>
+              </div>
+            </div>
+            <div>
+              <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Support</h3>
+              <ul className={`space-y-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Help Center</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Safety information</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Cancellation options</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Report a concern</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Hosting</h3>
+              <ul className={`space-y-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Try hosting</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Protection for hosts</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Hosting resources</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Community forum</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className={`font-bold text-lg mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>StayAway</h3>
+              <ul className={`space-y-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Newsroom</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Features</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Careers</a></li>
+                <li><a href="#" className={`transition ${theme === 'dark' ? 'hover:text-rose-500' : 'hover:text-rose-600'}`}>Investors</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className={`mt-12 pt-8 flex flex-col md:flex-row justify-between items-center border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+            <div className={`text-sm mb-4 md:mb-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              © 2025 StayAway, Inc. All rights reserved.
+            </div>
+            <div className="flex space-x-6">
+              <a href="#" className={`transition ${theme === 'dark' ? 'text-gray-400 hover:text-rose-500' : 'text-gray-600 hover:text-rose-600'}`}>
+                Privacy
+              </a>
+              <a href="#" className={`transition ${theme === 'dark' ? 'text-gray-400 hover:text-rose-500' : 'text-gray-600 hover:text-rose-600'}`}>
+                Terms
+              </a>
+              <a href="#" className={`transition ${theme === 'dark' ? 'text-gray-400 hover:text-rose-500' : 'text-gray-600 hover:text-rose-600'}`}>
+                Sitemap
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Auth Modal */}
       <AnimatePresence>
-        {showFullStory && fullStoryPost !== null && (
+        {showAuthModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={closeAuthModal}
           >
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={closeFullStory}></div>
-
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ type: "spring", duration: 0.5 }}
-              className={`${theme === "dark" ? "bg-gray-900" : "bg-white"} w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl sm:rounded-xl shadow-2xl relative z-10 flex flex-col overflow-hidden`}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} rounded-2xl shadow-xl p-6 w-full max-w-md border`}
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* Cover image */}
-              <div className="w-full h-56 sm:h-72 relative flex-shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent z-10"></div>
-                <div className={`absolute inset-0 ${theme === "dark" ? "bg-gradient-to-b from-transparent via-transparent to-gray-900" : "bg-gradient-to-b from-transparent via-transparent to-white"} z-10`}></div>
-                <img
-                  src={`${blogPosts[fullStoryPost].image}?auto=format&fit=crop&w=1200&q=90`}
-                  alt={blogPosts[fullStoryPost].title}
-                  className="w-full h-full object-cover"
-                />
-
-                {/* Back button - only on larger screens */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{authMode === "login" ? "Welcome back" : "Create account"}</h2>
                 <button
-                  onClick={closeFullStory}
-                  className={`absolute top-6 left-6 z-20 flex items-center justify-center p-2 rounded-full ${theme === "dark" ? "bg-black/30 hover:bg-black/50" : "bg-white/30 hover:bg-white/50"} backdrop-blur-md transition-all group`}
+                  onClick={closeAuthModal}
+                  className={`p-2 rounded-full ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} transition`}
                 >
-                  <ArrowLeft size={20} className="text-white group-hover:-translate-x-1 transition-transform" />
+                  <X size={20} />
                 </button>
               </div>
 
-              {/* Content - scrollable area */}
-              <div className="flex-1 p-6 sm:p-8 overflow-y-auto styled-scrollbar">
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <div className={`px-3 py-1 rounded-full text-xs ${theme === "dark" ? "bg-teal-400/20 text-teal-300" : "bg-teal-100 text-teal-700"}`}>
-                    {blogPosts[fullStoryPost].readTime}
+              {formSuccess && (
+                <div className={`mb-6 p-4 rounded-xl ${theme === 'dark' ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-800'} text-sm`}>
+                  <div className="flex items-start">
+                    <Check className={`mr-2 mt-0.5 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} size={16} />
+                    <span>{formSuccess}</span>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs ${theme === "dark" ? "bg-gray-800 text-gray-300" : "bg-gray-100 text-gray-700"}`}>
-                    {blogPosts[fullStoryPost].date}
+                </div>
+              )}
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                {authMode === "signup" && (
+                  <div>
+                    <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`} htmlFor="name">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      value={authFormData.name}
+                      onChange={handleAuthInputChange}
+                      className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.name ? 'border-red-500' : theme === 'dark' ? 'border-gray-700' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-rose-500 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                      placeholder="John Doe"
+                    />
+                    {formErrors.name && (
+                      <p className={`mt-1.5 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'} flex items-center`}>
+                        <X size={14} className="mr-1" />
+                        {formErrors.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`} htmlFor="email">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={authFormData.email}
+                    onChange={handleAuthInputChange}
+                    className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.email ? 'border-red-500' : theme === 'dark' ? 'border-gray-700' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-rose-500 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                    placeholder="you@example.com"
+                  />
+                  {formErrors.email && (
+                    <p className={`mt-1.5 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'} flex items-center`}>
+                      <X size={14} className="mr-1" />
+                      {formErrors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`} htmlFor="password">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={authFormData.password}
+                    onChange={handleAuthInputChange}
+                    className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.password ? 'border-red-500' : theme === 'dark' ? 'border-gray-700' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-rose-500 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                    placeholder="••••••••"
+                  />
+                  {formErrors.password && (
+                    <p className={`mt-1.5 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'} flex items-center`}>
+                      <X size={14} className="mr-1" />
+                      {formErrors.password}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition font-medium flex items-center justify-center"
+                >
+                  {authMode === "login" ? "Sign in" : "Create account"}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {authMode === "login" ? "Don't have an account?" : "Already have an account?"}
+                  <button
+                    onClick={() => {
+                      setAuthMode(authMode === "login" ? "signup" : "login");
+                      setFormErrors({});
+                    }}
+                    className="ml-1 text-rose-600 hover:text-rose-700 font-medium transition"
+                  >
+                    {authMode === "login" ? "Sign up" : "Sign in"}
+                  </button>
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className={`w-full border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className={`px-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-400' : 'bg-white text-gray-600'}`}>
+                      Or continue with
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mb-6">
-                  <h1 className={`text-2xl sm:text-3xl md:text-4xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"} ${quicksand.className}`}>
-                    {blogPosts[fullStoryPost].title}
-                  </h1>
-                  
+                <div className="mt-6 grid grid-cols-3 gap-3">
                   <button 
-                    onClick={(e) => toggleLike(blogPosts[fullStoryPost].id, e)}
-                    className="flex items-center group transition-all duration-300"
+                    onClick={() => handleSocialLogin('Google')}
+                    className={`flex justify-center items-center py-2.5 px-4 border rounded-lg transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800 text-gray-300' : 'border-gray-300 hover:bg-gray-50 text-gray-600'}`}
                   >
-                    <Heart 
-                      size={22} 
-                      className={`${likedPosts.has(blogPosts[fullStoryPost].id) ? "text-red-500" : "text-gray-400 group-hover:text-red-400"} mr-1 transition-colors duration-300`} 
-                      fill={likedPosts.has(blogPosts[fullStoryPost].id) ? "currentColor" : "none"} 
-                    />
-                    <span className={`text-sm ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-                      {likedPosts.has(blogPosts[fullStoryPost].id) ? blogPosts[fullStoryPost].likes + 1 : blogPosts[fullStoryPost].likes}
-                    </span>
+                    <FaGoogle className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => handleSocialLogin('Facebook')}
+                    className={`flex justify-center items-center py-2.5 px-4 border rounded-lg transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    <FaFacebook className="w-5 h-5 text-blue-600" />
+                  </button>
+                  <button 
+                    onClick={() => handleSocialLogin('Apple')}
+                    className={`flex justify-center items-center py-2.5 px-4 border rounded-lg transition ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800 text-gray-300' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}
+                  >
+                    <FaApple className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                <blockquote className={`text-base sm:text-xl italic mb-6 sm:mb-8 pl-4 border-l-4 ${theme === "dark" ? "border-teal-400 text-white/80" : "border-teal-500 text-gray-700"}`}>
-                  "{blogPosts[fullStoryPost].quote}"
-                </blockquote>
+      {/* Booking Form Modal */}
+      <AnimatePresence>
+        {showBookingModal && selectedListingId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => {
+              setShowBookingModal(false);
+              setBookingStatus(null);
+              setFormErrors({});
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} rounded-2xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-800`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {bookingStatus === null ? (
+                <>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Book Your Stay</h2>
+                    <button
+                      onClick={() => {
+                        setShowBookingModal(false);
+                        setFormErrors({});
+                      }}
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-400"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
 
-                <div className={`prose max-w-none prose-sm sm:prose ${theme === "dark" ? "prose-invert" : ""}`}>
-                  {/* Generated full story content */}
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    {blogPosts[fullStoryPost].description}
+                  <form
+                    onSubmit={handleBookingSubmit}
+                    className="space-y-5"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="checkin">
+                          Check-in Date
+                        </label>
+                        <input
+                          type="date"
+                          id="checkin"
+                          value={bookingFormData.checkin}
+                          onChange={handleBookingInputChange}
+                          className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.checkin ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                        />
+                        {formErrors.checkin && (
+                          <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                            <X size={14} className="mr-1" />
+                            {formErrors.checkin}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="checkout">
+                          Check-out Date
+                        </label>
+                        <input
+                          type="date"
+                          id="checkout"
+                          value={bookingFormData.checkout}
+                          onChange={handleBookingInputChange}
+                          className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.checkout ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                        />
+                        {formErrors.checkout && (
+                          <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                            <X size={14} className="mr-1" />
+                            {formErrors.checkout}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="guests">
+                        Number of Guests
+                      </label>
+                      <select
+                        id="guests"
+                        value={bookingFormData.guests}
+                        onChange={handleBookingInputChange}
+                        className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.guests ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                      >
+                        <option value="1">1 guest</option>
+                        <option value="2">2 guests</option>
+                        <option value="3">3 guests</option>
+                        <option value="4">4 guests</option>
+                        <option value="5">5 guests</option>
+                      </select>
+                      {formErrors.guests && (
+                        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                          <X size={14} className="mr-1" />
+                          {formErrors.guests}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="name">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        value={bookingFormData.name}
+                        onChange={handleBookingInputChange}
+                        className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                        placeholder="John Doe"
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                          <X size={14} className="mr-1" />
+                          {formErrors.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="email">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={bookingFormData.email}
+                        onChange={handleBookingInputChange}
+                        className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                        placeholder="you@example.com"
+                      />
+                      {formErrors.email && (
+                        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                          <X size={14} className="mr-1" />
+                          {formErrors.email}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="phone">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        value={bookingFormData.phone}
+                        onChange={handleBookingInputChange}
+                        className={`w-full py-2.5 px-3 rounded-lg border ${formErrors.phone ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'} focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+                        placeholder="+1 (123) 456-7890"
+                      />
+                      {formErrors.phone && (
+                        <p className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-center">
+                          <X size={14} className="mr-1" />
+                          {formErrors.phone}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-200" htmlFor="notes">
+                        Special Requests (Optional)
+                      </label>
+                      <textarea
+                        id="notes"
+                        rows={2}
+                        value={bookingFormData.notes}
+                        onChange={handleBookingInputChange}
+                        className="w-full py-2.5 px-3 rounded-lg border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        placeholder="Any special requests or requirements?"
+                      ></textarea>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition font-medium flex items-center justify-center"
+                    >
+                      <Calendar className="mr-2" size={18} />
+                      Confirm Booking
+                    </button>
+                  </form>
+                </>
+              ) : bookingStatus === "success" ? (
+                <div className="text-center py-8">
+                  <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                    <Check size={32} className="text-green-600 dark:text-green-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Booking Successful!</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    Your booking has been confirmed. A confirmation email has been sent to your email address.
                   </p>
-
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    The morning sun cast long shadows as I ventured further into the unknown. This journey wasn't planned—at least not in the way it had unfolded—but there was something liberating about letting go of expectations. Around me, the landscape gradually transformed, each step revealing new possibilities, new stories waiting to be told.
+                  <button
+                    onClick={() => {
+                      setShowBookingModal(false);
+                      setBookingStatus(null);
+                      setFormErrors({});
+                    }}
+                    className="px-6 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition font-medium"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                    <X size={32} className="text-red-600 dark:text-red-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Booking Failed</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    We couldn't process your booking at this time. Please try again later or contact our support team.
                   </p>
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 justify-center">
+                    <button
+                      onClick={() => {
+                        setBookingStatus(null);
+                      }}
+                      className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium text-gray-800 dark:text-white"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowBookingModal(false);
+                        setBookingStatus(null);
+                        setFormErrors({});
+                      }}
+                      className="px-6 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition font-medium"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    People I met along the way shared their own tales—some of triumph, others of loss—but each contributing to the rich tapestry of human experience. It's easy to forget how connected we all are when surrounded by the familiar comfort of routine. Out here, those barriers dissolved, revealing our shared humanity beneath the surface differences.
-                  </p>
+      {/* Offer Modal */}
+      <AnimatePresence>
+        {showOfferModal && selectedOffer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => setShowOfferModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-800"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={selectedOffer.image}
+                alt={selectedOffer.title}
+                className="w-full h-64 object-cover rounded-t-2xl"
+              />
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`${selectedOffer.offerColor} text-white px-3 py-1 rounded-full text-sm font-bold`}>{selectedOffer.offerLabel}</div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedOffer.title}</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowOfferModal(false)}
+                    className="p-2 rounded-full bg-white/90 hover:bg-white shadow-sm transition"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 mb-4">{selectedOffer.description}</p>
+                {/* Show related listing details */}
+                {(() => {
+                  const listing = listings.find(l => l.id === selectedOffer.relatedListingId);
+                  if (!listing) return null;
+                  return (
+                    <div className="mt-6 bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-center">
+                      <img src={listing.image} alt={listing.title} className="w-32 h-24 object-cover rounded-lg" />
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">{listing.title}</h3>
+                        <div className="flex items-center text-gray-600 dark:text-gray-300 text-sm mb-2">
+                          <MapPin size={14} className="mr-1 flex-shrink-0" />
+                          <span>{listing.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          {listing.amenities.slice(0, 3).map((amenity, i) => (
+                            <span key={i} className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs px-2 py-1 rounded-full">
+                              {amenity}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center">
+                          <Star size={14} className="text-yellow-400 mr-1" />
+                          <span className="text-sm font-medium">{listing.rating} · {listing.reviews} reviews</span>
+                        </div>
+                        <div className="mt-2">
+                          <span className="font-bold text-gray-900 dark:text-white">${listing.price}</span>
+                          <span className="text-gray-600 dark:text-gray-400"> / night</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                  <h2 className={`text-xl sm:text-2xl font-bold my-4 sm:my-6 ${theme === "dark" ? "text-white" : "text-gray-900"} ${quicksand.className}`}>
-                    The Turning Point
-                  </h2>
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`md:hidden fixed top-16 inset-x-0 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-lg z-50 border-b`}
+        >
+          <div className="p-4 flex flex-col space-y-3">
+            <a 
+              href="#popular" 
+              onClick={e => handleMenuClick(e, '#popular')} 
+              className={`font-medium ${theme === 'dark' 
+                ? 'text-gray-200 hover:text-rose-500 hover:bg-gray-800' 
+                : 'text-gray-900 hover:text-rose-600 hover:bg-gray-50'} 
+                py-2 px-3 rounded-lg transition flex items-center`}
+            > 
+              <Star size={16} className={`mr-2 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-500'}`} /> 
+              Popular
+            </a>
 
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    What began as a simple exploration had evolved into something deeper—a journey not just through physical spaces, but through ideas and emotions I had long neglected. Each challenge overcome was a lesson learned, each beautiful vista a reminder of why the difficult path is often worth taking.
-                  </p>
-
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    As the days turned to weeks, I found myself thinking less about the destination and more about the journey itself. The small moments—a conversation with a stranger, the perfect sunset, the taste of unfamiliar food—these were the true souvenirs, more valuable than any photograph or keepsake.
-                  </p>
-
-                  <h2 className={`text-xl sm:text-2xl font-bold my-4 sm:my-6 ${theme === "dark" ? "text-white" : "text-gray-900"} ${quicksand.className}`}>
-                    Looking Ahead
-                  </h2>
-
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    I don't know where this path will ultimately lead, but I've come to realize that not knowing is part of the adventure. There will be more challenges ahead, more uncertainty, more moments of doubt—but also more wonder, more discovery, more growth.
-                  </p>
-
-                  <p className={`mb-4 sm:mb-6 leading-relaxed ${theme === "dark" ? "text-white/80" : "text-gray-700"}`}>
-                    And so I continue forward, one step at a time, embracing both the joys and hardships that come with charting one's own course. After all, the most meaningful journeys aren't about reaching a destination—they're about becoming the person you're meant to be along the way.
-                  </p>
+            <a 
+              href="#recommended" 
+              onClick={e => handleMenuClick(e, '#recommended')} 
+              className={`font-medium ${theme === 'dark' 
+                ? 'text-gray-200 hover:text-rose-500 hover:bg-gray-800' 
+                : 'text-gray-900 hover:text-rose-600 hover:bg-gray-50'} 
+                py-2 px-3 rounded-lg transition flex items-center`}
+            > 
+              <ThumbsUp size={16} className={`mr-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-500'}`} /> 
+              Recommended
+            </a>
+            
+            <hr className={theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} />
+            
+            {isAuthenticated ? (
+              <>
+                <div className={`flex items-center py-2 px-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                  <img 
+                    src={userProfile.avatar} 
+                    alt="User avatar" 
+                    className="w-8 h-8 rounded-full mr-3 border border-rose-500" 
+                  />
+                  <div className="flex flex-col">
+                    <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {userProfile.name}
+                    </span>
+                    <span className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {userProfile.email}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Share section */}
-                <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200 dark:border-gray-800">
-                  <h3 className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>Share this story</h3>
-                  <div className="flex gap-2">
-                    <button className={`p-2 rounded-full ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200"} transition-colors`}>
-                      <Twitter size={18} className={theme === "dark" ? "text-white/70" : "text-gray-700"} />
-                    </button>
-                    <button className={`p-2 rounded-full ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200"} transition-colors`}>
-                      <Facebook size={18} className={theme === "dark" ? "text-white/70" : "text-gray-700"} />
-                    </button>
-                    <button className={`p-2 rounded-full ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200"} transition-colors`}>
-                      <Linkedin size={18} className={theme === "dark" ? "text-white/70" : "text-gray-700"} />
+                <button
+                  onClick={() => {
+                    setIsAuthenticated(false);
+                    setUserProfile({
+                      name: "",
+                      email: "",
+                      avatar: "https://ui-avatars.com/api/?background=random"
+                    });
+                    setShowUserMenu(false);
+                  }}
+                  className={`text-left font-medium ${theme === 'dark' 
+                    ? 'text-gray-200 hover:bg-gray-800' 
+                    : 'text-gray-900 hover:bg-gray-50'} 
+                    py-2 px-3 rounded-lg transition flex items-center`}
+                >
+                  <LogIn size={16} className={`mr-2 rotate-180 ${theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`} />
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    openAuthModal("signup");
+                    setIsMenuOpen(false);
+                  }}
+                  className={`text-left font-medium ${theme === 'dark' 
+                    ? 'text-gray-200 hover:bg-gray-800' 
+                    : 'text-gray-900 hover:bg-gray-50'} 
+                    py-2 px-3 rounded-lg transition flex items-center`}
+                >
+                  <UserPlus size={16} className={`mr-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                  Sign up
+                </button>
+                
+                <button
+                  onClick={() => {
+                    openAuthModal("login");
+                    setIsMenuOpen(false);
+                  }}
+                  className={`text-left font-medium ${theme === 'dark' 
+                    ? 'text-gray-200 hover:bg-gray-800' 
+                    : 'text-gray-900 hover:bg-gray-50'} 
+                    py-2 px-3 rounded-lg transition flex items-center`}
+                >
+                  <LogIn size={16} className={`mr-2 ${theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`} />
+                  Sign in
+                </button>
+              </>
+            )}
+            
+            <button
+              onClick={toggleTheme}
+              className={`text-left font-medium ${theme === 'dark' 
+                ? 'text-gray-200 hover:bg-gray-800' 
+                : 'text-gray-900 hover:bg-gray-50'} 
+                py-2 px-3 rounded-lg transition flex items-center`}
+            >
+              {theme === "dark" ? 
+                <Sun size={16} className="mr-2 text-amber-400" /> : 
+                <Moon size={16} className="mr-2 text-indigo-600" />
+              }
+              {theme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Listing Detail Modal */}
+      <AnimatePresence>
+        {selectedListing && selectedListingData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            onClick={closeListingDetail}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative">
+                <img
+                  src={selectedListingData.images[currentImageIndex]}
+                  alt={selectedListingData.title}
+                  className="w-full h-64 sm:h-96 object-cover"
+                />
+                <button
+                  onClick={closeListingDetail}
+                  className={`absolute top-4 right-4 p-2 rounded-full ${theme === 'dark'
+                    ? 'bg-gray-800/90 hover:bg-gray-800 text-white'
+                    : 'bg-white/90 hover:bg-white text-gray-800'
+                    } shadow-sm transition`}
+                >
+                  <X size={20} />
+                </button>
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+                  <button
+                    onClick={prevImage}
+                    className={`p-2 rounded-full ${theme === 'dark'
+                      ? 'bg-gray-800/90 hover:bg-gray-800 text-white'
+                      : 'bg-white/90 hover:bg-white text-gray-800'
+                      } shadow-sm transition`}
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className={`p-2 rounded-full ${theme === 'dark'
+                      ? 'bg-gray-800/90 hover:bg-gray-800 text-white'
+                      : 'bg-white/90 hover:bg-white text-gray-800'
+                      } shadow-sm transition`}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
+                      {selectedListingData.title}
+                    </h2>
+                    <div className={`flex items-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <MapPin size={16} className="mr-1" />
+                      <span>{selectedListingData.location}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Star size={18} className="text-yellow-400 mr-1" />
+                    <span className="font-medium">{selectedListingData.rating}</span>
+                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} ml-1`}>
+                      ({selectedListingData.reviews} reviews)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} p-3 rounded-lg`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Guests</div>
+                    <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedListingData.guests}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} p-3 rounded-lg`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Bedrooms</div>
+                    <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedListingData.bedrooms}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} p-3 rounded-lg`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Beds</div>
+                    <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedListingData.beds}</div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} p-3 rounded-lg`}>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Baths</div>
+                    <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedListingData.baths}</div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-3`}>Description</h3>
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{selectedListingData.description}</p>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-3`}>Amenities</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {selectedListingData.amenities.map((amenity, index) => (
+                      <div key={index} className={`flex items-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <Check size={16} className="mr-2 text-green-500" />
+                        {amenity}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} pt-6`}>
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        ${selectedListingData.price}
+                      </span>
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}> / night</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedListingId(selectedListing);
+                        setShowBookingModal(true);
+                        closeListingDetail();
+                      }}
+                      className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-lg font-medium transition"
+                    >
+                      Book now
                     </button>
                   </div>
                 </div>
@@ -862,129 +1890,146 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Mobile bottom indicator - only visible on smaller screens, hidden when footer is visible */}
-      <div className={`xl:hidden fixed bottom-0 left-0 right-0 p-4 z-40 transition-all duration-300 ${isFooterVisible ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
-        <div className={`rounded-xl p-4 backdrop-blur-md ${theme === "dark" ? "bg-gradient-to-br from-gray-800/90 to-gray-900/90" : "bg-gradient-to-br from-white/90 to-teal-50/90"} border ${theme === "dark" ? "border-white/10" : "border-teal-200/50"} shadow-xl`}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <h3 className={`text-lg font-bold ${theme === "dark" ? "bg-gradient-to-r from-teal-300 to-cyan-500 bg-clip-text text-transparent" : "bg-gradient-to-r from-teal-600 to-cyan-700 bg-clip-text text-transparent"} ${quicksand.className}`}>
-                {blogPosts[activePost].title}
-              </h3>
-              
-              <button 
-                onClick={(e) => toggleLike(blogPosts[activePost].id, e)}
-                className="flex items-center group transition-all duration-300 ml-3"
-              >
-                <Heart 
-                  size={16} 
-                  className={`${likedPosts.has(blogPosts[activePost].id) ? "text-red-500" : "text-gray-400 group-hover:text-red-400"} transition-colors duration-300`} 
-                  fill={likedPosts.has(blogPosts[activePost].id) ? "currentColor" : "none"} 
-                />
-              </button>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleReadFullStory(activePost)}
-              className={`px-3 py-1 rounded-lg ${theme === "dark"
-                ? "bg-gradient-to-r from-teal-400/20 to-cyan-500/20 text-teal-300"
-                : "bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700"} flex items-center text-sm`}
-            >
-              <span>Read</span>
-              <ChevronRight size={14} className="ml-1" />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center my-2 text-xs gap-3">
-            <div className={`flex items-center ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-              <Calendar size={12} className="mr-1" />
-              <span>{blogPosts[activePost].date}</span>
-            </div>
-            <div className={`flex items-center ${theme === "dark" ? "text-white/70" : "text-gray-600"}`}>
-              <Clock size={12} className="mr-1" />
-              <span>{blogPosts[activePost].readTime}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer with extra space to allow viewing the last blog description */}
-      <footer
-        ref={footerRef}
-        className={`relative z-10 ${theme === "dark" ? "bg-gradient-to-b from-gray-900 to-black border-t border-white/10" : "bg-gradient-to-b from-teal-50 to-white border-t border-teal-200/50"}`}
-      >
-        <div className="container mx-auto px-4">
-          <div className={`py-6 flex flex-col md:flex-row justify-between items-center`}>
-            <div className="flex items-center flex-wrap justify-center md:justify-start mb-4 md:mb-0">
-              <div className="flex items-center mr-6">
-                <h3 className={`text-xl font-bold ${satisfy.className} ${theme === "dark" ? "text-white" : "text-teal-700"}`}>
-                  Journey<span className={theme === "dark" ? "text-teal-400" : "text-teal-500"}>Timeline</span>
-                </h3>
-              </div>
-              <p className={`text-xs ${theme === "dark" ? "text-white/50" : "text-gray-500"} mr-6`}>
-                © {new Date().getFullYear()} JourneyTimeline. All rights reserved.
-              </p>
-            </div>
-            <div className="flex space-x-3">
-              <a href="#" className={`${theme === "dark" ? "bg-white/5 hover:bg-white/10" : "bg-teal-100/50 hover:bg-teal-100"} p-2 rounded-full transition-all`}>
-                <Twitter size={20} className={theme === "dark" ? "text-white/70" : "text-teal-700"} />
-              </a>
-              <a href="#" className={`${theme === "dark" ? "bg-white/5 hover:bg-white/10" : "bg-teal-100/50 hover:bg-teal-100"} p-2 rounded-full transition-all`}>
-                <Instagram size={20} className={theme === "dark" ? "text-white/70" : "text-teal-700"} />
-              </a>
-              <a href="#" className={`${theme === "dark" ? "bg-white/5 hover:bg-white/10" : "bg-teal-100/50 hover:bg-teal-100"} p-2 rounded-full transition-all`}>
-                <Facebook size={20} className={theme === "dark" ? "text-white/70" : "text-teal-700"} />
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
-
       <style jsx global>{`
-        .styled-scrollbar::-webkit-scrollbar {
-          width: 6px;
+        /* Base styles */
+        body {
+          font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          background-color: ${theme === 'dark' ? '#111827' : '#F9FAFB'};
+          color: ${theme === 'dark' ? '#F3F4F6' : '#111827'};
         }
-        .styled-scrollbar::-webkit-scrollbar-track {
-          background: ${theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"};
-          border-radius: 10px;
+
+        /* Headings */
+        h1, h2, h3, h4, h5, h6 {
+          color: ${theme === 'dark' ? '#F9FAFB' : '#111827'};
+          font-weight: 700;
         }
-        .styled-scrollbar::-webkit-scrollbar-thumb {
-          background: ${theme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"};
-          border-radius: 10px;
+
+        /* Paragraphs and body text */
+        p, span, li, div, label {
+          color: ${theme === 'dark' ? '#E5E7EB' : '#1F2937'};
         }
-        .styled-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: ${theme === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"};
+
+        /* Links */
+        a {
+          color: ${theme === 'dark' ? '#93C5FD' : '#2563EB'};
+          text-decoration: none;
         }
-        
-        @keyframes diamond-pulse {
-          0%, 100% {
-            transform: scale(1) rotate(45deg);
+        a:hover {
+          color: #F43F5E;
+        }
+
+        /* Buttons */
+        .btn-primary {
+          background-color: #F43F5E;
+          color: #FFF;
+        }
+        .btn-secondary {
+          background-color: ${theme === 'dark' ? '#374151' : '#F3F4F6'};
+          color: ${theme === 'dark' ? '#F3F4F6' : '#1F2937'};
+        }
+        button, .cursor-pointer {
+          cursor: pointer !important;
+        }
+
+        /* Inputs, selects, textareas */
+        input, select, textarea {
+          color: ${theme === 'dark' ? '#F3F4F6' : '#111827'};
+          background-color: ${theme === 'dark' ? '#1F2937' : '#FFF'};
+          border-color: ${theme === 'dark' ? '#4B5563' : '#E5E7EB'};
+        }
+        input:focus, select:focus, textarea:focus {
+          outline: 2px solid #F43F5E;
+          outline-offset: 2px;
+        }
+        ::placeholder {
+          color: ${theme === 'dark' ? '#9CA3AF' : '#6B7280'};
+          opacity: 1;
+        }
+
+        /* Error and success messages */
+        .text-red-600 {
+          color: ${theme === 'dark' ? '#F87171' : '#DC2626'} !important;
+        }
+        .text-green-600 {
+          color: ${theme === 'dark' ? '#4ADE80' : '#16A34A'} !important;
+        }
+
+        /* Card and modal backgrounds */
+        .card, .modal-content {
+          background-color: ${theme === 'dark' ? '#1F2937' : '#FFF'};
+          color: ${theme === 'dark' ? '#F3F4F6' : '#111827'};
+        }
+        .modal-backdrop {
+          background-color: ${theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.5)'};
+        }
+
+        /* Border colors */
+        .border {
+          border-color: ${theme === 'dark' ? '#4B5563' : '#E5E7EB'};
+        }
+
+        /* Focus and hover states for accessibility */
+        button:focus, a:focus, [role="button"]:focus, input[type="submit"]:focus, input[type="button"]:focus, select:focus {
+          outline: 2px solid #F43F5E;
+          outline-offset: 2px;
+        }
+        button:hover, a:hover, [role="button"]:hover, input[type="submit"]:hover, input[type="button"]:hover, select:hover {
+          opacity: 0.92;
+        }
+
+        /* Mobile styles */
+        @media (max-width: 640px) {
+          .container {
+            padding-left: 16px;
+            padding-right: 16px;
           }
-          50% {
-            transform: scale(1.05) rotate(45deg);
+          .grid {
+            gap: 16px;
+          }
+          input[type="date"], select, textarea, input[type="text"], input[type="email"], input[type="tel"] {
+            font-size: 16px;
+          }
+          .max-h-\[90vh\] {
+            max-height: 80vh;
           }
         }
-        
-        @keyframes slide-in {
-          0% {
-            transform: translateX(-10px);
-            opacity: 0;
-          }
-          100% {
-            transform: translateX(0);
-            opacity: 1;
-          }
+
+        /* Hide scrollbar */
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
         }
-        
-        .animate-slide-in {
-          animation: slide-in 0.5s forwards;
-        }
-        
-        .animate-diamond-pulse {
-          animation: diamond-pulse 3s ease-in-out infinite;
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-lg shadow-lg ${
+            theme === 'dark' 
+              ? 'bg-gray-800 border border-gray-700 text-white' 
+              : 'bg-white border border-gray-200 text-gray-900'
+          } ${
+            toast.type === 'success' 
+              ? 'border-l-4 border-l-green-500' 
+              : toast.type === 'error' 
+                ? 'border-l-4 border-l-red-500' 
+                : 'border-l-4 border-l-blue-500'
+          }`}
+        >
+          <div className="flex items-center">
+            {toast.type === 'success' && <Check className="mr-2 text-green-500" size={18} />}
+            {toast.type === 'error' && <X className="mr-2 text-red-500" size={18} />}
+            {toast.type === 'info' && <Info className="mr-2 text-blue-500" size={18} />}
+            <span>{toast.message}</span>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
