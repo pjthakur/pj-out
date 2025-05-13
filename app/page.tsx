@@ -1220,7 +1220,7 @@ const Header: React.FC<{
                   login('user@example.com', 'password');
                   showToast("Logged in successfully!");
                 }}
-                className="py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+                className="hidden md:block py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
