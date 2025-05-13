@@ -1,1245 +1,1083 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SunIcon, MoonIcon, InfoIcon, XIcon, Clock, Star, Trophy, Sparkles, Frown, Smile, Pause, Play, BarChart3, Info } from "lucide-react";
-import { Orbitron, Press_Start_2P, Russo_One, Bungee, Righteous, Bangers, Rowdies, Paytone_One } from 'next/font/google';
+import {
+  Search, Users, Bell, MessageCircle, Settings, Moon, Sun,
+  Heart, MessageSquare, Share2, MoreHorizontal, Send, X,
+  ChevronUp, ChevronDown, User, LogOut, Check, AlertTriangle,
+  Bookmark, Compass, TrendingUp, Camera, Calendar, Gift,
+  Zap, DollarSign, Music, Film, Coffee, Activity, ThumbsUp,
+  Trash
+} from "lucide-react";
+import { Home as HomeIcon } from "lucide-react";
 
-const orbitron = Orbitron({ subsets: ['latin'] });
-const bungee = Bungee({ weight: '400', subsets: ['latin'] });
-const righteous = Righteous({ weight: '400', subsets: ['latin'] });
-const bangers = Bangers({ weight: '400', subsets: ['latin'] });
-const rowdies = Rowdies({ weight: '400', subsets: ['latin'] });
-const paytoneOne = Paytone_One({ weight: '400', subsets: ['latin'] });
+export default function LetsConnect() {
+  const [theme, setTheme] = useState("dark");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [minimizedChats, setMinimizedChats] = useState<number[]>([]);
+  const [messages, setMessages] = useState<Record<number, { text: string, sender: 'user' | 'friend', timestamp: Date }[]>>({});
+  const [newMessage, setNewMessage] = useState("");
+  const [posts, setPosts] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [friendsListOpen, setFriendsListOpen] = useState(false);
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+  const [comments, setComments] = useState<Record<number, { id: number, user: string, avatar: string, text: string, timestamp: string }[]>>({});
+  const [toast, setToast] = useState<{ show: boolean, message: string, type: 'info' | 'success' | 'warning' } | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
 
-type ThemeType = "light" | "dark";
-type GameItem = {
-  id: number;
-  text: string;
-  isOddOne: boolean;
-};
-
-export default function Home() {
-  const [theme, setTheme] = useState<ThemeType>("light");
-  const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [gameItems, setGameItems] = useState<GameItem[]>([]);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<number | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [gameOver, setGameOver] = useState(false);
-  const [highScore, setHighScore] = useState(0);
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [stars, setStars] = useState(0);
-  const [showGame, setShowGame] = useState(true);
-  const [pauseGame, setPauseGame] = useState(false);
-  const [confetti, setConfetti] = useState<{ x: number, y: number, color: string }[]>([]);
-  const [userLevel, setUserLevel] = useState(1);
-  const [totalScore, setTotalScore] = useState(0);
-  const [achievements, setAchievements] = useState<string[]>([]);
-  const [streakCount, setStreakCount] = useState(0);
-  const [emojiType, setEmojiType] = useState("faces");
-  const [showStatsPanel, setShowStatsPanel] = useState(false);
-  const [showHelpPanel, setShowHelpPanel] = useState(false);
-  const [showEmojiDropdown, setShowEmojiDropdown] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [windowWidth, setWindowWidth] = useState(0);
-  const emojiDropdownRef = useRef<HTMLDivElement>(null);
+  // Mock notifications
+  const notifications = [
+    { id: 1, user: "Alex Guerrero", avatar: "https://i.pravatar.cc/150?img=1", text: "liked your post", time: "5 min ago" },
+    { id: 2, user: "Sara Mendoza", avatar: "https://i.pravatar.cc/150?img=5", text: "commented on your photo", time: "10 min ago" },
+    { id: 3, user: "Nick Powell", avatar: "https://i.pravatar.cc/150?img=12", text: "sent you a friend request", time: "1 hour ago" },
+  ];
 
   useEffect(() => {
-    const savedTotalScore = localStorage.getItem("totalScore");
-    if (savedTotalScore) {
-      setTotalScore(parseInt(savedTotalScore));
-      setUserLevel(getUserLevel(parseInt(savedTotalScore)));
-    }
-
-    const savedAchievements = localStorage.getItem("achievements");
-    if (savedAchievements) {
-      setAchievements(JSON.parse(savedAchievements));
-    }
-
-    const savedTheme = localStorage.getItem("theme") as ThemeType | null;
-    if (savedTheme) {
+    // Get the theme from localStorage or default to light
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem("theme") || "light";
       setTheme(savedTheme);
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setTheme(prefersDark ? "dark" : "light");
+      document.documentElement.classList.toggle("dark-mode", savedTheme === "dark");
+
+      // Add Montserrat font
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap';
+      document.head.appendChild(link);
+
+      // Apply Montserrat font to body
+      document.body.style.fontFamily = "'Montserrat', sans-serif";
     }
-
-    // Check if device is touch-enabled
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice) {
-      document.documentElement.classList.add('touch-device');
-    }
-
-    const savedHighScore = localStorage.getItem("highScore");
-    if (savedHighScore) {
-      setHighScore(parseInt(savedHighScore));
-    }
-
-    generateRoundForLevel(1);
-
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setWindowWidth(width);
-
-      if (width < 768) {
-        setShowStatsPanel(false);
-        setShowHelpPanel(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    handleResize();
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      window.removeEventListener("resize", handleResize);
-    };
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("totalScore", totalScore.toString());
-  }, [totalScore]);
+    // Scroll to bottom of messages when new message is added
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, activeChatId]);
 
+  // Prevent body scroll when any popup is open on mobile
   useEffect(() => {
-    localStorage.setItem("achievements", JSON.stringify(achievements));
-  }, [achievements]);
+    if (typeof window !== 'undefined') {
+      const handleResize = () => {
+        // Check if any popup is open and visible on mobile
+        const anyPopupOpen = (
+          (activeChatId && !minimizedChats.includes(activeChatId)) || 
+          notificationsOpen || 
+          friendsListOpen || 
+          profileMenuOpen
+        );
+        
+        if (window.innerWidth < 640 && anyPopupOpen) {
+          // Prevent scrolling on the body
+          document.body.style.overflow = 'hidden';
+        } else {
+          // Allow scrolling
+          document.body.style.overflow = 'auto';
+        }
+      };
+      
+      // Initial call
+      handleResize();
+      
+      // Add resize listener
+      window.addEventListener('resize', handleResize);
+      
+      // Cleanup function to restore scrolling and remove event listener
+      return () => {
+        document.body.style.overflow = 'auto';
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [activeChatId, minimizedChats, notificationsOpen, friendsListOpen, profileMenuOpen]);
 
-  // Clean up toast timer on unmount
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
+  // Helper function to prevent touch events from propagating to the background
+  const preventBackgroundScroll = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
   }, []);
 
-  const getUserLevel = (score: number) => {
-    if (score < 100) return 1;
-    if (score < 300) return 2;
-    if (score < 600) return 3;
-    if (score < 1000) return 4;
-    if (score < 2000) return 5;
-    return Math.floor(score / 400) + 1;
-  };
+  // Generate more posts when scrolling
+  const generatePosts = useCallback((pageNum: number) => {
+    setLoading(true);
 
-  const checkForAchievements = (correct: boolean, timeRemaining: number) => {
-    const newAchievements = [...achievements];
-
-    if (correct && timeRemaining > 25 && !achievements.includes("⚡ Speed Demon")) {
-      newAchievements.push("⚡ Speed Demon");
-    }
-
-    if (correct) {
-      const newStreakCount = streakCount + 1;
-      setStreakCount(newStreakCount);
-
-      if (newStreakCount >= 5 && !achievements.includes("🔥 Hot Streak")) {
-        newAchievements.push("🔥 Hot Streak");
-      }
-    } else {
-      setStreakCount(0);
-    }
-
-    if (level === 10 && !achievements.includes("🏆 Completionist")) {
-      newAchievements.push("🏆 Completionist");
-    }
-
-    const currentLevel = userLevel;
-    const newLevel = getUserLevel(totalScore + (correct ? Math.max(10, timeLeft) : 0));
-
-    if (newLevel > currentLevel && !achievements.includes(`🌟 Reached League ${newLevel}`)) {
-      newAchievements.push(`🌟 Reached League ${newLevel}`);
-    }
-
-    if (newAchievements.length > achievements.length) {
-      setAchievements(newAchievements);
-    }
-  };
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("highScore", highScore.toString());
-  }, [highScore]);
-
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    if (!showFeedback && !gameOver && !pauseGame) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            handleTimeout();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [level, showFeedback, gameOver, pauseGame]);
-
-  const createConfetti = () => {
-    const colors = ["#FF5252", "#FFD740", "#64FFDA", "#448AFF", "#E040FB"];
-    const newConfetti = Array.from({ length: 50 }).map(() => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      color: colors[Math.floor(Math.random() * colors.length)]
-    }));
-    setConfetti(newConfetti);
-  };
-
-  const handleTimeout = () => {
-    setShowFeedback(true);
-    setIsCorrect(false);
-
+    // Simulate API call delay
     setTimeout(() => {
-      if (level >= 10) {
-        endGame();
-      } else {
-        moveToNextLevel();
+      const newPosts = Array.from({ length: 3 }, (_, i) => {
+        const postId = (pageNum - 1) * 3 + i + 1;
+        const uniqueId = postId + Date.now(); // Ensure each ID is truly unique by adding timestamp
+        return {
+          id: uniqueId,
+          user: {
+            name: ["Alex Guerrero", "Edward Kelly", "Sandra Rivera", "Marie Jackson", "Nick Powell"][Math.floor(Math.random() * 5)],
+            avatar: `https://i.pravatar.cc/150?img=${postId % 30 + 1}`
+          },
+          image: `https://picsum.photos/800/600?random=${postId + 10}`,
+          likes: Math.floor(Math.random() * 1500) + 100,
+          comments: Math.floor(Math.random() * 500) + 10,
+          hasLiked: false,
+          tags: [`#tag${postId}`, `#trend${postId % 5 + 1}`],
+          text: "In at iaculis lorem. Praesent tempor dictum tellus ut molestie. Sed sed ullamcorper lorem. Id faucibus odio. Duis eu nisi ut ligula cursus molestie at at dolor."
+        };
+      });
+
+      setPosts(prev => [...prev, ...newPosts]);
+      setLoading(false);
+    }, 800);
+  }, []);
+
+  // Setup infinite scroll observer
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !loading) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) {
+      observerRef.current.observe(loaderRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
-    }, 2000);
-  };
+    };
+  }, [loading]);
+
+  // Load more posts when page changes
+  useEffect(() => {
+    generatePosts(page);
+  }, [page, generatePosts]);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
-
-  const moveToNextLevel = () => {
-    setShowFeedback(false);
-    setSelectedItem(null);
-    const nextLevel = level + 1;
-    setLevel(nextLevel);
-    setTimeLeft(30);
-    generateRoundForLevel(nextLevel);
-  };
-
-  const generateRoundForLevel = (levelValue: number) => {
-    let gridSize = 4; // Default for 2x2 grid
-
-    if (levelValue <= 3) {
-      gridSize = 4; // 2x2 grid for levels 1-3
-    } else if (levelValue <= 7) {
-      gridSize = 9; // 3x3 grid for levels 4-7
-    } else {
-      gridSize = 16; // 4x4 grid for levels 8-10
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("theme", newTheme);
     }
-
-    const oddOneOutIndex = Math.floor(Math.random() * gridSize);
-
-    let baseText = "";
-    let oddText = "";
-
-    if (emojiType === "shapes") {
-      switch (levelValue % 5) {
-        case 1:
-          baseText = "●";
-          oddText = "○";
-          break;
-        case 2:
-          baseText = "■";
-          oddText = "□";
-          break;
-        case 3:
-          baseText = "▲";
-          oddText = "△";
-          break;
-        case 4:
-          baseText = "◆";
-          oddText = "◇";
-          break;
-        case 0:
-          baseText = "✦";
-          oddText = "✧";
-          break;
-      }
-    } else if (emojiType === "animals") {
-      switch (levelValue % 5) {
-        case 1:
-          baseText = "🐱";
-          oddText = "🐯";
-          break;
-        case 2:
-          baseText = "🐶";
-          oddText = "🦊";
-          break;
-        case 3:
-          baseText = "🐻";
-          oddText = "🐨";
-          break;
-        case 4:
-          baseText = "🐸";
-          oddText = "🦎";
-          break;
-        case 0:
-          baseText = "🐵";
-          oddText = "🦍";
-          break;
-      }
-    } else if (emojiType === "food") {
-      switch (levelValue % 5) {
-        case 1:
-          baseText = "🍎";
-          oddText = "🍏";
-          break;
-        case 2:
-          baseText = "🍕";
-          oddText = "🍔";
-          break;
-        case 3:
-          baseText = "🍦";
-          oddText = "🧁";
-          break;
-        case 4:
-          baseText = "🍒";
-          oddText = "🍓";
-          break;
-        case 0:
-          baseText = "🍫";
-          oddText = "🍬";
-          break;
-      }
-    } else if (emojiType === "faces") {
-      switch (levelValue % 5) {
-        case 1:
-          baseText = "😀";
-          oddText = "😃";
-          break;
-        case 2:
-          baseText = "😎";
-          oddText = "🥸";
-          break;
-        case 3:
-          baseText = "😴";
-          oddText = "🥱";
-          break;
-        case 4:
-          baseText = "🙂";
-          oddText = "🙃";
-          break;
-        case 0:
-          baseText = "😑";
-          oddText = "😶";
-          break;
-      }
-    }
-
-    const newItems: GameItem[] = Array(gridSize).fill(null).map((_, index) => ({
-      id: index,
-      text: index === oddOneOutIndex ? oddText : baseText,
-      isOddOne: index === oddOneOutIndex
-    }));
-
-    setGameItems(newItems);
+    document.documentElement.classList.toggle("dark-mode", newTheme === "dark");
   };
 
-  const generateRound = () => {
-    generateRoundForLevel(level);
-  };
+  // Mock data for users
+  const users = [
+    { id: 1, name: "Alex Guerrero", avatar: "https://i.pravatar.cc/150?img=1", online: true, lastSeen: "10 min" },
+    { id: 2, name: "Sara Mendoza", avatar: "https://i.pravatar.cc/150?img=5", online: true, lastSeen: "" },
+    { id: 3, name: "Ronald Roberts", avatar: "https://i.pravatar.cc/150?img=8", online: true, lastSeen: "" },
+    { id: 4, name: "Nancy Lee", avatar: "https://i.pravatar.cc/150?img=9", online: false, lastSeen: "12 min" },
+    { id: 5, name: "Marie Jackson", avatar: "https://i.pravatar.cc/150?img=10", online: false, lastSeen: "7 min" },
+    { id: 6, name: "Nick Powell", avatar: "https://i.pravatar.cc/150?img=12", online: true, lastSeen: "" },
+    { id: 7, name: "Alex Freeman", avatar: "https://i.pravatar.cc/150?img=15", online: true, lastSeen: "" },
+    { id: 8, name: "Sandra Rivera", avatar: "https://i.pravatar.cc/150?img=25", online: false, lastSeen: "12 min" },
+    { id: 9, name: "Jerry Jordan", avatar: "https://i.pravatar.cc/150?img=29", online: true, lastSeen: "" },
+  ];
 
-  const handleItemClick = (id: number) => {
-    if (showFeedback || gameOver || pauseGame) return;
+  // Mock data for groups
+  const groups = [
+    { id: 101, name: "Kelly Powell", avatar: "https://i.pravatar.cc/150?img=30", lastSeen: "1h", members: [1, 5, 8] }
+  ];
 
-    const item = gameItems.find(item => item.id === id);
-    if (!item) return;
+  // Sidebar items
+  const sidebarItems = [
+    { icon: <HomeIcon className={`w-5 h-5 ${theme === "dark" ? "text-white" : "text-gray-700"}`} />, text: "Feed" },
+    { icon: <Users className={`w-5 h-5 ${theme === "dark" ? "text-white" : "text-gray-700"}`} />, text: "Friends" },
+    { icon: <Bell className={`w-5 h-5 ${theme === "dark" ? "text-white" : "text-gray-700"}`} />, text: "Event" },
+    { icon: <MessageCircle className={`w-5 h-5 ${theme === "dark" ? "text-white" : "text-gray-700"}`} />, text: "Watch Videos" },
+    { icon: <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlIj48cmVjdCB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHg9IjMiIHk9IjMiIHJ4PSIyIiByeT0iMiIvPjxjaXJjbGUgY3g9IjguNSIgY3k9IjguNSIgcj0iMS41Ii8+PHBvbHlsaW5lIHBvaW50cz0iMjEgMTUgMTYgMTAgNSAyMSIvPjwvc3ZnPg==" alt="" style={{ width: '1.25rem', height: '1.25rem', filter: theme === "dark" ? "invert(1)" : "" }} />, text: "Photos" },
+    { icon: <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUiPjxwYXRoIGQ9Ik0xNC41IDJINmEyIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTJhMiAyIDAgMCAwIDItMlY3LjVMIDE0LjUgMnoiLz48cG9seWxpbmUgcG9pbnRzPSIxNCAyIDE0IDggMjAgOCIvPjwvc3ZnPg==" alt="" style={{ width: '1.25rem', height: '1.25rem', filter: theme === "dark" ? "invert(1)" : "" }} />, text: "Files" }
+  ];
 
-    setSelectedItem(id);
-    setIsCorrect(item.isOddOne);
-    setShowFeedback(true);
+  // Pages you like
+  const likedPages = [
+    { text: "Fashion Design", badge: null },
+    { text: "Graphic Design", badge: "20" },
+    { text: "UI/UX Community", badge: null },
+    { text: "Web Designer", badge: null }
+  ];
 
-    if (item.isOddOne) {
-      const earnedPoints = Math.max(10, timeLeft);
-      setScore((prev) => prev + earnedPoints);
-      setTotalScore((prev) => prev + earnedPoints);
-
-      const newLevel = getUserLevel(totalScore + earnedPoints);
-      if (newLevel > userLevel) {
-        setUserLevel(newLevel);
-      }
-
-      checkForAchievements(true, timeLeft);
-
-      const earnedStars = timeLeft > 20 ? 3 : timeLeft > 10 ? 2 : 1;
-      setStars(earnedStars);
-      setShowCelebration(true);
-      createConfetti();
-    } else {
-      checkForAchievements(false, timeLeft);
-    }
-
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    setTimeout(() => {
-      setConfetti([]);
-      setShowCelebration(false);
-
-      if (level >= 10 || !item.isOddOne) {
-        endGame();
-      } else if (item.isOddOne) {
-        moveToNextLevel();
-      }
-    }, 2500);
-  };
-
-  const endGame = () => {
-    setGameOver(true);
-    if (score > highScore) {
-      setHighScore(score);
-    }
-  };
-
-  const resetGame = () => {
-    setScore(0);
-    setLevel(1);
-    setTimeLeft(30);
-    setShowFeedback(false);
-    setSelectedItem(null);
-    setGameOver(false);
-    setShowCelebration(false);
-    setShowGame(true);
-    setPauseGame(false);
-    
-    // Generate 2x2 grid for level 1
-    generateRoundForLevel(1);
-  };
-
-  const bgOverlay = theme === "dark"
-    ? "bg-gradient-to-b from-gray-900/70 to-[#0a2e64]/70"
-    : "bg-gradient-to-b from-[#64b5f6]/70 to-[#1976d2]/70";
-  const cardBgColor = theme === "dark"
-    ? "bg-gray-800/40 backdrop-blur-md border border-gray-700/50"
-    : "bg-white/40 backdrop-blur-md border border-white/50";
-  const textColor = theme === "dark" ? "text-white" : "text-gray-900";
-  const primaryButtonBg = "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700";
-  const secondaryButtonBg = "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700";
-
-  const getGridClass = () => {
-    if (gameItems.length === 4) return "grid-cols-2";
-    if (gameItems.length === 9) return "grid-cols-3";
-    if (isSmallScreen) return "grid-cols-3 sm:grid-cols-4"; // 4x4 grid on small screens uses 3 columns
-    return "grid-cols-4"; // 4x4 grid with 4 columns on larger screens
-  };
-
-  const isLargeScreen = windowWidth >= 1024;
-
-  const toggleStatsPanel = () => {
-    setShowStatsPanel(!showStatsPanel);
-    if (showHelpPanel) setShowHelpPanel(false);
-  };
-
-  const toggleHelpPanel = () => {
-    setShowHelpPanel(!showHelpPanel);
-    if (showStatsPanel) setShowStatsPanel(false);
-  };
-
-  const isSmallScreen = windowWidth < 768;
-
+  // Initialize mock comments
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (emojiDropdownRef.current && !emojiDropdownRef.current.contains(event.target as Node)) {
-        setShowEmojiDropdown(false);
-      }
-    };
+    const initialComments: Record<number, { id: number, user: string, avatar: string, text: string, timestamp: string }[]> = {};
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchend', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchend', handleClickOutside);
-    };
+    // Add some initial comments to the first few posts
+    for (let i = 1; i <= 5; i++) {
+      initialComments[i] = [
+        {
+          id: 1,
+          user: "Alex Freeman",
+          avatar: "https://i.pravatar.cc/150?img=15",
+          text: "This is amazing! Love the view.",
+          timestamp: "2 hours ago"
+        },
+        {
+          id: 2,
+          user: "Sara Mendoza",
+          avatar: "https://i.pravatar.cc/150?img=5",
+          text: "Wish I could be there right now!",
+          timestamp: "1 hour ago"
+        }
+      ];
+    }
+
+    setComments(initialComments);
   }, []);
 
-  const toggleEmojiDropdown = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowEmojiDropdown(!showEmojiDropdown);
+  // Handle post interactions
+  const handleLike = (postId: number) => {
+    setPosts(posts.map(post => {
+      if (post.id === postId) {
+        // Toggle like status
+        const newLikeStatus = !post.hasLiked;
+        return {
+          ...post,
+          hasLiked: newLikeStatus,
+          likes: newLikeStatus ? post.likes + 1 : post.likes - 1
+        };
+      }
+      return post;
+    }));
   };
 
-  const selectEmojiType = (type: string) => {
-    setTimeout(() => {
-      setEmojiType(type);
-      setShowEmojiDropdown(false);
-      setShowToast(true);
-      setToastMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} will be used from the next round`);
-      
-      // Clear previous toast timer if exists
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
+  const handleComment = (postId: number) => {
+    // Focus on comment input or show comment section
+    const commentSection = document.getElementById(`comment-section-${postId}`);
+    if (commentSection) {
+      commentSection.classList.remove('hidden');
+      const commentInput = document.getElementById(`comment-input-${postId}`) as HTMLInputElement;
+      if (commentInput) {
+        commentInput.focus();
       }
-      
-      // Auto-hide toast after 3 seconds
-      toastTimerRef.current = setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
-    }, 50);
+    }
+  };
+
+  const addComment = (postId: number) => {
+    if (commentInputs[postId]?.trim()) {
+      const newComment = {
+        id: (comments[postId]?.length || 0) + 1,
+        user: "You",
+        avatar: "https://i.pravatar.cc/150?img=68",
+        text: commentInputs[postId],
+        timestamp: "Just now"
+      };
+
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), newComment]
+      }));
+
+      setCommentInputs(prev => ({
+        ...prev,
+        [postId]: ""
+      }));
+    }
+  };
+
+  const handleShare = (postId: number) => {
+    // Copy a mock share link to clipboard
+    const shareUrl = `https://letsconnect.example/post/${postId}`;
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        // Show toast notification
+        setToast({
+          show: true,
+          message: 'Link copied to clipboard!',
+          type: 'success'
+        });
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+      });
+  };
+
+  // Chat functionality
+  const startChat = (userId: number) => {
+    setActiveChatId(userId);
+    if (!messages[userId]) {
+      setMessages(prev => ({
+        ...prev,
+        [userId]: []
+      }));
+    }
+  };
+
+  const closeChat = () => {
+    setActiveChatId(null);
+  };
+
+  const toggleMinimizeChat = (userId: number) => {
+    if (minimizedChats.includes(userId)) {
+      setMinimizedChats(minimizedChats.filter(id => id !== userId));
+    } else {
+      setMinimizedChats([...minimizedChats, userId]);
+    }
+  };
+
+  const sendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeChatId && newMessage.trim()) {
+      const message = {
+        text: newMessage.trim(),
+        sender: 'user' as const,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => ({
+        ...prev,
+        [activeChatId]: [...(prev[activeChatId] || []), message]
+      }));
+
+      setNewMessage("");
+
+      // Simulate response after 1 second
+      setTimeout(() => {
+        // Different response format for group vs individual chat
+        const isGroupChat = activeChatId >= 100;
+        
+        const friendMessage = {
+          text: isGroupChat 
+            ? `This is a response in the ${groups.find(g => g.id === activeChatId)?.name} group chat` 
+            : `Thanks for your message: "${newMessage.trim()}"`,
+          sender: 'friend' as const,
+          timestamp: new Date()
+        };
+
+        setMessages(prev => ({
+          ...prev,
+          [activeChatId]: [...(prev[activeChatId] || []), friendMessage]
+        }));
+      }, 1000);
+    }
+  };
+
+  // Handle coming soon feature
+  const handleFeatureLink = (e: React.MouseEvent<HTMLAnchorElement>, featureName: string) => {
+    e.preventDefault();
+    setToast({ show: true, message: `${featureName} feature is coming soon!`, type: 'info' });
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
+  // Delete a comment
+  const deleteComment = (postId: number, commentId: number) => {
+    setComments(prev => ({
+      ...prev,
+      [postId]: prev[postId].filter(comment => comment.id !== commentId)
+    }));
+
+    // Show success toast
+    setToast({
+      show: true,
+      message: 'Comment deleted successfully',
+      type: 'success'
+    });
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
+  // Create a random gradient background for posts
+  const getRandomGradient = () => {
+    const gradients = [
+      'from-teal-500 to-emerald-500',
+      'from-amber-500 to-orange-500',
+      'from-cyan-500 to-blue-500',
+      'from-fuchsia-500 to-pink-500',
+      'from-violet-500 to-indigo-500',
+      'from-amber-500 to-rose-500',
+    ];
+    return gradients[Math.floor(Math.random() * gradients.length)];
+  };
+
+  // Feature icon library
+  const getFeatureIcon = (index: number) => {
+    const icons = [
+      <Compass className="w-5 h-5 text-cyan-500" key="compass" />,
+      <TrendingUp className="w-5 h-5 text-emerald-500" key="trending" />,
+      <Camera className="w-5 h-5 text-violet-500" key="camera" />,
+      <Calendar className="w-5 h-5 text-rose-500" key="calendar" />,
+      <Gift className="w-5 h-5 text-pink-500" key="gift" />,
+      <Zap className="w-5 h-5 text-amber-500" key="zap" />,
+      <Bookmark className="w-5 h-5 text-indigo-500" key="bookmark" />,
+      <DollarSign className="w-5 h-5 text-teal-500" key="dollar" />,
+      <Music className="w-5 h-5 text-blue-500" key="music" />,
+      <Film className="w-5 h-5 text-orange-500" key="film" />,
+      <Coffee className="w-5 h-5 text-amber-500" key="coffee" />,
+      <Activity className="w-5 h-5 text-fuchsia-500" key="activity" />,
+    ];
+    return icons[index % icons.length];
   };
 
   return (
-    <div className="min-h-screen relative">
-      <div className="fixed -top-24 inset-0 z-0 overflow-hidden">
-        <img
-          src={theme === "dark"
-            ? "https://images.unsplash.com/photo-1694023445909-8752bb171a00?q=80&w=2071&auto=format&fit=crop"
-            : "https://images.unsplash.com/photo-1694023445909-8752bb171a00?q=80&w=2070&auto=format&fit=crop"
-          }
-          alt="Background"
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      <div className={`absolute inset-0 z-10 ${bgOverlay}`}></div>
-
-      {/* Toast notification */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-3 rounded-lg shadow-lg ${
-              theme === "dark" ? "bg-gray-800/90 text-white" : "bg-white/90 text-gray-800"
-            } border ${theme === "dark" ? "border-gray-700" : "border-gray-200"} backdrop-blur-sm flex items-center space-x-2 max-w-xs`}
-          >
-            <div className={`p-1 rounded-full ${theme === "dark" ? "bg-blue-500/20" : "bg-blue-100"}`}>
-              <Info size={16} className={`${theme === "dark" ? "text-blue-300" : "text-blue-500"}`} />
-            </div>
-            <p className="text-sm font-medium">{toastMessage}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className={`relative z-20 flex flex-col ${textColor}`}>
-        <div className="w-full max-w-5xl mx-auto flex justify-center">
-          <div className="relative w-full max-w-md h-screen flex flex-col overflow-x-hidden overflow-y-auto">
-            <div className="flex justify-between items-center px-4 py-3">
-              <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                <div className="flex items-center gap-2">
-                  <span className={`${theme === "dark" ? "text-white" : "text-gray-900"} font-bold text-sm ${rowdies.className}`}>League {userLevel}</span>
-                  <span className="text-yellow-400">👑</span>
-                </div>
-              </div>
-
-              <div className={`${theme === "dark" ? "bg-gray-800/40" : "bg-white/20"} backdrop-blur-sm px-4 py-2 rounded-full`}>
-                <div className="flex items-center gap-2">
-                  <span className={`${theme === "dark" ? "text-white" : "text-gray-900"} font-bold ${righteous.className}`}>High Score: {highScore}</span>
-                  <span>⭐</span>
-                </div>
-              </div>
-
-              <div className="relative" ref={emojiDropdownRef}>
-                <div
-                  className={`${theme === "dark" ? "bg-gray-800/40" : "bg-white/20"} backdrop-blur-sm w-11 h-11 flex items-center justify-center rounded-full cursor-pointer shadow-md hover:shadow-lg transition-all border ${theme === "dark" ? "border-gray-700/50" : "border-white/50"}`}
-                  onClick={toggleEmojiDropdown}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    toggleEmojiDropdown(e);
-                  }}
-                >
-                  {emojiType === "shapes" && <span className="text-xl">⚪</span>}
-                  {emojiType === "animals" && <span className="text-xl">🐱</span>}
-                  {emojiType === "food" && <span className="text-xl">🍎</span>}
-                  {emojiType === "faces" && <span className="text-xl">😀</span>}
-                </div>
-
-                {showEmojiDropdown && (
-                  <div
-                    className={`fixed sm:absolute ${isSmallScreen ? 'top-16 right-4' : 'right-0'} mt-2 ${theme === "dark" ? "bg-gray-800" : "bg-white"} 
-                    p-3 rounded-lg shadow-lg z-50 min-w-[160px] border ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
-                    style={{
-                      maxWidth: isSmallScreen ? '200px' : 'auto',
-                      transform: isSmallScreen ? 'translateX(0)' : 'none'
-                    }}
-                  >
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => selectEmojiType("shapes")}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          selectEmojiType("shapes");
-                        }}
-                        className={`flex items-center w-full py-3 px-4 rounded-md ${emojiType === "shapes" ?
-                          "bg-blue-500/80 text-white" :
-                          (theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100")}`}
-                      >
-                        <span className="text-lg mr-2">⚪</span>
-                        <span className="font-medium">Shapes</span>
-                      </button>
-                      <button
-                        onClick={() => selectEmojiType("animals")}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          selectEmojiType("animals");
-                        }}
-                        className={`flex items-center w-full py-3 px-4 rounded-md ${emojiType === "animals" ?
-                          "bg-blue-500/80 text-white" :
-                          (theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100")}`}
-                      >
-                        <span className="text-lg mr-2">🐱</span>
-                        <span className="font-medium">Animals</span>
-                      </button>
-                      <button
-                        onClick={() => selectEmojiType("food")}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          selectEmojiType("food");
-                        }}
-                        className={`flex items-center w-full py-3 px-4 rounded-md ${emojiType === "food" ?
-                          "bg-blue-500/80 text-white" :
-                          (theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100")}`}
-                      >
-                        <span className="text-lg mr-2">🍎</span>
-                        <span className="font-medium">Food</span>
-                      </button>
-                      <button
-                        onClick={() => selectEmojiType("faces")}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          selectEmojiType("faces");
-                        }}
-                        className={`flex items-center w-full py-3 px-4 rounded-md ${emojiType === "faces" ?
-                          "bg-blue-500/80 text-white" :
-                          (theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100")}`}
-                      >
-                        <span className="text-lg mr-2">😀</span>
-                        <span className="font-medium">Faces</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {showGame && !gameOver && (
-              <div className={`flex-1 flex flex-col px-2 sm:px-4 backdrop-blur-sm rounded-t-xl overflow-x-hidden`}>
-                <div className="flex justify-between items-center mt-4 mb-2">
-                  <motion.div
-                    className={`flex items-center ${theme === "dark" ? "bg-yellow-500/90" : "bg-yellow-600/90"} text-white px-4 py-2 rounded-full`}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                  >
-                    <span className={`font-bold ${bungee.className}`}>{score}</span>
-                  </motion.div>
-
-                  <motion.div
-                    className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"} ${paytoneOne.className}`}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={level}
-                  >
-                    LEVEL {level}/10
-                  </motion.div>
-
-                  <motion.button
-                    onClick={() => setPauseGame(!pauseGame)}
-                    className="bg-white/20 backdrop-blur-sm p-2 rounded-full"
-                    whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.3)" }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {pauseGame ? <Play size={24} /> : <Pause size={24} />}
-                  </motion.button>
-                </div>
-
-                <div className={`w-full h-5 ${cardBgColor} rounded-full mb-4 overflow-hidden`}>
-                  <div className="flex">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="flex-1 flex items-center justify-center">
-                        <motion.div
-                          className={`w-full h-full ${i < level - 1 ? 'bg-yellow-500' : ''}`}
-                          initial={{ opacity: i === level - 2 ? 0 : 1 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <motion.div
-                            className={`w-4 h-4 mx-auto ${i < level ? 'text-yellow-500' : 'text-gray-500'}`}
-                            initial={{ scale: i === level - 1 ? 0 : 1 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 400 }}
-                          >
-                            {i < level - 1 && <span className="text-xs">★</span>}
-                          </motion.div>
-                        </motion.div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className={`flex items-center mb-3 ${cardBgColor} px-3 py-1 rounded-full w-fit`}>
-                  <Clock size={16} className="mr-1" />
-                  <span className="text-sm">{timeLeft}s</span>
-                </div>
-
-                <div className={`w-full ${cardBgColor} rounded-full h-2 mb-8 overflow-hidden`}>
-                  <motion.div
-                    className="bg-gradient-to-r from-yellow-500 to-amber-500 h-full rounded-full"
-                    initial={{ width: "100%" }}
-                    animate={{ width: `${(timeLeft / 30) * 100}%` }}
-                    transition={{ duration: 0.5 }}
-                  />
-                </div>
-
-                <motion.div
-                  className={`text-center mb-8 ${cardBgColor} p-4 rounded-xl shadow-lg`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <p className={`text-base sm:text-xl font-bold ${bangers.className} tracking-wider`}>FIND THE ODD ONE OUT!</p>
-                  {showFeedback && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`mt-2 text-base sm:text-lg flex justify-center items-center font-bold ${isCorrect ? (theme === "dark" ? "text-green-300" : "text-green-600") : (theme === "dark" ? "text-red-300" : "text-red-600")}`}
-                    >
-                      {isCorrect ? (
-                        <div className="flex items-center">
-                          <Smile className="mr-2" />
-                          <span>Correct!</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <Frown className="mr-2" />
-                          <span>Wrong!</span>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </motion.div>
-
-                <div className="relative">
-                  <div className={`grid ${getGridClass()} gap-2 sm:gap-3 mb-8 relative z-10 p-2 sm:p-3 mx-auto max-w-full`}>
-                    <AnimatePresence mode="wait">
-                      {gameItems.map((item, index) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, scale: 0.9, rotateY: 180 }}
-                          animate={{
-                            opacity: 1,
-                            scale: 1,
-                            rotateY: 0,
-                            transition: {
-                              delay: index * 0.05,
-                              type: "spring",
-                              stiffness: 300
-                            }
-                          }}
-                          exit={{ opacity: 0, scale: 0.9, rotateY: 180 }}
-                          whileHover={{
-                            scale: 1.05,
-                            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                            rotateY: 15
-                          }}
-                          whileTap={{ scale: 0.95, rotateY: 0 }}
-                          onClick={() => handleItemClick(item.id)}
-                          style={{
-                            perspective: "1000px",
-                            transformStyle: "preserve-3d"
-                          }}
-                          className={`
-                            aspect-square flex items-center justify-center text-2xl sm:text-3xl font-bold
-                            rounded-xl cursor-pointer transition-all shadow-lg
-                            ${selectedItem === item.id ? "border-4 border-white" : ""}
-                            ${showFeedback && item.isOddOne ? "border-4 border-green-400" : ""}
-                            ${showFeedback && selectedItem === item.id && !item.isOddOne ? "border-4 border-red-400" : ""}
-                            ${theme === "dark" ? "bg-gray-800/70" : "bg-white/70"} 
-                            backdrop-blur-md
-                          `}
-                        >
-                          {item.text}
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {confetti.length > 0 && (
-              <div className="absolute inset-0 pointer-events-none z-30">
-                {confetti.map((particle, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{
-                      x: "50%",
-                      y: "50%",
-                      opacity: 1
-                    }}
-                    animate={{
-                      x: `${particle.x}%`,
-                      y: `${particle.y}%`,
-                      opacity: 0
-                    }}
-                    transition={{
-                      duration: 2,
-                      ease: "easeOut"
-                    }}
-                    style={{
-                      position: "absolute",
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      backgroundColor: particle.color
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {showCelebration && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-                <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                  className={`text-center p-8 rounded-xl shadow-lg 
-                  ${theme === "dark" ?
-                      "bg-gradient-to-b from-indigo-900/90 to-blue-900/90 border border-indigo-500/30" :
-                      "bg-gradient-to-b from-blue-500/90 to-indigo-600/90 border border-blue-300/30"
-                    }
-                  max-w-xs w-full mx-auto`}
-                >
-                  <div className="absolute -top-3 -right-3">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    >
-                      <Sparkles size={28} className="text-yellow-400" />
-                    </motion.div>
-                  </div>
-                  <motion.h2
-                    className={`text-2xl font-bold text-white mb-6 ${orbitron.className}`}
-                    animate={{
-                      scale: [1, 1.05, 1],
-                      y: [0, -3, 0]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatType: "reverse"
-                    }}
-                  >
-                    WELL DONE!
-                  </motion.h2>
-                  <div className="flex justify-center gap-4 mb-6">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ scale: 0, rotate: -15 }}
-                        animate={{
-                          scale: i < stars ? 1 : 0.7,
-                          rotate: 0,
-                          transition: { delay: i * 0.1, type: "spring" }
-                        }}
-                        whileHover={{ rotate: i < stars ? 10 : 0 }}
-                        className={i < stars ? "text-yellow-400" : "text-blue-900"}
-                      >
-                        <Star size={42} fill={i < stars ? "currentColor" : "none"} strokeWidth={1} />
-                      </motion.div>
-                    ))}
-                  </div>
-                  <div className={`text-lg font-bold mb-3 text-gray-200 ${orbitron.className}`}>
-                    REWARDS
-                  </div>
-                  <motion.div
-                    className="bg-white/10 rounded-lg p-3 inline-block"
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="flex items-center justify-center">
-                      <motion.span
-                        className="font-bold text-2xl text-white mr-2"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", delay: 0.4 }}
-                      >
-                        +{Math.max(10, timeLeft)}
-                      </motion.span>
-                      <motion.span
-                        className="text-yellow-400 text-xl"
-                        animate={{ rotate: [0, 5, -5, 0] }}
-                        transition={{ delay: 0.5, duration: 0.5 }}
-                      >
-                        ⭐
-                      </motion.span>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </div>
-            )}
-
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center z-30">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`text-center p-8 rounded-xl max-w-sm w-full shadow-xl ${cardBgColor}`}
-                >
-                  <h2 className={`text-3xl font-bold mb-4 ${theme === "dark" ? "text-yellow-500" : "text-yellow-600"} ${bangers.className} tracking-wider`}>GAME OVER!</h2>
-                  <div className="mb-6">
-                    <p className={`text-2xl ${righteous.className}`}>Your Score: <span className="font-bold">{score}</span></p>
-                    <div className={`flex items-center justify-center mt-4 p-3 rounded-lg ${cardBgColor}`}>
-                      <Trophy className="mr-2 text-yellow-500" size={24} />
-                      <p className={`text-xl ${bungee.className}`}>High Score: <span className="font-bold">{highScore}</span></p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">League {userLevel}</span>
-                      <span className="text-sm font-medium">League {userLevel + 1}</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-700/30 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300"
-                        style={{
-                          width: `${((totalScore - (userLevel === 1 ? 0 :
-                            userLevel === 2 ? 100 :
-                              userLevel === 3 ? 300 :
-                                userLevel === 4 ? 600 :
-                                  userLevel === 5 ? 1000 :
-                                    (userLevel - 1) * 400)) /
-                            (userLevel === 1 ? 100 :
-                              userLevel === 2 ? 200 :
-                                userLevel === 3 ? 300 :
-                                  userLevel === 4 ? 400 :
-                                    userLevel === 5 ? 1000 :
-                                      400)) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                    <p className="text-sm mt-1">Total Score: {totalScore}</p>
-                  </div>
-
-                  {achievements.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-lg font-bold mb-2">Achievements</h3>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {achievements.slice(-3).map((achievement, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{
-                              delay: index * 0.2,
-                              type: "spring"
-                            }}
-                            className={`${cardBgColor} p-2 rounded-lg text-sm`}
-                          >
-                            {achievement}
-                          </motion.div>
-                        ))}
-                      </div>
-                      {achievements.length > 3 && (
-                        <p className="text-xs mt-2">+{achievements.length - 3} more</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-3">
-                    <motion.button
-                      onClick={resetGame}
-                      className={`w-full py-3 rounded-full font-bold text-white ${primaryButtonBg} ${rowdies.className}`}
-                      whileHover={{ scale: 1.03, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      Restart
-                    </motion.button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
+    <div className={`flex flex-col min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      {/* Header */}
+      <header className={`sticky top-0 z-50 ${theme === "dark" ? "bg-gray-800/80 backdrop-blur-lg" : "bg-white/80 backdrop-blur-lg"} shadow-lg`}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between p-4">
+          <div className="flex items-center">
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 font-['Montserrat'] drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">Let's Connect</h1>
           </div>
-        </div>
-      </div>
+          <div className="flex items-center space-x-4">
+            {/* Theme toggle */}
+            <div className="relative w-10 h-10 flex items-center justify-center bg-white/90 rounded-full shadow-sm cursor-pointer"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5 text-indigo-600" />
+              ) : (
+                <Moon className="w-5 h-5 text-indigo-600" />
+              )}
+            </div>
+            
+            {/* Friends icon */}
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center cursor-pointer"
+                onClick={() => setFriendsListOpen(!friendsListOpen)}
+              >
+                <Users className="w-5 h-5 text-indigo-600" />
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">{users.filter(u => u.online).length}</span>
+              </div>
 
-      <div className={`fixed bottom-4 right-4 flex flex-row gap-3 z-50 justify-center items-center ${!isSmallScreen ? 'hidden' : ''}`}>
-        <motion.button
-          onClick={toggleStatsPanel}
-          className={`p-3 rounded-full ${theme === "dark" ? "bg-gray-900/40" : "bg-white/20"} backdrop-blur-md border border-white/30 shadow-lg ${showStatsPanel ? "border-yellow-400" : ""}`}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          aria-label="Toggle stats panel"
-        >
-          <BarChart3 size={24} className={theme === "dark" ? "text-white" : "text-gray-900"} />
-        </motion.button>
-
-        <motion.button
-          onClick={toggleHelpPanel}
-          className={`p-3 rounded-full ${theme === "dark" ? "bg-gray-900/40" : "bg-white/20"} backdrop-blur-md border border-white/30 shadow-lg ${showHelpPanel ? "border-yellow-400" : ""}`}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          aria-label="Toggle help panel"
-        >
-          <InfoIcon size={24} className={theme === "dark" ? "text-white" : "text-gray-900"} />
-        </motion.button>
-
-        <motion.button
-          onClick={toggleTheme}
-          className={`p-3 rounded-full ${theme === "dark" ? "bg-gray-900/40" : "bg-white/20"} backdrop-blur-md border border-white/30 shadow-lg ${showHelpPanel ? "border-yellow-400" : ""}`}
-          whileHover={{ scale: 1.1, rotate: 15 }}
-          whileTap={{ scale: 0.9, rotate: 0 }}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <MoonIcon size={24} className="text-gray-900" /> : <SunIcon size={24} className="text-white" />}
-        </motion.button>
-      </div>
-
-      <AnimatePresence>
-        {(showStatsPanel || (!isSmallScreen)) && (
-          <motion.div
-            initial={isSmallScreen ? { x: -300, opacity: 0 } : { x: 0, opacity: 1 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            transition={{ type: "spring", damping: 20 }}
-            className={`fixed top-0 left-0 h-full ${isSmallScreen ? 'w-full' : 'w-sm'} 
-            ${isSmallScreen
-                ? (theme === "dark" ? "bg-gray-900" : "bg-white")
-                : (theme === "dark" ? "bg-gray-800/40" : "bg-white/40")} 
-            ${isSmallScreen ? 'backdrop-blur-none' : 'backdrop-blur-md'}
-            ${theme === "dark" ? (isSmallScreen ? "" : "border-r border-gray-700/50") : (isSmallScreen ? "" : "border-r border-white/50")} 
-            shadow-lg z-60 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-          >
-            <div className="p-6 h-full overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className={`text-2xl font-bold text-center flex mx-auto ${orbitron.className}`}>
-                  <span className={`bg-clip-text text-transparent ${theme === "dark" ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-blue-600 to-indigo-700"}`}>GAME STATS</span>
-                </h2>
-                {isSmallScreen && (
-                  <button
-                    onClick={toggleStatsPanel}
-                    className="rounded-full p-1 hover:bg-gray-700/30"
+              <AnimatePresence>
+                {friendsListOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className={`fixed sm:absolute left-0 sm:left-auto sm:right-0 top-[78px] sm:top-auto sm:mt-2 w-full sm:w-80 rounded-none sm:rounded-xl shadow-xl ${theme === "dark" ? "bg-gray-800" : "bg-white"} z-50 overflow-hidden`}
+                    onTouchStart={preventBackgroundScroll}
+                    onTouchMove={preventBackgroundScroll}
                   >
-                    <XIcon size={20} />
-                  </button>
+                    <div className="p-3">
+                      <h3 className="text-lg font-semibold">Online Friends</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {users.filter(user => user.online).map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center justify-between cursor-pointer p-2 rounded-lg transition-all ${theme === "dark" 
+                            ? "hover:bg-gray-700/70 hover:bg-gradient-to-r hover:from-cyan-800/20 hover:to-blue-800/20" 
+                            : "hover:bg-gray-100 hover:bg-gradient-to-r hover:from-cyan-100/70 hover:to-blue-100/70"}`}
+                          onClick={() => startChat(user.id)}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <img
+                                src={user.avatar}
+                                alt=""
+                                className={user.online ? "shadow-sm" : ""}
+                                style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px' }}
+                              />
+                              {user.online && (
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                              )}
+                            </div>
+                            <span>{user.name}</span>
+                          </div>
+                          {user.lastSeen && (
+                            <span className="text-xs text-gray-500">{user.lastSeen}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-2 text-center">
+                      <a
+                        href="#"
+                        onClick={(e) => handleFeatureLink(e, "View all friends")}
+                        className={`text-sm font-medium bg-gradient-to-r from-cyan-500 to-blue-500 text-transparent bg-clip-text`}
+                      >
+                        View all friends
+                      </a>
+                    </div>
+                  </motion.div>
                 )}
+              </AnimatePresence>
+            </div>
+
+            {/* Notifications icon */}
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-white/90 shadow-sm flex items-center justify-center cursor-pointer"
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+              >
+                <Bell className="w-5 h-5 text-indigo-600" />
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">{notifications.length}</span>
               </div>
 
-              <div className={`p-4 rounded-xl ${isSmallScreen
-                ? (theme === "dark" ? "bg-gray-800" : "bg-gray-100")
-                : (theme === "dark" ? "bg-gray-700/40" : "bg-white/40")} 
-                ${isSmallScreen ? '' : 'backdrop-blur-sm'} mb-6`}>
-                <h3 className="text-lg font-bold mb-3">Your Progress</h3>
-
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center">
-                    <span className="text-yellow-500 mr-1">👑</span>
-                    <span className={`font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}>League {userLevel}</span>
+              {/* Notifications dropdown */}
+              {notificationsOpen && (
+                <div 
+                  className={`fixed sm:absolute left-0 sm:left-auto sm:right-0 top-[78px] sm:top-auto sm:mt-2 w-full sm:w-80 rounded-none sm:rounded-xl shadow-xl ${theme === "dark" ? "bg-gray-800" : "bg-white"} z-50 overflow-hidden`}
+                  onTouchStart={preventBackgroundScroll}
+                  onTouchMove={preventBackgroundScroll}
+                >
+                  <div className="p-3">
+                    <h3 className="text-lg font-semibold">Notifications</h3>
                   </div>
-                  <span className="text-sm">{totalScore} pts</span>
-                </div>
-
-                <div className="w-full h-2 bg-gray-700/30 rounded-full overflow-hidden mb-3">
-                  <div
-                    className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300"
-                    style={{
-                      width: `${((totalScore - (userLevel === 1 ? 0 : (userLevel === 2 ? 100 : (userLevel === 3 ? 300 : (userLevel === 4 ? 600 : (userLevel === 5 ? 1000 : (userLevel - 1) * 400)))))) /
-                        (userLevel === 1 ? 100 : (userLevel === 2 ? 200 : (userLevel === 3 ? 300 : (userLevel === 4 ? 400 : (userLevel === 5 ? 1000 : 400)))))) * 100}%`
-                    }}
-                  ></div>
-                </div>
-
-                <p className="text-xs">
-                  {userLevel === 1 ? (
-                    <>Need {100 - totalScore} more points to reach League 2</>
-                  ) : userLevel === 2 ? (
-                    <>Need {300 - totalScore} more points to reach League 3</>
-                  ) : userLevel === 3 ? (
-                    <>Need {600 - totalScore} more points to reach League 4</>
-                  ) : userLevel === 4 ? (
-                    <>Need {1000 - totalScore} more points to reach League 5</>
-                  ) : userLevel === 5 ? (
-                    <>Need {2000 - totalScore} more points to reach League 6</>
-                  ) : (
-                    <>Need {userLevel * 400 - totalScore} more points to reach League {userLevel + 1}</>
-                  )}
-                </p>
-              </div>
-
-              {achievements.length > 0 && (
-                <div className={`p-4 rounded-xl ${isSmallScreen
-                  ? (theme === "dark" ? "bg-gray-800" : "bg-gray-100")
-                  : (theme === "dark" ? "bg-gray-700/40" : "bg-white/40")} 
-                  ${isSmallScreen ? '' : 'backdrop-blur-sm'} mb-6`}>
-                  <h3 className="text-lg font-bold mb-3">Recent Achievements</h3>
-                  <div className="space-y-2">
-                    {achievements.slice(-3).map((achievement, index) => (
-                      <div key={index} className="text-sm">
-                        {achievement}
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.map(notification => (
+                      <div key={notification.id} className={`p-3 ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"} cursor-pointer`}>
+                        <div className="flex items-start space-x-3">
+                          <img
+                            src={notification.avatar}
+                            alt=""
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div>
+                            <p className="text-sm font-medium">
+                              <span className="font-semibold">{notification.user}</span> {notification.text}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                          </div>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                  <div className="p-2 text-center">
+                    <a 
+                      href="#"
+                      onClick={(e) => handleFeatureLink(e, "View all notifications")}
+                      className={`text-sm font-medium ${theme === "dark" ? "text-cyan-400" : "text-cyan-600"}`}
+                    >
+                      View all notifications
+                    </a>
                   </div>
                 </div>
               )}
-
-              <div className={`p-4 rounded-xl ${isSmallScreen
-                ? (theme === "dark" ? "bg-gray-800" : "bg-gray-100")
-                : (theme === "dark" ? "bg-gray-700/40" : "bg-white/40")} 
-                ${isSmallScreen ? '' : 'backdrop-blur-sm'}`}>
-                <h3 className="text-lg font-bold mb-2">Pro Tips</h3>
-                <ul className="text-sm space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">💡</span>
-                    <span>Try to scan the grid in a systematic pattern</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">💡</span>
-                    <span>The faster you find the odd one, the more points you earn</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">💡</span>
-                    <span>Change emoji types using the selector at the top</span>
-                  </li>
-                </ul>
-              </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {(showHelpPanel || (!isSmallScreen)) && (
-          <motion.div
-            initial={isSmallScreen ? { x: 300, opacity: 0 } : { x: 0, opacity: 1 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 300, opacity: 0 }}
-            transition={{ type: "spring", damping: 20 }}
-            className={`fixed top-0 right-0 h-full ${isSmallScreen ? 'w-full' : 'w-sm'} 
-            ${isSmallScreen
-                ? (theme === "dark" ? "bg-gray-900" : "bg-white")
-                : (theme === "dark" ? "bg-gray-800/40" : "bg-white/40")} 
-            ${isSmallScreen ? 'backdrop-blur-none' : 'backdrop-blur-md'}
-            ${theme === "dark" ? (isSmallScreen ? "" : "border-l border-gray-700/50") : (isSmallScreen ? "" : "border-l border-white/50")} 
-            shadow-lg z-60 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-          >
-            <div className="p-6 h-full overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <motion.button
-                  onClick={toggleTheme}
-                  className={`p-3 fixed bottom-4 right-4 rounded-full ${theme === "dark" ? "bg-gray-900/40 border-white/50" : "bg-white/20 border-white/50"} backdrop-blur-md shadow-lg ${isSmallScreen ? 'hidden' : ''}`}
-                  whileHover={{ scale: 1.1, rotate: 15 }}
-                  whileTap={{ scale: 0.9, rotate: 0 }}
-                  aria-label="Toggle theme"
+            {/* Profile icon */}
+            <div className="relative">
+              <div 
+                className="w-10 h-10 rounded-full cursor-pointer relative"
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1745252279105-f5c6e2785889?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxMnx8fGVufDB8fHx8fA%3D%3D"
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full object-cover shadow-sm"
+                />
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span>
+              </div>
+
+              {profileMenuOpen && (
+                <div 
+                  className={`absolute right-0 mt-2 w-48 rounded-lg shadow-lg overflow-hidden z-50 ${theme === "dark" ? "bg-slate-800" : "bg-white"}`}
+                  onTouchStart={preventBackgroundScroll}
+                  onTouchMove={preventBackgroundScroll}
                 >
-                  {theme === "light" ? <MoonIcon size={24} className="text-gray-900" /> : <SunIcon size={24} className="text-white" />}
-                </motion.button>
-                <h2 className={`text-2xl font-bold text-center flex mx-auto ${orbitron.className}`}>
-                  <span className={`bg-clip-text text-transparent ${theme === "dark" ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-blue-600 to-indigo-700"}`}>HOW TO PLAY</span>
-                </h2>
-                {isSmallScreen && (
-                  <motion.button
-                    onClick={toggleHelpPanel}
-                    className="rounded-full p-2 hover:bg-gray-700/30 transition-colors"
-                    whileHover={{ rotate: 90 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <XIcon size={20} />
-                  </motion.button>
+                  <div>
+                    <a
+                      href="#"
+                      onClick={(e) => handleFeatureLink(e, "Your Profile")}
+                      className={`flex items-center px-4 py-3 text-sm ${theme === "dark" ? "text-white hover:bg-slate-700" : "text-gray-800 hover:bg-gray-100"}`}
+                    >
+                      <User className="w-5 h-5 mr-3" />
+                      Your Profile
+                    </a>
+                    <a
+                      href="#"
+                      onClick={(e) => handleFeatureLink(e, "Settings")}
+                      className={`flex items-center px-4 py-3 text-sm ${theme === "dark" ? "text-white hover:bg-slate-700" : "text-gray-800 hover:bg-gray-100"}`}
+                    >
+                      <Settings className="w-5 h-5 mr-3" />
+                      Settings
+                    </a>
+                    <a
+                      href="#"
+                      onClick={(e) => handleFeatureLink(e, "Sign out")}
+                      className={`flex items-center px-4 py-3 text-sm ${theme === "dark" ? "text-white hover:bg-slate-700" : "text-gray-800 hover:bg-gray-100"}`}
+                    >
+                      <LogOut className="w-5 h-5 mr-3" />
+                      Sign out
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar */}
+        <aside className={`hidden md:flex flex-col w-64 p-4 space-y-6 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
+          <nav className="space-y-2">
+            {sidebarItems.map((item, index) => (
+              <a 
+                key={index}
+                href="#"
+                onClick={(e) => handleFeatureLink(e, item.text)}
+                className={`flex items-center space-x-3 p-2 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+              >
+                {item.icon}
+                <span>{item.text}</span>
+              </a>
+            ))}
+          </nav>
+
+          <div className="pt-4">
+            <h3 className="text-xs uppercase font-semibold mb-3 text-gray-500 dark:text-gray-400">
+              PAGES YOU LIKE
+            </h3>
+            <nav className="space-y-2">
+              {likedPages.map((page, index) => (
+                <a 
+                  key={index}
+                  href="#"
+                  onClick={(e) => handleFeatureLink(e, page.text)}
+                  className={`flex items-center justify-between p-2 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={`https://i.pravatar.cc/150?img=${30 + index}`}
+                      alt=""
+                      style={{ width: '1.5rem', height: '1.5rem', borderRadius: '9999px' }}
+                    />
+                    <span className="text-sm">{page.text}</span>
+                  </div>
+                  {page.badge && (
+                    <span className={`px-2 py-1 text-xs rounded-full ${theme === "dark" ? "bg-purple-600" : "bg-purple-100 text-purple-800"}`}>
+                      {page.badge}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-4 space-y-6">
+            {/* Posts Feed */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">Recent Post</h2>
+              </div>
+
+              {posts.map((post) => (
+                <motion.article
+                  key={post.id}
+                  id={`post-${post.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg overflow-hidden shadow-[0_5px_20px_rgba(6,182,212,0.15)] hover:shadow-[0_8px_25px_rgba(6,182,212,0.25)] transition-shadow relative`}
+                >
+                  <img
+                    src={post.image}
+                    alt=""
+                    style={{ width: '100%', height: '24rem', objectFit: 'cover' }}
+                  />
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={post.user.avatar}
+                          alt=""
+                          className="shadow-[0_0_8px_rgba(6,182,212,0.3)]"
+                          style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px' }}
+                        />
+                        <span className="font-medium">{post.user.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <button
+                          onClick={() => handleLike(post.id)}
+                          className="flex items-center space-x-1 group"
+                        >
+                          <Heart
+                            className={`w-5 h-5 ${post.hasLiked
+                              ? 'text-rose-500 fill-rose-500 filter drop-shadow-[0_0_3px_rgba(244,63,94,0.5)]'
+                              : `${theme === "dark" ? "text-gray-400 group-hover:text-rose-400" : "text-gray-500 group-hover:text-rose-500"}`
+                              } transition-colors`}
+                          />
+                          <span className={`text-sm ${post.hasLiked ? 'text-rose-500' : 'text-gray-500'}`}>{post.likes}</span>
+                        </button>
+                        <button
+                          onClick={() => handleComment(post.id)}
+                          className="flex items-center space-x-1 group"
+                        >
+                          <MessageSquare
+                            className={`w-5 h-5 ${theme === "dark" ? "text-gray-400 group-hover:text-amber-400" : "text-gray-500 group-hover:text-amber-500"} transition-colors`}
+                          />
+                          <span className="text-sm text-gray-500">{post.comments}</span>
+                        </button>
+                        <button
+                          onClick={() => handleShare(post.id)}
+                          className="flex items-center group"
+                        >
+                          <Share2 className={`w-5 h-5 ${theme === "dark" ? "text-gray-400 group-hover:text-emerald-400" : "text-gray-500 group-hover:text-emerald-500"} transition-colors`} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex space-x-2 mb-2">
+                        {post.tags.map((tag: string, index: number) => (
+                          <span key={index} className={`text-sm ${theme === "dark" ? "text-cyan-400" : "text-cyan-600"} filter drop-shadow-[0_0_3px_rgba(6,182,212,0.3)]`}>{tag}</span>
+                        ))}
+                      </div>
+                      <p className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>{post.text}</p>
+                    </div>
+
+                    {/* Comments section */}
+                    <div id={`comment-section-${post.id}`} className={`mt-4 pt-4 space-y-3 ${comments[post.id] && comments[post.id].length > 0 ? '' : 'hidden'}`}>
+                      <h4 className="text-sm font-semibold mb-3">Comments</h4>
+                      <div className="space-y-3 mb-3">
+                        {comments[post.id]?.map((comment) => (
+                          <div key={comment.id} className="flex space-x-2">
+                            <img
+                              src={comment.avatar}
+                              alt=""
+                              className="shadow-sm"
+                              style={{ width: '2rem', height: '2rem', borderRadius: '9999px' }}
+                            />
+                            <div className={`flex-1 p-2 rounded-lg ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}>
+                              <div className="flex justify-between">
+                                <span className="text-xs font-semibold">{comment.user}</span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-500">{comment.timestamp}</span>
+                                  {comment.user === "You" && (
+                                    <button
+                                      onClick={() => deleteComment(post.id, comment.id)}
+                                      className="text-rose-500 hover:text-rose-600 filter hover:drop-shadow-[0_0_3px_rgba(244,63,94,0.5)]"
+                                      title="Delete comment"
+                                    >
+                                      <Trash className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-sm mt-1">{comment.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <img
+                          src="https://i.pravatar.cc/150?img=68"
+                          alt=""
+                          className="shadow-sm"
+                          style={{ width: '2rem', height: '2rem', borderRadius: '9999px' }}
+                        />
+                        <form
+                          className="flex-1 flex items-center space-x-2"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            addComment(post.id);
+                          }}
+                        >
+                          <input
+                            id={`comment-input-${post.id}`}
+                            type="text"
+                            placeholder="Write a comment..."
+                            value={commentInputs[post.id] || ''}
+                            onChange={(e) => setCommentInputs(prev => ({
+                              ...prev,
+                              [post.id]: e.target.value
+                            }))}
+                            className={`flex-1 rounded-full p-3 text-sm ${theme === "dark" ? "bg-gray-700 text-white placeholder-gray-400" : "bg-gray-100 text-gray-800 placeholder-gray-500"} focus:outline-none focus:ring-1 focus:ring-cyan-500`}
+                          />
+                          <button
+                            type="submit"
+                            disabled={!commentInputs[post.id]}
+                            className={`p-3 rounded-full ${commentInputs[post.id] ? 'bg-cyan-500 text-white' : 'bg-gray-300 text-gray-500'}`}
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+
+              {/* Loading indicator */}
+              <div ref={loaderRef} className="flex justify-center py-6">
+                {loading && (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-600 shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+                    <span className="text-sm text-gray-500">Loading more posts...</span>
+                  </div>
                 )}
               </div>
+            </section>
+          </div>
+        </main>
 
-              <div className="space-y-6">
-                <motion.div
-                  className="flex items-start"
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-medium mr-3 shadow-md text-sm">1</div>
-                  <p className="mt-1 text-sm">Look carefully at the grid of items shown in each level. One of them is slightly different from the others.</p>
-                </motion.div>
-
-                <motion.div
-                  className="flex items-start"
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-medium mr-3 shadow-md text-sm">2</div>
-                  <p className="mt-1 text-sm">Click on the item you think is different before the timer runs out.</p>
-                </motion.div>
-
-                <motion.div
-                  className="flex items-start"
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-medium mr-3 shadow-md text-sm">3</div>
-                  <p className="mt-1 text-sm">Earn points based on how quickly you find the odd one out. The faster you respond, the more points you get!</p>
-                </motion.div>
-
-                <motion.div
-                  className="flex items-start"
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-medium mr-3 shadow-md text-sm">4</div>
-                  <p className="mt-1 text-sm">The game gets progressively harder with larger grids at higher levels:</p>
-                </motion.div>
-
-                <motion.ul
-                  className="ml-11 space-y-2 text-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <li className="flex items-center">
-                    <span className=" w-5 h-5 bg-gradient-to-r from-yellow-500 to-amber-500 rounded-full text-white text-xs flex items-center justify-center mr-2 shadow-sm">•</span>
-                    <span className="font-medium">Levels 1-3:</span> <span className="ml-1">2×2 grid</span>
-                  </li>
-                  <li className="flex items-center">
-                    <span className="w-5 h-5 bg-gradient-to-r from-yellow-500 to-amber-500 rounded-full text-white text-xs flex items-center justify-center mr-2 shadow-sm">•</span>
-                    <span className="font-medium">Levels 4-7:</span> <span className="ml-1">3×3 grid</span>
-                  </li>
-                  <li className="flex items-center">
-                    <span className="w-5 h-5 bg-gradient-to-r from-yellow-500 to-amber-500 rounded-full text-white text-xs flex items-center justify-center mr-2 shadow-sm">•</span>
-                    <span className="font-medium">Levels 8-10:</span> <span className="ml-1">4×4 grid</span>
-                  </li>
-                </motion.ul>
-
-                <motion.div
-                  className="flex items-start"
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-medium mr-3 shadow-md text-sm">5</div>
-                  <p className="mt-1 text-sm">Complete all 10 levels to finish the game and try to beat your high score!</p>
-                </motion.div>
-
-                <motion.div
-                  className={`mt-6 p-3 rounded-lg ${theme === "dark" ? "bg-gray-700/60" : "bg-white/60"} backdrop-blur-sm border ${theme === "dark" ? "border-gray-600/50" : "border-gray-200/50"}`}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  <div className="flex items-center mb-1">
-                    <Sparkles size={16} className="text-yellow-400 mr-2" />
-                    <h3 className="font-medium text-sm">Bonus Tip</h3>
-                  </div>
-                  <p className="text-xs">Try different emoji sets for varied difficulty levels. Some emoji types may be easier to distinguish than others!</p>
-                </motion.div>
+        {/* Right sidebar - Friends */}
+        <aside className={`hidden lg:flex flex-col w-80 p-4 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4 drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">FRIENDS</h3>
+              <div className="mb-4 relative">
+                <input
+                  type="text"
+                  placeholder="Search friends..."
+                  value={friendSearchQuery}
+                  onChange={(e) => setFriendSearchQuery(e.target.value)}
+                  className={`w-full py-2 px-4 pr-10 rounded-full ${theme === "dark" ? "bg-gray-700 text-white placeholder-gray-400" : "bg-gray-100 text-gray-800 placeholder-gray-500"} focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:shadow-[0_0_10px_rgba(6,182,212,0.5)]`}
+                />
+                <Search className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
+              </div>
+              <div className="space-y-3">
+                {users
+                  .filter(user =>
+                    user.name.toLowerCase().includes(friendSearchQuery.toLowerCase()) ||
+                    friendSearchQuery === ""
+                  )
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className={`flex items-center justify-between cursor-pointer p-2 rounded-lg transition-all ${theme === "dark" 
+                        ? "hover:bg-gray-700/70 hover:bg-gradient-to-r hover:from-cyan-800/20 hover:to-blue-800/20" 
+                        : "hover:bg-gray-100 hover:bg-gradient-to-r hover:from-cyan-100/70 hover:to-blue-100/70"}`}
+                      onClick={() => startChat(user.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <img
+                            src={user.avatar}
+                            alt=""
+                            className={user.online ? "shadow-sm" : ""}
+                            style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px' }}
+                          />
+                          {user.online && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                          )}
+                        </div>
+                        <span>{user.name}</span>
+                      </div>
+                      {user.lastSeen && (
+                        <span className="text-xs text-gray-500">{user.lastSeen}</span>
+                      )}
+                    </div>
+                  ))}
+                {users.filter(user =>
+                  user.name.toLowerCase().includes(friendSearchQuery.toLowerCase()) ||
+                  friendSearchQuery === ""
+                ).length === 0 && (
+                    <div className="text-center text-gray-500 py-4">
+                      No friends match your search
+                    </div>
+                  )}
               </div>
             </div>
-          </motion.div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">GROUPS</h3>
+              <div className="space-y-3">
+                {groups.map((group) => (
+                  <div 
+                    key={group.id} 
+                    className={`flex items-center justify-between cursor-pointer p-2 rounded-lg transition-all ${theme === "dark" 
+                      ? "hover:bg-gray-700/70 hover:bg-gradient-to-r hover:from-cyan-800/20 hover:to-blue-800/20" 
+                      : "hover:bg-gray-100 hover:bg-gradient-to-r hover:from-cyan-100/70 hover:to-blue-100/70"}`}
+                    onClick={() => startChat(group.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={group.avatar}
+                        alt=""
+                        className="w-10 h-10 rounded-full"
+                        style={{ width: '2.5rem', height: '2.5rem', borderRadius: '9999px' }}
+                      />
+                      <span>{group.name}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">{group.lastSeen}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Chat Windows */}
+      <div className="fixed bottom-0 right-4 sm:right-4 flex space-x-3 items-end z-40">
+        {activeChatId && (
+          <div
+            className={`fixed sm:relative bottom-0 left-0 sm:left-auto sm:bottom-auto w-full sm:w-72 ${theme === "dark" ? "bg-slate-800" : "bg-white"} rounded-lg sm:rounded-t-lg shadow-lg flex flex-col ${minimizedChats.includes(activeChatId) ? 'h-12' : 'h-[85vh] sm:h-96'} z-50`}
+            onTouchStart={preventBackgroundScroll}
+            onTouchMove={preventBackgroundScroll}
+          >
+            {/* Chat header */}
+            <div
+              className={`p-3 flex justify-between items-center cursor-pointer rounded-t-lg ${theme === "dark" ? "bg-slate-800" : "bg-gray-100"}`}
+              onClick={() => toggleMinimizeChat(activeChatId)}
+            >
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  {activeChatId >= 100 ? (
+                    /* Group chat display */
+                    <img
+                      src={groups.find(g => g.id === activeChatId)?.avatar}
+                      alt=""
+                      className="w-8 h-8 rounded-full shadow-sm"
+                    />
+                  ) : (
+                    /* Individual chat display */
+                    <img
+                      src={users.find(u => u.id === activeChatId)?.avatar}
+                      alt=""
+                      className="w-8 h-8 rounded-full shadow-sm"
+                    />
+                  )}
+                  {activeChatId < 100 && users.find(u => u.id === activeChatId)?.online && (
+                    <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  )}
+                </div>
+                <span className="font-medium text-sm">
+                  {activeChatId >= 100 
+                    ? groups.find(g => g.id === activeChatId)?.name
+                    : users.find(u => u.id === activeChatId)?.name}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {minimizedChats.includes(activeChatId) ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                <X className="w-4 h-4 hover:text-rose-500 hover:drop-shadow-[0_0_3px_rgba(244,63,94,0.5)]" onClick={(e) => { e.stopPropagation(); closeChat(); }} />
+              </div>
+            </div>
+
+            {!minimizedChats.includes(activeChatId) && (
+              <>
+                {/* Chat messages */}
+                <div className={`flex-1 p-3 overflow-y-auto space-y-3 ${theme === "dark" ? "bg-slate-900" : "bg-white"}`}>
+                  {activeChatId >= 100 && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-500 mb-2">Participants</p>
+                      <div className="flex flex-wrap gap-1">
+                        {groups.find(g => g.id === activeChatId)?.members.map(memberId => {
+                          const member = users.find(u => u.id === memberId);
+                          return (
+                            <div key={memberId} className={`flex items-center ${theme === "dark" ? "bg-slate-800" : "bg-gray-100"} rounded-full px-2 py-1`}>
+                              <div className="relative mr-1">
+                                <img 
+                                  src={member?.avatar} 
+                                  alt="" 
+                                  className="w-4 h-4 rounded-full"
+                                />
+                                {member?.online && (
+                                  <span className="absolute bottom-0 right-0 w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                )}
+                              </div>
+                              <span className="text-xs">{member?.name.split(' ')[0]}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                
+                  {messages[activeChatId] && messages[activeChatId].length > 0 ? (
+                    messages[activeChatId].map((message, index) => (
+                      <div
+                        key={index}
+                        className={`${message.sender === 'user'
+                          ? 'ml-auto bg-cyan-500 text-white shadow-sm'
+                          : `${theme === "dark" ? 'bg-slate-800' : 'bg-gray-200'} ${theme === "dark" ? 'text-white' : 'text-gray-800'}`
+                          } p-2 rounded-lg max-w-[80%] break-words`}
+                      >
+                        <p className="text-sm">{message.text}</p>
+                        <p className="text-xs opacity-70 text-right">
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 text-sm py-4">
+                      {activeChatId >= 100
+                        ? `Start chatting in the ${groups.find(g => g.id === activeChatId)?.name} group`
+                        : `Start chatting with ${users.find(u => u.id === activeChatId)?.name}`
+                      }
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Chat input */}
+                <form onSubmit={sendMessage} className={`p-3 flex items-center space-x-2 ${theme === "dark" ? "bg-slate-900" : "bg-white"}`}>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className={`flex-1 py-2 px-3 rounded-full ${theme === "dark" ? "bg-slate-800 text-white placeholder-gray-400" : "bg-gray-100 text-gray-800 placeholder-gray-500"} border-none focus:outline-none focus:ring-1 focus:ring-cyan-500`}
+                  />
+                  <button
+                    type="submit"
+                    className="p-2 rounded-full bg-cyan-500 text-white hover:bg-cyan-600 focus:outline-none"
+                    disabled={!newMessage.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
         )}
-      </AnimatePresence>
+      </div>
+
+      {/* Toast notification */}
+      {toast && toast.show && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.2)] flex items-center space-x-2 max-w-xs ${theme === "dark"
+            ? "bg-cyan-800 text-white"
+            : "bg-white text-gray-900"
+            } ${toast.type === 'info'
+              ? "shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+              : toast.type === 'success'
+                ? "shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                : "shadow-[0_0_15px_rgba(251,191,36,0.4)]"
+            }`}
+        >
+          <div className={`p-1 rounded-full ${toast.type === 'info'
+            ? "bg-cyan-100 text-cyan-500"
+            : toast.type === 'success'
+              ? "bg-emerald-100 text-emerald-500"
+              : "bg-amber-100 text-amber-500"
+            }`}>
+            {toast.type === 'info' ? (
+              <Bell className="w-4 h-4" />
+            ) : toast.type === 'success' ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <AlertTriangle className="w-4 h-4" />
+            )}
+          </div>
+          <p className="text-sm flex-1">{toast.message}</p>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
