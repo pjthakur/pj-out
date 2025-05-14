@@ -1,1490 +1,2066 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react"
 import {
-  Star,
-  ShoppingCart,
-  Heart,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Sun,
-  Moon,
-  Filter,
+  Bell,
+  Home,
+  MessageSquare,
   Search,
-  Check,
-} from "lucide-react";
-import { Bangers, Bubblegum_Sans } from "next/font/google";
+  User,
+  Moon,
+  Sun,
+  Menu,
+  X,
+  Send,
+  ImageIcon,
+  MoreHorizontal,
+  Compass,
+  PenSquare,
+  ChevronLeft,
+  Code,
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+} from "lucide-react"
 
-const bangers = Bangers({
-  weight: "400",
-  subsets: ["latin"],
-});
-
-const bubblegum = Bubblegum_Sans({
-  weight: "400",
-  subsets: ["latin"],
-});
-
-type ThemeType = "light" | "dark";
-type ThemeColors = {
-  background: string;
-  foreground: string;
-  primary: string;
-  secondary: string;
-  accent: string;
-  muted: string;
-  card: string;
-  cardHover: string;
-  border: string;
-};
-
-const themeColors: Record<ThemeType, ThemeColors> = {
-  light: {
-    background: "bg-gradient-to-b from-purple-50 to-blue-50",
-    foreground: "text-slate-800",
-    primary: "bg-purple-600 text-white hover:bg-purple-700",
-    secondary: "bg-amber-500 text-white hover:bg-amber-600",
-    accent: "text-pink-600",
-    muted: "text-slate-500",
-    card: "bg-white",
-    cardHover: "hover:shadow-xl hover:scale-[1.02]",
-    border: "border-slate-200",
-  },
-  dark: {
-    background: "bg-gradient-to-b from-slate-900 to-purple-950",
-    foreground: "text-slate-100",
-    primary: "bg-purple-700 text-white hover:bg-purple-600",
-    secondary: "bg-amber-600 text-white hover:bg-amber-500",
-    accent: "text-pink-400",
-    muted: "text-slate-400",
-    card: "bg-slate-800",
-    cardHover: "hover:shadow-xl hover:shadow-purple-900/20 hover:scale-[1.02]",
-    border: "border-slate-700",
-  },
-};
-
-type AgeGroup = "0-2" | "3-5" | "6-8" | "9-12" | "12+";
-type Category = "Educational" | "Action" | "Puzzles" | "Creative" | "Outdoor";
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  discountPrice?: number;
-  images: string[];
-  ageGroup: AgeGroup;
-  category: Category;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
-  featured: boolean;
-  safetyFeatures: string[];
-  new: boolean;
+// Define the AppUser interface
+interface AppUser {
+  id: string
+  name: string
+  username: string
+  avatar?: string
+  bio?: string
+  isOnline?: boolean
+  isFollowing?: boolean
+  followers?: number
+  following?: number
 }
 
-interface CartItem {
-  product: Product;
-  quantity: number;
+// Define the Post interface
+interface Post {
+  id: string
+  user: AppUser
+  text: string
+  image?: string
+  timestamp: string
+  likes: number
+  liked: boolean
+  comments: Comment[]
+  shares: number
+  bookmarked: boolean
 }
 
-interface FilterState {
-  ageGroups: AgeGroup[];
-  categories: Category[];
-  priceRange: [number, number];
-  searchQuery: string;
+// Define the Notification interface
+interface Notification {
+  id: string
+  user: AppUser
+  text: string
+  timestamp: string
+  read: boolean
 }
 
-const mockProducts: Product[] = [
+// Message interface
+interface Message {
+  id: string
+  sender: string
+  text: string
+  timestamp: string
+}
+
+//Conversation interface
+interface Conversation {
+  id: string
+  user: AppUser
+  messages: Message[]
+}
+
+// Data 
+const sampleUsers: AppUser[] = [
   {
-    id: "1",
-    name: "Wooden Building Blocks",
-    description:
-      "Eco-friendly wooden blocks for creative play. These premium blocks are made from sustainable wood sources and finished with non-toxic paints, making them safe for children of all ages.",
-    price: 34.99,
-    images: [
-      "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=500&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1560859251-d563a49c5e4a?q=80&w=500&auto=format&fit=crop",
-    ],
-    ageGroup: "3-5",
-    category: "Educational",
-    rating: 4.8,
-    reviews: 124,
-    inStock: true,
-    featured: true,
-    safetyFeatures: ["Non-toxic paint", "Smooth edges", "Sustainably sourced"],
-    new: false,
+    id: "user-1",
+    name: "Alex Chen",
+    username: "devAlex",
+    avatar:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
+    bio: "Full-stack developer | AI enthusiast | Building the future 🚀",
+    isOnline: true,
+    followers: 1234,
+    following: 567,
   },
   {
-    id: "2",
-    name: "Interactive Talking Teddy",
-    description:
-      "A cuddly companion that responds to your child's voice. This premium teddy uses advanced voice recognition technology to create a personalized experience while maintaining the highest safety standards.",
-    price: 49.99,
-    discountPrice: 39.99,
-    images: [
-      "https://images.unsplash.com/photo-1562040506-a9b32cb51b94?q=80&w=500&auto=format&fit=crop",
-      "https://images.pexels.com/photos/869517/pexels-photo-869517.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    ],
-    ageGroup: "0-2",
-    category: "Action",
-    rating: 4.5,
-    reviews: 89,
-    inStock: true,
-    featured: false,
-    safetyFeatures: [
-      "Machine washable",
-      "No small parts",
-      "Hypoallergenic materials",
-    ],
-    new: true,
+    id: "user-2",
+    name: "Emma Watson",
+    username: "techEmma",
+    avatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8cGVvcGxlfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60",
+    bio: "UX/UI Designer | Design systems advocate | Coffee-powered ☕",
+    isOnline: false,
+    followers: 2456,
+    following: 734,
   },
   {
-    id: "3",
-    name: "Science Lab Kit",
-    description:
-      "Explore the wonders of science with this comprehensive lab kit. Designed by educators, this kit introduces fundamental scientific concepts through safe, engaging experiments.",
-    price: 59.99,
-    images: [
-      "https://images.pexels.com/photos/8471835/pexels-photo-8471835.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.pexels.com/photos/8923574/pexels-photo-8923574.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    ],
-    ageGroup: "9-12",
-    category: "Educational",
-    rating: 4.9,
-    reviews: 56,
-    inStock: true,
-    featured: true,
-    safetyFeatures: [
-      "Child-safe chemicals",
-      "Detailed instructions",
-      "Protective gear included",
-    ],
-    new: false,
+    id: "user-3",
+    name: "David Park",
+    username: "codeNinja",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1748&q=80",
+    bio: "Backend engineer at TechCorp | Open source contributor | Rust & Go 💻",
+    isOnline: true,
+    followers: 1789,
+    following: 345,
   },
   {
-    id: "4",
-    name: "Dinosaur Puzzle Set",
-    description:
-      "A collection of wooden puzzles featuring different dinosaur species. Each puzzle is crafted with precision to ensure a perfect fit and durability through years of play.",
-    price: 24.99,
-    images: [
-      "https://images.pexels.com/photos/7605993/pexels-photo-7605993.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.pexels.com/photos/3852577/pexels-photo-3852577.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    ],
-    ageGroup: "6-8",
-    category: "Puzzles",
-    rating: 4.6,
-    reviews: 78,
-    inStock: false,
-    featured: false,
-    safetyFeatures: [
-      "Rounded corners",
-      "Non-toxic materials",
-      "Choking hazard tested",
-    ],
-    new: false,
+    id: "user-4",
+    name: "Sophia Rodriguez",
+    username: "aiSophia",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80",
+    bio: "AI researcher | PhD in Machine Learning | Building ethical AI systems 🤖",
+    isOnline: false,
+    followers: 3234,
+    following: 456,
   },
   {
-    id: "5",
-    name: "Art Studio Easel",
-    description:
-      "A double-sided easel with chalkboard, whiteboard, and paper roll. This premium art station is designed to grow with your child, encouraging artistic expression from toddler to teen years.",
-    price: 79.99,
-    discountPrice: 69.99,
-    images: [
-      "https://images.pexels.com/photos/7869446/pexels-photo-7869446.jpeg?auto=compress&cs=tinysrgb&w=600",
-      "https://images.pexels.com/photos/6941096/pexels-photo-6941096.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    ],
-    ageGroup: "3-5",
-    category: "Creative",
-    rating: 4.7,
-    reviews: 42,
-    inStock: true,
-    featured: true,
-    safetyFeatures: [
-      "Stable base",
-      "Washable surfaces",
-      "Storage for supplies",
-    ],
-    new: true,
+    id: "user-5",
+    name: "Daniel Kim",
+    username: "devopsDan",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80",
+    bio: "DevOps engineer | Cloud architect | Kubernetes enthusiast ☁️",
+    isOnline: true,
+    followers: 967,
+    following: 567,
   },
   {
-    id: "6",
-    name: "Outdoor Adventure Set",
-    description:
-      "Explore the great outdoors with this complete adventure kit. Includes a compass, magnifying glass, binoculars, and field guide to inspire curiosity about nature.",
-    price: 44.99,
-    images: [
-      "https://images.unsplash.com/photo-1472162072942-cd5147eb3902?q=80&w=500&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?q=80&w=500&auto=format&fit=crop",
-    ],
-    ageGroup: "6-8",
-    category: "Outdoor",
-    rating: 4.4,
-    reviews: 35,
-    inStock: true,
-    featured: false,
-    safetyFeatures: [
-      "Shatterproof lenses",
-      "Neck straps included",
-      "Water-resistant case",
-    ],
-    new: false,
+    id: "user-6",
+    name: "Olivia Brown",
+    username: "cyberOlivia",
+    avatar:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fHBlb3BsZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+    bio: "Cybersecurity specialist | Ethical hacker | Privacy advocate 🔒",
+    isOnline: false,
+    followers: 1890,
+    following: 678,
   },
   {
-    id: "7",
-    name: "Musical Xylophone",
-    description:
-      "A colorful xylophone that produces perfect pitch tones. Crafted by musical instrument experts to introduce children to music through play.",
-    price: 29.99,
-    images: [
-      "https://images.pexels.com/photos/6743155/pexels-photo-6743155.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.pexels.com/photos/6274908/pexels-photo-6274908.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    ],
-    ageGroup: "0-2",
-    category: "Educational",
-    rating: 4.3,
-    reviews: 67,
-    inStock: true,
-    featured: false,
-    safetyFeatures: [
-      "Rounded mallets",
-      "Non-toxic finishes",
-      "Durable construction",
-    ],
-    new: false,
+    id: "user-7",
+    name: "Ethan Wilson",
+    username: "gameDevEthan",
+    avatar:
+      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fHBlb3BsZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+    bio: "Game developer | Unity & Unreal | Building virtual worlds 🎮",
+    isOnline: true,
+    followers: 1321,
+    following: 789,
   },
   {
-    id: "8",
-    name: "Robot Building Kit",
-    description:
-      "Build and program your own robot with this comprehensive STEM kit. Designed by engineers to introduce coding concepts through hands-on building.",
-    price: 89.99,
-    images: [
-      "https://images.pexels.com/photos/8294803/pexels-photo-8294803.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.unsplash.com/photo-1535378620166-273708d44e4c?q=80&w=500&auto=format&fit=crop",
-    ],
-    ageGroup: "9-12",
-    category: "Educational",
-    rating: 4.9,
-    reviews: 29,
-    inStock: true,
-    featured: true,
-    safetyFeatures: [
-      "Age-appropriate components",
-      "UL certified electronics",
-      "Detailed instructions",
-    ],
-    new: true,
+    id: "user-8",
+    name: "Ava Garcia",
+    username: "dataAva",
+    avatar:
+      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fHBlb3BsZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+    bio: "Data scientist | Python & R | Turning data into insights 📊",
+    isOnline: false,
+    followers: 2654,
+    following: 890,
   },
-];
+]
 
-export default function ToyStore() {
-  const [theme, setTheme] = useState<ThemeType>("light");
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState<string | null>(null);
+const sampleNotifications: Notification[] = [
+  {
+    id: "notif-1",
+    user: sampleUsers[1],
+    text: "liked your post about React 18 features.",
+    timestamp: "2023-04-11T08:00:00Z",
+    read: false,
+  },
+  {
+    id: "notif-2",
+    user: sampleUsers[2],
+    text: "commented on your Kubernetes deployment strategy.",
+    timestamp: "2023-04-10T21:30:00Z",
+    read: true,
+  },
+  {
+    id: "notif-3",
+    user: sampleUsers[3],
+    text: "shared your AI ethics framework.",
+    timestamp: "2023-04-09T12:45:00Z",
+    read: true,
+  },
+]
 
-  const featuredProducts = products.filter((product) => product.featured);
-  const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const productSectionRef = useRef<HTMLElement>(null);
+const sampleConversations: Conversation[] = [
+  {
+    id: "convo-1",
+    user: sampleUsers[1],
+    messages: [
+      {
+        id: "msg-1",
+        sender: "user-1",
+        text: "Hey! Have you tried the new Next.js 13 features?",
+        timestamp: "2023-04-11T07:30:00Z",
+      },
+      {
+        id: "msg-2",
+        sender: "user-2",
+        text: "Yes! The new app directory and server components are game-changing!",
+        timestamp: "2023-04-11T08:00:00Z",
+      },
+    ],
+  },
+  {
+    id: "convo-2",
+    user: sampleUsers[2],
+    messages: [
+      {
+        id: "msg-3",
+        sender: "user-1",
+        text: "Your Kubernetes article was super helpful. Do you have any tips for optimizing resource allocation?",
+        timestamp: "2023-04-10T21:00:00Z",
+      },
+      {
+        id: "msg-4",
+        sender: "user-3",
+        text: "Thanks! I'd recommend using the Horizontal Pod Autoscaler and setting resource limits properly. I can share some config examples.",
+        timestamp: "2023-04-10T21:30:00Z",
+      },
+    ],
+  },
+]
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFeaturedIndex((prev) =>
-        prev === featuredProducts.length - 1 ? 0 : prev + 1
-      );
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [featuredProducts.length]);
+const trendingTopics = [
+  {
+    id: "topic-1",
+    category: "Programming",
+    title: "TypeScript 5.0",
+    posts: 1234,
+  },
+  {
+    id: "topic-2",
+    category: "AI",
+    title: "GPT-4 Applications",
+    posts: 5678,
+  },
+  {
+    id: "topic-3",
+    category: "Cloud",
+    title: "Serverless Architecture",
+    posts: 3101,
+  },
+  {
+    id: "topic-4",
+    category: "Hardware",
+    title: "Apple M3 Chips",
+    posts: 2121,
+  },
+  {
+    id: "topic-5",
+    category: "Web",
+    title: "Web Assembly",
+    posts: 1456,
+  },
+]
 
-  useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => {
-        setToastMessage(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toastMessage]);
+function formatTimeAgo(timestamp: string): string {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
 
-  useEffect(() => {
-    if (selectedProduct || isCartOpen || isWishlistOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [selectedProduct, isCartOpen, isWishlistOpen]);
+  if (days > 0) {
+    return `${days} day${days > 1 ? "s" : ""} ago`
+  } else if (hours > 0) {
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`
+  } else if (minutes > 0) {
+    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
+  } else {
+    return "Just now"
+  }
+}
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
-      ) {
-        closeModal();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+//  Comment 
+interface Comment {
+  id: string
+  user: AppUser
+  text: string
+  timestamp: string
+  likes?: number
+  liked?: boolean
+  replies?: Reply[]
+}
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
+// Add a new Reply interface
+interface Reply {
+  id: string
+  user: AppUser
+  text: string
+  timestamp: string
+  likes?: number
+  liked?: boolean
+}
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existingItem = prev.find((item) => item.product.id === product.id);
-      if (existingItem) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        return [...prev, { product, quantity: 1 }];
-      }
-    });
-    setToastMessage(`${product.name} added to cart!`);
-  };
+const samplePosts: Post[] = [
+  {
+    id: "post-1",
+    user: sampleUsers[1],
+    text: "Just deployed my first full-stack app with Next.js 13 and Prisma! The new app directory structure is a game-changer. Who else is loving the React Server Components?",
+    image:
+      "https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    timestamp: "2023-04-10T14:30:00Z",
+    likes: 78,
+    liked: false,
+    comments: [
+      {
+        id: "comment-1",
+        user: sampleUsers[2],
+        text: "The streaming SSR is incredible! Have you tried the new data fetching patterns?",
+        timestamp: "2023-04-10T15:00:00Z",
+        likes: 5,
+        liked: false,
+        replies: [
+          {
+            id: "reply-1",
+            user: sampleUsers[1],
+            text: "Yes! The loading.js and error.js conventions make the UX so much better.",
+            timestamp: "2023-04-10T15:05:00Z",
+            likes: 2,
+            liked: false,
+          },
+          {
+            id: "reply-2",
+            user: sampleUsers[4],
+            text: "I'm still figuring out the best patterns for mutations. Any recommendations?",
+            timestamp: "2023-04-10T15:30:00Z",
+            likes: 1,
+            liked: false,
+          },
+        ],
+      },
+      {
+        id: "comment-2",
+        user: sampleUsers[3],
+        text: "I'm still on Next.js 12. Is it worth the migration effort?",
+        timestamp: "2023-04-10T15:15:00Z",
+        likes: 3,
+        liked: false,
+        replies: [],
+      },
+    ],
+    shares: 12,
+    bookmarked: false,
+  },
+  {
+    id: "post-2",
+    user: sampleUsers[0],
+    text: "Just finished setting up my new M1 Max MacBook Pro for development. The compile times are insane! Docker runs smoothly and battery life is incredible. Best dev machine I've ever used.",
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1626&q=80",
+    timestamp: "2023-04-09T19:45:00Z",
+    likes: 93,
+    liked: true,
+    comments: [
+      {
+        id: "comment-3",
+        user: sampleUsers[4],
+        text: "How's the RAM usage with multiple Docker containers? I'm thinking of upgrading.",
+        timestamp: "2023-04-09T20:00:00Z",
+        likes: 8,
+        liked: true,
+        replies: [
+          {
+            id: "reply-3",
+            user: sampleUsers[0],
+            text: "I'm running 5-6 containers simultaneously with no issues on 32GB. The memory management is really efficient!",
+            timestamp: "2023-04-09T20:15:00Z",
+            likes: 3,
+            liked: false,
+          },
+        ],
+      },
+    ],
+    shares: 15,
+    bookmarked: true,
+  },
+  {
+    id: "post-3",
+    user: sampleUsers[3],
+    text: "Just published my research paper on ethical considerations in generative AI. We need more discussions about responsible AI development and deployment. Check it out and let me know your thoughts!",
+    image:
+      "https://images.unsplash.com/photo-1745681619881-975e836e432c?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw0MHx8fGVufDB8fHx8fA%3D%3D",
+    timestamp: "2023-04-08T10:15:00Z",
+    likes: 156,
+    liked: false,
+    comments: [
+      {
+        id: "comment-4",
+        user: sampleUsers[0],
+        text: "This is so important! We need more focus on the ethical implications as these models become more powerful.",
+        timestamp: "2023-04-08T10:30:00Z",
+        likes: 4,
+        liked: false,
+        replies: [],
+      },
+      {
+        id: "comment-5",
+        user: sampleUsers[5],
+        text: "I'd love to collaborate on a follow-up paper focusing on privacy concerns!",
+        timestamp: "2023-04-08T11:00:00Z",
+        likes: 2,
+        liked: false,
+        replies: [
+          {
+            id: "reply-4",
+            user: sampleUsers[3],
+            text: "That would be great! DM me and we can discuss the details.",
+            timestamp: "2023-04-08T11:15:00Z",
+            likes: 1,
+            liked: false,
+          },
+        ],
+      },
+      {
+        id: "comment-6",
+        user: sampleUsers[2],
+        text: "Have you looked into the recent EU AI Act? It addresses some of these concerns.",
+        timestamp: "2023-04-08T12:45:00Z",
+        likes: 1,
+        liked: false,
+        replies: [
+          {
+            id: "reply-5",
+            user: sampleUsers[3],
+            text: "Yes, I reference it in section 3.2! It's a good start but still has gaps in enforcement.",
+            timestamp: "2023-04-08T13:00:00Z",
+            likes: 2,
+            liked: false,
+          },
+        ],
+      },
+    ],
+    shares: 34,
+    bookmarked: false,
+  },
+  {
+    id: "post-4",
+    user: sampleUsers[4],
+    text: "Finally completed my ultimate developer workstation! Dual 4K monitors, custom mechanical keyboard, and perfect cable management. Productivity level: 1000%",
+    image:
+      "https://images.unsplash.com/photo-1547586696-ea22b4d4235d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+    timestamp: "2023-04-07T18:20:00Z",
+    likes: 67,
+    liked: false,
+    comments: [
+      {
+        id: "comment-7",
+        user: sampleUsers[4],
+        text: "For those asking about my setup: Standing desk from Fully, Herman Miller Embody chair, and dual Dell U2720Q monitors. Best investment for productivity!",
+        timestamp: "2023-04-07T18:25:00Z",
+        likes: 6,
+        liked: false,
+        replies: [],
+      },
+      {
+        id: "comment-8",
+        user: sampleUsers[1],
+        text: "Love the clean setup! What keyboard is that? I'm looking for a new mechanical.",
+        timestamp: "2023-04-07T19:00:00Z",
+        likes: 2,
+        liked: false,
+        replies: [
+          {
+            id: "reply-6",
+            user: sampleUsers[4],
+            text: "It's a custom GMMK Pro with Zealios V2 switches and MT3 keycaps. Highly recommend!",
+            timestamp: "2023-04-07T19:10:00Z",
+            likes: 1,
+            liked: false,
+          },
+        ],
+      },
+    ],
+    shares: 19,
+    bookmarked: false,
+  },
+  {
+    id: "post-5",
+    user: sampleUsers[2],
+    text: "Just open-sourced my Kubernetes operator for automating database backups. It supports PostgreSQL, MySQL, and MongoDB. Contributions welcome! GitHub link in comments.",
+    image:
+      "https://images.unsplash.com/photo-1607799279861-4dd421887fb3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+    timestamp: "2023-04-06T09:10:00Z",
+    likes: 231,
+    liked: false,
+    comments: [
+      {
+        id: "comment-9",
+        user: sampleUsers[0],
+        text: "This is exactly what I've been looking for! Does it support scheduled backups?",
+        timestamp: "2023-04-06T09:30:00Z",
+        likes: 7,
+        liked: false,
+        replies: [],
+      },
+      {
+        id: "comment-10",
+        user: sampleUsers[2],
+        text: "GitHub: https://github.com/codeNinja/k8s-db-backup-operator - And yes, it supports cron scheduling!",
+        timestamp: "2023-04-06T10:15:00Z",
+        likes: 5,
+        liked: false,
+        replies: [
+          {
+            id: "reply-7",
+            user: sampleUsers[7],
+            text: "Just starred the repo. Would love to contribute to the MongoDB integration!",
+            timestamp: "2023-04-06T10:30:00Z",
+            likes: 0,
+            liked: false,
+          },
+          {
+            id: "reply-8",
+            user: sampleUsers[2],
+            text: "That would be awesome! Check the issues labeled 'good first issue' to get started.",
+            timestamp: "2023-04-06T10:45:00Z",
+            likes: 2,
+            liked: false,
+          },
+        ],
+      },
+    ],
+    shares: 47,
+    bookmarked: false,
+  },
+]
 
-  const addToCartFromWishlist = (product: Product) => {
-    setCart((prev) => {
-      const existingItem = prev.find((item) => item.product.id === product.id);
-      if (existingItem) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        return [...prev, { product, quantity: 1 }];
-      }
-    });
+export default function SocialMediaPlatform() {
+  // State management
+  const [darkMode, setDarkMode] = useState(false)
+  const [activeTab, setActiveTab] = useState("feed")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [posts, setPosts] = useState<Post[]>(samplePosts)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications)
+  const [messages, setMessages] = useState<Conversation[]>(sampleConversations)
+  const [activeConversation, setActiveConversation] = useState<string | null>(null)
+  const [newMessage, setNewMessage] = useState("")
+  const [currentUser, setCurrentUser] = useState(sampleUsers[0])
+  const [suggestedUsers, setSuggestedUsers] = useState(sampleUsers.slice(1))
+  const [activeTrendingTopic, setActiveTrendingTopic] = useState<string | null>(null)
+  const [newPostText, setNewPostText] = useState("")
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [viewedUserProfile, setViewedUserProfile] = useState<AppUser | null>(null)
+  const [newPostImage, setNewPostImage] = useState<string | null>(null)
+  const [newPostFeeling, setNewPostFeeling] = useState<string | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showImageInput, setShowImageInput] = useState(false)
+  const [showCreatePost, setShowCreatePost] = useState(false)
+  
+  // Toast notification state
+  const [toast, setToast] = useState<{message: string, type: "success" | "error" | "info"} | null>(null)
+
+  // Show toast notification
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type })
     
-    setWishlist(prev => prev.filter(id => id !== product.id));
-    
-    setToastMessage(`${product.name} added to cart!`);
-  };
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+      setToast(null)
+    }, 3000)
+  }
+  
+  // Handle messages tab click
+  const handleMessagesClick = () => {
+    showToast("Messages feature is not available", "info")
+  }
+  
+  // Handle explore tab click
+  const handleExploreClick = () => {
+    showToast("Explore feature is not available", "info")
+  }
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode)
+  }
 
-  const updateCartQuantity = (productId: string, quantity: number) => {
-    if (quantity < 1) {
-      removeFromCart(productId);
-      return;
-    }
+  // Handle post reactions
+  const handleLike = (postId: string) => {
+    setPosts(
+      posts.map((post) =>
+        post.id === postId
+          ? { ...post, likes: post.liked ? post.likes - 1 : post.likes + 1, liked: !post.liked }
+          : post,
+      ),
+    )
+  }
 
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
+  // Handle post bookmarks
+  const handleBookmark = (postId: string) => {
+    setPosts(posts.map((post) => (post.id === postId ? { ...post, bookmarked: !post.bookmarked } : post)))
+  }
 
-  const toggleWishlist = (productId: string) => {
-    setWishlist((prev) => {
-      if (prev.includes(productId)) {
-        setToastMessage("Removed from wishlist");
-        return prev.filter((id) => id !== productId);
-      } else {
-        setToastMessage("Added to wishlist");
-        return [...prev, productId];
+  // Handle comment submission
+  const handleComment = (postId: string, comment: string) => {
+    if (!comment.trim()) return
+
+    setPosts(
+      posts.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              comments: [
+                ...post.comments,
+                {
+                  id: `comment-${Date.now()}`,
+                  user: currentUser,
+                  text: comment,
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            }
+          : post,
+      ),
+    )
+  }
+
+  // Handle sending a new message
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !activeConversation) return
+
+    const updatedMessages = messages.map((convo) => {
+      if (convo.id === activeConversation) {
+        return {
+          ...convo,
+          messages: [
+            ...convo.messages,
+            {
+              id: `msg-${Date.now()}`,
+              sender: currentUser.id,
+              text: newMessage,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }
       }
-    });
-  };
+      return convo
+    })
 
-  const openProductModal = (product: Product) => {
-    setSelectedProduct(product);
-  };
+    setMessages(updatedMessages)
+    setNewMessage("")
+  }
 
-  const closeModal = () => {
-    setSelectedProduct(null);
-    setIsCartOpen(false);
-    setIsWishlistOpen(false);
-  };
+  // Handle following a user
+  const handleFollowUser = (userId: string) => {
+    setSuggestedUsers(
+      suggestedUsers.map((user) => (user.id === userId ? { ...user, isFollowing: !user.isFollowing } : user)),
+    )
 
-  const validateEmail = (emailToValidate: string) => {
-    const emailRegex = /\S+@\S+\.\S+/;
-    return emailRegex.test(emailToValidate);
-  };
+    // Update current user's following count
+    setCurrentUser({
+      ...currentUser,
+      following: (currentUser.following ?? 0) + (suggestedUsers.find((u) => u.id === userId)?.isFollowing ? -1 : 1),
+    })
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    if (emailError) {
-      setEmailError(null);
+    // Add a notification when user follows someone
+    if (!suggestedUsers.find((u) => u.id === userId)?.isFollowing) {
+      const followedUser = suggestedUsers.find((u) => u.id === userId)
+      if (followedUser) {
+        const newNotification: Notification = {
+          id: `notif-${Date.now()}`,
+          user: followedUser,
+          text: "has been followed by you.",
+          timestamp: new Date().toISOString(),
+          read: true,
+        }
+        setNotifications([newNotification, ...notifications])
+      }
     }
-  };
+  }
 
-  const handleSubscribe = () => {
-    if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email address.");
+  // Handle clicking on a trending topic
+  const handleTrendingTopicClick = (topicId: string) => {
+    setActiveTrendingTopic(topicId === activeTrendingTopic ? null : topicId)
+
+    // filter posts related to topic
+    if (topicId !== activeTrendingTopic) {
+      const topic = trendingTopics.find((t) => t.id === topicId)
+      if (topic) {
+        setSearchQuery(topic.title)
+        setActiveTab("feed")
+      }
     } else {
-      setEmailError(null);
-      setToastMessage("Subscribed successfully!");
-      setEmail("");
+      setSearchQuery("")
     }
-  };
+  }
 
-  const handleCheckout = () => {
-    setCart([]);
-    setToastMessage("Order placed successfully!");
-    closeModal();
-  };
+  // Handle viewing another user's profile
+  const handleViewUserProfile = (user: AppUser) => {
+    setViewedUserProfile(user)
+    setActiveTab("profile")
+  }
 
-  const handleScrollToProducts = () => {
-    productSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Handle going back to own profile
+  const handleBackToOwnProfile = () => {
+    setViewedUserProfile(null)
+  }
 
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => {
-      const price = item.product.discountPrice || item.product.price;
-      return total + price * item.quantity;
-    }, 0);
-  };
+  // Toggle dropdown menu
+  const toggleDropdown = (id: string) => {
+    setActiveDropdown(activeDropdown === id ? null : id)
+  }
 
-  const currentFeatured = featuredProducts[currentFeaturedIndex];
+  // Handle post actions from dropdown
+  const handlePostAction = (action: string, postId: string) => {
+    switch (action) {
+      case "delete":
+        setPosts(posts.filter((post) => post.id !== postId))
+        alert("Post deleted")
+        break
+      case "report":
+        alert("Post reported")
+        break
+      case "save":
+        onBookmarkPost(postId)
+        break
+      case "copy":
+        navigator.clipboard.writeText(posts.find((p) => p.id === postId)?.text || "")
+        alert("Post content copied to clipboard")
+        break
+      default:
+        break
+    }
+    setActiveDropdown(null)
+  }
 
-  const t = themeColors[theme];
+  // Handle creating a new post
+  const handleCreatePost = () => {
+    if (!newPostText.trim() && !newPostImage) return
+
+    const newPost: Post = {
+      id: `post-${Date.now()}`,
+      user: currentUser,
+      text: newPostText + (newPostFeeling ? ` - feeling ${newPostFeeling}` : ""),
+      image: newPostImage || undefined,
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      liked: false,
+      comments: [],
+      shares: 0,
+      bookmarked: false,
+    }
+
+    setPosts([newPost, ...posts])
+    setNewPostText("")
+    setNewPostImage(null)
+    setNewPostFeeling(null)
+    setShowEmojiPicker(false)
+    setShowImageInput(false)
+    setShowCreatePost(false)
+  }
+
+  // Handle adding an image to a new post
+  const handleAddImage = (url: string) => {
+    setNewPostImage(url)
+    setShowImageInput(false)
+  }
+
+  // Handle adding a feeling to a new post
+  const handleAddFeeling = (feeling: string) => {
+    setNewPostFeeling(feeling)
+    setShowEmojiPicker(false)
+  }
+
+  // sharing a post
+  const handleSharePost = (postId: string) => {
+    setPosts(posts.map((post) => (post.id === postId ? { ...post, shares: post.shares + 1 } : post)))
+
+    // Show notification for sharing
+    const sharedPost = posts.find((p) => p.id === postId)
+    if (sharedPost) {
+      alert(`Post shared successfully!`)
+    }
+  }
+
+  // Mark notifications as read
+  const markNotificationsAsRead = () => {
+    setNotifications(notifications.map((notification) => ({ ...notification, read: true })))
+  }
+
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [activeConversation, messages])
+
+  // notifications as read when notifications tab is opened
+  useEffect(() => {
+    if (activeTab === "notifications") {
+      markNotificationsAsRead()
+    }
+  }, [activeTab])
+
+  // Filter posts based on search query or active trending topic
+  const filteredPosts = posts.filter(
+    (post) =>
+      post.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.user.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  // Filter users based on search query
+  const filteredUsers = suggestedUsers.filter(
+    (user) => user.name.toLowerCase().includes(searchQuery.toLowerCase()) && user.id !== currentUser.id,
+  )
+
+  const onBookmarkPost = (postId: string) => {
+    setPosts(posts.map((post) => (post.id === postId ? { ...post, bookmarked: !post.bookmarked } : post)))
+  }
+
+  // Prevent scrolling when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'auto'
+    }
+    
+    return () => {
+      document.body.style.overflow = 'auto'
+    }
+  }, [mobileMenuOpen])
 
   return (
-    <div
-      className={`min-h-screen ${t.background} ${t.foreground} transition-colors duration-300`}
-    >
-      <header className={`sticky top-0 z-10 ${t.card} shadow-md`}>
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1
-              className={`text-3xl md:text-4xl ${t.accent} ${bangers.className}`}
-            >
-              ToyWonderland
+    <div className={`min-h-screen flex flex-col ${darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      {/* Header */}
+      <header
+        className={`sticky top-0 z-50 ${darkMode ? "bg-gray-800" : "bg-white"} shadow-md`}
+      >
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent cursor-pointer">
+              TechNexus
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${
-                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
-              } transition-colors cursor-pointer`}
-              aria-label={`Switch to ${
-                theme === "light" ? "dark" : "light"
-              } mode`}
+          <div className="hidden md:flex items-center space-x-4 flex-1 max-w-md mx-8">
+            <div
+              className={`flex items-center w-full px-3 py-2 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}
             >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+              <Search className="h-4 w-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className={`ml-2 w-full outline-none ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"}`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleDarkMode}
+              className={`p-2 rounded-full cursor-pointer ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"}`}
+              aria-label="Toggle dark mode"
+            >
+              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
             <button
-              onClick={() => setIsWishlistOpen(true)}
-              className={`p-2 rounded-full ${
-                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
-              } transition-colors cursor-pointer relative`}
-              aria-label="Open wishlist"
+              className={`relative p-2 rounded-full cursor-pointer md:block hidden ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"}`}
+              onClick={() => setActiveTab("notifications")}
+              aria-label="Notifications"
             >
-              <Heart size={20} />
-              {wishlist.length > 0 && (
-                <span
-                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full ${t.secondary} text-xs flex items-center justify-center`}
-                >
-                  {wishlist.length}
-                </span>
+              <Bell className="h-5 w-5" />
+              {notifications.some((n) => !n.read) && (
+                <span className="absolute top-0 right-0 h-3 w-3 bg-indigo-500 rounded-full"></span>
               )}
             </button>
 
             <button
-              onClick={() => setIsCartOpen(true)}
-              className={`p-2 rounded-full ${
-                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
-              } transition-colors cursor-pointer relative`}
-              aria-label="Open cart"
+              className="md:hidden p-2 cursor-pointer"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
             >
-              <ShoppingCart size={20} />
-              {cart.length > 0 && (
-                <span
-                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full ${t.secondary} text-xs flex items-center justify-center`}
-                >
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </span>
-              )}
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
+
+            <div className="hidden md:block">
+              <button className="flex items-center space-x-2 cursor-pointer" onClick={() => setActiveTab("profile")}>
+                <img
+                  src={currentUser.avatar || "/placeholder.svg"}
+                  alt={currentUser.name}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-4">
-        <section className="mb-12">
-          <div className={`rounded-2xl overflow-hidden ${t.card} shadow-lg`}>
-            <div className="relative aspect-[16/12] sm:aspect-[16/9] md:aspect-[21/7] max-h-[60vh] md:max-h-[85vh]">
-              <img
-                src="https://images.pexels.com/photos/7174515/pexels-photo-7174515.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                alt="Happy children playing with toys"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-900/70 to-transparent flex items-center">
-                <div className="p-4 md:p-12 max-w-xl">
-                  <h2
-                    className={`text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 md:mb-4 ${bubblegum.className}`}
-                  >
-                    Premium Toys for Curious Minds
-                  </h2>
-                  <p className="text-white text-sm sm:text-base md:text-lg mb-4 md:mb-6">
-                    Safe, educational, and incredibly fun toys that inspire
-                    creativity and growth.
-                  </p>
-                  <button
-                    onClick={handleScrollToProducts}
-                    className={`px-4 py-2 md:px-6 md:py-3 rounded-full text-base md:text-lg font-semibold ${t.secondary} transition-transform hover:scale-105 cursor-pointer`}
-                  >
-                    Explore Collection
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {currentFeatured && (
-          <section className="mb-12">
-            <h2
-              className={`text-2xl md:text-3xl font-bold mb-6 ${bubblegum.className}`}
-            >
-              Toys of the Week
-            </h2>
-            <div
-              className={`rounded-xl overflow-hidden ${t.card} shadow-lg ${t.border} border`}
-            >
-              <div className="flex flex-col md:grid md:grid-cols-2 h-auto md:h-[70vh]">
-                <div className="relative h-[40vh] md:h-full overflow-hidden">
-                  <img
-                    src={currentFeatured.images[0] || "/placeholder.svg"}
-                    alt={currentFeatured.name}
-                    className="w-full h-full object-cover object-center"
-                  />
-                  {currentFeatured.discountPrice && (
-                    <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                      SALE
-                    </div>
-                  )}
-                  {currentFeatured.new && (
-                    <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                      NEW
-                    </div>
-                  )}
-                  <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-                    <button
-                      onClick={() =>
-                        setCurrentFeaturedIndex((prev) =>
-                          prev === 0 ? featuredProducts.length - 1 : prev - 1
-                        )
-                      }
-                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${
-                        theme === "light"
-                          ? "bg-white/80 hover:bg-white"
-                          : "bg-slate-700/80 hover:bg-slate-600"
-                      } flex items-center justify-center transition-colors cursor-pointer`}
-                      aria-label="Previous featured toy"
-                    >
-                      <ChevronLeft
-                        size={16}
-                        className={`${
-                          theme === "light"
-                            ? "text-slate-800"
-                            : "text-slate-100"
-                        }`}
-                      />
-                    </button>
-                    <button
-                      onClick={() =>
-                        setCurrentFeaturedIndex((prev) =>
-                          prev === featuredProducts.length - 1 ? 0 : prev + 1
-                        )
-                      }
-                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${
-                        theme === "light"
-                          ? "bg-white/80 hover:bg-white"
-                          : "bg-slate-700/80 hover:bg-slate-600"
-                      } flex items-center justify-center transition-colors cursor-pointer`}
-                      aria-label="Next featured toy"
-                    >
-                      <ChevronRight
-                        size={16}
-                        className={`${
-                          theme === "light"
-                            ? "text-slate-800"
-                            : "text-slate-100"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-4 md:p-6 flex flex-col overflow-y-auto max-h-[50vh] md:max-h-none">
-                  <div className="mb-1 flex flex-wrap gap-2">
-                    <span
-                      className={`text-xs md:text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
-                    >
-                      {currentFeatured.category}
-                    </span>
-                    <span
-                      className={`text-xs md:text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
-                    >
-                      Ages {currentFeatured.ageGroup}
-                    </span>
-                  </div>
-                  <h3
-                    className={`text-xl font-bold mb-1 ${bubblegum.className}`}
-                  >
-                    {currentFeatured.name}
-                  </h3>
-                  <div className="flex items-center mb-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={14}
-                          className={
-                            i < Math.floor(currentFeatured.rating)
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-gray-300"
-                          }
-                        />
-                      ))}
-                    </div>
-                    <span className={`ml-2 text-xs ${t.muted}`}>
-                      {currentFeatured.rating} ({currentFeatured.reviews}{" "}
-                      reviews)
-                    </span>
-                  </div>
-                  <p
-                    className={`mb-3 text-sm ${t.muted} line-clamp-4 md:line-clamp-6`}
-                  >
-                    {currentFeatured.description}
-                  </p>
-                  <div className="mt-auto">
-                    <div className="flex items-center mb-2">
-                      {currentFeatured.discountPrice ? (
-                        <>
-                          <span className="text-xl md:text-2xl font-bold">
-                            ${currentFeatured.discountPrice.toFixed(2)}
-                          </span>
-                          <span
-                            className={`ml-2 text-base md:text-lg line-through ${t.muted}`}
-                          >
-                            ${currentFeatured.price.toFixed(2)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xl md:text-2xl font-bold">
-                          ${currentFeatured.price.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      {!currentFeatured.inStock && (
-                        <span className="text-red-500 font-semibold text-sm md:text-base self-center">
-                          SOLD OUT
-                        </span>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (currentFeatured.inStock) {
-                            addToCart(currentFeatured);
-                          }
-                        }}
-                        disabled={!currentFeatured.inStock}
-                        className={`flex-1 py-2 px-2 md:px-3 rounded-lg font-medium md:font-semibold text-sm md:text-base flex items-center justify-center gap-1 md:gap-2 cursor-pointer ${
-                          currentFeatured.inStock
-                            ? t.primary
-                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        }`}
-                      >
-                        <ShoppingCart size={16} />
-                        {currentFeatured.inStock ? "Add to Cart" : "Out of Stock"}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleWishlist(currentFeatured.id);
-                        }}
-                        className={`p-2 rounded-lg ${t.border} border ${
-                          theme === "light"
-                            ? "hover:bg-slate-100"
-                            : "hover:bg-slate-700"
-                        } transition-colors cursor-pointer`}
-                        aria-label={
-                          wishlist.includes(currentFeatured.id)
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
-                      >
-                        <Heart
-                          size={16}
-                          className={`
-                            ${
-                              wishlist.includes(currentFeatured.id)
-                                ? "fill-red-500 text-red-500"
-                                : theme === "light"
-                                ? "text-slate-400"
-                                : "text-slate-500"
-                            }
-                          `}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section ref={productSectionRef}>
-          <div className="flex justify-between items-center mb-6">
-            <h2
-              className={`text-2xl md:text-3xl font-bold ${bubblegum.className}`}
-            >
-              Our Products
-            </h2>
-          </div>
-
-          {products.length === 0 ? (
-            <div
-              className={`text-center py-12 ${t.card} rounded-xl ${t.border} border`}
-            >
-              <h3 className="text-xl font-semibold mb-2">No products found</h3>
-              <p className={`${t.muted} mb-4`}>
-                Try adjusting your filters or search query
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`rounded-xl overflow-hidden ${t.card} ${t.border} border shadow-md ${t.cardHover} transition-all duration-300 cursor-pointer`}
-                  onClick={() => openProductModal(product)}
-                >
-                  <div className="relative aspect-square">
-                    <img
-                      src={product.images[0] || "/placeholder.svg"}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {product.discountPrice && (
-                      <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                        SALE
-                      </div>
-                    )}
-                    {product.new && (
-                      <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                        NEW
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist(product.id);
-                      }}
-                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center hover:bg-white transition-colors cursor-pointer"
-                      aria-label={
-                        wishlist.includes(product.id)
-                          ? "Remove from wishlist"
-                          : "Add to wishlist"
-                      }
-                    >
-                      <Heart
-                        size={16}
-                        className={` 
-                          ${
-                            wishlist.includes(product.id)
-                              ? "fill-red-500 text-red-500"
-                              : theme === "light"
-                              ? "text-slate-400"
-                              : "text-slate-500"
-                          }
-                        `}
-                      />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold line-clamp-1">
-                        {product.name}
-                      </h3>
-                      <div className="flex items-center">
-                        <Star
-                          size={14}
-                          className="fill-amber-400 text-amber-400"
-                        />
-                        <span className="text-xs ml-1">{product.rating}</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {product.discountPrice ? (
-                          <div className="flex items-center">
-                            <span className="font-bold">
-                              ${product.discountPrice.toFixed(2)}
-                            </span>
-                            <span
-                              className={`ml-2 text-sm line-through ${t.muted}`}
-                            >
-                              ${product.price.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-bold">
-                            ${product.price.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!product.inStock && (
-                          <span className="text-red-500 font-semibold text-xs">
-                            SOLD OUT
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (product.inStock) {
-                              addToCart(product);
-                            }
-                          }}
-                          disabled={!product.inStock}
-                          className={`p-2 rounded-full cursor-pointer ${
-                            product.inStock
-                              ? t.primary
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          }`}
-                          aria-label={
-                            product.inStock ? "Add to cart" : "Out of stock"
-                          }
-                        >
-                          <ShoppingCart size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-
-      <footer className={`mt-16 py-8 ${t.card} ${t.border} border-t`}>
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h3 className={`text-xl font-bold mb-4 ${bangers.className}`}>
-                ToyWonderland
-              </h3>
-              <p className={`${t.muted} mb-4`}>
-                Premium toys that inspire creativity, learning, and joy while
-                maintaining the highest safety standards.
-              </p>
-              <div className="flex gap-4">
-                <a
-                  href="#"
-                  className={`p-2 rounded-full ${t.border} border ${
-                    theme === "light"
-                      ? "hover:bg-slate-100"
-                      : "hover:bg-slate-700"
-                  } transition-colors cursor-pointer`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  className={`p-2 rounded-full ${t.border} border ${
-                    theme === "light"
-                      ? "hover:bg-slate-100"
-                      : "hover:bg-slate-700"
-                  } transition-colors cursor-pointer`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect
-                      x="2"
-                      y="2"
-                      width="20"
-                      height="20"
-                      rx="5"
-                      ry="5"
-                    ></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  className={`p-2 rounded-full ${t.border} border ${
-                    theme === "light"
-                      ? "hover:bg-slate-100"
-                      : "hover:bg-slate-700"
-                  } transition-colors cursor-pointer`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
-                  </svg>
-                </a>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Newsletter</h4>
-              <p className={`${t.muted} mb-4`}>
-                Subscribe to our newsletter for new product alerts and exclusive
-                offers.
-              </p>
-              <div className="flex">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  className={`flex-1 px-4 py-2 rounded-l-lg ${t.card} ${
-                    t.border
-                  } border focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    emailError ? "border-red-500 focus:ring-red-500" : ""
-                  }`}
-                  value={email}
-                  onChange={handleEmailChange}
-                />
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div
+          className={`md:hidden fixed inset-0 z-50 ${darkMode ? "backdrop-blur-sm bg-gray-900/95" : "backdrop-blur-sm bg-white/95"}`}
+        >
+          <div className="flex flex-col h-full">
+            {/* Mobile Menu Header */}
+            <div className="p-4 flex items-center justify-between">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                TechNexus
+              </h1>
+              <div className="flex items-center space-x-4">
                 <button
-                  onClick={handleSubscribe}
-                  className={`px-4 py-2 rounded-r-lg ${t.primary} cursor-pointer`}
+                  onClick={toggleDarkMode}
+                  className={`p-2 rounded-full cursor-pointer ${darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"}`}
                 >
-                  Subscribe
+                  {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </button>
+                <button
+                  className="p-2 cursor-pointer"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <X className="h-6 w-6" />
                 </button>
               </div>
-              {emailError && (
-                <p className="text-red-500 text-xs mt-1">{emailError}</p>
-              )}
             </div>
-          </div>
-          <div
-            className={`mt-8 pt-6 ${t.border} border-t text-center ${t.muted}`}
-          >
-            <p>© 2025 ToyWonderland. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
 
-      <AnimatePresence>
-        {selectedProduct && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          >
-            <motion.div
-              ref={modalRef}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`relative max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-xl ${t.card} shadow-xl`}
-            >
-              <button
-                onClick={closeModal}
-                className={`absolute top-4 right-4 z-10 p-2 rounded-full ${
-                  theme === "light"
-                    ? "bg-white/80 hover:bg-white"
-                    : "bg-slate-700/80 hover:bg-slate-600"
-                } transition-colors cursor-pointer`}
-                aria-label="Close modal"
-              >
-                <X
-                  size={20}
-                  className={`${
-                    theme === "light" ? "text-slate-800" : "text-slate-100"
-                  }`}
-                />
-              </button>
-
-              <div className="grid md:grid-cols-2 max-h-[calc(90vh-4rem)] md:max-h-none">
-                <div className="p-6 overflow-y-auto md:overflow-visible">
-                  <div className="aspect-square mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={selectedProduct.images[0] || "/placeholder.svg"}
-                      alt={selectedProduct.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedProduct.images.map((image, index) => (
-                      <div
-                        key={index}
-                        className="aspect-square rounded-lg overflow-hidden"
-                      >
-                        <img
-                          src={image || "/placeholder.svg"}
-                          alt={`${selectedProduct.name} view ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <div className="mb-2">
-                    <span
-                      className={`text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
-                    >
-                      {selectedProduct.category}
-                    </span>
-                    <span
-                      className={`text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted} ml-2`}
-                    >
-                      Ages {selectedProduct.ageGroup}
-                    </span>
-                  </div>
-
-                  <h2
-                    className={`text-2xl font-bold mb-2 ${bubblegum.className}`}
-                  >
-                    {selectedProduct.name}
-                  </h2>
-
-                  <div className="flex items-center mb-4">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={16}
-                          className={
-                            i < Math.floor(selectedProduct.rating)
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-gray-300"
-                          }
-                        />
-                      ))}
-                    </div>
-                    <span className={`ml-2 text-sm ${t.muted}`}>
-                      {selectedProduct.rating} ({selectedProduct.reviews}{" "}
-                      reviews)
-                    </span>
-                  </div>
-
-                  <p className={`mb-6 ${t.muted}`}>
-                    {selectedProduct.description}
-                  </p>
-
-                  <div className="mb-6">
-                    <h3 className="font-semibold mb-2">Safety Features:</h3>
-                    <ul className="space-y-1">
-                      {selectedProduct.safetyFeatures.map((feature, index) => (
-                        <li key={index} className="flex items-center">
-                          <Check size={16} className="text-green-500 mr-2" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="flex items-center mb-6">
-                    {selectedProduct.discountPrice ? (
-                      <>
-                        <span className="text-3xl font-bold">
-                          ${selectedProduct.discountPrice.toFixed(2)}
-                        </span>
-                        <span
-                          className={`ml-2 text-xl line-through ${t.muted}`}
-                        >
-                          ${selectedProduct.price.toFixed(2)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-3xl font-bold">
-                        ${selectedProduct.price.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-3">
-                    {!selectedProduct.inStock && (
-                      <span className="text-red-500 font-semibold text-base self-center">
-                        SOLD OUT
-                      </span>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addToCart(selectedProduct);
-                        closeModal();
-                      }}
-                      disabled={!selectedProduct.inStock}
-                      className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 cursor-pointer ${
-                        selectedProduct.inStock
-                          ? t.primary
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      }`}
-                    >
-                      <ShoppingCart size={18} />
-                      {selectedProduct.inStock ? "Add to Cart" : "Out of Stock"}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist(selectedProduct.id);
-                      }}
-                      className={`p-3 rounded-lg ${t.border} border ${
-                        theme === "light"
-                          ? "hover:bg-slate-100"
-                          : "hover:bg-slate-700"
-                      } transition-colors cursor-pointer`}
-                      aria-label={
-                        wishlist.includes(selectedProduct.id)
-                          ? "Remove from wishlist"
-                          : "Add to wishlist"
-                      }
-                    >
-                      <Heart
-                        size={18}
-                        className={`
-                          ${
-                            wishlist.includes(selectedProduct.id)
-                              ? "fill-red-500 text-red-500"
-                              : theme === "light"
-                              ? "text-slate-400"
-                              : "text-slate-500"
-                          }
-                        `}
-                      />
-                    </button>
-                  </div>
+            {/* Mobile Menu Content */}
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="mb-6">
+                <div
+                  className={`flex items-center w-full px-3 py-2 rounded-full ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                >
+                  <Search className="h-4 w-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    className={`ml-2 w-full outline-none ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"}`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {isCartOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`absolute top-0 right-0 h-full w-full max-w-md ${t.card} shadow-xl`}
+              <nav className="flex flex-col space-y-4">
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer ${activeTab === "feed" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : ""}`}
+                  onClick={() => {
+                    setActiveTab("feed")
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <Home className="h-6 w-6" />
+                  <span className="text-left">Home</span>
+                </button>
+
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer ${activeTab === "messages" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : ""}`}
+                  onClick={() => {
+                    handleMessagesClick()
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <MessageSquare className="h-6 w-6" />
+                  <span className="text-left">Messages</span>
+                </button>
+
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer ${activeTab === "explore" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : ""}`}
+                  onClick={() => {
+                    handleExploreClick()
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <Compass className="h-6 w-6" />
+                  <span className="text-left">Explore</span>
+                </button>
+
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer ${activeTab === "notifications" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : ""}`}
+                  onClick={() => {
+                    setActiveTab("notifications")
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <Bell className="h-6 w-6" />
+                  <span className="text-left">Notifications</span>
+                </button>
+
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer ${activeTab === "profile" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : ""}`}
+                  onClick={() => {
+                    setActiveTab("profile")
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <User className="h-6 w-6" />
+                  <span className="text-left">Profile</span>
+                </button>
+
+                <button
+                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white`}
+                  onClick={() => {
+                    setShowCreatePost(true)
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <PenSquare className="h-6 w-6" />
+                  <span className="text-left">Create Post</span>
+                </button>
+              </nav>
+            </div>
+
+            <div className="p-4">
+              <div className="flex items-center space-x-3 p-3">
+                <img
+                  src={currentUser.avatar || "/placeholder.svg"}
+                  alt={currentUser.name}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+                <div>
+                  <p className="font-semibold">{currentUser.name}</p>
+                  <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>@{currentUser.username}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto px-4 py-6 md:flex">
+        {/* Sidebar - Desktop only */}
+        <aside className="hidden md:block w-64 mr-8">
+          <nav className="sticky top-24 space-y-2">
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer ${activeTab === "feed" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              onClick={() => setActiveTab("feed")}
             >
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between p-6 border-b">
-                  <h2 className={`text-xl font-bold ${bubblegum.className}`}>
-                    Your Cart
-                  </h2>
+              <Home className="h-6 w-6" />
+              <span>Home</span>
+            </button>
+
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer ${activeTab === "explore" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              onClick={handleExploreClick}
+            >
+              <Compass className="h-6 w-6" />
+              <span>Explore</span>
+            </button>
+
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer ${activeTab === "messages" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              onClick={handleMessagesClick}
+            >
+              <MessageSquare className="h-6 w-6" />
+              <span>Messages</span>
+            </button>
+
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer ${activeTab === "notifications" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              onClick={() => setActiveTab("notifications")}
+            >
+              <Bell className="h-6 w-6" />
+              <span>Notifications</span>
+            </button>
+
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer ${activeTab === "profile" ? (darkMode ? "bg-gray-800" : "bg-gray-200") : darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              onClick={() => setActiveTab("profile")}
+            >
+              <User className="h-6 w-6" />
+              <span>Profile</span>
+            </button>
+
+            <button
+              className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white mt-4`}
+              onClick={() => setShowCreatePost(true)}
+            >
+              <PenSquare className="h-6 w-6" />
+              <span>Create Post</span>
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 max-w-2xl mx-auto">
+          {/* Create Post Modal */}
+          {showCreatePost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
+              <div className={`w-full max-w-lg p-6 rounded-xl shadow-xl ${darkMode ? "bg-gray-800" : "bg-white"} mx-4`}>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Create Post</h2>
                   <button
-                    onClick={closeModal}
-                    className={`p-2 rounded-full ${
-                      theme === "light"
-                        ? "hover:bg-slate-100"
-                        : "hover:bg-slate-700"
-                    } transition-colors cursor-pointer`}
-                    aria-label="Close cart"
+                    className={`p-2 rounded-full cursor-pointer ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                    onClick={() => setShowCreatePost(false)}
                   >
-                    <X size={20} />
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                  {cart.length === 0 ? (
-                    <div className="text-center py-12">
-                      <ShoppingCart
-                        size={48}
-                        className="mx-auto mb-4 text-gray-300"
-                      />
-                      <h3 className="text-xl font-semibold mb-2">
-                        Your cart is empty
-                      </h3>
-                      <p className={`${t.muted} mb-4`}>
-                        Add some toys to get started!
-                      </p>
-                      <button
-                        onClick={closeModal}
-                        className={`px-4 py-2 rounded-lg ${t.primary} cursor-pointer`}
-                      >
-                        Continue Shopping
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {cart.map((item) => (
-                        <div
-                          key={item.product.id}
-                          className={`flex gap-4 p-4 rounded-lg ${t.border} border`}
-                        >
-                          <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
-                            <img
-                              src={item.product.images[0] || "/placeholder.svg"}
-                              alt={item.product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold">
-                              {item.product.name}
-                            </h3>
-                            <p className={`text-sm ${t.muted}`}>
-                              $
-                              {(
-                                item.product.discountPrice || item.product.price
-                              ).toFixed(2)}{" "}
-                              each
-                            </p>
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="flex items-center">
-                                <button
-                                  onClick={() =>
-                                    updateCartQuantity(
-                                      item.product.id,
-                                      item.quantity - 1
-                                    )
-                                  }
-                                  className={`w-8 h-8 flex items-center justify-center rounded-l-md ${t.border} border cursor-pointer`}
-                                >
-                                  -
-                                </button>
-                                <span
-                                  className={`w-10 h-8 flex items-center justify-center ${t.border} border-t border-b`}
-                                >
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    updateCartQuantity(
-                                      item.product.id,
-                                      item.quantity + 1
-                                    )
-                                  }
-                                  className={`w-8 h-8 flex items-center justify-center rounded-r-md ${t.border} border cursor-pointer`}
-                                >
-                                  +
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => removeFromCart(item.product.id)}
-                                className="text-red-500 hover:text-red-700 cursor-pointer"
-                                aria-label="Remove from cart"
-                              >
-                                <X size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="flex items-center space-x-3 mb-4">
+                  <img
+                    src={currentUser.avatar || "/placeholder.svg"}
+                    alt={currentUser.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="font-medium">{currentUser.name}</p>
+                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>@{currentUser.username}</p>
+                  </div>
                 </div>
 
-                {cart.length > 0 && (
-                  <div className={`p-6 ${t.border} border-t`}>
-                    <div className="flex justify-between mb-4">
-                      <span className="font-semibold">Subtotal:</span>
-                      <span className="font-bold">
-                        ${calculateTotal().toFixed(2)}
-                      </span>
-                    </div>
+                <textarea
+                  placeholder="What's on your mind?"
+                  className={`w-full p-3 rounded-lg mb-4 ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"} focus:outline-none`}
+                  rows={4}
+                  value={newPostText}
+                  onChange={(e) => setNewPostText(e.target.value)}
+                ></textarea>
+
+                {newPostImage && (
+                  <div className="mb-4 relative">
+                    <img
+                      src={newPostImage || "/placeholder.svg"}
+                      alt="Post preview"
+                      className="w-full h-60 object-cover rounded-lg"
+                    />
                     <button
-                      onClick={handleCheckout}
-                      className={`w-full py-3 rounded-lg font-semibold ${t.primary} cursor-pointer`}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-gray-800 bg-opacity-70 text-white cursor-pointer"
+                      onClick={() => setNewPostImage(null)}
                     >
-                      Proceed to Checkout
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
                 )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {isWishlistOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`absolute top-0 right-0 h-full w-full max-w-md ${t.card} shadow-xl`}
-            >
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between p-6 border-b">
-                  <h2 className={`text-xl font-bold ${bubblegum.className}`}>
-                    Your Wishlist
-                  </h2>
-                  <button
-                    onClick={closeModal}
-                    className={`p-2 rounded-full ${
-                      theme === "light"
-                        ? "hover:bg-slate-100"
-                        : "hover:bg-slate-700"
-                    } transition-colors cursor-pointer`}
-                    aria-label="Close wishlist"
-                  >
-                    <X size={20} />
-                  </button>
+                <div className="flex justify-between mb-4">
+                  <div className="flex space-x-2">
+                    <button
+                      className={`p-2 rounded-lg flex items-center space-x-1 ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                      onClick={() => setShowImageInput(!showImageInput)}
+                    >
+                      <ImageIcon className="h-5 w-5 text-indigo-500" />
+                      <span>Add Image</span>
+                    </button>
+                    <button
+                      className={`p-2 rounded-lg flex items-center space-x-1 ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    >
+                      <Code className="h-5 w-5 text-indigo-500" />
+                      <span>Add Code</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                  {wishlist.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Heart
-                        size={48}
-                        className="mx-auto mb-4 text-gray-300"
+                {showImageInput && (
+                  <div className="mb-4 p-3 border rounded-lg border-gray-200 dark:border-gray-700">
+                    <p className="mb-2 text-sm font-medium">Add an image URL:</p>
+                    <div className="flex">
+                      <input
+                        type="text"
+                        placeholder="https://example.com/image.jpg"
+                        className={`flex-1 p-2 rounded-l-lg ${
+                          darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"
+                        } focus:outline-none`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddImage(e.currentTarget.value)
+                          }
+                        }}
                       />
-                      <h3 className="text-xl font-semibold mb-2">
-                        Your wishlist is empty
-                      </h3>
-                      <p className={`${t.muted} mb-4`}>
-                        Save your favorite toys to wishlist!
-                      </p>
                       <button
-                        onClick={closeModal}
-                        className={`px-4 py-2 rounded-lg ${t.primary} cursor-pointer`}
+                        className={`px-3 py-2 rounded-r-lg cursor-pointer ${darkMode ? "bg-indigo-600" : "bg-indigo-500"} text-white`}
+                        onClick={(e) => handleAddImage((e.currentTarget.previousSibling as HTMLInputElement).value)}
                       >
-                        Continue Shopping
+                        Add
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {showEmojiPicker && (
+                  <div className="mb-4 p-3 border rounded-lg border-gray-200 dark:border-gray-700">
+                    <p className="mb-2 text-sm font-medium">Select a tech topic:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["Coding", "AI", "DevOps", "Web3", "Mobile", "Cloud", "Security", "Data"].map((topic) => (
+                        <button
+                          key={topic}
+                          className={`p-2 rounded-lg text-sm cursor-pointer ${
+                            newPostFeeling === topic
+                              ? darkMode
+                                ? "bg-indigo-600 text-white"
+                                : "bg-indigo-100 text-indigo-800"
+                              : darkMode
+                                ? "bg-gray-700 hover:bg-gray-600"
+                                : "bg-gray-100 hover:bg-gray-200"
+                          }`}
+                          onClick={() => handleAddFeeling(topic)}
+                        >
+                          {topic}
+                        </button>
+                      ))}
+                    </div>
+                    {newPostFeeling && (
+                      <div className="mt-2 flex items-center">
+                        <p className="text-sm">
+                          Topic: <span className="font-medium">{newPostFeeling}</span>
+                        </p>
+                        <button
+                          className="ml-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                          onClick={() => setNewPostFeeling(null)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  className={`w-full py-2 rounded-lg font-medium cursor-pointer ${
+                    !newPostText.trim() && !newPostImage
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  }`}
+                  onClick={handleCreatePost}
+                  disabled={!newPostText.trim() && !newPostImage}
+                >
+                  Post
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Feed Tab */}
+          {activeTab === "feed" && (
+            <div className="space-y-6">
+              {/* Create Post */}
+              <div className={`p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                <div className="flex space-x-3">
+                  <img
+                    src={currentUser.avatar || "/placeholder.svg"}
+                    alt={currentUser.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <button
+                    className={`flex-1 p-2 rounded-full text-left ${darkMode ? "bg-gray-700 text-gray-400" : "bg-gray-100 text-gray-500"} focus:outline-none`}
+                    onClick={() => setShowCreatePost(true)}
+                  >
+                    What's on your mind, {currentUser.name.split(" ")[0]}?
+                  </button>
+                </div>
+                <div className="flex justify-between mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    className="flex items-center space-x-2 text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 cursor-pointer"
+                    onClick={() => {
+                      setShowCreatePost(true)
+                      setShowImageInput(true)
+                    }}
+                  >
+                    <ImageIcon className="h-5 w-5" />
+                    <span>Photo</span>
+                  </button>
+                  <button
+                    className="flex items-center space-x-2 text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 cursor-pointer"
+                    onClick={() => {
+                      setShowCreatePost(true)
+                      setShowEmojiPicker(true)
+                    }}
+                  >
+                    <Code className="h-5 w-5" />
+                    <span>Code</span>
+                  </button>
+                  <button
+                    className={`px-4 py-1.5 rounded-full font-medium cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white`}
+                    onClick={() => setShowCreatePost(true)}
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              {/* Posts */}
+              {filteredPosts.length > 0 ? (
+                filteredPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    darkMode={darkMode}
+                    onLike={handleLike}
+                    onBookmark={onBookmarkPost}
+                    onComment={handleComment}
+                    onShare={handleSharePost}
+                    currentUser={currentUser}
+                    onViewProfile={handleViewUserProfile}
+                    activeDropdown={activeDropdown}
+                    onToggleDropdown={toggleDropdown}
+                    onPostAction={handlePostAction}
+                    setPosts={setPosts}
+                    posts={posts}
+                  />
+                ))
+              ) : (
+                <div className={`p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow text-center ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                  <p className="text-lg font-medium">No posts found</p>
+                  <p className={`mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    {searchQuery ? "Try a different search term" : "Follow more people to see posts"}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === "notifications" && (
+            <div className={`rounded-xl shadow-sm hover:shadow-md transition-shadow ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+              <div className="p-4">
+                <h2 className="text-2xl font-bold mb-6">Notifications</h2>
+                <div className="space-y-6">
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`flex items-start justify-between p-4 rounded-lg ${
+                          !notification.read ? (darkMode ? "bg-gray-700" : "bg-gray-100") : ""
+                        }`}
+                      >
+                        <div className="flex items-start space-x-4">
+                          <img
+                            src={notification.user.avatar || "/placeholder.svg"}
+                            alt={notification.user.name}
+                            className="h-12 w-12 rounded-full object-cover flex-shrink-0"
+                          />
+                          <div>
+                            <p className="font-medium text-lg">{notification.user.name}</p>
+                            <p className={`text-base ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                              {notification.text}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-sm whitespace-nowrap ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                            {formatTimeAgo(notification.timestamp)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    <div className="space-y-4">
-                      {products
-                        .filter((product) => wishlist.includes(product.id))
-                        .map((product) => (
-                          <div
-                            key={product.id}
-                            className={`flex gap-4 p-4 rounded-lg ${t.border} border`}
-                          >
-                            <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
-                              <img
-                                src={product.images[0] || "/placeholder.svg"}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
+                    <div className="text-center py-10">
+                      <p className="text-lg font-medium">No notifications</p>
+                      <p className={`mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        When someone interacts with your posts, you'll see it here
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Profile Tab */}
+          {activeTab === "profile" && (
+            <div>
+              {viewedUserProfile ? (
+                <div className="space-y-6">
+                  {/* Back Button */}
+                  <button
+                    className={`flex items-center space-x-2 cursor-pointer ${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+                    onClick={handleBackToOwnProfile}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    <span>Back to Profile</span>
+                  </button>
+
+                  {/* User Profile */}
+                  <div className={`p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                    <div className="flex items-center space-x-6 mb-4">
+                      <img
+                        src={viewedUserProfile.avatar || "/placeholder.svg"}
+                        alt={viewedUserProfile.name}
+                        className="h-24 w-24 rounded-full object-cover"
+                      />
+                      <div>
+                        <h2 className="text-2xl font-bold">{viewedUserProfile.name}</h2>
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                          @{viewedUserProfile.username}
+                        </p>
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                          {viewedUserProfile.bio}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                      <div>
+                        <p className="font-medium">{viewedUserProfile.followers}</p>
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Followers</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">{viewedUserProfile.following}</p>
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Following</p>
+                      </div>
+                    </div>
+
+                    <button
+                      className={`mt-4 px-4 py-2 rounded-full font-medium cursor-pointer ${
+                        viewedUserProfile.isFollowing
+                          ? "bg-gray-300 text-gray-500"
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                      }`}
+                      onClick={() => handleFollowUser(viewedUserProfile.id)}
+                    >
+                      {viewedUserProfile.isFollowing ? "Following" : "Follow"}
+                    </button>
+                  </div>
+
+                  {/* User Posts */}
+                  <div className="space-y-6">
+                    {posts
+                      .filter((post) => post.user.id === viewedUserProfile.id)
+                      .map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          darkMode={darkMode}
+                          onLike={handleLike}
+                          onBookmark={onBookmarkPost}
+                          onComment={handleComment}
+                          onShare={handleSharePost}
+                          currentUser={currentUser}
+                          onViewProfile={handleViewUserProfile}
+                          activeDropdown={activeDropdown}
+                          onToggleDropdown={toggleDropdown}
+                          onPostAction={handlePostAction}
+                          setPosts={setPosts}
+                          posts={posts}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ) : (
+                <div className={`p-4 rounded-xl shadow-sm ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                  <div className="flex items-center space-x-6 mb-4">
+                    <img
+                      src={currentUser.avatar || "/placeholder.svg"}
+                      alt={currentUser.name}
+                      className="h-24 w-24 rounded-full object-cover"
+                    />
+                    <div>
+                      <h2 className="text-2xl font-bold">{currentUser.name}</h2>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        @{currentUser.username}
+                      </p>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{currentUser.bio}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <p className="font-medium">{currentUser.followers}</p>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Followers</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">{currentUser.following}</p>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Following</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 mt-6">
+                    {posts
+                      .filter((post) => post.user.id === currentUser.id)
+                      .map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          darkMode={darkMode}
+                          onLike={handleLike}
+                          onBookmark={onBookmarkPost}
+                          onComment={handleComment}
+                          onShare={handleSharePost}
+                          currentUser={currentUser}
+                          onViewProfile={handleViewUserProfile}
+                          activeDropdown={activeDropdown}
+                          onToggleDropdown={toggleDropdown}
+                          onPostAction={handlePostAction}
+                          setPosts={setPosts}
+                          posts={posts}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <aside className="hidden md:block w-64 ml-8">
+          <div className={`sticky top-24 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+            <h2 className="text-lg font-bold mb-4">Your Stats</h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Posts</p>
+                <span className="text-sm">{posts.filter((post) => post.user.id === currentUser.id).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Likes</p>
+                <span className="text-sm">
+                  {posts.filter((post) => post.user.id === currentUser.id).reduce((acc, post) => acc + post.likes, 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Comments</p>
+                <span className="text-sm">
+                  {posts
+                    .filter((post) => post.user.id === currentUser.id)
+                    .reduce((acc, post) => acc + post.comments.length, 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Shares</p>
+                <span className="text-sm">
+                  {posts.filter((post) => post.user.id === currentUser.id).reduce((acc, post) => acc + post.shares, 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-md z-50 flex items-center space-x-2 transition-all duration-300 animate-fade-in opacity-90 ${
+            toast.type === "success"
+              ? "bg-green-600 text-white"
+              : toast.type === "error"
+              ? "bg-red-600 text-white"
+              : "bg-blue-600 text-white"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          ) : toast.type === "error" ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          )}
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// PostCard component
+interface PostCardProps {
+  post: Post;
+  darkMode: boolean;
+  onLike: (postId: string) => void;
+  onBookmark: (postId: string) => void;
+  onComment: (postId: string, comment: string) => void;
+  onShare: (postId: string) => void;
+  currentUser: AppUser;
+  onViewProfile: (user: AppUser) => void;
+  activeDropdown: string | null;
+  onToggleDropdown: (id: string) => void;
+  onPostAction: (action: string, postId: string) => void;
+  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
+  posts: Post[];
+}
+
+function PostCard({
+  post,
+  darkMode,
+  onLike,
+  onBookmark,
+  onComment,
+  onShare,
+  currentUser,
+  onViewProfile,
+  activeDropdown,
+  onToggleDropdown,
+  onPostAction,
+  setPosts,
+  posts,
+}: PostCardProps) {
+  const [commentText, setCommentText] = useState("")
+  const [showComments, setShowComments] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState("")
+  const [expandedReplies, setExpandedReplies] = useState<string[]>([])
+
+  const handleSubmitComment = () => {
+    if (!commentText.trim()) return
+    onComment(post.id, commentText)
+    setCommentText("")
+  }
+
+  const handleLikeComment = (commentId: string) => {
+    setPosts(
+      posts.map((p: Post) => {
+        if (p.id === post.id) {
+          return {
+            ...p,
+            comments: p.comments.map((comment: Comment) => {
+              if (comment.id === commentId) {
+                return {
+                  ...comment,
+                  likes: comment.liked ? (comment.likes || 1) - 1 : (comment.likes || 0) + 1,
+                  liked: !comment.liked,
+                }
+              }
+              return comment
+            }),
+          } as Post
+        }
+        return p
+      })
+    )
+  }
+
+  const handleReplyToComment = (commentId: string) => {
+    if (!replyText.trim()) return
+
+    setPosts(
+      posts.map((p: Post) => {
+        if (p.id === post.id) {
+          return {
+            ...p,
+            comments: p.comments.map((comment: Comment) => {
+              if (comment.id === commentId) {
+                return {
+                  ...comment,
+                  replies: [
+                    ...(comment.replies || []),
+                    {
+                      id: `reply-${Date.now()}`,
+                      user: currentUser,
+                      text: replyText,
+                      timestamp: new Date().toISOString(),
+                      likes: 0,
+                      liked: false,
+                    },
+                  ],
+                }
+              }
+              return comment
+            }),
+          } as Post
+        }
+        return p
+      })
+    )
+
+    setReplyText("")
+    setReplyingTo(null)
+  }
+
+  const handleLikeReply = (commentId: string, replyId: string) => {
+    setPosts(
+      posts.map((p: Post) => {
+        if (p.id === post.id) {
+          return {
+            ...p,
+            comments: p.comments.map((comment: Comment) => {
+              if (comment.id === commentId && comment.replies) {
+                return {
+                  ...comment,
+                  replies: comment.replies.map((reply: Reply) => {
+                    if (reply.id === replyId) {
+                      return {
+                        ...reply,
+                        likes: reply.liked ? (reply.likes || 1) - 1 : (reply.likes || 0) + 1,
+                        liked: !reply.liked,
+                      }
+                    }
+                    return reply
+                  }),
+                }
+              }
+              return comment
+            }),
+          } as Post
+        }
+        return p
+      })
+    )
+  }
+
+  const toggleReplyToComment = (commentId: string) => {
+    // If we're already replying to this comment, cancel it
+    if (replyingTo === commentId) {
+      setReplyingTo(null)
+      return
+    }
+
+    // Otherwise, set this comment as the one we're replying to
+    setReplyingTo(commentId)
+
+    // Also make sure replies are expanded for this comment
+    if (!expandedReplies.includes(commentId)) {
+      setExpandedReplies([...expandedReplies, commentId])
+    }
+  }
+
+  return (
+    <div className={`rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden mb-6 ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+      {/* Post Header */}
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <img
+            src={post.user.avatar || "/placeholder.svg"}
+            alt={post.user.name}
+            className="h-10 w-10 rounded-full object-cover cursor-pointer"
+            onClick={() => onViewProfile(post.user)}
+          />
+          <div>
+            <p className="font-medium cursor-pointer" onClick={() => onViewProfile(post.user)}>
+              {post.user.name}
+            </p>
+            <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{formatTimeAgo(post.timestamp)}</p>
+          </div>
+        </div>
+        <div className="relative">
+          <button
+            className={`p-2 rounded-full cursor-pointer ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+            onClick={() => onToggleDropdown(`post-${post.id}`)}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {activeDropdown === `post-${post.id}` && (
+            <div
+              className={`absolute right-0 mt-2 w-48 rounded-lg shadow-lg z-10 ${
+                darkMode ? "bg-gray-800" : "bg-white"
+              } overflow-hidden`}
+            >
+              <div className="py-1" role="menu" aria-orientation="vertical">
+                {post.user.id === currentUser.id && (
+                  <button
+                    className={`flex items-center w-full px-4 py-3 text-sm font-medium text-left cursor-pointer transition-colors ${
+                      darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                    onClick={() => onPostAction("delete", post.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+                <button
+                  className={`flex items-center w-full px-4 py-3 text-sm font-medium text-left cursor-pointer transition-colors ${
+                    darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => onPostAction("save", post.id)}
+                >
+                  {post.bookmarked ? "Unsave" : "Save"}
+                </button>
+                <button
+                  className={`flex items-center w-full px-4 py-3 text-sm font-medium text-left cursor-pointer transition-colors ${
+                    darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => onPostAction("copy", post.id)}
+                >
+                  Copy text
+                </button>
+                <button
+                  className={`flex items-center w-full px-4 py-3 text-sm font-medium text-left cursor-pointer transition-colors ${
+                    darkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => onPostAction("report", post.id)}
+                >
+                  Report
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Post Content */}
+      <div className="px-4 pb-2">
+        <p className="mb-3">{post.text}</p>
+        {post.image && (
+          <img
+            src={post.image || "/placeholder.svg"}
+            alt="Post"
+            className="rounded-lg w-full h-auto object-cover mb-3"
+          />
+        )}
+      </div>
+
+      {/* Post Stats */}
+      <div
+        className={`px-4 py-3 flex items-center justify-between ${darkMode ? "text-gray-300" : "text-gray-700"}`}
+      >
+        <div className="flex items-center space-x-2">
+          <Heart className={`h-5 w-5 cursor-pointer ${post.liked ? "text-indigo-500 fill-indigo-500" : ""}`} />
+          <span className="text-sm font-medium">{post.likes}</span>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            className={`text-sm font-medium cursor-pointer ${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+            onClick={() => setShowComments(!showComments)}
+          >
+            {post.comments.length} comments
+          </button>
+          <button
+            className={`text-sm font-medium cursor-pointer ${darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {post.shares} shares
+          </button>
+        </div>
+      </div>
+
+      {/* Post Actions */}
+      <div
+        className={`px-4 py-3 flex items-center justify-between border-t ${darkMode ? "border-gray-700/30" : "border-gray-200/70"}`}
+      >
+        <button
+          className={`flex items-center space-x-2 px-3 py-2 rounded-full cursor-pointer transition-colors ${
+            post.liked 
+              ? "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20" 
+              : darkMode 
+                ? "text-gray-300 hover:bg-gray-700/30" 
+                : "text-gray-600 hover:bg-gray-100"
+          }`}
+          onClick={() => onLike(post.id)}
+        >
+          <Heart className={`h-5 w-5 ${post.liked ? "fill-indigo-500" : ""}`} />
+          <span className="hidden sm:inline font-medium">Like</span>
+        </button>
+
+        <button
+          className={`flex items-center space-x-2 px-3 py-2 rounded-full cursor-pointer transition-colors ${
+            showComments
+              ? darkMode
+                ? "bg-gray-700/30 text-gray-200"
+                : "bg-gray-100 text-gray-700"
+              : darkMode
+                ? "text-gray-300 hover:bg-gray-700/30"
+                : "text-gray-600 hover:bg-gray-100"
+          }`}
+          onClick={() => setShowComments(!showComments)}
+        >
+          <MessageCircle className="h-5 w-5" />
+          <span className="hidden sm:inline font-medium">Comment</span>
+        </button>
+
+        <button
+          className={`flex items-center space-x-2 px-3 py-2 rounded-full cursor-pointer transition-colors ${
+            darkMode
+              ? "text-gray-300 hover:bg-gray-700/30"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
+          onClick={() => onShare(post.id)}
+        >
+          <Share2 className="h-5 w-5" />
+          <span className="hidden sm:inline font-medium">Share</span>
+        </button>
+
+        <button
+          className={`flex items-center space-x-2 px-3 py-2 rounded-full cursor-pointer transition-colors ${
+            post.bookmarked
+              ? "text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+              : darkMode
+                ? "text-gray-300 hover:bg-gray-700/30"
+                : "text-gray-600 hover:bg-gray-100"
+          }`}
+          onClick={() => onBookmark(post.id)}
+        >
+          <Bookmark className={`h-5 w-5 ${post.bookmarked ? "fill-indigo-500" : ""}`} />
+          <span className="hidden sm:inline font-medium">Save</span>
+        </button>
+      </div>
+
+      {/* Comments Section */}
+      {showComments && (
+        <div className="p-4">
+          {/* Comment Input */}
+          <div className="flex items-center space-x-3 mb-4">
+            <img
+              src={currentUser.avatar || "/placeholder.svg"}
+              alt={currentUser.name}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+            <div className="flex-1 flex items-center">
+              <input
+                type="text"
+                placeholder="Write a comment..."
+                className={`flex-1 p-2 rounded-full ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"} focus:outline-none`}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSubmitComment()
+                  }
+                }}
+              />
+              <button
+                className={`ml-2 p-2 rounded-full cursor-pointer ${darkMode ? "bg-indigo-600 hover:bg-indigo-700" : "bg-indigo-500 hover:bg-indigo-600"} text-white`}
+                onClick={handleSubmitComment}
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Comments List */}
+          <div className="space-y-4">
+            {post.comments.map((comment: Comment) => (
+              <div key={comment.id} className="space-y-2">
+                <div className="flex items-start space-x-3">
+                  <img
+                    src={comment.user.avatar || "/placeholder.svg"}
+                    alt={comment.user.name}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{comment.user.name}</p>
+                        <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                          {formatTimeAgo(comment.timestamp)}
+                        </p>
+                      </div>
+                      <p className="mt-1">{comment.text}</p>
+                    </div>
+
+                    {/* Comment Actions */}
+                    <div className="flex items-center space-x-4 mt-1 ml-1">
+                      <button
+                        className={`text-xs cursor-pointer ${comment.liked ? "text-indigo-500" : darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+                        onClick={() => handleLikeComment(comment.id)}
+                      >
+                        Like {comment.likes ? `(${comment.likes})` : ""}
+                      </button>
+                      <button
+                        className={`text-xs cursor-pointer ${replyingTo === comment.id ? "text-indigo-500" : darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+                        onClick={() => toggleReplyToComment(comment.id)}
+                      >
+                        Reply {comment.replies && comment.replies.length > 0 ? `(${comment.replies.length})` : ""}
+                      </button>
+                    </div>
+
+                    {/* Replies */}
+                    {expandedReplies.includes(comment.id) && comment.replies && comment.replies.length > 0 && (
+                      <div className="ml-8 mt-2 space-y-2">
+                        {comment.replies.map((reply: Reply) => (
+                          <div key={reply.id} className="flex items-start space-x-2">
+                            <img
+                              src={reply.user.avatar || "/placeholder.svg"}
+                              alt={reply.user.name}
+                              className="h-6 w-6 rounded-full object-cover"
+                            />
                             <div className="flex-1">
-                              <h3 className="font-semibold">{product.name}</h3>
-                              <p className={`text-sm ${t.muted}`}>
-                                ${(product.discountPrice || product.price).toFixed(2)}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-2">
-                                  {!product.inStock && (
-                                    <span className="text-red-500 font-semibold text-xs">
-                                      SOLD OUT
-                                    </span>
-                                  )}
-                                  <button
-                                    onClick={(e) => {
-                                      if (product.inStock) {
-                                        addToCartFromWishlist(product);
-                                      }
-                                    }}
-                                    disabled={!product.inStock}
-                                    className={`px-3 py-1 rounded-md text-sm ${
-                                      product.inStock
-                                        ? t.primary
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    }`}
-                                  >
-                                    {product.inStock ? "Add to Cart" : "Out of Stock"}
-                                  </button>
+                              <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                                <div className="flex items-center justify-between">
+                                  <p className="font-medium text-sm">{reply.user.name}</p>
+                                  <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                    {formatTimeAgo(reply.timestamp)}
+                                  </p>
                                 </div>
+                                <p className="mt-1 text-sm">{reply.text}</p>
+                              </div>
+
+                              {/* Reply Actions */}
+                              <div className="flex items-center space-x-3 mt-1 ml-1">
                                 <button
-                                  onClick={() => toggleWishlist(product.id)}
-                                  className="text-red-500 hover:text-red-700 cursor-pointer"
-                                  aria-label="Remove from wishlist"
+                                  className={`text-xs cursor-pointer ${reply.liked ? "text-indigo-500" : darkMode ? "text-gray-400 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`}
+                                  onClick={() => handleLikeReply(comment.id, reply.id)}
                                 >
-                                  <X size={18} />
+                                  Like {reply.likes ? `(${reply.likes})` : ""}
                                 </button>
                               </div>
                             </div>
                           </div>
                         ))}
-                    </div>
-                  )}
+                      </div>
+                    )}
+
+                    {/* Reply */} 
+                    {replyingTo === comment.id && (
+                      <div className="flex items-center space-x-2 mt-2 ml-8">
+                        <img
+                          src={currentUser.avatar || "/placeholder.svg"}
+                          alt={currentUser.name}
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                        <div className="flex-1 flex items-center">
+                          <input
+                            type="text"
+                            placeholder={`Reply to ${comment.user.name}...`}
+                            className={`flex-1 p-1.5 text-sm rounded-full ${darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900"} focus:outline-none`}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleReplyToComment(comment.id)
+                              }
+                            }}
+                          />
+                          <button
+                            className={`ml-1 p-1.5 rounded-full cursor-pointer ${darkMode ? "bg-indigo-600 hover:bg-indigo-700" : "bg-indigo-500 hover:bg-indigo-600"} text-white`}
+                            onClick={() => handleReplyToComment(comment.id)}
+                          >
+                            <Send className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg ${t.card} ${t.border} border z-50`}
-          >
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
