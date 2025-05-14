@@ -363,7 +363,7 @@ export default function ToyStore() {
     setToastMessage(`${product.name} added to cart!`);
   };
 
-  const addToCartAndRemoveFromWishlist = (product: Product) => {
+  const addToCartFromWishlist = (product: Product) => {
     setCart((prev) => {
       const existingItem = prev.find((item) => item.product.id === product.id);
       if (existingItem) {
@@ -377,9 +377,7 @@ export default function ToyStore() {
       }
     });
     
-    if (wishlist.includes(product.id)) {
-      setWishlist(prev => prev.filter(id => id !== product.id));
-    }
+    setWishlist(prev => prev.filter(id => id !== product.id));
     
     setToastMessage(`${product.name} added to cart!`);
   };
@@ -707,7 +705,7 @@ export default function ToyStore() {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (currentFeatured.inStock) {
-                            addToCartAndRemoveFromWishlist(currentFeatured);
+                            addToCart(currentFeatured);
                           }
                         }}
                         disabled={!currentFeatured.inStock}
@@ -870,7 +868,7 @@ export default function ToyStore() {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (product.inStock) {
-                              addToCartAndRemoveFromWishlist(product);
+                              addToCart(product);
                             }
                           }}
                           disabled={!product.inStock}
@@ -1163,7 +1161,7 @@ export default function ToyStore() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        addToCartAndRemoveFromWishlist(selectedProduct);
+                        addToCart(selectedProduct);
                         closeModal();
                       }}
                       disabled={!selectedProduct.inStock}
@@ -1442,7 +1440,7 @@ export default function ToyStore() {
                                   <button
                                     onClick={(e) => {
                                       if (product.inStock) {
-                                        addToCartAndRemoveFromWishlist(product);
+                                        addToCartFromWishlist(product);
                                       }
                                     }}
                                     disabled={!product.inStock}
