@@ -1,537 +1,1355 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
-interface Scholarship {
-  id: number;
-  title: string;
-  category: string;
-  amount: string;
-  duration: string;
-  eligibility: string;
-  description: string;
-  posterUrl: string;
-  cartId?: string;
-}
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Star,
+  ShoppingCart,
+  Heart,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
+  Filter,
+  Search,
+  Check,
+} from "lucide-react";
+import { Bangers, Bubblegum_Sans } from "next/font/google";
 
-interface Beneficiary {
-  id: number;
+const bangers = Bangers({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const bubblegum = Bubblegum_Sans({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+type ThemeType = "light" | "dark";
+type ThemeColors = {
+  background: string;
+  foreground: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  muted: string;
+  card: string;
+  cardHover: string;
+  border: string;
+};
+
+const themeColors: Record<ThemeType, ThemeColors> = {
+  light: {
+    background: "bg-gradient-to-b from-purple-50 to-blue-50",
+    foreground: "text-slate-800",
+    primary: "bg-purple-600 text-white hover:bg-purple-700",
+    secondary: "bg-amber-500 text-white hover:bg-amber-600",
+    accent: "text-pink-600",
+    muted: "text-slate-500",
+    card: "bg-white",
+    cardHover: "hover:shadow-xl hover:scale-[1.02]",
+    border: "border-slate-200",
+  },
+  dark: {
+    background: "bg-gradient-to-b from-slate-900 to-purple-950",
+    foreground: "text-slate-100",
+    primary: "bg-purple-700 text-white hover:bg-purple-600",
+    secondary: "bg-amber-600 text-white hover:bg-amber-500",
+    accent: "text-pink-400",
+    muted: "text-slate-400",
+    card: "bg-slate-800",
+    cardHover: "hover:shadow-xl hover:shadow-purple-900/20 hover:scale-[1.02]",
+    border: "border-slate-700",
+  },
+};
+
+type AgeGroup = "0-2" | "3-5" | "6-8" | "9-12" | "12+";
+type Category = "Educational" | "Action" | "Puzzles" | "Creative" | "Outdoor";
+
+interface Product {
+  id: string;
   name: string;
-  scholarship: string;
-  year: string;
-  currentStatus: string;
-  photoUrl: string;
+  description: string;
+  price: number;
+  discountPrice?: number;
+  images: string[];
+  ageGroup: AgeGroup;
+  category: Category;
+  rating: number;
+  reviews: number;
+  inStock: boolean;
+  featured: boolean;
+  safetyFeatures: string[];
+  new: boolean;
 }
 
-interface FAQ {
-  question: string;
-  answer: string;
+interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
-const scholarships: Scholarship[] = [
+interface FilterState {
+  ageGroups: AgeGroup[];
+  categories: Category[];
+  priceRange: [number, number];
+  searchQuery: string;
+}
+
+const mockProducts: Product[] = [
   {
-    id: 1,
-    title: "Merit-Cum-Means Scholarship",
-    category: "Undergraduate",
-    amount: "₹50,000 per year",
-    duration: "4 years",
-    eligibility: "Students from economically weaker sections with excellent.",
-    description: "This scholarship aims to support deserving students who excel academically but come from financially challenged backgrounds. It covers tuition fees and provides a stipend for books and living expenses.",
-    posterUrl: "https://images.unsplash.com/photo-1746950862786-c13d07b85bff?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    id: "1",
+    name: "Wooden Building Blocks",
+    description:
+      "Eco-friendly wooden blocks for creative play. These premium blocks are made from sustainable wood sources and finished with non-toxic paints, making them safe for children of all ages.",
+    price: 34.99,
+    images: [
+      "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=500&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1560859251-d563a49c5e4a?q=80&w=500&auto=format&fit=crop",
+    ],
+    ageGroup: "3-5",
+    category: "Educational",
+    rating: 4.8,
+    reviews: 124,
+    inStock: true,
+    featured: true,
+    safetyFeatures: ["Non-toxic paint", "Smooth edges", "Sustainably sourced"],
+    new: false,
   },
   {
-    id: 2,
-    title: "Women Empowerment Scholarship",
-    category: "Graduate",
-    amount: "₹75,000 per year",
-    duration: "2 years",
-    eligibility: "Female students pursuing higher education in STEM fields",
-    description: "Empowering women through education is our priority. This scholarship encourages more girls to take up careers in science, technology, engineering, and mathematics by providing financial assistance and mentorship opportunities.",
-    posterUrl: "https://plus.unsplash.com/premium_photo-1732473760222-389820a18261?q=80&w=2080&auto=format&fit=crop"
+    id: "2",
+    name: "Interactive Talking Teddy",
+    description:
+      "A cuddly companion that responds to your child's voice. This premium teddy uses advanced voice recognition technology to create a personalized experience while maintaining the highest safety standards.",
+    price: 49.99,
+    discountPrice: 39.99,
+    images: [
+      "https://images.unsplash.com/photo-1562040506-a9b32cb51b94?q=80&w=500&auto=format&fit=crop",
+      "https://images.pexels.com/photos/869517/pexels-photo-869517.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    ],
+    ageGroup: "0-2",
+    category: "Action",
+    rating: 4.5,
+    reviews: 89,
+    inStock: true,
+    featured: false,
+    safetyFeatures: [
+      "Machine washable",
+      "No small parts",
+      "Hypoallergenic materials",
+    ],
+    new: true,
   },
   {
-    id: 3,
-    title: "Sports Excellence Scholarship",
-    category: "Undergraduate",
-    amount: "₹1,00,000 per year",
-    duration: "4 years",
-    eligibility: "Students who have represented state/national teams.",
-    description: "Recognizing the importance of sports in shaping young talent, this scholarship supports promising athletes by covering their educational expenses and providing training support.",
-    posterUrl: "https://images.unsplash.com/photo-1747171232978-0e1cbcbcbdf8?q=80&w=2944&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    id: "3",
+    name: "Science Lab Kit",
+    description:
+      "Explore the wonders of science with this comprehensive lab kit. Designed by educators, this kit introduces fundamental scientific concepts through safe, engaging experiments.",
+    price: 59.99,
+    images: [
+      "https://images.pexels.com/photos/8471835/pexels-photo-8471835.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.pexels.com/photos/8923574/pexels-photo-8923574.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    ],
+    ageGroup: "9-12",
+    category: "Educational",
+    rating: 4.9,
+    reviews: 56,
+    inStock: true,
+    featured: true,
+    safetyFeatures: [
+      "Child-safe chemicals",
+      "Detailed instructions",
+      "Protective gear included",
+    ],
+    new: false,
   },
   {
-    id: 4,
-    title: "Research Excellence Scholarship",
-    category: "PhD",
-    amount: "₹1,50,000 per year",
-    duration: "3-5 years",
-    eligibility: "Students pursuing PhD in recognized institutions.",
-    description: "Fostering research and innovation is crucial for national progress. This scholarship provides substantial support to PhD students working on cutting-edge research projects, covering tuition fees and providing a generous stipend.",
-    posterUrl: "https://images.unsplash.com/photo-1747134392291-33541db5f30f?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxOHx8fGVufDB8fHx8fA%3D%3D"
+    id: "4",
+    name: "Dinosaur Puzzle Set",
+    description:
+      "A collection of wooden puzzles featuring different dinosaur species. Each puzzle is crafted with precision to ensure a perfect fit and durability through years of play.",
+    price: 24.99,
+    images: [
+      "https://images.pexels.com/photos/7605993/pexels-photo-7605993.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.pexels.com/photos/3852577/pexels-photo-3852577.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    ],
+    ageGroup: "6-8",
+    category: "Puzzles",
+    rating: 4.6,
+    reviews: 78,
+    inStock: false,
+    featured: false,
+    safetyFeatures: [
+      "Rounded corners",
+      "Non-toxic materials",
+      "Choking hazard tested",
+    ],
+    new: false,
   },
   {
-    id: 5,
-    title: "SC/ST Student Support Scholarship",
-    category: "Undergraduate",
-    amount: "₹40,000 per year",
-    duration: "4 years",
-    eligibility: "Students belonging to SC/ST categories pursuing higher education",
-    description: "Ensuring equal opportunities for all, this scholarship provides financial assistance to SC/ST students, covering tuition fees, accommodation, and study materials.",
-    posterUrl: "https://images.unsplash.com/photo-1713769931183-1537d9a8126b?q=80&w=1932&auto=format&fit=crop"
+    id: "5",
+    name: "Art Studio Easel",
+    description:
+      "A double-sided easel with chalkboard, whiteboard, and paper roll. This premium art station is designed to grow with your child, encouraging artistic expression from toddler to teen years.",
+    price: 79.99,
+    discountPrice: 69.99,
+    images: [
+      "https://images.pexels.com/photos/7869446/pexels-photo-7869446.jpeg?auto=compress&cs=tinysrgb&w=600",
+      "https://images.pexels.com/photos/6941096/pexels-photo-6941096.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    ],
+    ageGroup: "3-5",
+    category: "Creative",
+    rating: 4.7,
+    reviews: 42,
+    inStock: true,
+    featured: true,
+    safetyFeatures: [
+      "Stable base",
+      "Washable surfaces",
+      "Storage for supplies",
+    ],
+    new: true,
   },
   {
-    id: 6,
-    title: "Minority Community Scholarship",
-    category: "Graduate",
-    amount: "₹60,000 per year",
-    duration: "2 years",
-    eligibility: "Students from minority communities pursuing education",
-    description: "Promoting educational inclusivity, this scholarship supports students from minority communities by providing financial aid and cultural exchange opportunities.",
-    posterUrl: "https://plus.unsplash.com/premium_photo-1690297853326-e127726588ac?q=80&w=2080&auto=format&fit=crop"
-  }
+    id: "6",
+    name: "Outdoor Adventure Set",
+    description:
+      "Explore the great outdoors with this complete adventure kit. Includes a compass, magnifying glass, binoculars, and field guide to inspire curiosity about nature.",
+    price: 44.99,
+    images: [
+      "https://images.unsplash.com/photo-1472162072942-cd5147eb3902?q=80&w=500&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?q=80&w=500&auto=format&fit=crop",
+    ],
+    ageGroup: "6-8",
+    category: "Outdoor",
+    rating: 4.4,
+    reviews: 35,
+    inStock: true,
+    featured: false,
+    safetyFeatures: [
+      "Shatterproof lenses",
+      "Neck straps included",
+      "Water-resistant case",
+    ],
+    new: false,
+  },
+  {
+    id: "7",
+    name: "Musical Xylophone",
+    description:
+      "A colorful xylophone that produces perfect pitch tones. Crafted by musical instrument experts to introduce children to music through play.",
+    price: 29.99,
+    images: [
+      "https://images.pexels.com/photos/6743155/pexels-photo-6743155.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.pexels.com/photos/6274908/pexels-photo-6274908.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    ],
+    ageGroup: "0-2",
+    category: "Educational",
+    rating: 4.3,
+    reviews: 67,
+    inStock: true,
+    featured: false,
+    safetyFeatures: [
+      "Rounded mallets",
+      "Non-toxic finishes",
+      "Durable construction",
+    ],
+    new: false,
+  },
+  {
+    id: "8",
+    name: "Robot Building Kit",
+    description:
+      "Build and program your own robot with this comprehensive STEM kit. Designed by engineers to introduce coding concepts through hands-on building.",
+    price: 89.99,
+    images: [
+      "https://images.pexels.com/photos/8294803/pexels-photo-8294803.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.unsplash.com/photo-1535378620166-273708d44e4c?q=80&w=500&auto=format&fit=crop",
+    ],
+    ageGroup: "9-12",
+    category: "Educational",
+    rating: 4.9,
+    reviews: 29,
+    inStock: true,
+    featured: true,
+    safetyFeatures: [
+      "Age-appropriate components",
+      "UL certified electronics",
+      "Detailed instructions",
+    ],
+    new: true,
+  },
 ];
 
-const beneficiaries: Beneficiary[] = [
-  {
-    id: 1,
-    name: "Aarav Sharma",
-    scholarship: "Merit-Cum-Means Scholarship",
-    year: "2023-24",
-    currentStatus: "Pursuing MBBS at AIIMS Delhi",
-    photoUrl: "https://images.unsplash.com/photo-1746933156614-54eeb2dfaf3c?q=80&w=3087&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  },
-  {
-    id: 2,
-    name: "Priya Verma",
-    scholarship: "Women Empowerment Scholarship",
-    year: "2022-23",
-    currentStatus: "Completed B.Tech in Computer Science from IIT Bombay",
-    photoUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=2080&auto=format&fit=crop"
-  },
-  {
-    id: 3,
-    name: "Rohan Mehta",
-    scholarship: "Sports Excellence Scholarship",
-    year: "2023-24",
-    currentStatus: "Pursuing B.A. in Physical Education from Delhi University",
-    photoUrl: "https://images.unsplash.com/photo-1746956709021-54be7fcc763b?q=80&w=3133&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  },
-  {
-    id: 4,
-    name: "Ananya Singh",
-    scholarship: "Research Excellence Scholarship",
-    year: "2022-23",
-    currentStatus: "Pursuing PhD in Environmental Science at IIT Kanpur",
-    photoUrl: "https://images.unsplash.com/photo-1568743296270-9cc798164b3b?q=80&w=2053&auto=format&fit=crop"
-  },
-  {
-    id: 5,
-    name: "Vijay Kumar",
-    scholarship: "SC/ST Student Support Scholarship",
-    year: "2023-24",
-    currentStatus: "Pursuing B.Com from St. Stephen's College, Delhi",
-    photoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=2070&auto=format&fit=crop"
-  },
-  {
-    id: 6,
-    name: "Fatima Khan",
-    scholarship: "Minority Community Scholarship",
-    year: "2022-23",
-    currentStatus: "Completed M.A. in Economics from Jamia Millia Islamia",
-    photoUrl: "https://images.unsplash.com/photo-1746950862786-c13d07b85bff?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  }
-];
+export default function ToyStore() {
+  const [theme, setTheme] = useState<ThemeType>("light");
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-const faqs: FAQ[] = [
-  {
-    question: "What is the eligibility criteria for these scholarships?",
-    answer: "Eligibility varies by scholarship. Generally, we consider academic performance, financial need, and specific criteria for each category. Please check individual scholarship details for precise requirements."
-  },
-  {
-    question: "How can I apply for these scholarships?",
-    answer: "You can apply through our online portal on the website. Create an account, fill out the application form, and submit required documents. The portal opens typically in January every year."
-  },
-  {
-    question: "What documents are required for the application?",
-    answer: "Commonly required documents include proof of identity, income certificate, mark sheets, and a personal statement. Some scholarships may require additional documents. Check the specific scholarship page for a complete list."
-  },
-  {
-    question: "When will the scholarship money be disbursed?",
-    answer: "Scholarship funds are typically disbursed directly to the educational institution at the beginning of each academic year. In some cases, stipends are also provided directly to students."
-  },
-  {
-    question: "Can I continue the scholarship for multiple years?",
-    answer: "Yes, most scholarships can be renewed annually provided you maintain the required academic performance and submit a renewal application each year."
-  }
-];
-
-function Home() {
-  const [selectedScholarship, setSelectedScholarship] = useState<Scholarship | null>(null);
-  const [modalOpen, setModalOpen] = useState<boolean>(false);
-  const [activeSection, setActiveSection] = useState<string>("home");
-  const [scrollY, setScrollY] = useState<number>(0);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
-  const [beneficiaryModalOpen, setBeneficiaryModalOpen] = useState<boolean>(false);
-  const [faqOpen, setFaqOpen] = useState<number | null>(null);
-  const [cart, setCart] = useState<Scholarship[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
-  const [showCheckoutToast, setShowCheckoutToast] = useState<boolean>(false);
-
-  const handleScroll = () => {
-    setScrollY(window.scrollY);
-  };
+  const featuredProducts = products.filter((product) => product.featured);
+  const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const productSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const interval = setInterval(() => {
+      setCurrentFeaturedIndex((prev) =>
+        prev === featuredProducts.length - 1 ? 0 : prev + 1
+      );
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [featuredProducts.length]);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (selectedProduct || isCartOpen || isWishlistOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [selectedProduct, isCartOpen, isWishlistOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node)
+      ) {
+        closeModal();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // Prevent scrolling when modals are open
-  useEffect(() => {
-    const preventScroll = modalOpen || beneficiaryModalOpen || isCartOpen;
-    if (preventScroll) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
+
+  const addToCart = (product: Product) => {
+    setCart((prev) => {
+      const existingItem = prev.find((item) => item.product.id === product.id);
+      if (existingItem) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        return [...prev, { product, quantity: 1 }];
+      }
+    });
+    setToastMessage(`${product.name} added to cart!`);
+  };
+
+  const addToCartAndRemoveFromWishlist = (product: Product) => {
+    setCart((prev) => {
+      const existingItem = prev.find((item) => item.product.id === product.id);
+      if (existingItem) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        return [...prev, { product, quantity: 1 }];
+      }
+    });
+    
+    if (wishlist.includes(product.id)) {
+      setWishlist(prev => prev.filter(id => id !== product.id));
     }
     
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [modalOpen, beneficiaryModalOpen, isCartOpen]);
-
-  const handleViewDetails = (scholarship: Scholarship) => {
-    setSelectedScholarship(scholarship);
-    setModalOpen(true);
+    setToastMessage(`${product.name} added to cart!`);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setSelectedScholarship(null);
+  const removeFromCart = (productId: string) => {
+    setCart((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
-  const handleViewBeneficiary = (beneficiary: Beneficiary) => {
-    setSelectedBeneficiary(beneficiary);
-    setBeneficiaryModalOpen(true);
-  };
-
-  const handleCloseBeneficiaryModal = () => {
-    setBeneficiaryModalOpen(false);
-    setSelectedBeneficiary(null);
-  };
-
-  const scrollToSection = (sectionId: string) => {
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth" });
-      setActiveSection(sectionId);
+  const updateCartQuantity = (productId: string, quantity: number) => {
+    if (quantity < 1) {
+      removeFromCart(productId);
+      return;
     }
-    setMobileMenuOpen(false);
+
+    setCart((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
+    );
   };
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768 && mobileMenuOpen) {
-        setMobileMenuOpen(false);
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) => {
+      if (prev.includes(productId)) {
+        setToastMessage("Removed from wishlist");
+        return prev.filter((id) => id !== productId);
+      } else {
+        setToastMessage("Added to wishlist");
+        return [...prev, productId];
       }
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [mobileMenuOpen]);
-
-  const addToCart = (scholarship: Scholarship) => {
-    const cartItem = {
-      ...scholarship,
-      cartId: `${scholarship.id}_${Date.now()}`
-    };
-    setCart([...cart, cartItem]);
+    });
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(cart.filter(item => item.cartId && item.cartId !== id));
+  const openProductModal = (product: Product) => {
+    setSelectedProduct(product);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => setFormSubmitted(false), 3000);
+  const closeModal = () => {
+    setSelectedProduct(null);
+    setIsCartOpen(false);
+    setIsWishlistOpen(false);
+  };
+
+  const validateEmail = (emailToValidate: string) => {
+    const emailRegex = /\S+@\S+\.\S+/;
+    return emailRegex.test(emailToValidate);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
+  const handleSubscribe = () => {
+    if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email address.");
+    } else {
+      setEmailError(null);
+      setToastMessage("Subscribed successfully!");
+      setEmail("");
+    }
   };
 
   const handleCheckout = () => {
-    setShowCheckoutToast(true);
-    setIsCartOpen(false);
-    setTimeout(() => setShowCheckoutToast(false), 3000);
+    setCart([]);
+    setToastMessage("Order placed successfully!");
+    closeModal();
   };
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
+  const handleScrollToProducts = () => {
+    productSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => {
+      const price = item.product.discountPrice || item.product.price;
+      return total + price * item.quantity;
+    }, 0);
   };
 
-  const navVariants = {
-    hidden: { y: -10, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
-  };
+  const currentFeatured = featuredProducts[currentFeaturedIndex];
+
+  const t = themeColors[theme];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950 text-gray-900 dark:text-white font-sans`}>
-      <header
-        className={`sticky top-0 z-50 w-full border-b border-transparent backdrop-blur-lg bg-white/80 dark:bg-gray-900/80 transition-all duration-300 ${scrollY > 50
-          ? "border-gray-200 dark:border-gray-800 shadow-sm"
-          : "border-transparent"
-          }`}
-      >
-        <motion.div
-          className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16"
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div
-            className="flex items-center"
-            variants={navVariants}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 font-serif">
-                  Scholarships
+    <div
+      className={`min-h-screen ${t.background} ${t.foreground} transition-colors duration-300`}
+    >
+      <header className={`sticky top-0 z-10 ${t.card} shadow-md`}>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1
+              className={`text-3xl md:text-4xl ${t.accent} ${bangers.className}`}
+            >
+              ToyWonderland
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full ${
+                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
+              } transition-colors cursor-pointer`}
+              aria-label={`Switch to ${
+                theme === "light" ? "dark" : "light"
+              } mode`}
+            >
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
+            <button
+              onClick={() => setIsWishlistOpen(true)}
+              className={`p-2 rounded-full ${
+                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
+              } transition-colors cursor-pointer relative`}
+              aria-label="Open wishlist"
+            >
+              <Heart size={20} />
+              {wishlist.length > 0 && (
+                <span
+                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full ${t.secondary} text-xs flex items-center justify-center`}
+                >
+                  {wishlist.length}
                 </span>
-              </div>
-              <div className="hidden md:block">
-                <div className="ml-10 flex items-baseline space-x-8">
-                  {[
-                    { id: "home", label: "Home" },
-                    { id: "scholarships", label: "Scholarships" },
-                    { id: "beneficiaries", label: "Beneficiaries" },
-                    { id: "faq", label: "FAQ" },
-                    { id: "contact", label: "Contact" },
-                  ].map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index, duration: 0.3 }}
-                    >
-                      <button
-                        onClick={() => scrollToSection(item.id)}
-                        className={`relative px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 cursor-pointer ${activeSection === item.id
-                          ? "text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 dark:after:bg-blue-400 after:transition-all after:duration-300"
-                          : "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                          }`}
-                      >
-                        {item.label}
-                      </button>
-                    </motion.div>
-                  ))}
+              )}
+            </button>
+
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className={`p-2 rounded-full ${
+                theme === "light" ? "hover:bg-slate-100" : "hover:bg-slate-700"
+              } transition-colors cursor-pointer relative`}
+              aria-label="Open cart"
+            >
+              <ShoppingCart size={20} />
+              {cart.length > 0 && (
+                <span
+                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full ${t.secondary} text-xs flex items-center justify-center`}
+                >
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-4">
+        <section className="mb-12">
+          <div className={`rounded-2xl overflow-hidden ${t.card} shadow-lg`}>
+            <div className="relative aspect-[16/12] sm:aspect-[16/9] md:aspect-[21/7] max-h-[60vh] md:max-h-[85vh]">
+              <img
+                src="https://images.pexels.com/photos/7174515/pexels-photo-7174515.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                alt="Happy children playing with toys"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-900/70 to-transparent flex items-center">
+                <div className="p-4 md:p-12 max-w-xl">
+                  <h2
+                    className={`text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 md:mb-4 ${bubblegum.className}`}
+                  >
+                    Premium Toys for Curious Minds
+                  </h2>
+                  <p className="text-white text-sm sm:text-base md:text-lg mb-4 md:mb-6">
+                    Safe, educational, and incredibly fun toys that inspire
+                    creativity and growth.
+                  </p>
+                  <button
+                    onClick={handleScrollToProducts}
+                    className={`px-4 py-2 md:px-6 md:py-3 rounded-full text-base md:text-lg font-semibold ${t.secondary} transition-transform hover:scale-105 cursor-pointer`}
+                  >
+                    Explore Collection
+                  </button>
                 </div>
               </div>
             </div>
-          </motion.div>
-          <div className="flex items-center gap-4">
-            <motion.button 
-              onClick={() => setIsCartOpen(!isCartOpen)}
-              className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {cart.length}
-                </span>
-              )}
-            </motion.button>
-
-            <div className="hidden md:block">
-              <motion.a
-                href="#scholarships"
-                className="ml-4 px-4 py-2 rounded-md bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium transition-colors duration-300 shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Apply Now
-              </motion.a>
-            </div>
-
-            <div className="md:hidden">
-              <motion.button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-md bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-300 cursor-pointer"
-                whileTap={{ scale: 0.9 }}
-              >
-                {mobileMenuOpen ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                )}
-              </motion.button>
-            </div>
           </div>
-        </motion.div>
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                {[
-                  { id: "home", label: "Home" },
-                  { id: "scholarships", label: "Scholarships" },
-                  { id: "beneficiaries", label: "Beneficiaries" },
-                  { id: "faq", label: "FAQ" },
-                  { id: "contact", label: "Contact" },
-                ].map((item) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1, duration: 0.3 }}
-                  >
-                    <button
-                      onClick={() => scrollToSection(item.id)}
-                      className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-300 w-full text-left cursor-pointer ${activeSection === item.id
-                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                        : "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        }`}
-                    >
-                      {item.label}
-                    </button>
-                  </motion.div>
-                ))}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3, duration: 0.3 }}
-                >
-                  <a
-                    href="#scholarships"
-                    className="block px-3 py-2 rounded-md bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium transition-colors duration-300 w-full text-center shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 cursor-pointer"
-                  >
-                    Apply Now
-                  </a>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
+        </section>
 
-      <AnimatePresence>
-        {isCartOpen && (
-          <motion.div 
-            className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.div 
-              className="relative w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+        {currentFeatured && (
+          <section className="mb-12">
+            <h2
+              className={`text-2xl md:text-3xl font-bold mb-6 ${bubblegum.className}`}
             >
-              <div className="relative">
-                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Your Applications</h3>
-                    <button 
-                      onClick={() => setIsCartOpen(false)} 
-                      className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none cursor-pointer"
+              Toys of the Week
+            </h2>
+            <div
+              className={`rounded-xl overflow-hidden ${t.card} shadow-lg ${t.border} border`}
+            >
+              <div className="flex flex-col md:grid md:grid-cols-2 h-auto md:h-[70vh]">
+                <div className="relative h-[40vh] md:h-full overflow-hidden">
+                  <img
+                    src={currentFeatured.images[0] || "/placeholder.svg"}
+                    alt={currentFeatured.name}
+                    className="w-full h-full object-cover object-center"
+                  />
+                  {currentFeatured.discountPrice && (
+                    <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      SALE
+                    </div>
+                  )}
+                  {currentFeatured.new && (
+                    <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      NEW
+                    </div>
+                  )}
+                  <div className="absolute bottom-4 left-4 right-4 flex justify-between">
+                    <button
+                      onClick={() =>
+                        setCurrentFeaturedIndex((prev) =>
+                          prev === 0 ? featuredProducts.length - 1 : prev - 1
+                        )
+                      }
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${
+                        theme === "light"
+                          ? "bg-white/80 hover:bg-white"
+                          : "bg-slate-700/80 hover:bg-slate-600"
+                      } flex items-center justify-center transition-colors cursor-pointer`}
+                      aria-label="Previous featured toy"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
+                      <ChevronLeft
+                        size={16}
+                        className={`${
+                          theme === "light"
+                            ? "text-slate-800"
+                            : "text-slate-100"
+                        }`}
+                      />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setCurrentFeaturedIndex((prev) =>
+                          prev === featuredProducts.length - 1 ? 0 : prev + 1
+                        )
+                      }
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${
+                        theme === "light"
+                          ? "bg-white/80 hover:bg-white"
+                          : "bg-slate-700/80 hover:bg-slate-600"
+                      } flex items-center justify-center transition-colors cursor-pointer`}
+                      aria-label="Next featured toy"
+                    >
+                      <ChevronRight
+                        size={16}
+                        className={`${
+                          theme === "light"
+                            ? "text-slate-800"
+                            : "text-slate-100"
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>
-                
-                <div className="p-5">
+                <div className="p-4 md:p-6 flex flex-col overflow-y-auto max-h-[50vh] md:max-h-none">
+                  <div className="mb-1 flex flex-wrap gap-2">
+                    <span
+                      className={`text-xs md:text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
+                    >
+                      {currentFeatured.category}
+                    </span>
+                    <span
+                      className={`text-xs md:text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
+                    >
+                      Ages {currentFeatured.ageGroup}
+                    </span>
+                  </div>
+                  <h3
+                    className={`text-xl font-bold mb-1 ${bubblegum.className}`}
+                  >
+                    {currentFeatured.name}
+                  </h3>
+                  <div className="flex items-center mb-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          className={
+                            i < Math.floor(currentFeatured.rating)
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-gray-300"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <span className={`ml-2 text-xs ${t.muted}`}>
+                      {currentFeatured.rating} ({currentFeatured.reviews}{" "}
+                      reviews)
+                    </span>
+                  </div>
+                  <p
+                    className={`mb-3 text-sm ${t.muted} line-clamp-4 md:line-clamp-6`}
+                  >
+                    {currentFeatured.description}
+                  </p>
+                  <div className="mt-auto">
+                    <div className="flex items-center mb-2">
+                      {currentFeatured.discountPrice ? (
+                        <>
+                          <span className="text-xl md:text-2xl font-bold">
+                            ${currentFeatured.discountPrice.toFixed(2)}
+                          </span>
+                          <span
+                            className={`ml-2 text-base md:text-lg line-through ${t.muted}`}
+                          >
+                            ${currentFeatured.price.toFixed(2)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xl md:text-2xl font-bold">
+                          ${currentFeatured.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {!currentFeatured.inStock && (
+                        <span className="text-red-500 font-semibold text-sm md:text-base self-center">
+                          SOLD OUT
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (currentFeatured.inStock) {
+                            addToCartAndRemoveFromWishlist(currentFeatured);
+                          }
+                        }}
+                        disabled={!currentFeatured.inStock}
+                        className={`flex-1 py-2 px-2 md:px-3 rounded-lg font-medium md:font-semibold text-sm md:text-base flex items-center justify-center gap-1 md:gap-2 cursor-pointer ${
+                          currentFeatured.inStock
+                            ? t.primary
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                      >
+                        <ShoppingCart size={16} />
+                        {currentFeatured.inStock ? "Add to Cart" : "Out of Stock"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(currentFeatured.id);
+                        }}
+                        className={`p-2 rounded-lg ${t.border} border ${
+                          theme === "light"
+                            ? "hover:bg-slate-100"
+                            : "hover:bg-slate-700"
+                        } transition-colors cursor-pointer`}
+                        aria-label={
+                          wishlist.includes(currentFeatured.id)
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                      >
+                        <Heart
+                          size={16}
+                          className={`
+                            ${
+                              wishlist.includes(currentFeatured.id)
+                                ? "fill-red-500 text-red-500"
+                                : theme === "light"
+                                ? "text-slate-400"
+                                : "text-slate-500"
+                            }
+                          `}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section ref={productSectionRef}>
+          <div className="flex justify-between items-center mb-6">
+            <h2
+              className={`text-2xl md:text-3xl font-bold ${bubblegum.className}`}
+            >
+              Our Products
+            </h2>
+          </div>
+
+          {products.length === 0 ? (
+            <div
+              className={`text-center py-12 ${t.card} rounded-xl ${t.border} border`}
+            >
+              <h3 className="text-xl font-semibold mb-2">No products found</h3>
+              <p className={`${t.muted} mb-4`}>
+                Try adjusting your filters or search query
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map((product) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`rounded-xl overflow-hidden ${t.card} ${t.border} border shadow-md ${t.cardHover} transition-all duration-300 cursor-pointer`}
+                  onClick={() => openProductModal(product)}
+                >
+                  <div className="relative aspect-square">
+                    <img
+                      src={product.images[0] || "/placeholder.svg"}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {product.discountPrice && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                        SALE
+                      </div>
+                    )}
+                    {product.new && (
+                      <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                        NEW
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(product.id);
+                      }}
+                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center hover:bg-white transition-colors cursor-pointer"
+                      aria-label={
+                        wishlist.includes(product.id)
+                          ? "Remove from wishlist"
+                          : "Add to wishlist"
+                      }
+                    >
+                      <Heart
+                        size={16}
+                        className={` 
+                          ${
+                            wishlist.includes(product.id)
+                              ? "fill-red-500 text-red-500"
+                              : theme === "light"
+                              ? "text-slate-400"
+                              : "text-slate-500"
+                          }
+                        `}
+                      />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold line-clamp-1">
+                        {product.name}
+                      </h3>
+                      <div className="flex items-center">
+                        <Star
+                          size={14}
+                          className="fill-amber-400 text-amber-400"
+                        />
+                        <span className="text-xs ml-1">{product.rating}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {product.discountPrice ? (
+                          <div className="flex items-center">
+                            <span className="font-bold">
+                              ${product.discountPrice.toFixed(2)}
+                            </span>
+                            <span
+                              className={`ml-2 text-sm line-through ${t.muted}`}
+                            >
+                              ${product.price.toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-bold">
+                            ${product.price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!product.inStock && (
+                          <span className="text-red-500 font-semibold text-xs">
+                            SOLD OUT
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (product.inStock) {
+                              addToCartAndRemoveFromWishlist(product);
+                            }
+                          }}
+                          disabled={!product.inStock}
+                          className={`p-2 rounded-full cursor-pointer ${
+                            product.inStock
+                              ? t.primary
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                          aria-label={
+                            product.inStock ? "Add to cart" : "Out of stock"
+                          }
+                        >
+                          <ShoppingCart size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+
+      <footer className={`mt-16 py-8 ${t.card} ${t.border} border-t`}>
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className={`text-xl font-bold mb-4 ${bangers.className}`}>
+                ToyWonderland
+              </h3>
+              <p className={`${t.muted} mb-4`}>
+                Premium toys that inspire creativity, learning, and joy while
+                maintaining the highest safety standards.
+              </p>
+              <div className="flex gap-4">
+                <a
+                  href="#"
+                  className={`p-2 rounded-full ${t.border} border ${
+                    theme === "light"
+                      ? "hover:bg-slate-100"
+                      : "hover:bg-slate-700"
+                  } transition-colors cursor-pointer`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 rounded-full ${t.border} border ${
+                    theme === "light"
+                      ? "hover:bg-slate-100"
+                      : "hover:bg-slate-700"
+                  } transition-colors cursor-pointer`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect
+                      x="2"
+                      y="2"
+                      width="20"
+                      height="20"
+                      rx="5"
+                      ry="5"
+                    ></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 rounded-full ${t.border} border ${
+                    theme === "light"
+                      ? "hover:bg-slate-100"
+                      : "hover:bg-slate-700"
+                  } transition-colors cursor-pointer`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Newsletter</h4>
+              <p className={`${t.muted} mb-4`}>
+                Subscribe to our newsletter for new product alerts and exclusive
+                offers.
+              </p>
+              <div className="flex">
+                <input
+                  type="email"
+                  placeholder="Your email"
+                  className={`flex-1 px-4 py-2 rounded-l-lg ${t.card} ${
+                    t.border
+                  } border focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    emailError ? "border-red-500 focus:ring-red-500" : ""
+                  }`}
+                  value={email}
+                  onChange={handleEmailChange}
+                />
+                <button
+                  onClick={handleSubscribe}
+                  className={`px-4 py-2 rounded-r-lg ${t.primary} cursor-pointer`}
+                >
+                  Subscribe
+                </button>
+              </div>
+              {emailError && (
+                <p className="text-red-500 text-xs mt-1">{emailError}</p>
+              )}
+            </div>
+          </div>
+          <div
+            className={`mt-8 pt-6 ${t.border} border-t text-center ${t.muted}`}
+          >
+            <p>© 2025 ToyWonderland. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`relative max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-xl ${t.card} shadow-xl`}
+            >
+              <button
+                onClick={closeModal}
+                className={`absolute top-4 right-4 z-10 p-2 rounded-full ${
+                  theme === "light"
+                    ? "bg-white/80 hover:bg-white"
+                    : "bg-slate-700/80 hover:bg-slate-600"
+                } transition-colors cursor-pointer`}
+                aria-label="Close modal"
+              >
+                <X
+                  size={20}
+                  className={`${
+                    theme === "light" ? "text-slate-800" : "text-slate-100"
+                  }`}
+                />
+              </button>
+
+              <div className="grid md:grid-cols-2 max-h-[calc(90vh-4rem)] md:max-h-none">
+                <div className="p-6 overflow-y-auto md:overflow-visible">
+                  <div className="aspect-square mb-4 rounded-lg overflow-hidden">
+                    <img
+                      src={selectedProduct.images[0] || "/placeholder.svg"}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedProduct.images.map((image, index) => (
+                      <div
+                        key={index}
+                        className="aspect-square rounded-lg overflow-hidden"
+                      >
+                        <img
+                          src={image || "/placeholder.svg"}
+                          alt={`${selectedProduct.name} view ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <div className="mb-2">
+                    <span
+                      className={`text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted}`}
+                    >
+                      {selectedProduct.category}
+                    </span>
+                    <span
+                      className={`text-sm px-2 py-1 rounded-full ${t.border} border ${t.muted} ml-2`}
+                    >
+                      Ages {selectedProduct.ageGroup}
+                    </span>
+                  </div>
+
+                  <h2
+                    className={`text-2xl font-bold mb-2 ${bubblegum.className}`}
+                  >
+                    {selectedProduct.name}
+                  </h2>
+
+                  <div className="flex items-center mb-4">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={16}
+                          className={
+                            i < Math.floor(selectedProduct.rating)
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-gray-300"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <span className={`ml-2 text-sm ${t.muted}`}>
+                      {selectedProduct.rating} ({selectedProduct.reviews}{" "}
+                      reviews)
+                    </span>
+                  </div>
+
+                  <p className={`mb-6 ${t.muted}`}>
+                    {selectedProduct.description}
+                  </p>
+
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-2">Safety Features:</h3>
+                    <ul className="space-y-1">
+                      {selectedProduct.safetyFeatures.map((feature, index) => (
+                        <li key={index} className="flex items-center">
+                          <Check size={16} className="text-green-500 mr-2" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex items-center mb-6">
+                    {selectedProduct.discountPrice ? (
+                      <>
+                        <span className="text-3xl font-bold">
+                          ${selectedProduct.discountPrice.toFixed(2)}
+                        </span>
+                        <span
+                          className={`ml-2 text-xl line-through ${t.muted}`}
+                        >
+                          ${selectedProduct.price.toFixed(2)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-3xl font-bold">
+                        ${selectedProduct.price.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    {!selectedProduct.inStock && (
+                      <span className="text-red-500 font-semibold text-base self-center">
+                        SOLD OUT
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCartAndRemoveFromWishlist(selectedProduct);
+                        closeModal();
+                      }}
+                      disabled={!selectedProduct.inStock}
+                      className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 cursor-pointer ${
+                        selectedProduct.inStock
+                          ? t.primary
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
+                    >
+                      <ShoppingCart size={18} />
+                      {selectedProduct.inStock ? "Add to Cart" : "Out of Stock"}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(selectedProduct.id);
+                      }}
+                      className={`p-3 rounded-lg ${t.border} border ${
+                        theme === "light"
+                          ? "hover:bg-slate-100"
+                          : "hover:bg-slate-700"
+                      } transition-colors cursor-pointer`}
+                      aria-label={
+                        wishlist.includes(selectedProduct.id)
+                          ? "Remove from wishlist"
+                          : "Add to wishlist"
+                      }
+                    >
+                      <Heart
+                        size={18}
+                        className={`
+                          ${
+                            wishlist.includes(selectedProduct.id)
+                              ? "fill-red-500 text-red-500"
+                              : theme === "light"
+                              ? "text-slate-400"
+                              : "text-slate-500"
+                          }
+                        `}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isCartOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={`absolute top-0 right-0 h-full w-full max-w-md ${t.card} shadow-xl`}
+            >
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-6 border-b">
+                  <h2 className={`text-xl font-bold ${bubblegum.className}`}>
+                    Your Cart
+                  </h2>
+                  <button
+                    onClick={closeModal}
+                    className={`p-2 rounded-full ${
+                      theme === "light"
+                        ? "hover:bg-slate-100"
+                        : "hover:bg-slate-700"
+                    } transition-colors cursor-pointer`}
+                    aria-label="Close cart"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
                   {cart.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      <p className="mt-4 text-gray-500 dark:text-gray-400">Your cart is empty</p>
+                    <div className="text-center py-12">
+                      <ShoppingCart
+                        size={48}
+                        className="mx-auto mb-4 text-gray-300"
+                      />
+                      <h3 className="text-xl font-semibold mb-2">
+                        Your cart is empty
+                      </h3>
+                      <p className={`${t.muted} mb-4`}>
+                        Add some toys to get started!
+                      </p>
+                      <button
+                        onClick={closeModal}
+                        className={`px-4 py-2 rounded-lg ${t.primary} cursor-pointer`}
+                      >
+                        Continue Shopping
+                      </button>
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {cart.map(item => (
-                        <div key={item.cartId} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{item.amount}</p>
+                    <div className="space-y-4">
+                      {cart.map((item) => (
+                        <div
+                          key={item.product.id}
+                          className={`flex gap-4 p-4 rounded-lg ${t.border} border`}
+                        >
+                          <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.product.images[0] || "/placeholder.svg"}
+                              alt={item.product.name}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                          <button 
-                            onClick={() => removeFromCart(item.cartId!)}
-                            className="ml-2 p-1.5 text-red-500 hover:text-red-700 dark:hover:text-red-400 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
-                            aria-label="Remove item"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </button>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">
+                              {item.product.name}
+                            </h3>
+                            <p className={`text-sm ${t.muted}`}>
+                              $
+                              {(
+                                item.product.discountPrice || item.product.price
+                              ).toFixed(2)}{" "}
+                              each
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center">
+                                <button
+                                  onClick={() =>
+                                    updateCartQuantity(
+                                      item.product.id,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                  className={`w-8 h-8 flex items-center justify-center rounded-l-md ${t.border} border cursor-pointer`}
+                                >
+                                  -
+                                </button>
+                                <span
+                                  className={`w-10 h-8 flex items-center justify-center ${t.border} border-t border-b`}
+                                >
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    updateCartQuantity(
+                                      item.product.id,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                  className={`w-8 h-8 flex items-center justify-center rounded-r-md ${t.border} border cursor-pointer`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => removeFromCart(item.product.id)}
+                                className="text-red-500 hover:text-red-700 cursor-pointer"
+                                aria-label="Remove from cart"
+                              >
+                                <X size={18} />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                
+
                 {cart.length > 0 && (
-                  <div className="p-5 border-t border-gray-200 dark:border-gray-700">
-                    <motion.button 
-                      className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                  <div className={`p-6 ${t.border} border-t`}>
+                    <div className="flex justify-between mb-4">
+                      <span className="font-semibold">Subtotal:</span>
+                      <span className="font-bold">
+                        ${calculateTotal().toFixed(2)}
+                      </span>
+                    </div>
+                    <button
                       onClick={handleCheckout}
+                      className={`w-full py-3 rounded-lg font-semibold ${t.primary} cursor-pointer`}
                     >
-                      Submit Application
-                    </motion.button>
+                      Proceed to Checkout
+                    </button>
                   </div>
                 )}
               </div>
@@ -540,573 +1358,116 @@ function Home() {
         )}
       </AnimatePresence>
 
-      <main>
-        <section
-          id="home"
-          className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-500 dark:from-blue-800 dark:to-blue-700"
-        >
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiPjxwYXRoIGQ9Ik0xNSA0MGMwIDQuMTQyLTEuNzQ4IDYtMyA2bDMgMTQgNy4zNzUtMy4wNjJBMTAuOTY3IDEwLjk2NyAwIDAxMjcgNTJjMCA1LjIzNy0zIDYtNiA2cy02LTEuNDE0LTYtNiAwIDQgNCA0YzQuNTQ2IDAgNC0xLjQxNCA0LTRzLTEuNDE0LTYtNi02Yy00LjU0NiAwLTYgMS40NTQtNiA2eiIvPjwvZz48L2c+PC9zdmc+')] bg-repeat opacity-20"></div>
-          </div>
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 relative">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="space-y-8"
-              >
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 dark:from-gray-100 dark:to-blue-300 leading-tight">
-                  Empowering Education Through Scholarships
-                </h1>
-                <p className="text-lg md:text-xl text-blue-100 dark:text-blue-200 font-medium leading-relaxed">
-                  Discover scholarship opportunities that can transform your educational journey and unlock your full potential.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <motion.a
-                    href="#scholarships"
-                    className="px-6 py-3 rounded-md bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 font-medium transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Explore Scholarships
-                  </motion.a>
-                  <motion.button
-                    onClick={() => scrollToSection("beneficiaries")}
-                    className="px-6 py-3 rounded-md border-2 border-white dark:border-gray-700 text-white dark:text-gray-300 font-medium transition-all duration-300 hover:bg-white/10 dark:hover:bg-gray-700/30 cursor-pointer"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    View Success Stories
-                  </motion.button>
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="relative hidden lg:block"
-              >
-                <div className="relative">
-                  <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-400/20 dark:bg-blue-600/20 rounded-full blur-xl"></div>
-                  <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-400/20 dark:bg-indigo-600/20 rounded-full blur-xl"></div>
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full border border-white/10 dark:border-gray-800"></div>
-                  <img
-                    src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2070&auto=format&fit=crop"
-                    alt="Students celebrating success"
-                    className="relative rounded-lg shadow-2xl w-full h-[500px] object-cover"
-                  />
-                </div>
-              </motion.div>
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-700/20 dark:from-blue-900/20 to-transparent"></div>
-        </section>
-
-        <section id="scholarships" className="py-16 bg-white dark:bg-gray-900">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <AnimatePresence>
+        {isWishlistOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-center mb-12"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={`absolute top-0 right-0 h-full w-full max-w-md ${t.card} shadow-xl`}
             >
-              <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 font-serif">
-                Our Scholarship Programs
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 font-medium">
-                Empowering students through various scholarship programs
-              </p>
-            </motion.div>
-            <motion.div
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              variants={container}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-            >
-              {scholarships.map((scholarship, index) => (
-                <motion.div
-                  key={scholarship.id}
-                  variants={item}
-                  custom={index}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="group relative pb-4 bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="relative h-56 w-full overflow-hidden">
-                    <img
-                      src={scholarship.posterUrl}
-                      alt={scholarship.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 px-3 py-1 rounded-full text-sm font-medium text-blue-600 dark:text-blue-400 z-10">
-                      {scholarship.category}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-black/50 z-10">
-                      <h3 className="text-xl font-bold text-white mb-2">{scholarship.title}</h3>
-                      <p className="text-lg font-medium text-blue-200 dark:text-blue-300">
-                        {scholarship.amount}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-rows-[1fr_auto] h-64 p-6">
-                    <div className="space-y-4 mb-4">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium">
-                          Duration: {scholarship.duration}
-                        </span>
-                        <span className="px-3 py-1 bg-gray-50 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium">
-                          Eligibility: {scholarship.eligibility}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300 line-clamp-3">
-                        {scholarship.description}
-                      </p>
-                    </div>
-                    <motion.button
-                      onClick={() => handleViewDetails(scholarship)}
-                      className="px-4 py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-md transition-colors duration-300 w-full font-medium shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 cursor-pointer self-end"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      View Details
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        <section id="beneficiaries" className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400 dark:from-blue-400 dark:to-indigo-300 font-serif">
-                Success Stories
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 font-medium">
-                Real-life success stories of our scholarship beneficiaries
-              </p>
-            </motion.div>
-            <motion.div
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              variants={container}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-            >
-              {beneficiaries.map((beneficiary, index) => (
-                <motion.div
-                  key={beneficiary.id}
-                  variants={item}
-                  custom={index}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="group relative bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="relative h-64 w-full overflow-hidden">
-                    <img
-                      src={beneficiary.photoUrl}
-                      alt={beneficiary.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-black/50">
-                      <h3 className="text-xl font-bold text-white mb-2">{beneficiary.name}</h3>
-                      <p className="text-lg font-medium text-blue-200 dark:text-blue-300">
-                        {beneficiary.scholarship}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-rows-[1fr_auto] h-64 p-6">
-                    <div className="space-y-4 mb-4">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium">
-                          Year: {beneficiary.year}
-                        </span>
-                        <span className="px-3 py-1 bg-gray-50 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium">
-                          Status: {beneficiary.currentStatus}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300 line-clamp-3">
-                        {beneficiary.currentStatus}
-                      </p>
-                    </div>
-                    <motion.button
-                      onClick={() => handleViewBeneficiary(beneficiary)}
-                      className="px-4 py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-md transition-colors duration-300 w-full font-medium shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 cursor-pointer self-end"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      View Story
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        <section id="faq" className="py-16 bg-white dark:bg-gray-900">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 font-serif">
-                Frequently Asked Questions
-              </h2>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 font-medium">
-                Find answers to common questions about our scholarships
-              </p>
-            </motion.div>
-            <motion.div
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              variants={container}
-              className="max-w-3xl mx-auto space-y-4"
-            >
-              {faqs.map((faq, index) => (
-                <motion.div
-                  key={index}
-                  variants={item}
-                  custom={index}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
-                >
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-6 border-b">
+                  <h2 className={`text-xl font-bold ${bubblegum.className}`}>
+                    Your Wishlist
+                  </h2>
                   <button
-                    className={`w-full flex justify-between items-center p-5 focus:outline-none transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer`}
-                    onClick={() => setFaqOpen(faqOpen === index ? null : index)}
+                    onClick={closeModal}
+                    className={`p-2 rounded-full ${
+                      theme === "light"
+                        ? "hover:bg-slate-100"
+                        : "hover:bg-slate-700"
+                    } transition-colors cursor-pointer`}
+                    aria-label="Close wishlist"
                   >
-                    <span className="text-lg font-medium text-gray-900 dark:text-white text-left">
-                      {faq.question}
-                    </span>
-                    <svg
-                      className={`w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform duration-300 ${faqOpen === index ? "transform rotate-180" : ""
-                        }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                    <X size={20} />
                   </button>
-                  <AnimatePresence>
-                    {faqOpen === index && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="p-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-                      >
-                        <p className="text-gray-600 dark:text-gray-300 text-left">
-                          {faq.answer}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
+                </div>
 
-        <section id="contact" className="py-16 bg-gradient-to-br from-blue-600 to-blue-500 dark:from-blue-800 dark:to-blue-700 text-white">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-extrabold text-white font-serif">
-                Get in Touch
-              </h2>
-              <p className="mt-4 text-lg text-blue-100 dark:text-blue-200 font-medium">
-                Have questions? We'd love to hear from you.
-              </p>
-            </motion.div>
-            <motion.div
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              variants={container}
-              className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-8"
-            >
-              <motion.div
-                variants={item}
-                className="md:col-span-2 space-y-8"
-              >
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-white">Contact Information</h3>
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white/10 p-3 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white/90">123 Education Street, Knowledge City, India</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white/10 p-3 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 01-2-2V7a2 2 0 012-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white/90">contact@scholarships.gov.in</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white/10 p-3 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white/90">+91 12345 67890</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-white">Follow Us</h3>
-                  <div className="flex space-x-4">
-                    <motion.a
-                      href="#"
-                      className="bg-white/10 p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-300 cursor-pointer"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                      </svg>
-                    </motion.a>
-                    <motion.a
-                      href="#"
-                      className="bg-white/10 p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-300 cursor-pointer"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                    </motion.a>
-                    <motion.a
-                      href="#"
-                      className="bg-white/10 p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-300 cursor-pointer"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 01-2-2V7a2 2 0 012-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </motion.a>
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                variants={item}
-                className="md:col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
-              >
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Send us a message</h3>
-                  <form className="space-y-6" onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300 cursor-text"
-                          placeholder="Your name"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-                        <input
-                          type="email"
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300 cursor-text"
-                          placeholder="Your email"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
-                      <input
-                        type="text"
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300 cursor-text"
-                        placeholder="Subject"
-                        required
+                <div className="flex-1 overflow-y-auto p-6">
+                  {wishlist.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Heart
+                        size={48}
+                        className="mx-auto mb-4 text-gray-300"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
-                      <textarea
-                        rows={4}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300 cursor-text"
-                        placeholder="Your message"
-                        required
-                      ></textarea>
-                    </div>
-
-                    {formSubmitted && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-md"
+                      <h3 className="text-xl font-semibold mb-2">
+                        Your wishlist is empty
+                      </h3>
+                      <p className={`${t.muted} mb-4`}>
+                        Save your favorite toys to wishlist!
+                      </p>
+                      <button
+                        onClick={closeModal}
+                        className={`px-4 py-2 rounded-lg ${t.primary} cursor-pointer`}
                       >
-                        Your message has been sent. We'll contact you soon!
-                      </motion.div>
-                    )}
-
-                    <motion.button
-                      type="submit"
-                      className="w-full px-6 py-3 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 font-medium shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 cursor-pointer"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Send Message
-                    </motion.button>
-                  </form>
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </section>
-      </main>
-
-      <AnimatePresence>
-        {modalOpen && selectedScholarship && (
-          <motion.div
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="relative h-48 sm:h-64 w-full">
-                <img
-                  src={selectedScholarship.posterUrl || "/placeholder.svg"}
-                  alt={selectedScholarship.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
-                <button
-                  onClick={handleCloseModal}
-                  className="absolute top-4 right-4 bg-white/20 dark:bg-gray-900/20 p-2 rounded-full text-white hover:bg-white/30 dark:hover:bg-gray-900/30 transition-colors duration-300 cursor-pointer"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    {selectedScholarship.title}
-                  </h3>
-                  <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 mb-4">
-                    {selectedScholarship.category}
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Scholarship Amount
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedScholarship.amount}
-                      </p>
+                        Continue Shopping
+                      </button>
                     </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Duration
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedScholarship.duration}
-                      </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {products
+                        .filter((product) => wishlist.includes(product.id))
+                        .map((product) => (
+                          <div
+                            key={product.id}
+                            className={`flex gap-4 p-4 rounded-lg ${t.border} border`}
+                          >
+                            <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
+                              <img
+                                src={product.images[0] || "/placeholder.svg"}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold">{product.name}</h3>
+                              <p className={`text-sm ${t.muted}`}>
+                                ${(product.discountPrice || product.price).toFixed(2)}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-2">
+                                  {!product.inStock && (
+                                    <span className="text-red-500 font-semibold text-xs">
+                                      SOLD OUT
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      if (product.inStock) {
+                                        addToCartAndRemoveFromWishlist(product);
+                                      }
+                                    }}
+                                    disabled={!product.inStock}
+                                    className={`px-3 py-1 rounded-md text-sm ${
+                                      product.inStock
+                                        ? t.primary
+                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    {product.inStock ? "Add to Cart" : "Out of Stock"}
+                                  </button>
+                                </div>
+                                <button
+                                  onClick={() => toggleWishlist(product.id)}
+                                  className="text-red-500 hover:text-red-700 cursor-pointer"
+                                  aria-label="Remove from wishlist"
+                                >
+                                  <X size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                     </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Eligibility
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedScholarship.eligibility}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Description
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedScholarship.description}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Application Process
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        Applications are accepted online through our portal. Please create an account, fill out the application form, and submit required documents.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-2">
-                  <motion.button
-                    onClick={() => {
-                      addToCart(selectedScholarship);
-                      handleCloseModal();
-                    }}
-                    className="px-6 py-3 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-md transition-colors duration-300 font-medium shadow-md hover:shadow-blue-500/30 dark:hover:shadow-blue-700/30 w-full sm:w-auto"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Add to Cart
-                  </motion.button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1115,140 +1476,17 @@ function Home() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {beneficiaryModalOpen && selectedBeneficiary && (
+        {toastMessage && (
           <motion.div
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="relative h-48 sm:h-64 w-full">
-                <img
-                  src={selectedBeneficiary.photoUrl || "/placeholder.svg"}
-                  alt={selectedBeneficiary.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
-                <button
-                  onClick={handleCloseBeneficiaryModal}
-                  className="absolute top-4 right-4 bg-white/20 dark:bg-gray-900/20 p-2 rounded-full text-white hover:bg-white/30 dark:hover:bg-gray-900/30 transition-colors duration-300 cursor-pointer"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    {selectedBeneficiary.name}
-                  </h3>
-                  <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 mb-4">
-                    {selectedBeneficiary.scholarship}
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Year
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedBeneficiary.year}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Current Status
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedBeneficiary.currentStatus}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Success Story
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {selectedBeneficiary.currentStatus}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
-                        Career Aspirations
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        Pursuing higher studies and aiming for a successful career in {selectedBeneficiary.scholarship.includes("Science") ? "research" : "technology"}.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-2">
-                  <div className="hidden">
-                    {/* Placeholder for future buttons */}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showCheckoutToast && (
-          <motion.div 
-            className="fixed bottom-6 right-6 z-50 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg ${t.card} ${t.border} border z-50`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="font-medium">Application submitted successfully!</span>
+            {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>
-
-      <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 font-serif">
-                Scholarships
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300 mt-2 max-w-md">
-                Empowering students to achieve their educational goals through various scholarship programs.
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">© {new Date().getFullYear()} Scholarships. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
-
-export default Home;
