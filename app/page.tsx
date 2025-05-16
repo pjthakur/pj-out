@@ -1,1666 +1,1669 @@
-"use client";
+"use client"
+import { useState, useEffect, useRef, useCallback } from "react";
+import { FaStar, FaCartPlus, FaShoppingBag, FaCheckCircle, FaRegEye, FaCheckSquare, FaMoon, FaSun, FaThumbsUp, FaRegThumbsUp, FaThumbsDown, FaRegThumbsDown, FaExclamationCircle, FaBars, FaTimes, FaLaptop, FaMobile, FaHeadphones, FaTabletAlt, FaClock } from 'react-icons/fa';
+import { Inter, Poppins, Montserrat } from 'next/font/google';
+import { motion, AnimatePresence, useAnimation, Variants } from 'framer-motion';
+import React from 'react';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, X, ArrowLeft, Save, History, AlertTriangle } from "lucide-react";
-import * as Tooltip from '@radix-ui/react-tooltip';
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
 
-type Mood = {
-  type: "calm" | "happy" | "anxious" | "sad" | "energetic" | "angry" | "surprised" | "tired" | "grateful" | "confused";
-  note: string;
-  timestamp: number;
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-montserrat',
+});
+
+interface Toast {
   id: string;
-  isSample?: boolean;
+  message: string;
+  type: 'success' | 'error';
+}
+
+interface ReviewAction {
+  reviewId: string;
+  action: 'helpful' | 'notHelpful';
+}
+
+interface Product {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  originalPrice?: number;
+  discount?: number;
+  rating: number;
+  reviews: number;
+  storage: string;
+  ram: string;
+  processor: string;
+  camera: string;
+  battery: string;
+  display: string;
+  warranty: string;
+  colors: string[];
+  availability: string;
+  features: {
+    os: string;
+    screenSize: string;
+    waterResistant: boolean;
+    dustResistant: boolean;
+    cpuCores: number;
+    frontCamera: string;
+    storageOptions: string;
+    value: number;
+    quality: number;
+    popularity: number;
+  };
+}
+
+const mockReviews: Record<string, { id: string; user: string; rating: number; title: string; text: string; date: string; helpful: number; notHelpful: number; }[]> = {
+  "iphone-15-pro": [
+    { id: "ip-rev-1", user: "Amit S.", rating: 5, title: "Amazing Camera", text: "The camera quality is top-notch. Battery lasts all day.", date: "2 days ago", helpful: 12, notHelpful: 1 },
+    { id: "ip-rev-2", user: "Priya R.", rating: 4, title: "Great but Pricey", text: "Performance is smooth, but a bit expensive.", date: "1 week ago", helpful: 8, notHelpful: 2 },
+    { id: "ip-rev-3", user: "Rahul K.", rating: 5, title: "Best iPhone Yet", text: "Loving the new design and features.", date: "3 weeks ago", helpful: 15, notHelpful: 0 }
+  ],
+  "samsung-s24-ultra": [
+    { id: "s24-rev-1", user: "Sneha M.", rating: 5, title: "Superb Display", text: "The display is vibrant and the battery is solid.", date: "1 day ago", helpful: 10, notHelpful: 1 },
+    { id: "s24-rev-2", user: "Vikram D.", rating: 4, title: "Feature Packed", text: "Camera zoom is incredible. UI could be better.", date: "5 days ago", helpful: 7, notHelpful: 1 },
+    { id: "s24-rev-3", user: "Anjali P.", rating: 5, title: "Loving It!", text: "Best Android phone I have used so far.", date: "2 weeks ago", helpful: 11, notHelpful: 0 }
+  ],
+  "oneplus-12": [
+    { id: "op-rev-1", user: "Karan J.", rating: 4, title: "Value for Money", text: "Great specs for the price. Fast charging is awesome.", date: "3 days ago", helpful: 9, notHelpful: 1 },
+    { id: "op-rev-2", user: "Megha S.", rating: 5, title: "Excellent Performance", text: "No lags, smooth UI, and good battery.", date: "1 week ago", helpful: 6, notHelpful: 0 },
+    { id: "op-rev-3", user: "Deepak T.", rating: 4, title: "Solid Build", text: "Feels premium in hand. Camera is decent.", date: "2 weeks ago", helpful: 5, notHelpful: 2 }
+  ]
 };
 
-const getMoodEmoji = (mood: Mood["type"]) => {
-  switch (mood) {
-    case "calm": return "😌";
-    case "happy": return "😄";
-    case "anxious": return "😰";
-    case "sad": return "😢";
-    case "energetic": return "💪";
-    case "angry": return "😡";
-    case "surprised": return "😮";
-    case "tired": return "😴";
-    case "grateful": return "🙏";
-    case "confused": return "🤔";
+const mockSellers: Record<string, { name: string; rating: number; reviews: number; delivery: string; warranty: string; location: string; }[]> = {
+  "iphone-15-pro": [
+    { name: "TrustedConfidant", rating: 4.8, reviews: 1200, delivery: "Free, 1-2 days", warranty: "1 Year", location: "Mumbai" },
+    { name: "iStore India", rating: 4.7, reviews: 900, delivery: "Free, 2-3 days", warranty: "1 Year", location: "Delhi" }
+  ],
+  "samsung-s24-ultra": [
+    { name: "APTHANGLORetail", rating: 4.7, reviews: 1100, delivery: "Free, 1-2 days", warranty: "1 Year", location: "Bangalore" },
+    { name: "MobileHub", rating: 4.6, reviews: 800, delivery: "Free, 2-3 days", warranty: "1 Year", location: "Hyderabad" }
+  ],
+  "oneplus-12": [
+    { name: "OnePlus Official", rating: 4.8, reviews: 1000, delivery: "Free, 1-2 days", warranty: "1 Year", location: "Pune" },
+    { name: "GadgetWorld", rating: 4.5, reviews: 700, delivery: "Free, 2-3 days", warranty: "1 Year", location: "Chennai" }
+  ]
+};
+
+const suggestions = [
+  {
+    id: "pixel-8-pro",
+    name: "Google Pixel 8 Pro",
+    image: "https://images.unsplash.com/photo-1706412703794-d944cd3625b3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8UElYRUwlMjA4JTIwUFJPfGVufDB8fDB8fHww",
+    price: 89999,
+    rating: 4.6
+  },
+  {
+    id: "xiaomi-14-pro",
+    name: "Xiaomi 14 Pro",
+    image: "https://images.unsplash.com/photo-1653674359178-57dd04935bf6?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dml2byUyMHBob25lfGVufDB8fDB8fHww",
+    price: 69999,
+    rating: 4.5
+  },
+  {
+    id: "vivo-x100",
+    name: "Vivo X100 Pro",
+    image: "https://images.unsplash.com/photo-1655356392708-c675781f1748?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8eGlhb21pJTIwcGhvbmV8ZW58MHx8MHx8fDA%3D",
+    price: 79999,
+    rating: 4.4
   }
-};
+];
 
-interface HistoryBubbleProps {
-  entry: Mood;
-  theme: "light" | "dark";
-  onDelete: (id: string) => void;
-  isFormOpen: boolean;
-}
-
-const HistoryBubble: React.FC<HistoryBubbleProps> = ({ entry, theme, onDelete, isFormOpen }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  const bubbleSize = 50 + (entry.timestamp % 30);
-
-  const randomOffset = useRef({
-    x: Math.random(),
-    y: Math.random(),
-    seed: Math.random() * 1000
-  }).current;
-
-  const directionX = useRef(Math.random() > 0.5 ? 1 : -1);
-  const directionY = useRef(Math.random() > 0.5 ? 1 : -1);
-  const currentX = useRef(0);
-  const currentY = useRef(0);
-  const isInitialized = useRef<boolean>(false);
-  const animationFrameRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    if (!isInitialized.current && typeof window !== 'undefined') {
-      const startX = window.innerWidth * (0.2 + randomOffset.x * 0.6);
-      const startY = window.innerHeight * (0.2 + randomOffset.y * 0.6);
-
-      currentX.current = startX;
-      currentY.current = startY;
-      setPosition({ x: startX, y: startY });
-      isInitialized.current = true;
-    }
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [randomOffset.x, randomOffset.y]);
-
-  const getMoodBgColor = useCallback((mood: Mood["type"]) => {
-    switch (mood) {
-      case "calm": return theme === "light" ? "bg-blue-100/80" : "bg-blue-900/80";
-      case "happy": return theme === "light" ? "bg-yellow-100/80" : "bg-yellow-900/80";
-      case "anxious": return theme === "light" ? "bg-red-100/80" : "bg-red-900/80";
-      case "sad": return theme === "light" ? "bg-indigo-100/80" : "bg-indigo-900/80";
-      case "energetic": return theme === "light" ? "bg-orange-100/80" : "bg-orange-900/80";
-      case "angry": return theme === "light" ? "bg-rose-100/80" : "bg-rose-900/80";
-      case "surprised": return theme === "light" ? "bg-purple-100/80" : "bg-purple-900/80";
-      case "tired": return theme === "light" ? "bg-gray-100/80" : "bg-gray-800/80";
-      case "grateful": return theme === "light" ? "bg-emerald-100/80" : "bg-emerald-900/80";
-      case "confused": return theme === "light" ? "bg-amber-100/80" : "bg-amber-900/80";
-    }
-  }, [theme]);
-
-  const getMoodBorderColor = useCallback((mood: Mood["type"]) => {
-    switch (mood) {
-      case "calm": return theme === "light" ? "border-blue-300" : "border-blue-700";
-      case "happy": return theme === "light" ? "border-yellow-300" : "border-yellow-700";
-      case "anxious": return theme === "light" ? "border-red-300" : "border-red-700";
-      case "sad": return theme === "light" ? "border-indigo-300" : "border-indigo-700";
-      case "energetic": return theme === "light" ? "border-orange-300" : "border-orange-700";
-      case "angry": return theme === "light" ? "border-rose-300" : "border-rose-700";
-      case "surprised": return theme === "light" ? "border-purple-300" : "border-purple-700";
-      case "tired": return theme === "light" ? "border-gray-300" : "border-gray-700";
-      case "grateful": return theme === "light" ? "border-emerald-300" : "border-emerald-700";
-      case "confused": return theme === "light" ? "border-amber-300" : "border-amber-700";
-    }
-  }, [theme]);
-
-  const getMoodGlowColor = useCallback((mood: Mood["type"]) => {
-    switch (mood) {
-      case "calm": return "rgba(59, 130, 246, 0.4)";
-      case "happy": return "rgba(234, 179, 8, 0.4)";
-      case "anxious": return "rgba(239, 68, 68, 0.4)";
-      case "sad": return "rgba(99, 102, 241, 0.4)";
-      case "energetic": return "rgba(249, 115, 22, 0.4)";
-      case "angry": return "rgba(225, 29, 72, 0.4)";
-      case "surprised": return "rgba(168, 85, 247, 0.4)";
-      case "tired": return "rgba(107, 114, 128, 0.4)";
-      case "grateful": return "rgba(16, 185, 129, 0.4)";
-      case "confused": return "rgba(245, 158, 11, 0.4)";
-      default: return "rgba(107, 114, 128, 0.4)";
-    }
-  }, []);
-
-  const cardBg = theme === "light" ? "bg-white" : "bg-gray-800";
-  const borderColor = theme === "light" ? "border-gray-200" : "border-gray-700";
-  const textColor = theme === "light" ? "text-gray-800" : "text-gray-200";
-
-  const handleMouseEnter = useCallback(() => {
-    if (isFormOpen) return;
-    setIsHovered(true);
-    setOpen(true);
-  }, [isFormOpen]);
-
-  const handleMouseLeave = useCallback(() => {
-    currentX.current = position.x;
-    currentY.current = position.y;
-    setIsHovered(false);
-  }, [position.x, position.y]);
-
-  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(entry.id);
-    setOpen(false);
-  }, [onDelete, entry.id]);
-
-  useEffect(() => {
-    if (open && !isFormOpen) {
-      const handleClickOutside = (e: MouseEvent) => {
-        setOpen(false);
-      };
-
-      const timer = setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-      }, 100);
-
-      return () => {
-        clearTimeout(timer);
-        document.removeEventListener('click', handleClickOutside);
-      };
-    }
-  }, [open, isFormOpen]);
-
-  useEffect(() => {
-    if (isFormOpen && open) {
-      setOpen(false);
-      setIsHovered(false);
-    }
-  }, [isFormOpen, open]);
-
-  useEffect(() => {
-    if (isHovered || open || !isInitialized.current) return;
-
-    const speedX = 0.3 + (randomOffset.seed % 15) / 25;
-    const speedY = 0.3 + (randomOffset.seed % 20) / 35;
-
-    const animate = () => {
-      let newX = currentX.current + speedX * directionX.current;
-      let newY = currentY.current + speedY * directionY.current;
-
-      const rightEdge = window.innerWidth - bubbleSize;
-      const bottomEdge = window.innerHeight - bubbleSize;
-
-      if (newX >= rightEdge) {
-        newX = rightEdge;
-        directionX.current = -1;
-      }
-      else if (newX <= 0) {
-        newX = 0;
-        directionX.current = 1;
-      }
-
-      if (newY >= bottomEdge) {
-        newY = bottomEdge;
-        directionY.current = -1;
-      }
-      else if (newY <= 0) {
-        newY = 0;
-        directionY.current = 1;
-      }
-
-      currentX.current = newX;
-      currentY.current = newY;
-
-      setPosition({ x: newX, y: newY });
-
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isHovered, open, bubbleSize, randomOffset.seed]);
-
-  const bubble = useMemo(() => {
-    const moodBgColor = getMoodBgColor(entry.type);
-    const moodBorderColor = getMoodBorderColor(entry.type);
-    const moodGlowColor = getMoodGlowColor(entry.type);
-
-    return (
-      <div
-        className="absolute pointer-events-auto"
-        style={{
-          left: 0,
-          top: 0,
-          width: `${bubbleSize}px`,
-          height: `${bubbleSize}px`,
-          transform: `translate(${position.x}px, ${position.y}px)`,
-          zIndex: open ? 9990 : 100,
-          transition: open ? 'transform 0.3s ease' : 'none',
-          willChange: 'transform'
-        }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <motion.div
-          className={`w-full h-full rounded-full flex items-center justify-center cursor-pointer backdrop-blur-xl 
-            ${moodBgColor} border-2 ${moodBorderColor} shadow-lg transition-all duration-300`}
-          animate={open ? {
-            boxShadow: `0 0 25px 8px ${moodGlowColor}`,
-            scale: 1.15
-          } : {
-            scale: 1,
-            boxShadow: `0 4px 12px -2px ${moodGlowColor}`
-          }}
-        >
-          <motion.div
-            className="text-2xl flex items-center justify-center h-full relative"
-            animate={!open ? {
-              rotate: [0, entry.timestamp % 2 === 0 ? 5 : -5, 0],
-            } : {}}
-            transition={!open ? {
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut"
-            } : {}}
-          >
-            {getMoodEmoji(entry.type)}
-          </motion.div>
-        </motion.div>
-
-        {!open && (
-          <motion.div
-            className="absolute inset-0 rounded-full"
-            animate={{
-              boxShadow: [
-                `0 0 0 0px rgba(255, 255, 255, 0)`,
-                `0 0 0 5px ${moodGlowColor.replace('0.4', '0.15')}`,
-                `0 0 0 0px rgba(255, 255, 255, 0)`
-              ],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        )}
-      </div>
-    );
-  }, [position.x, position.y, open, entry.type, entry.timestamp, bubbleSize,
-    handleMouseEnter, handleMouseLeave, getMoodBgColor, getMoodBorderColor, getMoodGlowColor]);
-
-  return (
-    <Tooltip.Provider delayDuration={0}>
-      <Tooltip.Root open={open && !isFormOpen} onOpenChange={setOpen}>
-        <Tooltip.Trigger asChild>
-          {bubble}
-        </Tooltip.Trigger>
-
-        <Tooltip.Portal>
-          <Tooltip.Content
-            side="top"
-            align="center"
-            sideOffset={8}
-            alignOffset={0}
-            className="z-[9999] p-0 max-w-sm pointer-events-auto border-none outline-none"
-            avoidCollisions
-            sticky="always"
-            style={{
-              maxWidth: 'calc(100vw - 20px)',
-              filter: `drop-shadow(0 0 10px ${getMoodGlowColor(entry.type)})`,
-              padding: '3px',
-              background: theme === "light" ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-              backdropFilter: 'blur(12px)',
-              borderRadius: '16px',
-              boxShadow: `0 0 0 2px ${getMoodBorderColor(entry.type).replace('border-', '')}`
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="rounded-xl overflow-hidden"
-              style={{
-                boxShadow: `0 10px 25px -5px ${getMoodGlowColor(entry.type)}, 0 8px 10px -6px rgba(0, 0, 0, 0.1)`,
-                borderRadius: '14px'
-              }}
-            >
-              <div className={`${cardBg} p-5 backdrop-blur-xl border-none rounded-xl shadow-inner`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <motion.span
-                        className="text-3xl"
-                        animate={{
-                          scale: [1, 1.1, 1],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          repeatType: "reverse"
-                        }}
-                      >
-                        {getMoodEmoji(entry.type)}
-                      </motion.span>
-                      <p className="font-medium text-lg capitalize bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">{entry.type}</p>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1, backgroundColor: theme === "light" ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.2)" }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleDeleteClick}
-                    className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <X size={16} />
-                  </motion.button>
-                </div>
-                <div className={`p-4 rounded-lg ${theme === "light" ? "bg-gradient-to-br from-gray-50 to-white" : "bg-gradient-to-br from-gray-900 to-gray-800"} ${textColor} text-base shadow-inner border border-gray-100 dark:border-gray-700`}>
-                  <div className="flex items-start">
-                    <div className="text-gray-400 dark:text-gray-500 mr-1.5">"</div>
-                    <p className="italic flex-1">{entry.note}</p>
-                    <div className="text-gray-400 dark:text-gray-500 ml-1.5">"</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <div className={`w-2 h-2 rounded-full ${entry.isSample ? "bg-amber-400 dark:bg-amber-500" : "bg-green-400 dark:bg-green-500"} mr-1.5`}></div>
-                    <span>{entry.isSample ? "Sample Entry" : "Your Memory"}</span>
-                  </div>
-                  <div>
-                    {Math.floor((Date.now() - entry.timestamp) / (1000 * 60 * 60 * 24))} days ago
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-            <Tooltip.Arrow
-              width={16}
-              height={8}
-              className="fill-white dark:fill-gray-800"
-              style={{
-                filter: `drop-shadow(0 0 3px ${getMoodGlowColor(entry.type)})`,
-                stroke: theme === "light" ? '#e5e7eb' : '#374151',
-                strokeWidth: '1px',
-                margin: '0 3px'
-              }}
-            />
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
-    </Tooltip.Provider>
-  );
-};
-
-interface ConfirmModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  theme: "light" | "dark";
-}
-
-const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm, theme }) => {
-  if (!isOpen) return null;
-
-  const bgColor = theme === "light" ? "bg-white" : "bg-gray-800";
-  const textColor = theme === "light" ? "text-gray-800" : "text-gray-200";
-  const overlayColor = theme === "light" ? "bg-black/50" : "bg-black/70";
-  const borderColor = theme === "light" ? "border-gray-200" : "border-gray-700";
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <motion.div
-        className={`fixed inset-0 ${overlayColor} backdrop-blur-sm`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      />
-
-      <motion.div
-        className={`${bgColor} ${textColor} rounded-xl border ${borderColor} shadow-2xl p-6 w-full max-w-md relative z-10 backdrop-blur-xl`}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-      >
-        <div className="flex items-start gap-4 mb-5">
-          <div className="mt-1 p-2 rounded-full bg-red-100 dark:bg-red-900/40 text-red-500 dark:text-red-400 flex-shrink-0">
-            <AlertTriangle size={24} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold mb-2">Clear All Memories</h3>
-            <p className="text-gray-600 dark:text-gray-400">Are you sure you want to clear all your mood history? This action cannot be undone.</p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 justify-end mt-6">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className={`px-4 py-2 rounded-lg ${theme === "light" ? "bg-gray-100 hover:bg-gray-200 text-gray-700" : "bg-gray-700 hover:bg-gray-600 text-gray-200"}`}
-            onClick={onClose}
-          >
-            Cancel
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            Clear All
-          </motion.button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-interface MoodHistoryPanelProps {
-  entries: Mood[];
-  theme: "light" | "dark";
-  onDelete: (id: string) => void;
-  onClose: () => void;
-}
-
-const MoodHistoryPanel: React.FC<MoodHistoryPanelProps> = ({ entries, theme, onDelete, onClose }) => {
-  const groupedEntries = useMemo(() => {
-    const grouped: { [key: string]: Mood[] } = {};
-    
-    entries.forEach(entry => {
-      const date = new Date(entry.timestamp);
-      const dateKey = date.toLocaleDateString();
-      
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
-      
-      grouped[dateKey].push(entry);
-    });
-    
-    return grouped;
-  }, [entries]);
-  
-  const sortedDates = useMemo(() => {
-    return Object.keys(groupedEntries).sort((a, b) => {
-      return new Date(b).getTime() - new Date(a).getTime();
-    });
-  }, [groupedEntries]);
-  
-  const cardBg = theme === "light" ? "bg-white" : "bg-gray-800";
-  const borderColor = theme === "light" ? "border-gray-200" : "border-gray-700";
-  const textColor = theme === "light" ? "text-gray-800" : "text-gray-200";
-  const noteBg = theme === "light" ? "bg-blue-50" : "bg-gray-700/50";
-  const noteTextColor = theme === "light" ? "text-gray-800" : "text-gray-300";
-  const noteBoxShadow = theme === "light" ? "shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]" : "shadow-inner";
-  const dateHeaderColor = theme === "light" ? "text-gray-700 bg-gray-50" : "text-gray-400 bg-gray-800/90";
-  const timeTextColor = theme === "light" ? "text-gray-600" : "text-gray-400";
-  
-  return (
-    <motion.div 
-      className="fixed right-0 top-0 h-full z-[9000] max-w-md w-full shadow-2xl"
-      initial={{ x: "100%" }}
-      animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div 
-        className={`h-full ${cardBg} ${textColor} overflow-y-auto border-l ${borderColor} backdrop-blur-xl`}
-        onWheel={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 z-10 px-6 py-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-inherit backdrop-blur-xl">
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-            Mood History
-          </h2>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <X size={20} />
-          </motion.button>
-        </div>
-        
-        <div className="p-4">
-          {entries.length === 0 ? (
-            <div className="text-center p-8 text-gray-500">
-              <p>No mood entries yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {sortedDates.map(date => (
-                <div key={date} className="space-y-3">
-                  <h3 className={`font-medium sticky top-16 py-2 px-3 rounded-md ${dateHeaderColor} shadow-sm`}>
-                    {new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    {groupedEntries[date]
-                      .sort((a, b) => b.timestamp - a.timestamp)
-                      .map(entry => (
-                        <motion.div 
-                          key={entry.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`p-4 rounded-lg border ${borderColor} ${cardBg} shadow-sm`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl">{getMoodEmoji(entry.type)}</span>
-                              <span className="font-medium capitalize">{entry.type}</span>
-                            </div>
-                            <motion.button
-                              whileHover={{ scale: 1.1, color: "#ef4444" }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => onDelete(entry.id)}
-                              className="text-gray-400 hover:text-red-500 p-1 rounded-full"
-                            >
-                              <X size={16} />
-                            </motion.button>
-                          </div>
-                          
-                          <div className={`mt-3 p-3 rounded ${noteBg} ${noteTextColor} text-sm font-medium ${noteBoxShadow} border ${theme === "light" ? "border-blue-100" : "border-gray-600"}`}>
-                            "{entry.note}"
-                          </div>
-                          
-                          <div className={`mt-2 text-xs ${timeTextColor} font-medium flex items-center gap-1.5`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {new Date(entry.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </motion.div>
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
+// Mock full specification data for suggested products
+const suggestedProductSpecs: Record<string, { title: string; value: string }[]> = {
+  "pixel-8-pro": [
+    { title: "Brand", value: "Google" },
+    { title: "Model", value: "Pixel 8 Pro" },
+    { title: "Color", value: "Obsidian" },
+    { title: "Display", value: "6.7-inch LTPO OLED" },
+    { title: "Processor", value: "Google Tensor G3" },
+    { title: "RAM", value: "12 GB" },
+    { title: "Storage", value: "256 GB" },
+    { title: "Camera", value: "50MP + 48MP + 48MP" },
+    { title: "Battery", value: "4950 mAh" },
+    { title: "OS", value: "Android 14" },
+    { title: "Water Resistant", value: "IP68" },
+    { title: "Wireless Charging", value: "Yes" },
+    { title: "Fast Charging", value: "30W" }
+  ],
+  "xiaomi-14-pro": [
+    { title: "Brand", value: "Xiaomi" },
+    { title: "Model", value: "14 Pro" },
+    { title: "Color", value: "Titanium Black" },
+    { title: "Display", value: "6.73-inch LTPO AMOLED" },
+    { title: "Processor", value: "Snapdragon 8 Gen 3" },
+    { title: "RAM", value: "12 GB" },
+    { title: "Storage", value: "256 GB" },
+    { title: "Camera", value: "50MP + 50MP + 50MP" },
+    { title: "Battery", value: "4880 mAh" },
+    { title: "OS", value: "HyperOS based on Android 14" },
+    { title: "Water Resistant", value: "IP68" },
+    { title: "Wireless Charging", value: "50W" },
+    { title: "Fast Charging", value: "120W" }
+  ],
+  "vivo-x100": [
+    { title: "Brand", value: "Vivo" },
+    { title: "Model", value: "X100 Pro" },
+    { title: "Color", value: "Asteroid Black" },
+    { title: "Display", value: "6.78-inch AMOLED" },
+    { title: "Processor", value: "MediaTek Dimensity 9300" },
+    { title: "RAM", value: "16 GB" },
+    { title: "Storage", value: "512 GB" },
+    { title: "Camera", value: "50MP + 50MP + 64MP" },
+    { title: "Battery", value: "5400 mAh" },
+    { title: "OS", value: "Funtouch OS 14 based on Android 14" },
+    { title: "Water Resistant", value: "IP68" },
+    { title: "Wireless Charging", value: "50W" },
+    { title: "Fast Charging", value: "100W" }
+  ]
 };
 
 export default function Home() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [selectedMood, setSelectedMood] = useState<Mood["type"] | null>(null);
-  const [lastSelectedMood, setLastSelectedMood] = useState<Mood["type"] | null>(null);
-  const [note, setNote] = useState("");
-  const [history, setHistory] = useState<Mood[]>([]);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [showHistory, setShowHistory] = useState(true);
-  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [theme, setTheme] = useState("light");
+  const [mounted, setMounted] = useState(false);
+  const [product1, setProduct1] = useState<string | null>('iphone-15-pro');
+  const [product2, setProduct2] = useState<string | null>('samsung-s24-ultra');
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [activeTab, setActiveTab] = useState("highlights");
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [showSpecModal, setShowSpecModal] = useState<null | string>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [reviewActions, setReviewActions] = useState<ReviewAction[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const sampleHistoryData: Mood[] = [
+  const products: Product[] = [
     {
-      type: "happy",
-      note: "Got a promotion at work today! All the hard work finally paid off.",
-      timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2 - 1000 * 60 * 60 * 3,
-      id: "sample-1",
-      isSample: true
+      id: "iphone-15-pro",
+      name: "Apple iPhone 15 Pro  (Black Titanium, 128 GB",
+      image: "https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8aXBob25lfGVufDB8fDB8fHww",
+      price: 112900,
+      originalPrice: 119900,
+      discount: 5,
+      rating: 4.7,
+      reviews: 198,
+      storage: "128 GB ROM",
+      ram: "8 GB",
+      processor: "A17 Pro Chip, 6 Core Processor",
+      camera: "48MP Primary Camera",
+      battery: "1 Year Warranty for Phone and 6 Months for Accessories",
+      display: "Super Retina XDR Display, 2532 x 1170 Pixels",
+      warranty: "1 Year Warranty",
+      colors: ["Black Titanium", "White Titanium", "Natural Titanium", "Desert Titanium"],
+      availability: "Available with 1 seller(s)",
+      features: {
+        os: "iOS 16",
+        screenSize: "6.1 inches",
+        waterResistant: true,
+        dustResistant: true,
+        cpuCores: 6,
+        frontCamera: "12 MP",
+        storageOptions: "128GB, 256GB, 512GB, 1TB",
+        value: 85,
+        quality: 90,
+        popularity: 88
+      }
     },
     {
-      type: "calm",
-      note: "Meditation session was great this morning. Feeling centered and peaceful.",
-      timestamp: Date.now() - 1000 * 60 * 60 * 24 * 4 - 1000 * 60 * 33,
-      id: "sample-2",
-      isSample: true
+      id: "samsung-s24-ultra",
+      name: "SAMSUNG Galaxy S24 (Titanium Gray, 256 GB",
+      image: "https://images.unsplash.com/photo-1610792516775-01de03eae630?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fHNhbXN1bmclMjB1bHRyYXxlbnwwfHwwfHx8MA%3D%3D",
+      price: 119999,
+      originalPrice: 134999,
+      discount: 11,
+      rating: 4.6,
+      reviews: 156,
+      storage: "256 GB ROM",
+      ram: "12 GB",
+      processor: "Snapdragon 8 Gen 3 Octa Core 3.39 GHz",
+      camera: "200 MP Primary Camera",
+      battery: "5 Years Warranty for Device and 6 Months for Accessories",
+      display: "Quad HD+, 3120 x 1440 Pixels",
+      warranty: "1 Year Warranty",
+      colors: ["Titanium Gray", "Titanium Black", "Titanium Violet", "Titanium Yellow"],
+      availability: "Available with 2 seller(s)",
+      features: {
+        os: "Android 14",
+        screenSize: "6.8 inches",
+        waterResistant: true,
+        dustResistant: true,
+        cpuCores: 8,
+        frontCamera: "12 MP",
+        storageOptions: "256GB, 512GB, 1TB",
+        value: 82,
+        quality: 92,
+        popularity: 85
+      }
     },
-    {
-      type: "energetic",
-      note: "Morning run gave me so much energy! Ready to tackle the day.",
-      timestamp: Date.now() - 1000 * 60 * 60 * 24 * 1 - 1000 * 60 * 60 * 5,
-      id: "sample-3",
-      isSample: true
-    },
-    {
-      type: "grateful",
-      note: "Thankful for the surprise call from my old friend. Great to catch up after so long.",
-      timestamp: Date.now() - 1000 * 60 * 60 * 24 * 3 - 1000 * 60 * 60 * 7,
-      id: "sample-4",
-      isSample: true
-    },
-    {
-      type: "anxious",
-      note: "Big presentation tomorrow. Nervous but trying to stay prepared and positive.",
-      timestamp: Date.now() - 1000 * 60 * 60 * 12 - 1000 * 60 * 27,
-      id: "sample-5",
-      isSample: true
-    }
   ];
 
-  const getBackgroundElements = useCallback(() => {
-    const currentMood = selectedMood || lastSelectedMood;
-    if (!currentMood) return null;
-
-    switch (currentMood) {
-      case "calm":
-        return (
-          <>
-            {Array.from({ length: 8 }).map((_, i) => {
-              const angle = (i / 8) * Math.PI * 2;
-              const distanceFromCenter = 150 + ((i * 941) % 150);
-
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 100 + ((i * 941) % 100) * 2;
-              const opacity = theme === "light"
-                ? 0.6 + ((i * 1123) % 40) / 100
-                : 0.4 + ((i * 1123) % 60) / 100;
-
-              return (
-                <div
-                  key={`calm-${i}`}
-                  className={`absolute rounded-full backdrop-blur-sm`}
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light"
-                      ? `radial-gradient(circle at center, rgba(191, 219, 254, 0.95) 0%, rgba(147, 197, 253, 0.7) 70%, rgba(59, 130, 246, 0.4) 100%)`
-                      : `radial-gradient(circle at center, rgba(30, 58, 138, 0.7) 0%, rgba(29, 78, 216, 0.4) 70%, rgba(37, 99, 235, 0.2) 100%)`,
-                    boxShadow: `0 0 50px 25px ${theme === "light" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.2)"}`,
-                    filter: theme === "light" ? "blur(6px)" : "blur(8px)",
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "happy":
-        return (
-          <>
-            {Array.from({ length: 15 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              if (i < 8) {
-                const angle = (i / 8) * Math.PI * 2;
-                const distanceFromCenter = 200 + ((i * 631) % 100);
-                const posX = centerX + Math.cos(angle) * distanceFromCenter;
-                const posY = centerY + Math.sin(angle) * distanceFromCenter;
-                const size = 18 + ((i * 631) % 40);
-                const opacity = theme === "light"
-                  ? 0.7 + ((i * 1873) % 30) / 100
-                  : 0.5 + ((i * 1873) % 50) / 100;
-
-                return (
-                  <div
-                    key={`happy-${i}`}
-                    className="absolute rounded-full"
-                    style={{
-                      left: posX - size / 2,
-                      top: posY - size / 2,
-                      width: size,
-                      height: size,
-                      opacity: opacity,
-                      background: theme === "light"
-                        ? `radial-gradient(circle at center, rgba(254, 240, 138, 1) 0%, rgba(253, 224, 71, 0.9) 70%, rgba(234, 179, 8, 0.6) 100%)`
-                        : `radial-gradient(circle at center, rgba(161, 98, 7, 0.9) 0%, rgba(133, 77, 14, 0.7) 70%, rgba(113, 63, 18, 0.4) 100%)`,
-                      boxShadow: `0 0 35px 15px ${theme === "light" ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.3)"}`,
-                      transition: "all 1.5s ease-out",
-                      zIndex: -1
-                    }}
-                  />
-                );
-              } else {
-                const angle = Math.random() * Math.PI * 2;
-                const distanceFromCenter = ((i * 957) % 150);
-                const posX = centerX + Math.cos(angle) * distanceFromCenter;
-                const posY = centerY + Math.sin(angle) * distanceFromCenter;
-                const size = 18 + ((i * 631) % 40);
-                const opacity = theme === "light"
-                  ? 0.7 + ((i * 1873) % 30) / 100
-                  : 0.5 + ((i * 1873) % 50) / 100;
-
-                return (
-                  <div
-                    key={`happy-${i}`}
-                    className="absolute rounded-full"
-                    style={{
-                      left: posX - size / 2,
-                      top: posY - size / 2,
-                      width: size,
-                      height: size,
-                      opacity: opacity,
-                      background: theme === "light"
-                        ? `radial-gradient(circle at center, rgba(254, 240, 138, 1) 0%, rgba(254, 249, 195, 0.9) 40%, rgba(234, 179, 8, 0.6) 100%)`
-                        : `radial-gradient(circle at center, rgba(161, 98, 7, 0.9) 0%, rgba(133, 77, 14, 0.7) 70%, rgba(113, 63, 18, 0.4) 100%)`,
-                      boxShadow: `0 0 35px 15px ${theme === "light" ? "rgba(234, 179, 8, 0.5)" : "rgba(234, 179, 8, 0.3)"}`,
-                      transition: "all 1.5s ease-out",
-                      zIndex: -1
-                    }}
-                  />
-                );
-              }
-            })}
-          </>
-        );
-
-      case "anxious":
-        return (
-          <>
-            {Array.from({ length: 10 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              let distanceFromCenter = 120 + ((i * 797) % 180);
-              if (i % 3 === 0) distanceFromCenter += 80;
-
-              const angle = (i / 10) * Math.PI * 2 + Math.sin(i) * 0.5;
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const width = 40 + ((i * 797) % 80);
-              const height = 40 + ((i * 1153) % 80);
-              const rotation = ((i * 2371) % 45);
-              const opacity = theme === "light"
-                ? 0.45 + ((i * 1511) % 35) / 100
-                : 0.3 + ((i * 1511) % 40) / 100;
-
-              return (
-                <div
-                  key={`anxious-${i}`}
-                  className="absolute"
-                  style={{
-                    left: posX - width / 2,
-                    top: posY - height / 2,
-                    width: width,
-                    height: height,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(254, 202, 202, 0.75)" : "rgba(153, 27, 27, 0.5)",
-                    boxShadow: `0 0 40px 20px ${theme === "light" ? "rgba(239, 68, 68, 0.45)" : "rgba(239, 68, 68, 0.2)"}`,
-                    transform: `rotate(${rotation}deg)`,
-                    borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%",
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "sad":
-        return (
-          <>
-            {Array.from({ length: 10 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2 - 50;
-
-              let posX, posY;
-
-              if (i < 6) {
-                const angle = ((i / 6) * Math.PI) + Math.PI / 2;
-                const distanceFromCenter = 150 + ((i * 3761) % 100);
-                posX = centerX + Math.cos(angle) * distanceFromCenter;
-                posY = centerY + Math.sin(angle) * distanceFromCenter;
-              } else {
-                const angle = (i / 4) * Math.PI * 2;
-                const distanceFromCenter = 100 + ((i * 5903) % 200);
-                posX = centerX + Math.cos(angle) * distanceFromCenter;
-                posY = centerY + Math.sin(angle) * distanceFromCenter;
-              }
-
-              const width = 12 + ((i * 631) % 18);
-              const height = 70 + ((i * 1117) % 110);
-              const opacity = theme === "light"
-                ? 0.45 + ((i * 2273) % 40) / 100
-                : 0.3 + ((i * 2273) % 40) / 100;
-
-              return (
-                <div
-                  key={`sad-${i}`}
-                  className="absolute rounded-full"
-                  style={{
-                    left: posX - width / 2,
-                    top: posY - height / 2,
-                    width: width,
-                    height: height,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(165, 180, 252, 0.7)" : "rgba(67, 56, 202, 0.5)",
-                    boxShadow: `0 0 25px 12px ${theme === "light" ? "rgba(99, 102, 241, 0.45)" : "rgba(99, 102, 241, 0.2)"}`,
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "energetic":
-        return (
-          <>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              const angle = (i / 12) * Math.PI * 2;
-              let distanceFromCenter = 120 + ((i % 3) * 80);
-
-              if (i % 3 === 0) {
-                distanceFromCenter = 100 + ((i * 1327) % 50);
-              } else if (i % 3 === 1) {
-                distanceFromCenter = 200 + ((i * 1327) % 30);
-              } else {
-                distanceFromCenter = 280 + ((i * 1327) % 20);
-              }
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 35 + ((i * 1327) % 55);
-              const rotation = ((i * 2129) % 360);
-              const opacity = theme === "light"
-                ? 0.55 + ((i * 1787) % 40) / 100
-                : 0.4 + ((i * 1787) % 40) / 100;
-
-              return (
-                <div
-                  key={`energetic-${i}`}
-                  className="absolute"
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(254, 215, 170, 0.8)" : "rgba(154, 52, 18, 0.6)",
-                    boxShadow: `0 0 35px 18px ${theme === "light" ? "rgba(249, 115, 22, 0.5)" : "rgba(249, 115, 22, 0.3)"}`,
-                    transform: `rotate(${rotation}deg)`,
-                    clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "angry":
-        return (
-          <>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              const angle = (i / 12) * Math.PI * 2;
-              const distanceFromCenter = 100 + (i * 20);
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 22 + ((i * 1523) % 45);
-              const opacity = theme === "light"
-                ? 0.55 + ((i * 2341) % 40) / 100
-                : 0.35 + ((i * 2341) % 40) / 100;
-
-              return (
-                <div
-                  key={`angry-${i}`}
-                  className="absolute rounded-md"
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(254, 205, 211, 0.85)" : "rgba(159, 18, 57, 0.7)",
-                    boxShadow: `0 0 40px 20px ${theme === "light" ? "rgba(225, 29, 72, 0.6)" : "rgba(225, 29, 72, 0.4)"}`,
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "surprised":
-        return (
-          <>
-            {Array.from({ length: 15 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              let angle, distanceFromCenter;
-
-              if (i < 8) {
-                angle = (i / 8) * Math.PI * 2;
-                distanceFromCenter = 180;
-              } else {
-                angle = (i / 7) * Math.PI * 2;
-                distanceFromCenter = 70 + ((i * 839) % 80);
-              }
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 20 + ((i * 839) % 35);
-              const isCircle = i % 2 === 0;
-              const opacity = theme === "light"
-                ? 0.6 + ((i * 2003) % 40) / 100
-                : 0.4 + ((i * 2003) % 50) / 100;
-
-              return (
-                <div
-                  key={`surprised-${i}`}
-                  className={`absolute ${isCircle ? "rounded-full" : "rounded-md"}`}
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(216, 180, 254, 0.85)" : "rgba(126, 34, 206, 0.7)",
-                    boxShadow: `0 0 30px 15px ${theme === "light" ? "rgba(168, 85, 247, 0.5)" : "rgba(168, 85, 247, 0.3)"}`,
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "tired":
-        return (
-          <>
-            {Array.from({ length: 7 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              const angle = (i / 7) * Math.PI * 2;
-              const distanceFromCenter = 120 * (i % 3 + 1);
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 110 + ((i * 1619) % 130);
-              const opacity = theme === "light"
-                ? 0.25 + ((i * 2749) % 30) / 100
-                : 0.15 + ((i * 2749) % 20) / 100;
-
-              return (
-                <div
-                  key={`tired-${i}`}
-                  className="absolute rounded-full"
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(209, 213, 219, 0.9)" : "rgba(75, 85, 99, 0.8)",
-                    boxShadow: `0 0 50px 25px ${theme === "light" ? "rgba(107, 114, 128, 0.3)" : "rgba(107, 114, 128, 0.15)"}`,
-                    filter: "blur(10px)",
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "grateful":
-        return (
-          <>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              let angle, distanceFromCenter;
-
-              if (i < 8) {
-                angle = (i / 8) * Math.PI * 2;
-                distanceFromCenter = 200;
-              } else {
-                angle = (i / 4) * Math.PI * 2;
-                distanceFromCenter = 80;
-              }
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 30 + ((i * 1031) % 55);
-              const cornerRadius = 10 + ((i * 2081) % 50);
-              const opacity = theme === "light"
-                ? 0.5 + ((i * 2707) % 45) / 100
-                : 0.3 + ((i * 2707) % 50) / 100;
-
-              return (
-                <div
-                  key={`grateful-${i}`}
-                  className="absolute"
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(167, 243, 208, 0.85)" : "rgba(6, 95, 70, 0.7)",
-                    boxShadow: `0 0 35px 18px ${theme === "light" ? "rgba(16, 185, 129, 0.5)" : "rgba(16, 185, 129, 0.3)"}`,
-                    borderRadius: `${cornerRadius}% ${100 - cornerRadius}% ${cornerRadius}% ${100 - cornerRadius}%`,
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      case "confused":
-        return (
-          <>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const centerX = window.innerWidth / 2;
-              const centerY = window.innerHeight / 2;
-
-              const angle = (i / 5) * Math.PI;
-              const distanceFromCenter = 50 + i * 20;
-
-              const posX = centerX + Math.cos(angle) * distanceFromCenter;
-              const posY = centerY + Math.sin(angle) * distanceFromCenter;
-
-              const size = 25 + ((i * 1901) % 45);
-              const rotation = ((i * 3121) % 360);
-              const opacity = theme === "light"
-                ? 0.5 + ((i * 2053) % 40) / 100
-                : 0.3 + ((i * 2053) % 40) / 100;
-
-              return (
-                <div
-                  key={`confused-${i}`}
-                  className="absolute"
-                  style={{
-                    left: posX - size / 2,
-                    top: posY - size / 2,
-                    width: size,
-                    height: size,
-                    opacity: opacity,
-                    background: theme === "light" ? "rgba(254, 243, 199, 0.85)" : "rgba(146, 64, 14, 0.7)",
-                    boxShadow: `0 0 30px 15px ${theme === "light" ? "rgba(245, 158, 11, 0.5)" : "rgba(245, 158, 11, 0.3)"}`,
-                    transform: `rotate(${rotation}deg)`,
-                    clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-                    transition: "all 1.5s ease-out",
-                    zIndex: -1
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-
-      default:
-        return null;
-    }
-  }, [selectedMood, theme]);
+  // Mock full specification data
+  const mockFullSpecs: Record<string, { title: string; value: string }[]> = {
+    "iphone-15-pro": [
+      { title: "Brand", value: "Apple" },
+      { title: "Model", value: "iPhone 15 Pro" },
+      { title: "Color", value: "Black Titanium" },
+      { title: "Display", value: "6.1-inch Super Retina XDR" },
+      { title: "Processor", value: "A17 Pro Chip" },
+      { title: "RAM", value: "8 GB" },
+      { title: "Storage", value: "128 GB" },
+      { title: "Camera", value: "48MP + 12MP + 12MP" },
+      { title: "Battery", value: "3200 mAh" },
+      { title: "OS", value: "iOS 16" },
+      { title: "Water Resistant", value: "Yes" },
+      { title: "Wireless Charging", value: "Yes" },
+      { title: "Face ID", value: "Yes" }
+    ],
+    "samsung-s24-ultra": [
+      { title: "Brand", value: "Samsung" },
+      { title: "Model", value: "Galaxy S24 Ultra" },
+      { title: "Color", value: "Titanium Gray" },
+      { title: "Display", value: "6.8-inch Quad HD+" },
+      { title: "Processor", value: "Snapdragon 8 Gen 3" },
+      { title: "RAM", value: "12 GB" },
+      { title: "Storage", value: "256 GB" },
+      { title: "Camera", value: "200MP + 12MP + 50MP + 10MP" },
+      { title: "Battery", value: "5000 mAh" },
+      { title: "OS", value: "Android 14" },
+      { title: "Water Resistant", value: "Yes" },
+      { title: "Wireless Charging", value: "Yes" },
+      { title: "Face Recognition", value: "Yes" }
+    ],
+    "oneplus-12": [
+      { title: "Brand", value: "OnePlus" },
+      { title: "Model", value: "12" },
+      { title: "Color", value: "Flowy Emerald" },
+      { title: "Display", value: "6.82-inch 2K AMOLED" },
+      { title: "Processor", value: "Snapdragon 8 Gen 3" },
+      { title: "RAM", value: "12 GB" },
+      { title: "Storage", value: "256 GB" },
+      { title: "Camera", value: "50MP + 48MP + 64MP" },
+      { title: "Battery", value: "5400 mAh" },
+      { title: "OS", value: "OxygenOS 14" },
+      { title: "Water Resistant", value: "Yes" },
+      { title: "Wireless Charging", value: "No" },
+      { title: "Face Recognition", value: "Yes" }
+    ]
+  };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const savedHistory = localStorage.getItem("moodHistory");
+    setMounted(true);
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
 
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    if (products.length >= 2) {
+      setProduct1(products[0].id);
+      setProduct2(products[1].id);
     }
 
-    if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        setHistory(parsedHistory.length > 0 ? parsedHistory : sampleHistoryData);
-      } catch (e) {
-        console.error("Failed to parse saved history");
-        setHistory(sampleHistoryData);
-      }
-    } else {
-      setHistory(sampleHistoryData);
-    }
+    const handleScroll = () => {
+      setScrollPosition(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Effect to handle body scrolling when modal or mobile menu is open
   useEffect(() => {
-    localStorage.setItem("theme", theme);
-    document.body.style.backgroundColor = theme === "light" ? "#ffffff" : "#0a0a0a";
-    document.body.style.color = theme === "light" ? "#171717" : "#ededed";
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("moodHistory", JSON.stringify(history));
-  }, [history]);
-
-  // Control body overflow when history panel is open
-  useEffect(() => {
-    if (showHistoryPanel) {
+    if (showSpecModal || mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    
+
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showHistoryPanel]);
+  }, [showSpecModal, mobileMenuOpen]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === "light" ? "dark" : "light");
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
   };
 
-  const handleMoodSelect = (mood: Mood["type"]) => {
-    setSelectedMood(mood);
-    setLastSelectedMood(mood);
-    if (textareaRef.current) {
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 300);
-    }
+  const addToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 3000);
   };
 
-  const saveMood = () => {
-    if (selectedMood && note.trim()) {
-      const newMood: Mood = {
-        type: selectedMood,
-        note: note.trim(),
-        timestamp: Date.now(),
-        id: Date.now().toString()
-      };
-      setHistory(prev => [newMood, ...prev]);
-      setNote("");
-      setSelectedMood(null);
-    }
+  const handleAddToCart = (product: Product) => {
+    addToast(`Added ${product.name.split('(')[0].trim()} to cart`, 'success');
   };
 
-  const resetSelection = () => {
-    setSelectedMood(null);
-    setNote("");
+  const handleBuyNow = (product: Product) => {
+    addToast(`Proceeding to checkout with ${product.name.split('(')[0].trim()}`, 'success');
   };
 
-  const deleteMoodEntry = (id: string) => {
-    setHistory(prev => prev.filter(entry => entry.id !== id));
-  };
-
-  const clearAllEntries = () => {
-    setIsConfirmModalOpen(true);
-  };
-
-  const handleConfirmClear = () => {
-    setHistory([]);
-    localStorage.removeItem("moodHistory");
-  };
-
-  const getMoodColor = (mood: Mood["type"]) => {
-    switch (mood) {
-      case "calm": return theme === "light" ? "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200" : "bg-gradient-to-br from-blue-950 to-blue-900 border-blue-800";
-      case "happy": return theme === "light" ? "bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200" : "bg-gradient-to-br from-yellow-950 to-yellow-900 border-yellow-800";
-      case "anxious": return theme === "light" ? "bg-gradient-to-br from-red-50 to-red-100 border-red-200" : "bg-gradient-to-br from-red-950 to-red-900 border-red-800";
-      case "sad": return theme === "light" ? "bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200" : "bg-gradient-to-br from-indigo-950 to-indigo-900 border-indigo-800";
-      case "energetic": return theme === "light" ? "bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200" : "bg-gradient-to-br from-orange-950 to-orange-900 border-orange-800";
-      case "angry": return theme === "light" ? "bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200" : "bg-gradient-to-br from-rose-950 to-rose-900 border-rose-800";
-      case "surprised": return theme === "light" ? "bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200" : "bg-gradient-to-br from-purple-950 to-purple-900 border-purple-800";
-      case "tired": return theme === "light" ? "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200" : "bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700";
-      case "grateful": return theme === "light" ? "bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200" : "bg-gradient-to-br from-emerald-950 to-emerald-900 border-emerald-800";
-      case "confused": return theme === "light" ? "bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200" : "bg-gradient-to-br from-amber-950 to-amber-900 border-amber-800";
-    }
-  };
-
-  const groupEntriesByDate = (entries: Mood[]) => {
-    const grouped: { [key: string]: Mood[] } = {};
-
-    entries.forEach(entry => {
-      const date = new Date(entry.timestamp);
-      const dateKey = date.toLocaleDateString();
-
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
+  const handleReviewAction = useCallback((reviewId: string, action: 'helpful' | 'notHelpful') => {
+    setReviewActions(prev => {
+      // Check if user already performed this action
+      const existingAction = prev.find(a => a.reviewId === reviewId && a.action === action);
+      
+      if (existingAction) {
+        // If the action already exists, remove it (toggle off)
+        return prev.filter(a => !(a.reviewId === reviewId && a.action === action));
+      } else {
+        // Remove opposite action if it exists
+        const withoutOpposite = prev.filter(a => !(a.reviewId === reviewId && a.action !== action));
+        // Add the new action
+        return [...withoutOpposite, { reviewId, action }];
       }
-
-      grouped[dateKey].push(entry);
     });
+    
+    // Show toast notification
+    addToast(`You marked this review as ${action === 'helpful' ? 'helpful' : 'not helpful'}`, 'success');
+  }, []);
 
-    return grouped;
+  const isActionActive = useCallback((reviewId: string, action: 'helpful' | 'notHelpful') => {
+    return reviewActions.some(a => a.reviewId === reviewId && a.action === action);
+  }, [reviewActions]);
+
+  const getAdjustedCount = useCallback((reviewId: string, originalCount: number, action: 'helpful' | 'notHelpful') => {
+    const isActive = isActionActive(reviewId, action);
+    return isActive ? originalCount + 1 : originalCount;
+  }, [isActionActive]);
+
+  const handleViewSuggestedDetails = (productId: string) => {
+    // Find product specs
+    if (suggestedProductSpecs[productId]) {
+      setShowSpecModal(productId);
+    } else {
+      addToast(`Specifications not available`, 'error');
+    }
   };
 
-  const getMoodContainerBackground = useCallback((mood: Mood["type"] | null) => {
-    if (!mood) return theme === "light" 
-      ? "from-gray-50 via-blue-50/30 to-white" 
-      : "from-gray-900 via-blue-900/10 to-black";
-    
-    switch (mood) {
-      case "calm": return theme === "light" 
-        ? "from-blue-50 via-blue-100/50 to-white" 
-        : "from-blue-950 via-blue-900/50 to-gray-900";
-      case "happy": return theme === "light" 
-        ? "from-yellow-50 via-yellow-100/50 to-white" 
-        : "from-yellow-950 via-yellow-900/50 to-gray-900";
-      case "anxious": return theme === "light" 
-        ? "from-red-50 via-red-100/50 to-white" 
-        : "from-red-950 via-red-900/50 to-gray-900";
-      case "sad": return theme === "light" 
-        ? "from-indigo-50 via-indigo-100/50 to-white" 
-        : "from-indigo-950 via-indigo-900/50 to-gray-900";
-      case "energetic": return theme === "light" 
-        ? "from-orange-50 via-orange-100/50 to-white" 
-        : "from-orange-950 via-orange-900/50 to-gray-900";
-      case "angry": return theme === "light" 
-        ? "from-rose-50 via-rose-100/50 to-white" 
-        : "from-rose-950 via-rose-900/50 to-gray-900";
-      case "surprised": return theme === "light" 
-        ? "from-purple-50 via-purple-100/50 to-white" 
-        : "from-purple-950 via-purple-900/50 to-gray-900";
-      case "tired": return theme === "light" 
-        ? "from-gray-100 via-gray-100/50 to-white" 
-        : "from-gray-800 via-gray-800/50 to-gray-900";
-      case "grateful": return theme === "light" 
-        ? "from-emerald-50 via-emerald-100/50 to-white" 
-        : "from-emerald-950 via-emerald-900/50 to-gray-900";
-      case "confused": return theme === "light" 
-        ? "from-amber-50 via-amber-100/50 to-white" 
-        : "from-amber-950 via-amber-900/50 to-gray-900";
-      default: return theme === "light" 
-        ? "from-gray-50 via-blue-50/30 to-white" 
-        : "from-gray-900 via-blue-900/10 to-black";
-    }
-  }, [theme]);
+  if (!mounted) return null;
 
-  const currentMood = selectedMood || lastSelectedMood;
-  const bgGradient = getMoodContainerBackground(currentMood);
-
-  const bgColor = theme === "light" ? "bg-white" : "bg-[#0a0a0a]";
-  const textColor = theme === "light" ? "text-black" : "text-white";
-  const buttonBg = theme === "light" ? "bg-gray-100 hover:bg-gray-200" : "bg-gray-800 hover:bg-gray-700";
-  const cardBg = theme === "light" ? "bg-white" : "bg-gray-800";
-  const borderColor = theme === "light" ? "border-gray-200" : "border-gray-700";
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      saveMood();
-    }
+  const headerStyle = {
+    transform: `translateY(${Math.min(0, -scrollPosition / 10)}px)`,
+    opacity: 1 - (scrollPosition / 500),
   };
 
   return (
-    <motion.div 
-      className="relative min-h-screen overflow-hidden"
-      animate={{ 
-        background: currentMood ? theme === "light" 
-          ? `linear-gradient(to bottom right, var(--${currentMood}-light-from), var(--${currentMood}-light-to))`
-          : `linear-gradient(to bottom right, var(--${currentMood}-dark-from), var(--${currentMood}-dark-to))`
-        : theme === "light"
-          ? "linear-gradient(to bottom right, #f9fafb, #ffffff)"
-          : "linear-gradient(to bottom right, #111827, #0a0a0a)"
-      }}
-      transition={{ duration: 1.5 }}
-    >
-      <style jsx global>{`
+    <div className={`min-h-screen transition-colors duration-300 ${theme === "dark" ? "bg-gradient-to-br from-indigo-950 via-violet-950 to-indigo-900 text-white" : "bg-gradient-to-br from-violet-50 via-indigo-50 to-violet-100 text-indigo-950"
+      } ${poppins.variable} ${montserrat.variable} font-sans`}>
+      <style>{`
         :root {
-          --calm-light-from: #eff6ff;
-          --calm-light-to: #ffffff;
-          --calm-dark-from: #172554;
-          --calm-dark-to: #0f172a;
-          
-          --happy-light-from: #fefce8;
-          --happy-light-to: #ffffff;
-          --happy-dark-from: #422006;
-          --happy-dark-to: #0f172a;
-          
-          --anxious-light-from: #fee2e2;
-          --anxious-light-to: #ffffff;
-          --anxious-dark-from: #450a0a;
-          --anxious-dark-to: #0f172a;
-          
-          --sad-light-from: #eef2ff;
-          --sad-light-to: #ffffff;
-          --sad-dark-from: #1e1b4b;
-          --sad-dark-to: #0f172a;
-          
-          --energetic-light-from: #fff7ed;
-          --energetic-light-to: #ffffff;
-          --energetic-dark-from: #431407;
-          --energetic-dark-to: #0f172a;
-          
-          --angry-light-from: #fff1f2;
-          --angry-light-to: #ffffff;
-          --angry-dark-from: #4c0519;
-          --angry-dark-to: #0f172a;
-          
-          --surprised-light-from: #faf5ff;
-          --surprised-light-to: #ffffff;
-          --surprised-dark-from: #3b0764;
-          --surprised-dark-to: #0f172a;
-          
-          --tired-light-from: #f8fafc;
-          --tired-light-to: #ffffff;
-          --tired-dark-from: #1e293b;
-          --tired-dark-to: #0f172a;
-          
-          --grateful-light-from: #ecfdf5;
-          --grateful-light-to: #ffffff;
-          --grateful-dark-from: #022c22;
-          --grateful-dark-to: #0f172a;
-          
-          --confused-light-from: #fffbeb;
-          --confused-light-to: #ffffff;
-          --confused-dark-from: #451a03;
-          --confused-dark-to: #0f172a;
+          --font-poppins: ${poppins.style.fontFamily};
+          --font-montserrat: ${montserrat.style.fontFamily};
+        }
+        
+        .font-poppins {
+          font-family: var(--font-poppins);
+        }
+        
+        .font-montserrat {
+          font-family: var(--font-montserrat);
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+          font-family: var(--font-poppins);
+          letter-spacing: -0.02em;
+        }
+        
+        body {
+          font-family: var(--font-montserrat);
+          letter-spacing: -0.01em;
+        }
+
+        /* Glass morphism */
+        .glass-light {
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          box-shadow: 0 8px 32px rgba(100, 100, 168, 0.07);
+        }
+        
+        .glass-dark {
+          background: rgba(30, 27, 75, 0.7);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(132, 100, 247, 0.15);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-card-light {
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          box-shadow: 0 4px 24px rgba(100, 100, 168, 0.15);
+        }
+        
+        .glass-card-dark {
+          background: rgba(50, 47, 95, 0.6);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(132, 100, 247, 0.2);
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .product-title {
+          font-family: var(--font-poppins);
+          font-weight: 600;
+          letter-spacing: -0.03em;
+          line-height: 1.3;
+        }
+        
+        .price-tag {
+          font-family: var(--font-poppins);
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+        
+        .button-text {
+          font-family: var(--font-montserrat);
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+        }
+        
+        .section-title {
+          font-family: var(--font-poppins);
+          font-weight: 600;
+          letter-spacing: -0.01em;
         }
       `}</style>
-      <div className={`absolute inset-0 bg-gradient-to-br ${bgGradient} opacity-90`} />
-      
-      {(selectedMood || lastSelectedMood) && <div className="fixed top-0 left-0 w-full h-full pointer-events-none">{getBackgroundElements()}</div>}
-
-      <main className={`relative z-10 flex flex-col items-center justify-center min-h-screen max-w-4xl mx-auto px-4 ${textColor}`}>
-        {!selectedMood ? (
-          <div className="w-full space-y-8 mt-2 mb-4">
-            <h1 className="text-4xl font-bold text-center mb-8 tracking-tight leading-tight transition-transform duration-300 ease-out bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
-              How are you feeling today?
-            </h1>
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-              {(["calm", "happy", "anxious", "sad", "energetic", "angry", "surprised", "tired", "grateful", "confused"] as const).map((mood) => (
-                <motion.button
-                  key={mood}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleMoodSelect(mood)}
-                  className={`${getMoodColor(mood)} border p-4 rounded-xl text-center capitalize transition-all flex flex-col items-center py-6 shadow-md backdrop-blur-md relative group hover:shadow-xl`}
-                  style={{ transform: 'translateZ(0)' }} /* Force hardware acceleration */
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.4,
-                    delay: ["calm", "happy", "anxious", "sad", "energetic", "angry", "surprised", "tired", "grateful", "confused"].indexOf(mood) * 0.05
-                  }}
-                >
-                  <motion.span
-                    className="text-4xl mb-2"
-                    animate={{ 
-                      scale: [1, 1.2, 1],
-                      rotate: mood === "energetic" ? [0, 5, -5, 0] : undefined
-                    }}
-                    transition={{ 
-                      duration: 2, 
-                      repeat: Infinity, 
-                      repeatType: "reverse",
-                      ease: "easeInOut",
-                      delay: ["calm", "happy", "anxious", "sad", "energetic", "angry", "surprised", "tired", "grateful", "confused"].indexOf(mood) * 0.1
-                    }}
-                  >
-                    {getMoodEmoji(mood)}
-                  </motion.span>
-                  <span className="font-medium">{mood}</span>
-                  <motion.div
-                    className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                    initial={{ opacity: 0 }}
-                    whileHover={{ opacity: 1 }}
-                    style={{
-                      background: `radial-gradient(circle at center, ${theme === "light" ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 255, 255, 0.1)"} 0%, transparent 70%)`,
-                      pointerEvents: "none"
-                    }}
-                  />
-                </motion.button>
-              ))}
-            </div>
-
-            <motion.div
-              className={`mb-10 p-6 rounded-xl backdrop-blur-xl ${theme === "light" ? "bg-white/70" : "bg-gray-800/50"} border border-gray-200/50 dark:border-gray-700/50 shadow-lg`}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xl mr-3">
-                  <motion.div
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    💭
-                  </motion.div>
-                </div>
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                  Tracking Your Emotions
-                </h2>
-              </div>
-
-              <ul className="space-y-4 text-sm">
-                <li className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5">
-                  <div className="mt-1 text-blue-500 text-lg">•</div>
-                  <div>
-                    <p className="font-medium text-base mb-1">Record Your Feelings</p>
-                    <p>Track and reflect on your emotions to understand your patterns over time.</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5">
-                  <div className="mt-1 text-purple-500 text-lg">•</div>
-                  <div>
-                    <p className="font-medium text-base mb-1">Floating Memory Bubbles</p>
-                    <p>Your saved mood entries will appear as interactive floating bubbles on this screen.</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-indigo-500/10 to-indigo-500/5">
-                  <div className="mt-1 text-indigo-500 text-lg">•</div>
-                  <div>
-                    <p className="font-medium text-base mb-1">Explore Past Emotions</p>
-                    <p>Hover over any bubble to see when you felt that way and what you wrote.</p>
-                  </div>
-                </li>
-              </ul>
-
-              <div className="mt-5 p-3 rounded-lg bg-gradient-to-r from-pink-500/10 to-orange-500/10 flex items-center gap-3">
-                <div className="flex-shrink-0 text-xl">💡</div>
-                <p className="text-sm">Try adding a few emotions to see them appear as floating bubbles on your screen!</p>
-              </div>
-            </motion.div>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className={`w-full ${cardBg} border ${borderColor} rounded-xl shadow-xl p-6 backdrop-blur-xl ${theme === "light" ? "bg-white/90" : "bg-gray-800/70"}`}
-            style={{
-              boxShadow: theme === "light"
-                ? "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03), 0 0 40px -10px rgba(147, 197, 253, 0.25)"
-                : "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05)"
-            }}
-          >
-              <div className="flex justify-between items-center mb-5">
-                <motion.button
-                  whileHover={{ scale: 1.05, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)" }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={resetSelection}
-                  className={`${buttonBg} p-2 rounded-full transition-colors backdrop-blur-md shadow-sm ${theme === "light" ? "bg-gradient-to-r from-gray-50 to-gray-100/90" : ""}`}
-                >
-                  <X size={18} />
-                </motion.button>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getMoodEmoji(selectedMood)}</span>
-                  <span className="font-medium capitalize text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{selectedMood}</span>
-                </div>
-                <motion.button
-                  whileHover={{ scale: note.trim() ? 1.05 : 1, boxShadow: note.trim() ? "0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)" : "none" }}
-                  whileTap={{ scale: note.trim() ? 0.95 : 1 }}
-                  onClick={saveMood}
-                  disabled={!note.trim()}
-                  className={`${buttonBg} p-2 rounded-full transition-colors backdrop-blur-md shadow-sm ${!note.trim() ? "opacity-50 cursor-not-allowed" : ""} ${theme === "light" ? "bg-gradient-to-r from-blue-500/90 to-purple-500/90 hover:from-blue-600/90 hover:to-purple-600/90 text-white" : "bg-gradient-to-r from-purple-900/70 to-pink-900/70"}`}
-                >
-                  <Save size={18} />
-                </motion.button>
-              </div>
-
-              <textarea
-                ref={textareaRef}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Why do you feel this way?"
-                className={`w-full p-4 rounded-xl border ${borderColor} ${bgColor} ${textColor} min-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-400/50 ${theme === "light" ? "bg-white/80 placeholder-gray-400" : "bg-gray-800/60"} backdrop-blur-md shadow-inner`}
-                style={{
-                  boxShadow: theme === "light"
-                    ? "inset 0 2px 4px 0 rgba(0, 0, 0, 0.03), inset 0 0 0 1px rgba(0, 0, 0, 0.02)"
-                    : "inset 0 2px 4px 0 rgba(0, 0, 0, 0.15)"
-                }}
-              />
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center"
-              >
-              <p>Your mood will be saved to your history when you click the save button</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </main>
-
-      {history.length > 0 && !selectedMood && showHistory && (
-        <div className="fixed inset-0 pointer-events-none z-[50]">
-          {/* Only render a maximum of 10 bubbles to improve performance */}
-          {history.slice(0, 10).map((entry) => (
-            <HistoryBubble
-              key={entry.id}
-              entry={entry}
-              theme={theme}
-              onDelete={deleteMoodEntry}
-              isFormOpen={selectedMood !== null}
-            />
-          ))}
-        </div>
-      )}
-
-      {history.length > 0 && !selectedMood && (
-        <div className="fixed bottom-20 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-[9960] flex flex-col items-center gap-3">
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={clearAllEntries}
-            className={`${theme === "light" ? "bg-white text-gray-800 border-gray-300 shadow-md" : "bg-gray-800/80 text-gray-300 border-gray-700"} backdrop-blur-md px-3 sm:px-5 py-2 rounded-full border text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 font-medium max-w-[calc(100vw-2rem)]`}
-          >
-            <X size={14} className={theme === "light" ? "text-red-500" : "text-red-400"} />
-            <span className="truncate">Clear All Mood History</span>
-          </motion.button>
-        </div>
-      )}
-
-      <div className="fixed bottom-6 right-3 sm:right-6 z-[9950] flex items-center gap-2 sm:gap-3">
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowHistory(prev => !prev)}
-          className={`p-2.5 sm:p-3 rounded-full transition-colors shadow-md flex items-center justify-center ${!showHistory 
-            ? theme === "light" 
-              ? "bg-gray-200 text-gray-600" 
-              : "bg-gray-600 text-gray-300" 
-            : theme === "light"
-              ? "bg-blue-50 text-blue-600 border border-blue-200"
-              : "bg-blue-900/40 text-blue-300 border border-blue-800"
-          }`}
-          aria-label="Toggle floating bubbles"
-        >
-          <span className="text-lg sm:text-xl">💭</span>
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            if (selectedMood === null) {
-              setShowHistoryPanel(prev => !prev);
-            }
+      <header
+        ref={headerRef}
+        style={headerStyle}
+        className={`top-0 z-50 flex justify-between items-center py-5 px-6 shadow-lg transition-all duration-300 relative overflow-hidden ${theme === "dark" ? "glass-dark border-b border-violet-800/20" : "glass-light border-b border-violet-200/30"}`}
+      >
+        {/* Decorative header elements */}
+        <motion.div
+          className="absolute top-0 left-0 w-20 h-20 bg-violet-400/10 rounded-full -ml-10 -mt-10"
+          animate={{
+            scale: [1, 1.05, 1],
+            opacity: [0.5, 0.7, 0.5]
           }}
-          className={`p-3 rounded-full transition-colors shadow-md flex items-center justify-center ${
-            showHistoryPanel 
-              ? "bg-blue-500 dark:bg-blue-600 text-white" 
-              : theme === "light"
-                ? "bg-white text-gray-700 border border-gray-200"
-                : "bg-gray-800 text-gray-300 border border-gray-700"
-          }`}
-          aria-label="Toggle history panel"
-        >
-          <History size={20} />
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
-          whileTap={{ scale: 0.95 }}
-          onClick={toggleTheme}
-          className={`p-3 rounded-full transition-colors shadow-md flex items-center justify-center ${
-            theme === "light" 
-              ? "bg-white text-gray-700 border border-gray-200" 
-              : "bg-gray-800 text-gray-300 border border-gray-700"
-          }`}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-        </motion.button>
-      </div>
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        ></motion.div>
+        <motion.div
+          className="absolute bottom-0 right-0 w-16 h-16 bg-fuchsia-400/10 rounded-full -mr-8 -mb-8"
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.5, 0.7, 0.5]
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+        ></motion.div>
 
+        <div className="flex items-center relative z-10">
+          <motion.h1
+            className="font-poppins text-2xl sm:text-3xl lg:text-4xl font-bold relative group tracking-tight cursor-pointer"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+            whileHover={{ scale: 1.02 }}
+            onClick={() => addToast("Home page is not available yet", 'error')}
+          >
+            <span className="relative z-10 inline-block bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-transparent">
+              Tech
+              <motion.span
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              />
+            </span>
+            <span className="relative z-10 inline-block bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-transparent">
+              Compare
+              <motion.span
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-fuchsia-500 to-indigo-500"
+              />
+            </span>
+            <span className={`absolute -bottom-1 left-0 w-full h-2 bg-gradient-to-r ${theme === "dark"
+                ? "from-violet-500/20 via-fuchsia-500/20 to-indigo-500/20"
+                : "from-violet-400/20 via-fuchsia-400/20 to-indigo-400/20"
+              } rounded-full blur-sm group-hover:blur-md transition-all duration-300`}></span>
+          </motion.h1>
+          <div className="ml-4 hidden sm:flex space-x-5 text-sm">
+            {["Electronics", "Computers", "Phones", "Accessories", "Wearables"].map((item, index) => (
+              <motion.span
+                key={item}
+                className="font-montserrat hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer transition-colors duration-200 px-3 py-1 rounded-full hover:bg-violet-50 dark:hover:bg-violet-900/20"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => addToast(`${item} section is not available yet`, 'error')}
+              >
+                {item}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+        <motion.div
+          className="flex items-center space-x-4 relative z-10"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          {/* Mobile menu button */}
+          <motion.button
+            className="sm:hidden p-2 rounded-full transition-all duration-300 cursor-pointer"
+            style={{ 
+              backgroundColor: theme === "dark" ? "rgba(79, 70, 229, 0.4)" : "rgba(139, 92, 246, 0.2)",
+              color: theme === "dark" ? "#A5B4FC" : "#6D28D9" 
+            }}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {mobileMenuOpen ? <FaTimes /> : <FaBars />}
+          </motion.button>
+          
+          <motion.button
+            onClick={toggleTheme}
+            className={`p-2 rounded-full transition-all duration-300 cursor-pointer ${theme === "dark"
+              ? "bg-indigo-800/40 text-indigo-200 hover:bg-indigo-700/60 backdrop-blur-md border border-indigo-700/50"
+              : "bg-violet-200/80 text-violet-800 hover:bg-violet-300/80 backdrop-blur-md border border-violet-300/80"
+              } shadow-lg hover:shadow-xl`}
+            whileHover={{ scale: 1.1, rotate: 15 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {theme === "dark" ? <FaMoon /> : <FaSun />}
+          </motion.button>
+        </motion.div>
+      </header>
+
+      {/* Mobile menu dropdown */}
       <AnimatePresence>
-        {isConfirmModalOpen && (
-          <ConfirmModal
-            isOpen={isConfirmModalOpen}
-            onClose={() => setIsConfirmModalOpen(false)}
-            onConfirm={handleConfirmClear}
-            theme={theme}
-          />
-        )}
-        
-        {showHistoryPanel && !selectedMood && (
+        {mobileMenuOpen && (
           <>
+            {/* Backdrop overlay */}
             <motion.div 
-              className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-[8990]"
+              className="sm:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowHistoryPanel(false)}
+              onClick={() => setMobileMenuOpen(false)}
             />
-            <MoodHistoryPanel
-              entries={history}
-              theme={theme}
-              onDelete={deleteMoodEntry}
-              onClose={() => setShowHistoryPanel(false)}
-            />
+            
+            <motion.div 
+              className={`sm:hidden fixed top-[70px] inset-x-0 z-40 shadow-xl ${
+                theme === "dark" 
+                  ? "bg-gradient-to-b from-indigo-900/95 to-violet-900/95 border-b border-indigo-800/50" 
+                  : "bg-gradient-to-b from-white/95 to-violet-50/95 border-b border-violet-100/80"
+              } backdrop-blur-md overflow-hidden`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <div className="px-4 py-4">
+                <motion.div 
+                  className="w-16 h-16 rounded-full bg-violet-400/10 absolute top-0 right-0 -mr-8 -mt-8 z-0"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                ></motion.div>
+                
+                <motion.div 
+                  className="w-20 h-20 rounded-full bg-fuchsia-400/10 absolute bottom-0 left-0 -ml-10 -mb-10 z-0"
+                  animate={{
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    duration: 7,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.5
+                  }}
+                ></motion.div>
+                
+                <div className="relative z-10 space-y-1">
+                  {[
+                    { name: "Electronics", icon: <FaTabletAlt /> },
+                    { name: "Computers", icon: <FaLaptop /> },
+                    { name: "Phones", icon: <FaMobile /> },
+                    { name: "Accessories", icon: <FaHeadphones /> },
+                    { name: "Wearables", icon: <FaClock /> }
+                  ].map((item, index) => (
+                    <motion.div
+                      key={item.name}
+                      className={`font-montserrat py-3.5 px-5 cursor-pointer rounded-xl flex items-center gap-3 ${
+                        theme === "dark"
+                          ? "hover:bg-indigo-800/60 hover:text-violet-300 text-white"
+                          : "hover:bg-violet-100/80 hover:text-violet-700 text-gray-800"
+                      } transition-all duration-200`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index, duration: 0.3 }}
+                      onClick={() => {
+                        addToast(`${item.name} section is not available yet`, 'error');
+                        setMobileMenuOpen(false);
+                      }}
+                      whileHover={{ x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className={`${
+                        theme === "dark" 
+                          ? "bg-indigo-800/60 text-violet-300" 
+                          : "bg-violet-100 text-violet-600"
+                      } p-2 rounded-lg`}>
+                        {item.icon}
+                      </div>
+                      <span className="font-medium">{item.name}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      <style jsx global>{`
-        .tooltip-arrow {
-          fill: ${theme === "light" ? "white" : "#1f2937"};
-          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
-        }
-      `}</style>
-
-      {history.length === 0 && !selectedMood && (
-        <div className="fixed bottom-[100px] left-1/2 transform -translate-x-1/2 z-[8000]">
+      <main className="flex flex-col md:flex-row max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 gap-8 sm:gap-12">
+        {/* Suggestions sidebar */}
+        <aside className="hidden md:block w-72 flex-shrink-0">
+          <div>
+            <div className={`mb-8 font-poppins text-xl font-semibold ${theme === 'dark' ? 'text-violet-300' : 'text-violet-700'} flex items-center border-b pb-3 border-violet-500/20`}>
+              <span className="relative flex items-center gap-2">
+                <span className={`p-1.5 rounded-full ${theme === 'dark' ? 'bg-violet-900/50' : 'bg-violet-100'}`}>
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${theme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`} viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                  </motion.div>
+                </span>
+                Suggestions
+                <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-violet-400 to-fuchsia-400 rounded-full"></span>
+              </span>
+            </div>
+            <div className="space-y-8">
+              {suggestions.map(s => (
+                <motion.div
+                  key={s.id}
+                  className={`group relative flex flex-col p-6 rounded-2xl cursor-pointer ${theme === 'dark'
+                    ? 'bg-indigo-900/40 shadow-gray-900/30 border border-violet-800/30 hover:border-violet-700/40'
+                    : 'bg-white/95 shadow-xl hover:shadow-2xl border border-violet-200/40 hover:border-violet-300/60'
+                    } backdrop-blur-md transition-all duration-500 overflow-hidden`}
+                  whileHover={{ scale: 1.03, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  onClick={() => addToast(`${s.name} has been added to your wishlist`, 'success')}
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-violet-400/5 rounded-full -mr-8 -mt-8 group-hover:bg-violet-400/10 transition-colors duration-300"></div>
+                  <div className="absolute bottom-0 left-0 w-20 h-20 bg-fuchsia-400/5 rounded-full -ml-8 -mb-8 group-hover:bg-fuchsia-400/10 transition-colors duration-300"></div>
+                  
+                  <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 group-hover:shadow-lg transition-all duration-500">
+                      <img
+                        src={s.image}
+                        alt={s.name}
+                      className="w-full h-full object-cover rounded-xl group-hover:scale-110 transition-transform duration-700"
+                      />
+                    <motion.div
+                      className="absolute top-3 left-3 px-3 py-1.5 bg-violet-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <span className="tracking-wider">NEW</span>
+                    </motion.div>
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center ${theme === 'dark' ? 'bg-indigo-900/60' : 'bg-violet-500/30'} backdrop-blur-sm`}>
+                      <div 
+                        className={`px-4 py-2.5 rounded-full ${theme === 'dark' ? 'bg-violet-500/90' : 'bg-violet-600/90'} text-white font-semibold flex items-center gap-2 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300`}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent onClick
+                          handleViewSuggestedDetails(s.id);
+                        }}
+                      >
+                        <FaRegEye className="text-sm" />
+                        <span className="text-sm tracking-wide">View details</span>
+                  </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 relative z-10">
+                    <h3 className={`font-poppins font-semibold text-lg mb-2 ${theme === 'dark' ? 'text-white group-hover:text-violet-300' : 'text-gray-800 group-hover:text-violet-700'} transition-colors duration-300`}>{s.name}</h3>
+                    <div className={`text-xl font-bold ${theme === 'dark' ? 'bg-gradient-to-r from-violet-400 to-fuchsia-300' : 'bg-gradient-to-r from-violet-600 to-fuchsia-500'} bg-clip-text text-transparent mt-1 mb-3 font-poppins`}>₹{s.price?.toLocaleString()}</div>
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <motion.span
+                            key={i}
+                            className={`text-lg ${i < Math.floor(s.rating) ? (theme === 'dark' ? 'text-yellow-300' : 'text-yellow-400') : (theme === 'dark' ? 'text-gray-600' : 'text-gray-300')}`}
+                            initial={false}
+                            animate={i < Math.floor(s.rating) ? { scale: [1, 1.2, 1] } : {}}
+                            transition={{ duration: 0.5, delay: i * 0.1 }}
+                          >
+                            ★
+                          </motion.span>
+                        ))}
+                      </div>
+                      <span className={`font-medium px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-violet-900/50 text-violet-300' : 'bg-violet-100 text-violet-700'} text-sm`}>{s.rating}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </aside>
+        {/* Main content (comparison, tabs, etc.) goes here, wrapped in a flex-1 div */}
+        <div className="flex-1 relative">
+          {/* Decorative background elements */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${theme === "light" ? "bg-white/80 text-gray-600 border-gray-200" : "bg-gray-800/80 text-gray-300 border-gray-700"} rounded-xl p-4 backdrop-blur-md shadow-lg border text-center max-w-xs`}
+            className="hidden lg:block absolute -top-20 -right-20 w-64 h-64 bg-violet-400/5 dark:bg-violet-400/5 rounded-full"
+            animate={{
+              y: [0, -20, 0],
+              scale: [1, 1.05, 1],
+              opacity: [0.5, 0.7, 0.5]
+            }}
+            transition={{
+              duration: 6,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          ></motion.div>
+          <motion.div
+            className="hidden lg:block absolute top-40 -left-24 w-48 h-48 bg-fuchsia-400/5 dark:bg-fuchsia-400/5 rounded-full"
+            animate={{
+              y: [0, 15, 0],
+              scale: [1, 1.1, 1],
+              opacity: [0.4, 0.6, 0.4]
+            }}
+            transition={{
+              duration: 7,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.5
+            }}
+          ></motion.div>
+          <motion.div
+            className="hidden lg:block absolute bottom-20 right-10 w-40 h-40 bg-indigo-400/5 dark:bg-indigo-400/5 rounded-full"
+            animate={{
+              y: [0, -10, 0],
+              x: [0, 5, 0],
+              scale: [1, 1.08, 1],
+              opacity: [0.5, 0.7, 0.5]
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1
+            }}
+          ></motion.div>
+
+          <div className="mb-6 sm:mb-10 relative z-10">
+            <div className="flex flex-col items-start">
+              <h2 className="font-poppins text-xl sm:text-2xl font-bold mb-3 tracking-tight">
+                <span className={`${theme === "dark" ? "text-white" : "text-gray-900"}`}>Premium Smartphone Comparison</span>
+            </h2>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center">
+                  <span className={`inline-block w-3 h-3 rounded-full ${theme === "dark" ? "bg-violet-500" : "bg-violet-600"} mr-2`}></span>
+                  <span className={`font-medium ${theme === "dark" ? "text-violet-300" : "text-violet-700"}`}>Apple iPhone 15 Pro</span>
+                  <span className="text-xs font-medium opacity-60 ml-1">
+                    (Black Titanium, 128 GB)
+                  </span>
+                </div>
+                
+                <span className="hidden sm:inline-block text-gray-400">vs</span>
+                
+                <div className="flex items-center">
+                  <span className={`inline-block w-3 h-3 rounded-full ${theme === "dark" ? "bg-indigo-500" : "bg-indigo-600"} mr-2`}></span>
+                  <span className={`font-medium ${theme === "dark" ? "text-indigo-300" : "text-indigo-700"}`}>SAMSUNG Galaxy S24 5G</span>
+                  <span className="text-xs font-medium opacity-60 ml-1">
+                    (Titanium Gray, 256 GB)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+
+            {product1 && product2 && (
+              <>
+                {[product1, product2].map((productId, index) => {
+                  const product = products.find(p => p.id === productId);
+                  if (!product) return null;
+
+                  return (
+                    <motion.div
+                      key={product.id}
+                      className={`p-0 rounded-2xl ${theme === "dark"
+                        ? "bg-indigo-900/40 backdrop-blur-sm border border-indigo-800/50"
+                        : "bg-white/95 backdrop-blur-sm border border-violet-100/50"
+                        } relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: 0.1 * index,
+                        duration: 0.5,
+                        ease: "easeOut"
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      {/* Decorative elements */}
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-violet-400/5 rounded-full -mr-20 -mt-20 z-0"></div>
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-fuchsia-400/5 rounded-full -ml-16 -mb-16 z-0"></div>
+                    
+                      <div className="flex flex-col relative z-10 h-full">
+                          <motion.div
+                          className="w-full"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.4 + (0.1 * index) }}
+                          >
+                          <div className="relative w-full pt-[75%] overflow-hidden">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="absolute inset-0 w-full h-full object-cover rounded-t-2xl"
+                            />
+                            {product.discount && (
+                              <motion.div 
+                                className="absolute top-4 left-4 px-3 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-full shadow-md"
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.5 + (0.1 * index) }}
+                              >
+                                {product.discount}% OFF
+                          </motion.div>
+                            )}
+                          </div>
+                        </motion.div>
+                        
+                        <div className="p-6 flex flex-col flex-1">
+                          <motion.h2
+                            className="product-title text-xl mb-3 text-left leading-tight"
+                            style={{ color: theme === "dark" ? "#F5F3FF" : "#1F1646" }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3 + (0.1 * index) }}
+                          >
+                            {product.name.split('(')[0].trim()} 
+                            <span className="text-sm font-medium opacity-60" style={{ color: theme === "dark" ? "#A78BFA" : "#6D28D9" }}>
+                              ({product.name.split('(')[1]?.trim() || ""})
+                            </span>
+                          </motion.h2>
+                          
+                          <div className="mb-4 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 rounded-lg p-2.5">
+                            <div className="flex items-baseline gap-2">
+                              <span className="price-tag text-2xl" style={{ color: theme === "dark" ? "#A78BFA" : "#6D28D9" }}>
+                                ₹{product.price.toLocaleString()}
+                              </span>
+                              {product.originalPrice && (
+                                <span className="ml-2 text-sm line-through font-medium opacity-60" style={{ color: theme === "dark" ? "#9CA3AF" : "#6B7280" }}>
+                                  ₹{product.originalPrice.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mb-5">
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ 
+                              backgroundColor: theme === "dark" ? "rgba(139, 92, 246, 0.2)" : "rgba(139, 92, 246, 0.1)",
+                              color: theme === "dark" ? "#C4B5FD" : "#6D28D9" 
+                            }}>
+                              <FaStar className="text-sm" />
+                              <span className="font-medium">{product.rating}</span>
+                            </div>
+                            <span className="text-sm" style={{ color: theme === "dark" ? "#9CA3AF" : "#6B7280" }}>
+                              ({product.reviews} Reviews)
+                            </span>
+                          </div>
+                          
+                          <div className="mb-6 flex-1">
+                            <h3 className="section-title flex items-center gap-2 mb-4 text-violet-500 font-semibold">
+                              <span className="text-lg">✓</span> Highlights
+                            </h3>
+                            
+                            <div className="grid grid-cols-[1fr_2fr] gap-y-3" style={{ color: theme === "dark" ? "#D1D5DB" : "#4B5563" }}>
+                              <div className="font-medium">Storage:</div>
+                              <div>{product.storage}</div>
+                              <div className="font-medium">RAM:</div>
+                              <div>{product.ram}</div>
+                              <div className="font-medium">Processor:</div>
+                              <div>{product.processor}</div>
+                              <div className="font-medium">Camera:</div>
+                              <div>{product.camera}</div>
+                              <div className="font-medium">Display:</div>
+                              <div>{product.display}</div>
+                              <div className="font-medium">Warranty:</div>
+                              <div>{product.warranty}</div>
+                            </div>
+                            </div>
+                          
+                          <div className="flex flex-col gap-3 mt-auto">
+                          <motion.button
+                              className="button-text w-full py-3.5 rounded-lg text-white flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer"
+                              style={{ 
+                                background: theme === "dark" 
+                                  ? "linear-gradient(90deg, rgb(124, 58, 237) 0%, rgb(99, 102, 241) 100%)" 
+                                  : "linear-gradient(90deg, rgb(124, 58, 237) 0%, rgb(99, 102, 241) 100%)",
+                                boxShadow: theme === "dark" 
+                                  ? "0 4px 10px rgba(124, 58, 237, 0.3)" 
+                                  : "0 4px 10px rgba(124, 58, 237, 0.15)" 
+                              }}
+                            onClick={() => handleAddToCart(product)}
+                              whileHover={{ scale: 1.02, boxShadow: "0 6px 15px rgba(124, 58, 237, 0.4)" }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <FaCartPlus />
+                            <span>Add to Cart</span>
+                          </motion.button>
+                            
+                          <motion.button
+                              className="button-text w-full py-3.5 rounded-lg text-white flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer"
+                              style={{ 
+                                background: theme === "dark" 
+                                  ? "linear-gradient(90deg, rgb(109, 40, 217) 0%, rgb(91, 33, 182) 100%)" 
+                                  : "linear-gradient(90deg, rgb(109, 40, 217) 0%, rgb(91, 33, 182) 100%)",
+                                boxShadow: theme === "dark" 
+                                  ? "0 4px 10px rgba(109, 40, 217, 0.3)" 
+                                  : "0 4px 10px rgba(109, 40, 217, 0.15)" 
+                              }}
+                            onClick={() => handleBuyNow(product)}
+                              whileHover={{ scale: 1.02, boxShadow: "0 6px 15px rgba(109, 40, 217, 0.4)" }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <FaShoppingBag />
+                            <span>Buy Now</span>
+                          </motion.button>
+                            
+                          <motion.button
+                              className="button-text w-full py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer"
+                              style={{ 
+                                backgroundColor: theme === "dark" ? "rgba(55, 65, 81, 0.6)" : "rgba(243, 244, 246, 0.9)",
+                                color: theme === "dark" ? "#E5E7EB" : "#374151",
+                                boxShadow: theme === "dark" ? "0 2px 5px rgba(0, 0, 0, 0.2)" : "0 2px 5px rgba(0, 0, 0, 0.05)"
+                              }}
+                            onClick={() => setShowSpecModal(product.id)}
+                              whileHover={{ 
+                                scale: 1.02,
+                                backgroundColor: theme === "dark" ? "rgba(75, 85, 99, 0.6)" : "rgba(229, 231, 235, 0.9)"
+                              }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <FaRegEye />
+                            <span>View Full Specification</span>
+                          </motion.button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          <div
+            className="mt-10 opacity-0 animate-fadeIn rounded-xl overflow-hidden shadow-xl"
+            style={{
+              animationDelay: '0.8s',
+              animationFillMode: 'forwards',
+              borderWidth: '1px',
+              borderColor: theme === "dark" ? 'rgba(109, 40, 217, 0.2)' : 'rgba(139, 92, 246, 0.1)'
+            }}
           >
-            <div className="text-2xl mb-2">😊</div>
-            <p className="text-sm">Select a mood to record how you're feeling today!</p>
-          </motion.div>
+            <div className={`${theme === "dark"
+              ? "glass-dark"
+              : "glass-light"
+              }`}>
+              <div className="flex border-b overflow-x-auto scrollbar-hide relative">
+                {[
+                  { id: "highlights", label: "Highlights" },
+                  { id: "ratings", label: "Ratings & Reviews" },
+                  { id: "general", label: "General Features" },
+                  { id: "seller", label: "Seller" },
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium transition-colors whitespace-nowrap relative font-poppins cursor-pointer ${activeTab === tab.id
+                      ? theme === "dark"
+                        ? "text-violet-300"
+                        : "text-violet-700"
+                      : theme === "dark"
+                        ? "text-gray-400 hover:text-violet-400"
+                        : "text-gray-600 hover:text-violet-600"
+                      }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {activeTab === tab.id && (
+                      <motion.span
+                        className="absolute bottom-0 left-0 h-0.5 w-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                        layoutId="activeTab"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      ></motion.span>
+                    )}
+                    {tab.label}
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Highlights Tab */}
+              {activeTab === "highlights" && (
+                <div className="p-6 md:p-8">
+                  <div className={`text-xl font-semibold mb-8 font-poppins ${theme === "dark" ? "text-violet-300" : "text-violet-700"}`}>Key Features</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {product1 && product2 && (
+                      <>
+                        {[product1, product2].map((productId, idx) => {
+                          const product = products.find(p => p.id === productId);
+                          if (!product) return null;
+
+                          return (
+                            <div key={product.id}>
+                              <div className="md:hidden text-lg font-semibold text-left mb-4 font-poppins">
+                                <h3 className={`${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                                  {product.name.split('(')[0].trim()}
+                                  <span className="text-sm font-medium opacity-60 ml-1">
+                                    ({product.name.split('(')[1]?.trim() || ""})
+                                  </span>
+                                </h3>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>Storage</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.storage}</div>
+                                </div>
+
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>RAM</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.ram}</div>
+                                </div>
+
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>Processor</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.processor}</div>
+                                </div>
+
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>Camera</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.camera}</div>
+                                </div>
+
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>Display</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.display}</div>
+                                </div>
+
+                                <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-indigo-900/30" : "bg-indigo-50/70"} border ${theme === "dark" ? "border-violet-800/20" : "border-violet-100"}`}>
+                                  <div className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"} font-montserrat`}>Battery</div>
+                                  <div className={`text-base font-semibold mt-1 ${theme === "dark" ? "text-white" : "text-gray-900"} font-poppins`}>{product.battery}</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mt-12">
+                    <div className={`text-xl font-semibold mb-8 font-poppins ${theme === "dark" ? "text-violet-300" : "text-violet-700"}`}>Comparison Metrics</div>
+
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-[1fr_1fr_1fr] gap-6 items-center">
+                        <div className={`text-base font-medium font-poppins ${theme === "dark" ? "text-white" : "text-gray-900"}`}>Value for Money</div>
+
+                        {product1 && product2 && (
+                          <>
+                            {[product1, product2].map(productId => {
+                              const product = products.find(p => p.id === productId);
+                              if (!product) return null;
+
+                              return (
+                                <div key={`value-${product.id}`}>
+                                  <div className={`w-full h-7 rounded-full overflow-hidden ${theme === "dark" ? "bg-indigo-900/50 backdrop-blur-sm" : "bg-indigo-100/50 backdrop-blur-sm"}`}>
+                                    <div
+                                      className={`h-7 rounded-full ${theme === "dark" ? "bg-gradient-to-r from-violet-600/90 to-indigo-600/90" : "bg-gradient-to-r from-violet-500 to-indigo-500"} flex items-center justify-start pl-3 text-sm font-medium text-white font-montserrat`}
+                                      style={{ width: `${product.features.value}%` }}
+                                    >
+                                      {product.features.value}%
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-[1fr_1fr_1fr] gap-6 items-center">
+                        <div className={`text-base font-medium font-poppins ${theme === "dark" ? "text-white" : "text-gray-900"}`}>Build Quality</div>
+
+                        {product1 && product2 && (
+                          <>
+                            {[product1, product2].map(productId => {
+                              const product = products.find(p => p.id === productId);
+                              if (!product) return null;
+
+                              return (
+                                <div key={`quality-${product.id}`}>
+                                  <div className={`w-full h-7 rounded-full overflow-hidden ${theme === "dark" ? "bg-indigo-900/50 backdrop-blur-sm" : "bg-indigo-100/50 backdrop-blur-sm"}`}>
+                                    <div
+                                      className={`h-7 rounded-full ${theme === "dark" ? "bg-gradient-to-r from-violet-600/90 to-indigo-600/90" : "bg-gradient-to-r from-violet-500 to-indigo-500"} flex items-center justify-start pl-3 text-sm font-medium text-white font-montserrat`}
+                                      style={{ width: `${product.features.quality}%` }}
+                                    >
+                                      {product.features.quality}%
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-[1fr_1fr_1fr] gap-6 items-center">
+                        <div className={`text-base font-medium font-poppins ${theme === "dark" ? "text-white" : "text-gray-900"}`}>Market Share</div>
+
+                        {product1 && product2 && (
+                          <>
+                            {[product1, product2].map(productId => {
+                              const product = products.find(p => p.id === productId);
+                              if (!product) return null;
+
+                              return (
+                                <div key={`popularity-${product.id}`}>
+                                  <div className={`w-full h-7 rounded-full overflow-hidden ${theme === "dark" ? "bg-indigo-900/50 backdrop-blur-sm" : "bg-indigo-100/50 backdrop-blur-sm"}`}>
+                                    <div
+                                      className={`h-7 rounded-full ${theme === "dark" ? "bg-gradient-to-r from-violet-600/90 to-indigo-600/90" : "bg-gradient-to-r from-violet-500 to-indigo-500"} flex items-center justify-start pl-3 text-sm font-medium text-white font-montserrat`}
+                                      style={{ width: `${product.features.popularity}%` }}
+                                    >
+                                      {product.features.popularity}%
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ratings & Reviews Tab */}
+              {activeTab === "ratings" && (
+                <div className="p-6 md:p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {product1 && product2 && (
+                      <>
+                        {[product1, product2].map(productId => {
+                          const product = products.find(p => p.id === productId);
+                          if (!product) return null;
+                          const reviews = mockReviews[productId] || [];
+                          return (
+                            <div key={product.id} className="text-left">
+                              <div className={`font-poppins font-semibold text-lg mb-4 ${theme === "dark" ? "text-violet-300" : "text-violet-700"}`}>
+                                {product.name.split('(')[0].trim()}
+                                <span className="text-sm font-medium opacity-60 ml-1">
+                                  ({product.name.split('(')[1]?.trim() || ""})
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center gap-4 mb-6 p-4 rounded-lg bg-opacity-30" style={{
+                                backgroundColor: theme === "dark" ? "rgba(79, 70, 229, 0.1)" : "rgba(124, 58, 237, 0.05)",
+                                borderLeft: `3px solid ${theme === "dark" ? "#8B5CF6" : "#7C3AED"}`
+                              }}>
+                                <div className="text-4xl font-poppins font-bold" style={{ color: theme === "dark" ? "#A78BFA" : "#7C3AED" }}>
+                                  {product.rating}
+                                </div>
+                                <div>
+                                  <div className="flex text-amber-400 mb-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span key={star} className={star <= Math.floor(product.rating) ? "text-amber-400" : "text-gray-300"}>★</span>
+                                    ))}
+                                  </div>
+                                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    Based on {product.reviews} reviews
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-5">
+                                {reviews.map((review, idx) => (
+                                  <div key={idx} className={`p-5 rounded-lg ${theme === "dark" ? "bg-indigo-900/20 border border-indigo-900/40" : "bg-white border border-violet-100"} shadow-sm text-left`}>
+                                    <div className="flex justify-between mb-3">
+                                      <div className="flex items-center">
+                                        <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold ${review.rating >= 4
+                                          ? theme === "dark"
+                                            ? 'bg-violet-900/60 text-violet-200'
+                                            : 'bg-violet-100 text-violet-800'
+                                          : theme === "dark"
+                                            ? 'bg-amber-900/60 text-amber-200'
+                                            : 'bg-amber-100 text-amber-800'
+                                          }`}>
+                                          {review.rating}
+                                          <span className="ml-1 text-amber-400">★</span>
+                                        </div>
+                                        <div className="ml-3 font-poppins font-medium text-base">{review.title}</div>
+                                      </div>
+                                      <div className="text-xs font-medium opacity-70 font-montserrat">{review.date}</div>
+                                    </div>
+                                    <div className="text-xs mb-2 opacity-60 font-montserrat">by {review.user}</div>
+                                    <p className="text-sm mb-3 font-montserrat leading-relaxed opacity-90">{review.text}</p>
+                                    <div className="flex mt-3 text-xs font-medium">
+                                      <div 
+                                        className="mr-5 flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+                                        style={{ color: theme === "dark" ? "#A78BFA" : "#7C3AED" }}
+                                        onClick={() => handleReviewAction(review.id, 'helpful')}
+                                      >
+                                        {isActionActive(review.id, 'helpful') ? (
+                                          <FaThumbsUp className="h-4 w-4 mr-1" />
+                                        ) : (
+                                          <FaRegThumbsUp className="h-4 w-4 mr-1" />
+                                        )}
+                                        Helpful ({getAdjustedCount(review.id, review.helpful, 'helpful')})
+                                      </div>
+                                      <div 
+                                        className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+                                        style={{ color: theme === "dark" ? "#A78BFA" : "#7C3AED" }}
+                                        onClick={() => handleReviewAction(review.id, 'notHelpful')}
+                                      >
+                                        {isActionActive(review.id, 'notHelpful') ? (
+                                          <FaThumbsDown className="h-4 w-4 mr-1" />
+                                        ) : (
+                                          <FaRegThumbsDown className="h-4 w-4 mr-1" />
+                                        )}
+                                        Not Helpful ({getAdjustedCount(review.id, review.notHelpful, 'notHelpful')})
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* General Features Tab */}
+              {activeTab === "general" && (
+                <div className="p-6 md:p-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    
+
+                    {/* --- NEW TABLE-STYLE GRID --- */}
+                    <div className="col-span-1 sm:col-span-3 w-full">
+                      <div className="overflow-x-auto">
+                        <div className="grid grid-cols-3 min-w-[600px] rounded-xl overflow-hidden border border-violet-500/10">
+                          {/* Header Row */}
+                          <div className={`p-4 font-semibold text-base ${theme === "dark" ? "bg-violet-900/40 text-violet-300" : "bg-violet-50 text-violet-700"}`}>Specifications</div>
+                          {product1 && (
+                            <div className={`p-4 font-semibold text-base ${theme === "dark" ? "bg-violet-900/40 text-white" : "bg-violet-50 text-violet-700"}`}>
+                              {products.find(p => p.id === product1)?.name.split('(')[0].trim()} <span className="font-normal opacity-60">({products.find(p => p.id === product1)?.name.split('(')[1]?.trim()})</span>
+                            </div>
+                          )}
+                          {product2 && (
+                            <div className={`p-4 font-semibold text-base ${theme === "dark" ? "bg-violet-900/40 text-white" : "bg-violet-50 text-violet-700"}`}>
+                              {products.find(p => p.id === product2)?.name.split('(')[0].trim()} <span className="font-normal opacity-60">({products.find(p => p.id === product2)?.name.split('(')[1]?.trim()})</span>
+                            </div>
+                          )}
+
+                          {/* Data Rows */}
+                          {[
+                            { label: "SIM Type", v1: "Dual SIM (Nano)", v2: "Dual SIM (Nano)" },
+                            { label: "OS", v1: products.find(p => p.id === product1)?.features.os, v2: products.find(p => p.id === product2)?.features.os },
+                            { label: "Network Type", v1: "5G, 4G VOLTE, 4G, 3G", v2: "5G, 4G VOLTE, 4G, 3G" },
+                            { label: "Screen Size", v1: products.find(p => p.id === product1)?.features.screenSize, v2: products.find(p => p.id === product2)?.features.screenSize },
+                            { label: "Resolution", v1: products.find(p => p.id === product1)?.display, v2: products.find(p => p.id === product2)?.display },
+                            { label: "Internal Storage", v1: products.find(p => p.id === product1)?.storage, v2: products.find(p => p.id === product2)?.storage },
+                            { label: "RAM", v1: products.find(p => p.id === product1)?.ram, v2: products.find(p => p.id === product2)?.ram },
+                            { label: "Primary Camera", v1: products.find(p => p.id === product1)?.camera, v2: products.find(p => p.id === product2)?.camera },
+                            { label: "Front Camera", v1: products.find(p => p.id === product1)?.features.frontCamera, v2: products.find(p => p.id === product2)?.features.frontCamera },
+                          ].map((row, idx) => (
+                            <React.Fragment key={row.label || idx}>
+                              <div className={`p-4 font-medium ${theme === "dark" ? "bg-violet-950/40 text-violet-200" : "bg-violet-50/60 text-violet-700"}`}>{row.label}</div>
+                              <div className={`p-4 ${theme === "dark" ? "bg-indigo-900/40 text-white" : "bg-white text-gray-900"}`}>{row.v1}</div>
+                              <div className={`p-4 ${theme === "dark" ? "bg-indigo-900/40 text-white" : "bg-white text-gray-900"}`}>{row.v2}</div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seller Tab */}
+              {activeTab === "seller" && (
+                <div className="p-6 md:p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:block hidden">
+                      <div className={`p-5 rounded-xl ${theme === "dark" ? "glass-card-dark" : "glass-card-light"} h-full flex flex-col justify-between relative overflow-hidden`}>
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-violet-400/10 rounded-full -mr-8 -mt-8 z-0"></div>
+                        <div className="absolute bottom-0 left-0 w-20 h-20 bg-fuchsia-400/10 rounded-full -ml-10 -mb-10 z-0"></div>
+                        <div className="relative z-10">
+                          <div className="font-medium text-lg mb-4 pb-2 border-b border-violet-500/20">About Our Sellers</div>
+                          <div className="text-sm mb-8">
+                          All sellers on TechCompare are verified and must meet our quality standards. You can choose your preferred seller based on ratings, price, and service options.
+                        </div>
+                        </div>
+                        <div className="space-y-4 mt-auto relative z-10">
+                          <div className="flex items-center">
+                            <div className={`p-2 ${theme === "dark" ? "bg-violet-800/50" : "bg-violet-100"} rounded-full mr-3`}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${theme === "dark" ? "text-violet-300" : "text-violet-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            </div>
+                            <span className="text-sm">7-day Replacement Guarantee</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className={`p-2 ${theme === "dark" ? "bg-violet-800/50" : "bg-violet-100"} rounded-full mr-3`}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${theme === "dark" ? "text-violet-300" : "text-violet-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            </div>
+                            <span className="text-sm">Genuine Products</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className={`p-2 ${theme === "dark" ? "bg-violet-800/50" : "bg-violet-100"} rounded-full mr-3`}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${theme === "dark" ? "text-violet-300" : "text-violet-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            </div>
+                            <span className="text-sm">Secure Payments</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {product1 && product2 && (
+                      <>
+                        {[product1, product2].map(productId => {
+                          const product = products.find(p => p.id === productId);
+                          if (!product) return null;
+                          const sellers = mockSellers[productId] || [];
+                          return (
+                            <div key={product.id} className="space-y-4">
+                              {sellers.map((seller, idx) => (
+                                <div key={idx} className={`p-5 rounded-xl ${theme === "dark" ? "glass-card-dark" : "glass-card-light"} mb-4 h-[calc(50%-8px)] relative overflow-hidden`}>
+                                  {idx === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-violet-400/10 rounded-full -mr-6 -mt-6 z-0"></div>}
+                                  {idx === 1 && <div className="absolute bottom-0 left-0 w-16 h-16 bg-fuchsia-400/10 rounded-full -ml-6 -mb-6 z-0"></div>}
+                                  <div className="relative z-10">
+                                    <div className="flex items-center mb-4">
+                                      <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center mr-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${theme === "dark" ? "text-violet-400" : "text-violet-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                        <div className={`font-medium text-lg ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{seller.name}</div>
+                                      <div className="flex items-center">
+                                        <div className={`${theme === "dark" ? "bg-violet-900 text-violet-200" : "bg-violet-100 text-violet-800"} text-xs px-1.5 py-0.5 rounded`}>
+                                          {seller.rating} ★
+                                        </div>
+                                        <div className={`text-xs ml-2 ${theme === "dark" ? "text-violet-300" : "text-violet-500"}`}>{seller.reviews} reviews</div>
+                                      </div>
+                                      <div className={`text-xs ${theme === "dark" ? "text-violet-300" : "text-violet-400"}`}>{seller.location}</div>
+                                    </div>
+                                  </div>
+                                    <div className="flex justify-between text-sm mb-3 pt-3 border-t border-violet-500/10">
+                                    <span>Delivery</span>
+                                      <span className="font-medium text-green-500">{seller.delivery}</span>
+                                  </div>
+                                    <div className="flex justify-between text-sm">
+                                    <span>Warranty</span>
+                                    <span className="font-medium">{seller.warranty}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
+            </div>
+          </div>
         </div>
-      )}
-    </motion.div>
+      </main>
+
+
+      {/* Modal component */}
+      <AnimatePresence>
+        {showSpecModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className={`w-full max-w-xl mx-auto bg-white/90 dark:bg-indigo-900/80 backdrop-blur-lg rounded-xl shadow-2xl p-4 sm:p-6 relative border border-white/30 dark:border-indigo-700/50`}
+              initial={{ scale: 0.9, y: 50, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-violet-400/10 dark:bg-violet-600/10 rounded-full -mr-16 -mt-16 z-0"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-fuchsia-400/10 dark:bg-fuchsia-600/10 rounded-full -ml-12 -mb-12 z-0"></div>
+
+              <motion.button
+                className="absolute top-3 right-3 text-violet-400 hover:text-violet-600 dark:hover:text-violet-400 text-2xl cursor-pointer"
+                onClick={() => setShowSpecModal(null)}
+                whileHover={{ scale: 1.2, rotate: 90 }}
+                whileTap={{ scale: 0.8 }}
+              >
+                ×
+              </motion.button>
+              <div className="relative z-10">
+                <motion.h2
+                  className="text-xl font-bold mb-4 text-violet-600 dark:text-violet-400 pr-6 flex items-center gap-2"
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <motion.span
+                    className="p-1.5 bg-violet-100 dark:bg-violet-900/50 rounded-md"
+                    animate={{ rotate: [0, 10, 0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                  >
+                    <FaRegEye className="text-violet-500 dark:text-violet-400" />
+                  </motion.span>
+                  Full Specifications
+                </motion.h2>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {(suggestedProductSpecs[showSpecModal] || mockFullSpecs[showSpecModal])?.map((spec, idx) => (
+                    <motion.div
+                      key={idx}
+                      className="flex justify-between py-2 text-sm hover:bg-violet-50/50 dark:hover:bg-violet-900/20 px-2 rounded-md transition-colors group"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + (idx * 0.03) }}
+                      whileHover={{ x: 5 }}
+                    >
+                      <span className="font-medium text-indigo-700 dark:text-violet-200 flex items-center gap-1.5">
+                        <motion.span
+                          className="w-1.5 h-1.5 bg-violet-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        ></motion.span>
+                        {spec.title}
+                      </span>
+                      <span className="text-violet-600 dark:text-violet-300">{spec.value}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast notifications */}
+      <div className="fixed bottom-0 right-0 p-4 z-50 flex flex-col items-end space-y-2">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              className={`px-4 py-3 rounded-lg shadow-lg max-w-xs backdrop-blur-lg flex items-center space-x-2 border ${
+                toast.type === 'success'
+                  ? 'bg-violet-600/90 text-white border-violet-500/30'
+                  : 'bg-red-600/90 text-white border-red-500/30'
+                }`}
+              initial={{ opacity: 0, x: 100, scale: 0.8 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 100, scale: 0.8 }}
+              transition={{ type: "spring", damping: 20 }}
+            >
+              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                {toast.type === 'success' && <FaCheckSquare className="text-white text-lg" />}
+                {toast.type === 'error' && (
+                  <FaExclamationCircle className="text-white text-lg" />
+                )}
+              </motion.div>
+              <span className="font-medium">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      <style jsx global>{`
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes zoomIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      
+      @keyframes growWidth {
+        from { width: 0; }
+        to { width: var(--final-width); }
+      }
+      
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      
+      @keyframes pulse {
+        0% { opacity: 0.6; transform: scale(0.98); }
+        50% { opacity: 1; transform: scale(1.02); }
+        100% { opacity: 0.6; transform: scale(0.98); }
+      }
+      
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out;
+      }
+      
+      .animate-zoomIn {
+        animation: zoomIn 0.5s ease-out;
+      }
+      
+      .animate-growWidth {
+        animation: growWidth 1s ease-out;
+      }
+      
+      .animate-float {
+        animation: float 3s ease-in-out infinite;
+      }
+      
+      .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      
+      .shimmer {
+        background: linear-gradient(90deg, 
+                    rgba(255,255,255,0) 0%, 
+                    rgba(255,255,255,0.2) 25%, 
+                    rgba(255,255,255,0.2) 50%, 
+                    rgba(255,255,255,0) 100%);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
+      }
+      
+      .dark .shimmer {
+        background: linear-gradient(90deg, 
+                    rgba(0,0,0,0) 0%, 
+                    rgba(255,255,255,0.1) 25%, 
+                    rgba(255,255,255,0.1) 50%, 
+                    rgba(0,0,0,0) 100%);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
+      }
+      
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      
+      /* Glass morphism */
+      .glass {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      
+      .dark .glass {
+        background: rgba(17, 25, 40, 0.75);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    `}</style>
+    </div>
   );
 }
