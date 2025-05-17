@@ -862,15 +862,15 @@ export default function HarryPotterPortal() {
                 className="absolute w-2 h-2 rounded-full"
                 style={{
                   backgroundColor: "var(--color-secondary)",
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
+                  left: `${(i * 7) % 100}%`,
+                  top: `${(i * 11) % 100}%`,
                   opacity: 0,
                 }}
                 animate={{
                   opacity: [0, 0.8, 0],
                   scale: [0, 1, 0],
                   y: [0, -20, -40],
-                  x: [0, (Math.random() - 0.5) * 40],
+                  x: [0, ((i % 5) - 2) * 10],
                 }}
                 transition={{
                   duration: 2,
