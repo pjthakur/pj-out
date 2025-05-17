@@ -1,1037 +1,2062 @@
 "use client";
 
-import type React from "react";
-
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useTransform,
-} from "framer-motion";
-import { Lora, Cinzel_Decorative } from "next/font/google";
-import {
+  Search,
+  Star,
+  StarHalf,
+  MapPin,
+  Clock,
+  X,
   Moon,
   Sun,
-  MapPin,
-  Sparkles,
-  Feather,
-  Book,
-  Wand2,
+  Camera,
+  Send,
+  Menu,
 } from "lucide-react";
+import { Playfair_Display, Montserrat } from "next/font/google";
 
-const lora = Lora({
+const playfair = Playfair_Display({
   subsets: ["latin"],
-  variable: "--font-lora",
+  variable: "--font-playfair",
 });
 
-const cinzel = Cinzel_Decorative({
-  weight: ["400", "700", "900"],
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-cinzel",
+  variable: "--font-montserrat",
 });
 
-type ThemeType = "hogwarts" | "azkaban";
-
-interface ThemeColors {
+type ThemeType = "light" | "dark";
+type ThemeColors = {
+  background: string;
+  foreground: string;
   primary: string;
   secondary: string;
   accent: string;
-  background: string;
-  text: string;
-  cardBg: string;
-  headerBg: string;
-  mapBg: string;
-}
+  muted: string;
+  card: string;
+  border: string;
+  input: string;
+  rating: string;
+  success: string;
+  warning: string;
+  error: string;
+  overlay: string;
+};
 
-const themes: Record<ThemeType, ThemeColors> = {
-  hogwarts: {
-    primary: "#740001",
-    secondary: "#D3A625",
-    accent: "#1A472A",
-    background: "#f5f3e8",
-    text: "#2A2D34",
-    cardBg: "rgba(255, 255, 255, 0.8)",
-    headerBg: "rgba(245, 243, 232, 0.9)",
-    mapBg: "#e0d5c0",
+const themeConfig: Record<ThemeType, ThemeColors> = {
+  light: {
+    background: "bg-[#f8f9fa]",
+    foreground: "text-[#212529]",
+    primary: "bg-[#e63946]",
+    secondary: "bg-[#457b9d]",
+    accent: "text-[#e63946]",
+    muted: "text-[#6c757d]",
+    card: "bg-white",
+    border: "border-[#dee2e6]",
+    input: "bg-white",
+    rating: "text-[#ffc107]",
+    success: "bg-[#28a745]",
+    warning: "bg-[#ffc107]",
+    error: "bg-[#dc3545]",
+    overlay: "bg-black/50",
   },
-  azkaban: {
-    primary: "#2A623D",
-    secondary: "#AAAAAA",
-    accent: "#222F5B",
-    background: "#121212",
-    text: "#E0E0E0",
-    cardBg: "rgba(30, 30, 30, 0.8)",
-    headerBg: "rgba(18, 18, 18, 0.9)",
-    mapBg: "#1e1e1e",
+  dark: {
+    background: "bg-[#121212]",
+    foreground: "text-[#f8f9fa]",
+    primary: "bg-[#e63946]",
+    secondary: "bg-[#457b9d]",
+    accent: "text-[#e63946]",
+    muted: "text-[#adb5bd]",
+    card: "bg-[#1e1e1e]",
+    border: "border-[#2d2d2d]",
+    input: "bg-[#2d2d2d]",
+    rating: "text-[#ffc107]",
+    success: "bg-[#28a745]",
+    warning: "bg-[#ffc107]",
+    error: "bg-[#dc3545]",
+    overlay: "bg-black/70",
   },
 };
 
-const houses = [
-  {
-    id: "gryffindor",
-    name: "Gryffindor",
-    colors: ["#740001", "#D3A625"],
-    animal: "Lion",
-    traits: ["Bravery", "Courage", "Determination"],
-    founder: "Godric Gryffindor",
-    image:
-      "https://images.pexels.com/photos/8391515/pexels-photo-8391515.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-  {
-    id: "hufflepuff",
-    name: "Hufflepuff",
-    colors: ["#ECB939", "#000000"],
-    animal: "Badger",
-    traits: ["Loyalty", "Patience", "Hard work"],
-    founder: "Helga Hufflepuff",
-    image:
-      "https://images.pexels.com/photos/8391241/pexels-photo-8391241.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-  {
-    id: "ravenclaw",
-    name: "Ravenclaw",
-    colors: ["#222F5B", "#946B2D"],
-    animal: "Eagle",
-    traits: ["Intelligence", "Creativity", "Wisdom"],
-    founder: "Rowena Ravenclaw",
-    image:
-      "https://images.pexels.com/photos/7979069/pexels-photo-7979069.jpeg?auto=compress&cs=tinysrgb&w=600",
-  },
-  {
-    id: "slytherin",
-    name: "Slytherin",
-    colors: ["#1A472A", "#5D5D5D"],
-    animal: "Serpent",
-    traits: ["Ambition", "Cunning", "Resourcefulness"],
-    founder: "Salazar Slytherin",
-    image:
-      "https://images.pexels.com/photos/7979113/pexels-photo-7979113.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-];
+type Cuisine =
+  | "Italian"
+  | "Japanese"
+  | "Mexican"
+  | "Indian"
+  | "American"
+  | "Thai"
+  | "French"
+  | "Chinese"
+  | "Mediterranean"
+  | "Korean";
+type PriceRange = "$" | "$$" | "$$$" | "$$$$";
+type Category =
+  | "Trending"
+  | "Budget-friendly"
+  | "Family spots"
+  | "Late-night eats"
+  | "Date night"
+  | "Healthy options";
+type Location =
+  | "Downtown"
+  | "Uptown"
+  | "Midtown"
+  | "West End"
+  | "East Side"
+  | "Waterfront"
+  | "Suburbs";
 
-const mapLocations = [
-  {
-    id: "hogwarts",
-    name: "Hogwarts School",
-    description:
-      "The magical school of witchcraft and wizardry, home to students of all houses.",
-    x: 50,
-    y: 30,
-    image:
-      "https://images.unsplash.com/photo-1706147602723-6cbe74cececc?q=80&w=1973&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  },
-  {
-    id: "hogsmeade",
-    name: "Hogsmeade Village",
-    description:
-      "The only all-wizarding village in Britain, famous for Honeydukes and The Three Broomsticks.",
-    x: 75,
-    y: 45,
-    image:
-      "https://plus.unsplash.com/premium_photo-1672440648762-5ba24a4feb77?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  },
-  {
-    id: "forbidden-forest",
-    name: "Forbidden Forest",
-    description:
-      "A dark and dangerous forest on the grounds of Hogwarts, home to many magical creatures.",
-    x: 25,
-    y: 60,
-    image:
-      "https://images.pexels.com/photos/13327765/pexels-photo-13327765.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-  {
-    id: "black-lake",
-    name: "The Black Lake",
-    description:
-      "A large body of water near Hogwarts, home to the Giant Squid and merpeople.",
-    x: 60,
-    y: 70,
-    image:
-      "https://images.pexels.com/photos/10071396/pexels-photo-10071396.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-];
-
-interface ToastProps {
-  message: string;
-  type: "success" | "error" | "info";
-  onClose: () => void;
+interface Dish {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  popular: boolean;
 }
 
-const Toast = ({ message, type, onClose }: ToastProps) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
+interface Review {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  comment: string;
+  date: string;
+  images: string[];
+  likes: number;
+  dishes: string[];
+}
 
-    return () => clearTimeout(timer);
-  }, [onClose]);
+interface Restaurant {
+  id: string;
+  name: string;
+  description: string;
+  cuisine: Cuisine;
+  priceRange: PriceRange;
+  location: Location;
+  address: string;
+  phone: string;
+  website: string;
+  hours: {
+    open: string;
+    close: string;
+  };
+  rating: number;
+  reviewCount: number;
+  images: string[];
+  categories: Category[];
+  dishes: Dish[];
+  reviews: Review[];
+  featured: boolean;
+}
 
-  const bgColor =
-    type === "success"
-      ? "bg-green-500"
-      : type === "error"
-      ? "bg-red-500"
-      : "bg-blue-500";
+interface User {
+  id: string;
+  name: string;
+  avatar: string;
+  reviewCount: number;
+  favoriteRestaurants: string[];
+}
 
-  return (
-    <motion.div
-      className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white ${bgColor} shadow-lg z-50`}
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 50 }}
-    >
-      {message}
-    </motion.div>
+const mockRestaurants: Restaurant[] = [
+  {
+    id: "1",
+    name: "Bella Napoli",
+    description:
+      "Authentic Neapolitan pizzas and traditional Italian dishes in a cozy, rustic setting with a wood-fired oven.",
+    cuisine: "Italian",
+    priceRange: "$$",
+    location: "Downtown",
+    address: "123 Main St, Cityville",
+    phone: "(555) 123-4567",
+    website: "www.bellanapoli.com",
+    hours: {
+      open: "11:00 AM",
+      close: "10:00 PM",
+    },
+    rating: 4.7,
+    reviewCount: 342,
+    images: [
+      "https://images.unsplash.com/photo-1579684947550-22e945225d9a?q=80&w=2574&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=2681&auto=format&fit=crop",
+    ],
+    categories: ["Trending", "Family spots"],
+    dishes: [
+      {
+        id: "d1",
+        name: "Margherita Pizza",
+        price: 14.99,
+        description:
+          "Classic pizza with tomato sauce, fresh mozzarella, and basil",
+        image:
+          "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?q=80&w=2669&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d2",
+        name: "Spaghetti Carbonara",
+        price: 16.99,
+        description:
+          "Pasta with pancetta, eggs, Pecorino Romano, and black pepper",
+        image:
+          "https://images.unsplash.com/photo-1612874742237-6526221588e3?q=80&w=2671&auto=format&fit=crop",
+        popular: true,
+      },
+    ],
+    reviews: [
+      {
+        id: "r1",
+        userId: "u1",
+        userName: "Emma Wilson",
+        userAvatar:
+          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=2787&auto=format&fit=crop",
+        rating: 5,
+        comment:
+          "The pizza here is absolutely amazing! Authentic Italian flavors that transported me straight to Naples. The crust was perfectly crispy yet chewy. Will definitely be back!",
+        date: "2023-11-15",
+        images: [
+          "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=2681&auto=format&fit=crop",
+        ],
+        likes: 24,
+        dishes: ["Margherita Pizza"],
+      },
+    ],
+    featured: true,
+  },
+  {
+    id: "2",
+    name: "Sakura Sushi",
+    description:
+      "Premium Japanese sushi restaurant offering the freshest fish and traditional dishes in an elegant atmosphere.",
+    cuisine: "Japanese",
+    priceRange: "$$$",
+    location: "Waterfront",
+    address: "456 Ocean Ave, Cityville",
+    phone: "(555) 987-6543",
+    website: "www.sakurasushi.com",
+    hours: {
+      open: "12:00 PM",
+      close: "11:00 PM",
+    },
+    rating: 4.9,
+    reviewCount: 528,
+    images: [
+      "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1611143669185-af224c5e3252?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=2625&auto=format&fit=crop",
+    ],
+    categories: ["Trending", "Date night"],
+    dishes: [
+      {
+        id: "d3",
+        name: "Omakase Set",
+        price: 89.99,
+        description: "Chef's selection of premium sushi and sashimi",
+        image:
+          "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?q=80&w=2688&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d4",
+        name: "Dragon Roll",
+        price: 18.99,
+        description: "Eel, avocado, and cucumber roll topped with avocado",
+        image:
+          "https://images.unsplash.com/photo-1617196034183-421b4917c92d?q=80&w=2670&auto=format&fit=crop",
+        popular: false,
+      },
+    ],
+    reviews: [
+      {
+        id: "r2",
+        userId: "u2",
+        userName: "James Chen",
+        userAvatar:
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2787&auto=format&fit=crop",
+        rating: 5,
+        comment:
+          "Best sushi in town! The fish is incredibly fresh and the presentation is beautiful. The omakase experience is worth every penny.",
+        date: "2023-12-03",
+        images: [
+          "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=2670&auto=format&fit=crop",
+        ],
+        likes: 42,
+        dishes: ["Omakase Set"],
+      },
+    ],
+    featured: true,
+  },
+  {
+    id: "3",
+    name: "El Camino",
+    description:
+      "Vibrant Mexican cantina serving authentic tacos, enchiladas, and margaritas in a colorful, festive environment.",
+    cuisine: "Mexican",
+    priceRange: "$$",
+    location: "Midtown",
+    address: "789 Central Blvd, Cityville",
+    phone: "(555) 456-7890",
+    website: "www.elcamino.com",
+    hours: {
+      open: "11:30 AM",
+      close: "12:00 AM",
+    },
+    rating: 4.5,
+    reviewCount: 287,
+    images: [
+      "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=2680&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613514785940-daed07799d9b?q=80&w=2680&auto=format&fit=crop",
+    ],
+    categories: ["Budget-friendly", "Late-night eats"],
+    dishes: [
+      {
+        id: "d5",
+        name: "Street Tacos",
+        price: 12.99,
+        description:
+          "Three authentic corn tortilla tacos with your choice of meat",
+        image:
+          "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d6",
+        name: "Enchiladas Verdes",
+        price: 15.99,
+        description:
+          "Chicken enchiladas with green tomatillo sauce and queso fresco",
+        image:
+          "https://images.unsplash.com/photo-1534352956036-cd81e27dd615?q=80&w=2670&auto=format&fit=crop",
+        popular: false,
+      },
+    ],
+    reviews: [
+      {
+        id: "r3",
+        userId: "u3",
+        userName: "Sophia Rodriguez",
+        userAvatar:
+          "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=2670&auto=format&fit=crop",
+        rating: 4,
+        comment:
+          "Great tacos and the margaritas are fantastic! The atmosphere is lively and fun. Only giving 4 stars because it can get pretty loud on weekends.",
+        date: "2023-10-22",
+        images: [
+          "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=2680&auto=format&fit=crop",
+        ],
+        likes: 18,
+        dishes: ["Street Tacos"],
+      },
+    ],
+    featured: false,
+  },
+  {
+    id: "4",
+    name: "Spice Route",
+    description:
+      "Authentic Indian cuisine featuring flavorful curries, tandoori specialties, and fresh-baked naan in a warm, inviting space.",
+    cuisine: "Indian",
+    priceRange: "$$",
+    location: "East Side",
+    address: "321 Curry Lane, Cityville",
+    phone: "(555) 789-0123",
+    website: "www.spiceroute.com",
+    hours: {
+      open: "12:00 PM",
+      close: "10:30 PM",
+    },
+    rating: 4.6,
+    reviewCount: 203,
+    images: [
+      "https://images.pexels.com/photos/260922/pexels-photo-260922.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.unsplash.com/photo-1631515242808-497c3fbd3972?q=80&w=2788&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2645&auto=format&fit=crop",
+    ],
+    categories: ["Family spots", "Budget-friendly"],
+    dishes: [
+      {
+        id: "d7",
+        name: "Butter Chicken",
+        price: 17.99,
+        description: "Tender chicken in a rich, creamy tomato sauce",
+        image:
+          "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d8",
+        name: "Vegetable Biryani",
+        price: 15.99,
+        description:
+          "Fragrant basmati rice with mixed vegetables and aromatic spices",
+        image:
+          "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2788&auto=format&fit=crop",
+        popular: false,
+      },
+    ],
+    reviews: [
+      {
+        id: "r4",
+        userId: "u4",
+        userName: "Raj Patel",
+        userAvatar:
+          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=2787&auto=format&fit=crop",
+        rating: 5,
+        comment:
+          "Absolutely delicious and authentic Indian food! The butter chicken is to die for, and the naan bread is perfectly baked. Generous portions too!",
+        date: "2023-11-05",
+        images: [
+          "https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+        ],
+        likes: 31,
+        dishes: ["Butter Chicken"],
+      },
+    ],
+    featured: false,
+  },
+  {
+    id: "5",
+    name: "The Burger Joint",
+    description:
+      "Classic American diner serving gourmet burgers, hand-cut fries, and creamy milkshakes in a nostalgic 50s-inspired setting.",
+    cuisine: "American",
+    priceRange: "$",
+    location: "West End",
+    address: "555 Patty Ave, Cityville",
+    phone: "(555) 234-5678",
+    website: "www.burgerjoint.com",
+    hours: {
+      open: "11:00 AM",
+      close: "11:00 PM",
+    },
+    rating: 4.4,
+    reviewCount: 412,
+    images: [
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=2899&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2565&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=2670&auto=format&fit=crop",
+    ],
+    categories: ["Budget-friendly", "Late-night eats"],
+    dishes: [
+      {
+        id: "d9",
+        name: "Classic Cheeseburger",
+        price: 9.99,
+        description:
+          "Angus beef patty with cheddar, lettuce, tomato, and special sauce",
+        image:
+          "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=2899&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d10",
+        name: "Loaded Fries",
+        price: 7.99,
+        description:
+          "Hand-cut fries topped with cheese, bacon, and green onions",
+        image:
+          "https://images.unsplash.com/photo-1585109649139-366815a0d713?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+    ],
+    reviews: [
+      {
+        id: "r5",
+        userId: "u5",
+        userName: "Mike Johnson",
+        userAvatar:
+          "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=2787&auto=format&fit=crop",
+        rating: 4,
+        comment:
+          "Great burgers at a reasonable price! The loaded fries are amazing too. Service can be a bit slow during peak hours, but the food is worth the wait.",
+        date: "2023-12-10",
+        images: [
+          "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2565&auto=format&fit=crop",
+        ],
+        likes: 15,
+        dishes: ["Classic Cheeseburger", "Loaded Fries"],
+      },
+    ],
+    featured: true,
+  },
+  {
+    id: "6",
+    name: "Bangkok Kitchen",
+    description:
+      "Authentic Thai restaurant offering flavorful curries, noodle dishes, and stir-fries with fresh ingredients and aromatic spices.",
+    cuisine: "Thai",
+    priceRange: "$$",
+    location: "Uptown",
+    address: "888 Spice Street, Cityville",
+    phone: "(555) 345-6789",
+    website: "www.bangkokkitchen.com",
+    hours: {
+      open: "11:30 AM",
+      close: "10:00 PM",
+    },
+    rating: 4.8,
+    reviewCount: 176,
+    images: [
+      "https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?q=80&w=2532&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1569562211093-4ed0d0758f12?q=80&w=2574&auto=format&fit=crop",
+    ],
+    categories: ["Healthy options", "Date night"],
+    dishes: [
+      {
+        id: "d11",
+        name: "Pad Thai",
+        price: 14.99,
+        description:
+          "Stir-fried rice noodles with egg, tofu, bean sprouts, and peanuts",
+        image:
+          "https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d12",
+        name: "Green Curry",
+        price: 16.99,
+        description:
+          "Spicy coconut curry with bamboo shoots, bell peppers, and basil",
+        image:
+          "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?q=80&w=2670&auto=format&fit=crop",
+        popular: false,
+      },
+    ],
+    reviews: [
+      {
+        id: "r6",
+        userId: "u6",
+        userName: "Lisa Wong",
+        userAvatar:
+          "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=2688&auto=format&fit=crop",
+        rating: 5,
+        comment:
+          "The most authentic Thai food I've had outside of Thailand! The Pad Thai is perfectly balanced and the curry has just the right amount of spice. Highly recommend!",
+        date: "2023-11-28",
+        images: [
+          "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?q=80&w=2532&auto=format&fit=crop",
+        ],
+        likes: 27,
+        dishes: ["Pad Thai", "Green Curry"],
+      },
+    ],
+    featured: false,
+  },
+  {
+    id: "7",
+    name: "Bistro Parisienne",
+    description:
+      "Charming French bistro offering classic dishes like coq au vin, beef bourguignon, and crème brûlée in an intimate, romantic setting.",
+    cuisine: "French",
+    priceRange: "$$$",
+    location: "Downtown",
+    address: "777 Rue de Paris, Cityville",
+    phone: "(555) 567-8901",
+    website: "www.bistroparisienne.com",
+    hours: {
+      open: "5:00 PM",
+      close: "11:00 PM",
+    },
+    rating: 4.9,
+    reviewCount: 231,
+    images: [
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?q=80&w=2670&auto=format&fit=crop",
+    ],
+    categories: ["Date night", "Trending"],
+    dishes: [
+      {
+        id: "d13",
+        name: "Coq au Vin",
+        price: 28.99,
+        description: "Chicken braised with wine, mushrooms, and pearl onions",
+        image:
+          "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d14",
+        name: "Crème Brûlée",
+        price: 10.99,
+        description: "Classic vanilla custard with caramelized sugar top",
+        image:
+          "https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+    ],
+    reviews: [
+      {
+        id: "r7",
+        userId: "u7",
+        userName: "Pierre Dubois",
+        userAvatar:
+          "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=2787&auto=format&fit=crop",
+        rating: 5,
+        comment:
+          "Magnifique! The atmosphere is truly Parisian and the food is exceptional. The coq au vin transported me straight to France. Perfect for a special occasion.",
+        date: "2023-12-15",
+        images: [
+          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2670&auto=format&fit=crop",
+        ],
+        likes: 39,
+        dishes: ["Coq au Vin", "Crème Brûlée"],
+      },
+    ],
+    featured: true,
+  },
+  {
+    id: "8",
+    name: "Golden Dragon",
+    description:
+      "Traditional Chinese restaurant specializing in dim sum, Peking duck, and regional specialties from Sichuan, Cantonese, and Hunan cuisines.",
+    cuisine: "Chinese",
+    priceRange: "$$",
+    location: "Suburbs",
+    address: "999 Dragon Street, Cityville",
+    phone: "(555) 678-9012",
+    website: "www.goldendragon.com",
+    hours: {
+      open: "11:00 AM",
+      close: "10:30 PM",
+    },
+    rating: 4.5,
+    reviewCount: 318,
+    images: [
+      "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=2729&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=2574&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=2670&auto=format&fit=crop",
+    ],
+    categories: ["Family spots", "Budget-friendly"],
+    dishes: [
+      {
+        id: "d15",
+        name: "Peking Duck",
+        price: 32.99,
+        description:
+          "Roasted duck with thin pancakes, scallions, and hoisin sauce",
+        image:
+          "https://images.unsplash.com/photo-1518983546435-91f8b87fe561?q=80&w=2670&auto=format&fit=crop",
+        popular: true,
+      },
+      {
+        id: "d16",
+        name: "Dim Sum Platter",
+        price: 18.99,
+        description: "Assortment of steamed dumplings, buns, and small bites",
+        image:
+          "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=2729&auto=format&fit=crop",
+        popular: true,
+      },
+    ],
+    reviews: [
+      {
+        id: "r8",
+        userId: "u8",
+        userName: "David Lee",
+        userAvatar:
+          "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=2787&auto=format&fit=crop",
+        rating: 4,
+        comment:
+          "Great dim sum and the Peking duck is excellent! The restaurant can get very busy on weekends, so I recommend making a reservation. Good value for the quality.",
+        date: "2023-10-30",
+        images: [
+          "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=2574&auto=format&fit=crop",
+        ],
+        likes: 22,
+        dishes: ["Dim Sum Platter", "Peking Duck"],
+      },
+    ],
+    featured: false,
+  },
+];
+
+const currentUser: User = {
+  id: "current",
+  name: "Alex Morgan",
+  avatar:
+    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2680&auto=format&fit=crop",
+  reviewCount: 28,
+  favoriteRestaurants: ["1", "2", "7"],
+};
+
+export default function RestaurantReviewPlatform() {
+  const [theme, setTheme] = useState<ThemeType>("light");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCuisine, setSelectedCuisine] = useState<Cuisine | "All">(
+    "All"
   );
-};
+  const [selectedLocation, setSelectedLocation] = useState<Location | "All">(
+    "All"
+  );
+  const [selectedCategory, setSelectedCategory] = useState<Category | "All">(
+    "All"
+  );
+  const [selectedPriceRange, setSelectedPriceRange] = useState<
+    PriceRange | "All"
+  >("All");
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<Restaurant | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [mockRestaurantsState, setMockRestaurantsState] =
+    useState(mockRestaurants);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [newReview, setNewReview] = useState({
+    rating: 0,
+    comment: "",
+    images: [] as string[],
+    dishes: [] as string[],
+    restaurantId: "",
+  });
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}
+  const modalRef = useRef<HTMLDivElement>(null);
+  const reviewModalRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const allRestaurantsRef = useRef<HTMLDivElement>(null);
 
-const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   useEffect(() => {
-    if (isOpen) {
-    document.body.style.overflow = "hidden";
+    if (isModalOpen || isReviewModalOpen) {
+      document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
 
     return () => {
-    document.body.style.overflow = "auto";
+      document.body.style.overflow = "auto";
+    };
+  }, [isModalOpen, isReviewModalOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node)
+      ) {
+        setIsModalOpen(false);
+      }
+      if (
+        reviewModalRef.current &&
+        !reviewModalRef.current.contains(event.target as Node)
+      ) {
+        setIsReviewModalOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
-  }, [isOpen]);
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-      <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-          <motion.div
-            className="relative rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
-            style={{ backgroundColor: "var(--color-card-bg)" }}
-            initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-          >
-            <div
-              className="flex items-center justify-between p-4 border-b"
-              style={{ borderColor: "var(--color-accent)" }}
-            >
-              <h3
-                className={`${cinzel.className} text-xl font-bold`}
-                style={{ color: "var(--color-text)" }}
-              >
-                {title}
-              </h3>
-          <button
-            onClick={onClose}
-                className="hover:opacity-70 transition-opacity cursor-pointer"
-                style={{ color: "var(--color-text)" }}
-          >
-                ✕
-          </button>
-            </div>
-            <div className="p-4" style={{ color: "var(--color-text)" }}>
-              {children}
-            </div>
-        </motion.div>
-      </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
+  const filteredRestaurants = mockRestaurants.filter((restaurant) => {
+    const matchesSearch =
+      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCuisine =
+      selectedCuisine === "All" || restaurant.cuisine === selectedCuisine;
+    const matchesLocation =
+      selectedLocation === "All" || restaurant.location === selectedLocation;
+    const matchesCategory =
+      selectedCategory === "All" ||
+      restaurant.categories.includes(selectedCategory);
+    const matchesPriceRange =
+      selectedPriceRange === "All" ||
+      restaurant.priceRange === selectedPriceRange;
 
-interface FloatingElementProps {
-  children: React.ReactNode;
-  delay?: number;
-  duration?: number;
-  x?: number;
-  y?: number;
-}
-
-const FloatingElement = ({
-  children,
-  delay = 0,
-  duration = 3,
-  x = 10,
-  y = 10,
-}: FloatingElementProps) => {
-  return (
-    <motion.div
-      animate={{
-        y: [0, y, 0],
-        x: [0, x, 0],
-      }}
-      transition={{
-        duration,
-        repeat: Number.POSITIVE_INFINITY,
-        repeatType: "reverse",
-        ease: "easeInOut",
-        delay,
-      }}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-export default function HarryPotterPortal() {
-  const [theme, setTheme] = useState<ThemeType>("hogwarts");
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-  } | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<
-    (typeof mapLocations)[0] | null
-  >(null);
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
-
-  const mainRef = useRef<HTMLDivElement>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: mainRef,
-    offset: ["start start", "end end"],
+    return (
+      matchesSearch &&
+      matchesCuisine &&
+      matchesLocation &&
+      matchesCategory &&
+      matchesPriceRange
+    );
   });
 
-  const heroScale = useTransform(scrollYProgress, [0, 0.3], [1, 1.1]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+  const trendingRestaurants = mockRestaurants
+    .filter((restaurant) => restaurant.categories.includes("Trending"))
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 4);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "hogwarts" ? "azkaban" : "hogwarts";
-    setTheme(newTheme);
-    showToast(
-      `Switched to ${
-        newTheme === "hogwarts" ? "Day at Hogwarts" : "Night at Azkaban"
-      } theme`,
-      "info"
+  const featuredReviews = mockRestaurants
+    .flatMap((restaurant) =>
+      restaurant.reviews.map((review) => ({
+        ...review,
+        restaurantName: restaurant.name,
+        restaurantId: restaurant.id,
+        restaurantImage: restaurant.images[0],
+      }))
+    )
+    .sort((a, b) => b.likes - a.likes)
+    .slice(0, 3);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages = Array.from(files).map((file) =>
+      URL.createObjectURL(file)
     );
+    setNewReview((prev) => ({
+      ...prev,
+      images: [...prev.images, ...newImages],
+    }));
   };
 
-  const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ message, type });
+  const removeImage = (indexToRemove: number) => {
+    setNewReview((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, index) => index !== indexToRemove),
+    }));
+    URL.revokeObjectURL(newReview.images[indexToRemove]);
   };
 
-  const closeToast = () => {
-    setToast(null);
+  const handleRestaurantSelect = (restaurantId: string) => {
+    const restaurant = mockRestaurantsState.find((r) => r.id === restaurantId);
+    setSelectedRestaurant(restaurant || null);
+    setNewReview((prev) => ({
+      ...prev,
+      restaurantId,
+      dishes: [],
+    }));
   };
 
-  const handleLocationClick = (location: (typeof mapLocations)[0]) => {
-    setSelectedLocation(location);
-    setIsMapModalOpen(true);
+  const calculateNewRating = (
+    currentRating: number,
+    currentCount: number,
+    newRatingValue: number
+  ): number => {
+    const totalRating = currentRating * currentCount + newRatingValue;
+    return Number((totalRating / (currentCount + 1)).toFixed(1));
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
+  const handleSubmitReview = () => {
+    if (newReview.rating === 0) {
+      showToastMessage("Please select a rating");
       return;
     }
 
-    setEmailError("");
+    if (newReview.comment.trim() === "") {
+      showToastMessage("Please add a comment");
+      return;
+    }
 
-    showToast("Successfully subscribed to the Daily Prophet!", "success");
-    setIsSubscribeModalOpen(false);
-    setEmail("");
+    if (!newReview.restaurantId) {
+      showToastMessage("Please select a restaurant");
+      return;
+    }
+
+    const targetRestaurant = mockRestaurantsState.find(
+      (r) => r.id === newReview.restaurantId
+    );
+    if (!targetRestaurant) {
+      showToastMessage("Selected restaurant not found");
+      return;
+    }
+
+    const newReviewObj: Review = {
+      id: `r${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar,
+      rating: newReview.rating,
+      comment: newReview.comment,
+      date: new Date().toISOString().split("T")[0],
+      images: newReview.images,
+      likes: 0,
+      dishes: newReview.dishes,
+    };
+
+    const updatedRestaurants = mockRestaurantsState.map((restaurant) => {
+      if (restaurant.id === newReview.restaurantId) {
+        const updatedRestaurant = {
+          ...restaurant,
+          reviews: [newReviewObj, ...restaurant.reviews],
+          rating: calculateNewRating(
+            restaurant.rating,
+            restaurant.reviewCount,
+            newReview.rating
+          ),
+          reviewCount: restaurant.reviewCount + 1,
+        };
+        if (selectedRestaurant?.id === restaurant.id) {
+          setSelectedRestaurant(updatedRestaurant);
+        }
+        return updatedRestaurant;
+      }
+      return restaurant;
+    });
+
+    setMockRestaurantsState(updatedRestaurants);
+    showToastMessage(
+      "Review submitted successfully! Please wait for it to be approved."
+    );
+    setIsReviewModalOpen(false);
+    setNewReview({
+      rating: 0,
+      comment: "",
+      images: [],
+      dishes: [],
+      restaurantId: "",
+    });
   };
 
-  const currentTheme = themes[theme];
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
 
-  const themeStyle = {
-    "--color-primary": currentTheme.primary,
-    "--color-secondary": currentTheme.secondary,
-    "--color-accent": currentTheme.accent,
-    "--color-background": currentTheme.background,
-    "--color-text": currentTheme.text,
-    "--color-card-bg": currentTheme.cardBg,
-    "--color-header-bg": currentTheme.headerBg,
-    "--color-map-bg": currentTheme.mapBg,
-  } as React.CSSProperties;
+  const colors = themeConfig[theme];
+
+  const getPriceRangeText = (priceRange: PriceRange): string => {
+    switch (priceRange) {
+      case "$":
+        return "$10-30";
+      case "$$":
+        return "$30-60";
+      case "$$$":
+        return "$60-100";
+      case "$$$$":
+        return "$100+";
+      default:
+        return priceRange;
+    }
+  };
+
+  const scrollToRestaurants = () => {
+    allRestaurantsRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const nextImage = () => {
+    if (selectedRestaurant) {
+      setCurrentImageIndex((prev) =>
+        prev === selectedRestaurant.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (selectedRestaurant) {
+      setCurrentImageIndex((prev) =>
+        prev === 0 ? selectedRestaurant.images.length - 1 : prev - 1
+      );
+    }
+  };
 
   return (
     <div
-      className={`${lora.variable} ${cinzel.variable} font-lora transition-colors duration-500`}
-      style={themeStyle}
+      className={`min-h-screen ${colors.background} ${colors.foreground} ${playfair.variable} ${montserrat.variable} font-sans transition-colors duration-300`}
     >
-      <div
-        ref={mainRef}
-        style={{
-          backgroundColor: "var(--color-background)",
-          color: "var(--color-text)",
-        }}
-        className="min-h-screen relative overflow-x-hidden"
+      <header
+        className={`sticky top-0 z-10 ${colors.card} border-b ${colors.border} shadow-sm`}
       >
-        <motion.header
-          style={{
-            backgroundColor: "var(--color-header-bg)",
-          }}
-          className="fixed top-0 left-0 right-0 z-40 backdrop-blur-sm"
-        >
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <h1
-              className={`${cinzel.className} text-2xl md:text-3xl font-bold`}
-            >
-              <span style={{ color: "var(--color-primary)" }}>Magical</span>
-              <span style={{ color: "var(--color-secondary)" }}> Portal</span>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <h1 className="text-2xl md:text-3xl font-bold font-playfair">
+              <span className={colors.accent}>Taste</span> Explorer
             </h1>
-            <div className="flex items-center gap-4">
-        <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full transition-colors cursor-pointer"
-                aria-label={
-                  theme === "hogwarts"
-                    ? "Switch to Night at Azkaban"
-                    : "Switch to Day at Hogwarts"
-                }
-              >
-                {theme === "hogwarts" ? <Moon size={20} /> : <Sun size={20} />}
-        </button>
-      </div>
-          </div>
-        </motion.header>
-
-        <motion.section
-          className="h-screen relative flex items-center justify-center overflow-hidden"
-          style={{ scale: heroScale, opacity: heroOpacity }}
-        >
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://images.unsplash.com/photo-1618944913480-b67ee16d7b77?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              alt="Hogwarts Castle"
-              style={{
-                objectFit: "cover",
-                width: "100%",
-                height: "100%",
-                position: "absolute",
-              }}
-            />
           </div>
 
-          <div className="container mx-auto px-4 z-20 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+          <div className="hidden md:flex items-center space-x-6">
+            <button
+              className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium transition-transform hover:scale-105 cursor-pointer`}
+              onClick={() => setIsReviewModalOpen(true)}
             >
-              <h1
-                className={`${cinzel.className} text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-white drop-shadow-lg`}
-              >
-                Welcome to the <br />
-                <span style={{ color: "var(--color-secondary)" }}>
-                  Wizarding World
-                </span>
-              </h1>
-              <p className="text-xl md:text-2xl text-white max-w-2xl mx-auto mb-8 drop-shadow-md">
-                Discover the magic, explore the mysteries, and embark on an
-                unforgettable journey.
-              </p>
-              <motion.button
-                onClick={() => setIsSubscribeModalOpen(true)}
-                className="px-6 py-3 rounded-lg text-white font-medium cursor-pointer"
-                style={{ backgroundColor: "var(--color-primary)" }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Subscribe to the Daily Prophet
-              </motion.button>
-            </motion.div>
-        </div>
+              Write a Review
+            </button>
 
-          <motion.div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-          >
-            <div className="text-white text-center">
-              <p className="mb-2">Scroll to explore</p>
-              <div className="w-6 h-10 border-2 border-white rounded-full mx-auto flex justify-center">
-                <motion.div
-                  className="w-1 h-2 bg-white rounded-full mt-2"
-                  animate={{ y: [0, 4, 0] }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Number.POSITIVE_INFINITY,
-                  }}
-                />
-        </div>
-      </div>
-          </motion.div>
-        </motion.section>
-
-        <section className="py-20 relative">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ delay: 0.2 }}
-              >
-                <h2
-                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
-                >
-                  The Four{" "}
-                  <span style={{ color: "var(--color-primary)" }}>Houses</span>{" "}
-                  of Hogwarts
-                </h2>
-                <p className="max-w-2xl mx-auto text-lg opacity-80">
-                  Each with their own values, traditions, and illustrious
-                  histories.
-                </p>
-              </motion.div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {houses.map((house, index) => (
-                <motion.div
-                  key={house.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ delay: 0.1 * index }}
-                  whileHover={{ y: -5 }}
-                  className="rounded-lg overflow-hidden shadow-lg"
-                  style={{ backgroundColor: "var(--color-card-bg)" }}
-                >
-                  <div className="h-48 relative overflow-hidden">
-                    <img
-                      src={house.image || "/placeholder.svg"}
-                      alt={house.name}
-                      style={{
-                        objectFit: "cover",
-                        width: "100%",
-                        height: "100%",
-                        position: "absolute",
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{
-                        background: `linear-gradient(to bottom, ${house.colors[0]}80, ${house.colors[1]}80)`,
-                      }}
-                    >
-                      <h3
-                        className={`${cinzel.className} text-3xl font-bold text-white drop-shadow-lg`}
-                      >
-                        {house.name}
-                      </h3>
-        </div>
-      </div>
-                  <div className="p-6">
-                    <p className="mb-4">
-                      <strong>Founder:</strong> {house.founder}
-                    </p>
-                    <p className="mb-4">
-                      <strong>Animal:</strong> {house.animal}
-                    </p>
-                    <p>
-                      <strong>Traits:</strong> {house.traits.join(", ")}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-20 relative">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ delay: 0.2 }}
-              >
-                <h2
-                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
-                >
-                  The{" "}
-                  <span style={{ color: "var(--color-primary)" }}>
-                    Marauder's
-                  </span>{" "}
-                  Map
-                </h2>
-                <p className="max-w-2xl mx-auto text-lg opacity-80">
-                  "I solemnly swear that I am up to no good."
-                </p>
-              </motion.div>
-          </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="relative w-full max-w-4xl mx-auto rounded-lg overflow-hidden shadow-xl"
-              style={{
-                backgroundColor: "var(--color-map-bg)",
-                padding: "2rem",
-                border: "8px solid #8B4513",
-              }}
+            <button
+              className="p-2 rounded-full transition-colors cursor-pointer"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
             >
-              <div className="absolute inset-0 opacity-10">
-                <img
-                  src="https://images.pexels.com/photos/235985/pexels-photo-235985.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-                  alt="Parchment texture"
-                  style={{
-                    objectFit: "cover",
-                    width: "100%",
-                    height: "100%",
-                    position: "absolute",
-                  }}
-                />
-            </div>
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
 
-              <div className="relative h-[500px] w-full">
-                <svg 
-                  className="absolute inset-0 w-full h-full z-0" 
-                  style={{ 
-                    stroke: "var(--color-primary)",
-                    strokeWidth: "3px",
-                    strokeDasharray: "6 4",
-                    opacity: 0.9,
-                    fill: "none"
-                  }}
-                >
-                  <motion.path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[1].x)/2 + 10}% ${(mapLocations[0].y + mapLocations[1].y)/2 - 15}%, ${mapLocations[1].x}% ${mapLocations[1].y}%`}
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 2, delay: 0.5 }}
-                  />
-                  
-                  <motion.path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[2].x)/2 - 5}% ${(mapLocations[0].y + mapLocations[2].y)/2}%, ${mapLocations[2].x}% ${mapLocations[2].y}%`}
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.8, delay: 0.7 }}
-                  />
-                  
-                  <motion.path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[3].x)/2}% ${(mapLocations[0].y + mapLocations[3].y)/2 + 10}%, ${mapLocations[3].x}% ${mapLocations[3].y}%`}
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, delay: 0.9 }}
-                  />
-                  
-                  <motion.path 
-                    d={`M ${mapLocations[2].x}% ${mapLocations[2].y}% Q ${(mapLocations[2].x + mapLocations[3].x)/2}% ${(mapLocations[2].y + mapLocations[3].y)/2 + 5}%, ${mapLocations[3].x}% ${mapLocations[3].y}%`}
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, delay: 1.1 }}
-                  />
-                  
-                  <motion.line 
-                    x1={`${mapLocations[0].x}%`} 
-                    y1={`${mapLocations[0].y}%`} 
-                    x2={`${mapLocations[1].x}%`} 
-                    y2={`${mapLocations[1].y}%`}
-                    strokeDasharray="4 2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1, delay: 2 }}
-                  />
-                  
-                  <motion.line 
-                    x1={`${mapLocations[0].x}%`} 
-                    y1={`${mapLocations[0].y}%`} 
-                    x2={`${mapLocations[2].x}%`} 
-                    y2={`${mapLocations[2].y}%`}
-                    strokeDasharray="4 2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1, delay: 2.1 }}
-                  />
-                  
-                  <motion.line 
-                    x1={`${mapLocations[0].x}%`} 
-                    y1={`${mapLocations[0].y}%`} 
-                    x2={`${mapLocations[3].x}%`} 
-                    y2={`${mapLocations[3].y}%`}
-                    strokeDasharray="4 2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1, delay: 2.2 }}
-                  />
-                  
-                  <motion.line 
-                    x1={`${mapLocations[2].x}%`} 
-                    y1={`${mapLocations[2].y}%`} 
-                    x2={`${mapLocations[3].x}%`} 
-                    y2={`${mapLocations[3].y}%`}
-                    strokeDasharray="4 2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1, delay: 2.3 }}
-                  />
-                  
-                  {[0.3, 0.6, 0.9].map((pos, i) => (
-                    <motion.path 
-                      key={`footprint-1-${i}`}
-                      d="M-4,0 C-3,1 -1,1 0,0 C1,-1 3,-1 4,0 M-2,-3 C-1,-2 1,-2 2,-3"
-                      transform={`translate(${mapLocations[0].x * (1-pos) + mapLocations[1].x * pos}%, ${mapLocations[0].y * (1-pos) + mapLocations[1].y * pos}%) scale(0.7)`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5, delay: 1.5 + i*0.2 }}
-                    />
-                  ))}
-                </svg>
-
-                <svg 
-                  className="absolute inset-0 w-full h-full z-5" 
-                  style={{ 
-                    stroke: "#8B4513",
-                    strokeWidth: "2px",
-                    opacity: 1,
-                    fill: "none"
-                  }}
-                >
-                  <path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[1].x}% ${mapLocations[1].y}%`}
-                    strokeDasharray="2 4"
-                  />
-                  <path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[2].x}% ${mapLocations[2].y}%`}
-                    strokeDasharray="2 4"
-                  />
-                  <path 
-                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[3].x}% ${mapLocations[3].y}%`}
-                    strokeDasharray="2 4"
-                  />
-                  <path 
-                    d={`M ${mapLocations[2].x}% ${mapLocations[2].y}% L ${mapLocations[3].x}% ${mapLocations[3].y}%`}
-                    strokeDasharray="2 4"
-                  />
-                </svg>
-
-                {mapLocations.map((location) => (
-                  <motion.div
-                    key={location.id}
-                    className="absolute cursor-pointer z-10"
-                    style={{
-                      left: `${location.x}%`,
-                      top: `${location.y}%`,
-                    }}
-                    whileHover={{ scale: 1.2 }}
-                    onClick={() => handleLocationClick(location)}
-                  >
-                    <div className="relative">
-                      <MapPin
-                        size={32}
-                        style={{ color: "var(--color-primary)" }}
-                      />
-                      <motion.div
-                        className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
-                        style={{ backgroundColor: "var(--color-secondary)" }}
-                        animate={{ scale: [1, 1.5, 1] }}
-                        transition={{
-                          duration: 2,
-                          repeat: Number.POSITIVE_INFINITY,
-                        }}
-                      />
-          </div>
-                    <div
-                      className={`${cinzel.className} absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-bold`}
-                    >
-                      {location.name}
-        </div>
-                  </motion.div>
-                ))}
-            </div>
-
-              <div className="text-center mt-4">
-                <p className="italic text-sm opacity-70">"Mischief managed."</p>
-            </div>
-            </motion.div>
-          </div>
-        </section>
-
-        <section className="py-20 relative">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ delay: 0.2 }}
-              >
-                <h2
-                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
-                >
-                  Magical{" "}
-                  <span style={{ color: "var(--color-primary)" }}>
-                    Features
-                  </span>
-                </h2>
-                <p className="max-w-2xl mx-auto text-lg opacity-80">
-                  Discover the enchanting elements of our wizarding world.
-                </p>
-              </motion.div>
-          </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: <Sparkles size={40} />,
-                  title: "Animated Magic",
-                  description:
-                    "Experience the wonder of magical animations throughout your journey.",
-                },
-                {
-                  icon: <Book size={40} />,
-                  title: "Wizarding Stories",
-                  description:
-                    "Immerse yourself in the rich lore and captivating tales of the wizarding world.",
-                },
-                {
-                  icon: <Wand2 size={40} />,
-                  title: "Interactive Spells",
-                  description:
-                    "Cast spells and see their magical effects come to life before your eyes.",
-                },
-                {
-                  icon: <Feather size={40} />,
-                  title: "Daily Prophet",
-                  description:
-                    "Stay updated with the latest news and events from across the wizarding community.",
-                },
-                {
-                  icon: <MapPin size={40} />,
-                  title: "Magical Locations",
-                  description:
-                    "Explore iconic locations from Hogwarts to Diagon Alley and beyond.",
-                },
-                {
-                  icon: <Sun size={40} />,
-                  title: "Day & Night Themes",
-                  description:
-                    "Experience the magic in daylight at Hogwarts or under the moonlight at Azkaban.",
-                },
-              ].map((feature, index) => (
-                <motion.div
-                  key={`feature-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ delay: 0.1 * index }}
-                  whileHover={{ y: -5 }}
-                  className="rounded-lg p-6 text-center"
-                  style={{ backgroundColor: "var(--color-card-bg)" }}
-                >
-                  <div
-                    className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full"
-                    style={{ backgroundColor: "var(--color-accent)" }}
-                  >
-                    <div style={{ color: "var(--color-secondary)" }}>
-                      {feature.icon}
-            </div>
-            </div>
-                  <h3 className={`${cinzel.className} text-xl font-bold mb-2`}>
-                    {feature.title}
-                  </h3>
-                  <p className="opacity-80">{feature.description}</p>
-                </motion.div>
-              ))}
-          </div>
-        </div>
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {Array.from({ length: 15 }).map((_, i) => (
-              <motion.div
-                key={`spark-${i}`}
-                className="absolute w-2 h-2 rounded-full"
-                style={{
-                  backgroundColor: "var(--color-secondary)",
-                  left: `${(i * 7) % 100}%`,
-                  top: `${(i * 11) % 100}%`,
-                  opacity: 0,
-                }}
-                animate={{
-                  opacity: [0, 0.8, 0],
-                  scale: [0, 1, 0],
-                  y: [0, -20, -40],
-                  x: [0, ((i % 5) - 2) * 10],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Number.POSITIVE_INFINITY,
-                  delay: i * 0.5,
-                }}
+            <div className="flex items-center space-x-2">
+              <img
+                src={currentUser.avatar || "/placeholder.svg"}
+                alt={currentUser.name}
+                className="w-8 h-8 rounded-full object-cover"
               />
+              <span className="font-medium">{currentUser.name}</span>
+            </div>
+          </div>
+
+          <button
+            className="md:hidden p-2 cursor-pointer"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className={`md:hidden ${colors.card} border-b ${colors.border}`}
+            >
+              <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
+                <div className="flex items-center space-x-2">
+                  <img
+                    src={currentUser.avatar || "/placeholder.svg"}
+                    alt={currentUser.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <span className="font-medium">{currentUser.name}</span>
+                </div>
+
+                <button
+                  className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
+                  onClick={() => {
+                    setIsReviewModalOpen(true);
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Write a Review
+                </button>
+
+                <button
+                  className="flex items-center space-x-2 p-2 cursor-pointer"
+                  onClick={toggleTheme}
+                >
+                  {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+                  <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <section className="mb-12">
+          <div className={`rounded-xl overflow-hidden relative h-[80vh] mb-6`}>
+            <img
+              src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2670&auto=format&fit=crop"
+              alt="Restaurant hero"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-playfair text-center mb-4">
+                Discover Your Next Favorite Spot
+              </h2>
+              <p className="text-lg md:text-xl text-center mb-6 max-w-2xl">
+                Explore the best restaurants in your area with reviews from food
+                lovers like you
+              </p>
+              <button
+                onClick={scrollToRestaurants}
+                className="px-8 py-3 bg-white text-black rounded-full font-medium hover:bg-opacity-90 transition-all transform hover:scale-105 cursor-pointer"
+              >
+                Explore Restaurants
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold font-playfair">
+              Trending Restaurants
+            </h2>
+            <button
+              onClick={scrollToRestaurants}
+              className={`text-sm font-medium ${colors.accent} cursor-pointer`}
+            >
+              View all
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {trendingRestaurants.map((restaurant) => (
+              <motion.div
+                key={restaurant.id}
+                whileHover={{ y: -5 }}
+                className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border} cursor-pointer`}
+                onClick={() => {
+                  setSelectedRestaurant(restaurant);
+                  setIsModalOpen(true);
+                }}
+              >
+                <div className="relative h-48">
+                  <img
+                    src={restaurant.images[0] || "/placeholder.svg"}
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
+                    <Star
+                      className={`${colors.rating} fill-current`}
+                      size={16}
+                    />
+                    <span className="ml-1 text-black font-medium text-sm">
+                      {restaurant.rating.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-lg mb-1">
+                        {restaurant.name}
+                      </h3>
+                      <div className="flex items-center text-sm mb-2">
+                        <span className={`${colors.muted} mr-2`}>
+                          {restaurant.cuisine}
+                        </span>
+                        <span className="mr-2">•</span>
+                        <span className={colors.muted}>
+                          {getPriceRangeText(restaurant.priceRange)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center mt-2">
+                    <MapPin size={16} className={colors.muted} />
+                    <span className="text-sm ml-1">{restaurant.location}</span>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </section>
 
-        <section
-          className="py-20 relative"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, ${
-              theme === "hogwarts"
-                ? "rgba(245, 243, 232, 0.8)"
-                : "rgba(18, 18, 18, 0.8)"
-            }, ${
-              theme === "hogwarts"
-                ? "rgba(245, 243, 232, 0.8)"
-                : "rgba(18, 18, 18, 0.8)"
-            }), url('https://images.unsplash.com/photo-1654344009714-c582a009af5d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          <div className="container mx-auto px-4 text-center">
+        <section className="mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold font-playfair mb-6">
+            Featured Reviews
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredReviews.map((review) => (
               <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-            >
-              <h2
-                className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-6`}
+                key={review.id}
+                whileHover={{ y: -5 }}
+                className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border}`}
               >
-                Ready to Begin Your{" "}
-                <span style={{ color: "var(--color-primary)" }}>Magical</span>{" "}
-                Journey?
-              </h2>
-              <p className="max-w-2xl mx-auto text-lg mb-8 opacity-80">
-                Subscribe to the Daily Prophet and stay updated with the latest
-                news from the wizarding world.
-              </p>
-              <motion.button
-                onClick={() => setIsSubscribeModalOpen(true)}
-                className="px-6 py-3 rounded-lg text-white font-medium cursor-pointer"
-                style={{ backgroundColor: "var(--color-primary)" }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Subscribe Now
-              </motion.button>
+                <div className="relative h-48">
+                  <img
+                    src={review.images[0] || review.restaurantImage}
+                    alt={review.restaurantName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <img
+                        src={review.userAvatar || "/placeholder.svg"}
+                        alt={review.userName}
+                        className="w-10 h-10 rounded-full object-cover mr-3"
+                      />
+                      <div>
+                        <h4 className="font-medium">{review.userName}</h4>
+                        <p className="text-sm">{review.restaurantName}</p>
+                      </div>
+                    </div>
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`${
+                            i < review.rating
+                              ? colors.rating + " fill-current"
+                              : colors.muted
+                          }`}
+                          size={16}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-sm mb-3 line-clamp-3">{review.comment}</p>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs">{review.date}</span>
+                  </div>
+                </div>
               </motion.div>
-            </div>
+            ))}
+          </div>
         </section>
 
-        <footer
-          className="py-8 border-t"
-          style={{ borderColor: "var(--color-accent)" }}
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-center items-center text-center">
-              <div className="mb-4 md:mb-0">
-                <h2 className={`${cinzel.className} text-xl font-bold`}>
-                  <span style={{ color: "var(--color-primary)" }}>Magical</span>
-                  <span style={{ color: "var(--color-secondary)" }}>
-                    {" "}
-                    Portal
-                  </span>
-                </h2>
-                <p className="text-sm opacity-70 mt-1">
-                  A fan-made tribute to the wizarding world.
-                </p>
-        </div>
+        <section ref={allRestaurantsRef}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold font-playfair">
+              All Restaurants
+            </h2>
+          </div>
+
+          <div className="space-y-6 mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search for restaurants, cuisines, or dishes..."
+                className={`w-full px-4 py-3 pl-12 rounded-lg ${colors.card} border ${colors.border} focus:outline-none focus:ring-2 focus:ring-primary`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Search
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"
+                size={20}
+              />
             </div>
-            <div className="mt-8 text-center text-sm opacity-70">
-              <p>
-                This is a fan-made website. Harry Potter and all associated
-                names are trademarks of Warner Bros. Entertainment Inc.
-              </p>
-              <p className="mt-2">
-                © {new Date().getFullYear()} Magical Portal. All rights
-                reserved.
-              </p>
+
+            <div
+              className={`flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg ${colors.card} border ${colors.border}`}
+            >
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border cursor-pointer ${
+                    colors.border
+                  } ${
+                    selectedCuisine === "All"
+                      ? colors.primary + " text-white"
+                      : ""
+                  }`}
+                  onClick={() => setSelectedCuisine("All")}
+                >
+                  All Cuisines
+                </button>
+                {(
+                  [
+                    "Italian",
+                    "Japanese",
+                    "Mexican",
+                    "Indian",
+                    "American",
+                  ] as Cuisine[]
+                ).map((cuisine) => (
+                  <button
+                    key={cuisine}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border cursor-pointer ${
+                      colors.border
+                    } ${
+                      selectedCuisine === cuisine
+                        ? colors.primary + " text-white"
+                        : ""
+                    }`}
+                    onClick={() => setSelectedCuisine(cuisine)}
+                  >
+                    {cuisine}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border ${colors.border} ${colors.foreground} cursor-pointer bg-transparent`}
+                  value={selectedPriceRange}
+                  onChange={(e) =>
+                    setSelectedPriceRange(e.target.value as PriceRange)
+                  }
+                >
+                  <option
+                    value="All"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    All Prices
+                  </option>
+                  <option
+                    value="$"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    $10-30
+                  </option>
+                  <option
+                    value="$$"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    $30-60
+                  </option>
+                  <option
+                    value="$$$"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    $60-100
+                  </option>
+                  <option
+                    value="$$$$"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    $100+
+                  </option>
+                </select>
+
+                <select
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border ${colors.border} ${colors.foreground} cursor-pointer bg-transparent`}
+                  value={selectedLocation}
+                  onChange={(e) =>
+                    setSelectedLocation(e.target.value as Location)
+                  }
+                >
+                  <option
+                    value="All"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    All Locations
+                  </option>
+                  <option
+                    value="Downtown"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    Downtown
+                  </option>
+                  <option
+                    value="Uptown"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    Uptown
+                  </option>
+                  <option
+                    value="Midtown"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    Midtown
+                  </option>
+                  <option
+                    value="West End"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    West End
+                  </option>
+                  <option
+                    value="East Side"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    East Side
+                  </option>
+                  <option
+                    value="Waterfront"
+                    className={`${colors.card} ${colors.foreground}`}
+                  >
+                    Waterfront
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
-        </footer>
 
-        <Modal
-          isOpen={isMapModalOpen}
-          onClose={() => setIsMapModalOpen(false)}
-          title={selectedLocation?.name || ""}
-        >
-          {selectedLocation && (
-            <div>
-              <div className="mb-4 rounded-lg overflow-hidden">
-                <img
-                  src={selectedLocation.image || "/placeholder.svg"}
-                  alt={selectedLocation.name}
-                  width={600}
-                  height={400}
-                  className="w-full h-auto"
-                />
-              </div>
-              <p>{selectedLocation.description}</p>
-            </div>
-          )}
-        </Modal>
-
-        <Modal
-          isOpen={isSubscribeModalOpen}
-          onClose={() => setIsSubscribeModalOpen(false)}
-          title="Subscribe to the Daily Prophet"
-        >
-          <form onSubmit={handleSubscribe} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block mb-2 text-sm font-medium">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2"
-                style={{
-                  backgroundColor: "var(--color-card-bg)",
-                  color: "var(--color-text)",
-                  borderColor: emailError ? "red" : "var(--color-accent)",
-                  borderWidth: "1px",
-                }}
-                placeholder="your.email@example.com"
-                required
-              />
-              {emailError && (
-                <p className="mt-1 text-sm text-red-500">{emailError}</p>
-              )}
-            </div>
-            <div className="flex justify-end">
+          {filteredRestaurants.length === 0 ? (
+            <div
+              className={`p-8 rounded-lg ${colors.card} border ${colors.border} text-center`}
+            >
+              <p className="text-lg">
+                No restaurants found matching your criteria.
+              </p>
               <button
-                type="submit"
-                className="px-4 py-2 rounded-md text-white font-medium cursor-pointer"
-                style={{ backgroundColor: "var(--color-primary)" }}
+                className={`mt-4 px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCuisine("All");
+                  setSelectedLocation("All");
+                  setSelectedCategory("All");
+                  setSelectedPriceRange("All");
+                }}
               >
-                Subscribe
+                Clear Filters
               </button>
-        </div>
-          </form>
-        </Modal>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mockRestaurantsState
+                .filter((restaurant) => {
+                  const matchesSearch =
+                    restaurant.name
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                    restaurant.description
+                      .toLowerCase()
+                      .includes(searchQuery.toLowerCase());
+                  const matchesCuisine =
+                    selectedCuisine === "All" ||
+                    restaurant.cuisine === selectedCuisine;
+                  const matchesLocation =
+                    selectedLocation === "All" ||
+                    restaurant.location === selectedLocation;
+                  const matchesCategory =
+                    selectedCategory === "All" ||
+                    restaurant.categories.includes(selectedCategory);
+                  const matchesPriceRange =
+                    selectedPriceRange === "All" ||
+                    restaurant.priceRange === selectedPriceRange;
 
-        <AnimatePresence>
-          {toast && (
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={closeToast}
-            />
+                  return (
+                    matchesSearch &&
+                    matchesCuisine &&
+                    matchesLocation &&
+                    matchesCategory &&
+                    matchesPriceRange
+                  );
+                })
+                .map((restaurant) => (
+                  <motion.div
+                    key={restaurant.id}
+                    whileHover={{ y: -5 }}
+                    className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border} cursor-pointer`}
+                    onClick={() => {
+                      setSelectedRestaurant(restaurant);
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    <div className="relative h-48">
+                      <img
+                        src={restaurant.images[0] || "/placeholder.svg"}
+                        alt={restaurant.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
+                        <Star
+                          className={`${colors.rating} fill-current`}
+                          size={16}
+                        />
+                        <span className="ml-1 text-black font-medium text-sm">
+                          {restaurant.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-bold text-lg mb-1">
+                            {restaurant.name}
+                          </h3>
+                          <div className="flex items-center text-sm mb-2">
+                            <span className={`${colors.muted} mr-2`}>
+                              {restaurant.cuisine}
+                            </span>
+                            <span className="mr-2">•</span>
+                            <span className={colors.muted}>
+                              {getPriceRangeText(restaurant.priceRange)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-sm mb-3 line-clamp-2">
+                        {restaurant.description}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {restaurant.categories.map((category) => (
+                          <span
+                            key={category}
+                            className={`text-xs px-2 py-1 rounded-full ${colors.secondary} text-white`}
+                          >
+                            {category}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center">
+                        <MapPin size={16} className={colors.muted} />
+                        <span className="text-sm ml-1">
+                          {restaurant.location}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+            </div>
           )}
-        </AnimatePresence>
+        </section>
+      </main>
+
+      <footer
+        className={`${colors.card} border-t ${colors.border} mt-16 py-12`}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center text-center">
+            <h3 className="text-2xl font-bold font-playfair mb-2">
+              <span className={colors.accent}>Taste</span> Explorer
+            </h3>
+            <p className={`${colors.muted} mb-6 max-w-md`}>
+              Discover the best local restaurants and share your dining
+              experiences with food lovers around the world.
+            </p>
+            <p className={`text-sm ${colors.muted}`}>
+              © {new Date().getFullYear()} Taste Explorer. All rights reserved.
+            </p>
+          </div>
         </div>
+      </footer>
+
+      <AnimatePresence>
+        {isModalOpen && selectedRestaurant && (
+          <div
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${colors.overlay}`}
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-xl ${colors.card} shadow-xl relative`}
+            >
+              <div className="relative w-full">
+                <div className="relative h-64 md:h-80 w-full overflow-hidden">
+                  <AnimatePresence initial={false} mode="wait">
+                    <motion.div
+                      key={currentImageIndex}
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, x: 100 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -100 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <img
+                        src={selectedRestaurant.images[currentImageIndex]}
+                        alt={`${selectedRestaurant.name} ${
+                          currentImageIndex + 1
+                        }`}
+                        className="w-full h-full object-cover"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all cursor-pointer"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all cursor-pointer"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {selectedRestaurant.images.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                          index === currentImageIndex
+                            ? "bg-white w-4"
+                            : "bg-white/50 hover:bg-white/75"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="absolute top-4 right-4 bg-white rounded-full p-2 cursor-pointer"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setCurrentImageIndex(0);
+                  }}
+                >
+                  <X size={20} className="text-black" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-bold font-playfair mb-2">
+                      {selectedRestaurant.name}
+                    </h2>
+                    <div className="flex items-center flex-wrap gap-2 mb-2">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => {
+                          const rating = selectedRestaurant.rating;
+                          if (i < Math.floor(rating)) {
+                            return (
+                              <Star
+                                key={i}
+                                className={`${colors.rating} fill-current`}
+                                size={18}
+                              />
+                            );
+                          } else if (
+                            i === Math.floor(rating) &&
+                            rating % 1 >= 0.5
+                          ) {
+                            return (
+                              <StarHalf
+                                key={i}
+                                className={`${colors.rating} fill-current`}
+                                size={18}
+                              />
+                            );
+                          } else {
+                            return (
+                              <Star
+                                key={i}
+                                className={colors.muted}
+                                size={18}
+                              />
+                            );
+                          }
+                        })}
+                      </div>
+                      <span className="text-sm">
+                        {selectedRestaurant.rating.toFixed(1)} (
+                        {selectedRestaurant.reviewCount} reviews)
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+                      <span className="text-sm">
+                        {selectedRestaurant.cuisine}
+                      </span>
+                      <span className="text-sm">
+                        {getPriceRangeText(selectedRestaurant.priceRange)}
+                      </span>
+                      <div className="flex items-center">
+                        <MapPin size={16} className="mr-1" />
+                        <span className="text-sm">
+                          {selectedRestaurant.location}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock size={16} className="mr-1" />
+                        <span className="text-sm">
+                          {selectedRestaurant.hours.open} -{" "}
+                          {selectedRestaurant.hours.close}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mb-6">{selectedRestaurant.description}</p>
+
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {selectedRestaurant.categories.map((category) => (
+                    <span
+                      key={category}
+                      className={`text-xs px-2 py-1 rounded-full ${colors.secondary} text-white`}
+                    >
+                      {category}
+                    </span>
+                  ))}
+                </div>
+
+                <div className={`p-4 rounded-lg border ${colors.border} mb-6`}>
+                  <h3 className="font-bold text-lg mb-3">
+                    Contact Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm mb-1">
+                        <span className="font-medium">Address:</span>{" "}
+                        {selectedRestaurant.address}
+                      </p>
+                      <p className="text-sm mb-1">
+                        <span className="font-medium">Phone:</span>{" "}
+                        {selectedRestaurant.phone}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm mb-1">
+                        <span className="font-medium">Website:</span>{" "}
+                        {selectedRestaurant.website}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Hours:</span>{" "}
+                        {selectedRestaurant.hours.open} -{" "}
+                        {selectedRestaurant.hours.close}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-8">
+                  <h3 className="font-bold text-lg mb-4">Popular Dishes</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {selectedRestaurant.dishes
+                      .filter((dish) => dish.popular)
+                      .map((dish) => (
+                        <div
+                          key={dish.id}
+                          className={`flex rounded-lg overflow-hidden border ${colors.border}`}
+                        >
+                          <img
+                            src={dish.image || "/placeholder.svg"}
+                            alt={dish.name}
+                            className="w-24 h-24 object-cover"
+                          />
+                          <div className="p-3">
+                            <h4 className="font-medium mb-1">{dish.name}</h4>
+                            <p className="text-sm mb-1 line-clamp-1">
+                              {dish.description}
+                            </p>
+                            <p className="font-medium">
+                              ${dish.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-lg">Reviews</h3>
+                    <button
+                      className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
+                      onClick={() => {
+                        setIsReviewModalOpen(true);
+                        setIsModalOpen(false);
+                        setNewReview((prev) => ({
+                          ...prev,
+                          restaurantId: selectedRestaurant.id,
+                          dishes: [],
+                        }));
+                      }}
+                    >
+                      Write a Review
+                    </button>
+                  </div>
+
+                  {selectedRestaurant.reviews.length === 0 ? (
+                    <p className="text-center py-6">
+                      No reviews yet. Be the first to review!
+                    </p>
+                  ) : (
+                    <div className="space-y-6">
+                      {selectedRestaurant.reviews.map((review) => (
+                        <div
+                          key={review.id}
+                          className={`p-4 rounded-lg border ${colors.border}`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center">
+                              <img
+                                src={review.userAvatar || "/placeholder.svg"}
+                                alt={review.userName}
+                                className="w-10 h-10 rounded-full object-cover mr-3"
+                              />
+                              <div>
+                                <h4 className="font-medium">
+                                  {review.userName}
+                                </h4>
+                                <p className="text-xs">{review.date}</p>
+                              </div>
+                            </div>
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`${
+                                    i < review.rating
+                                      ? colors.rating + " fill-current"
+                                      : colors.muted
+                                  }`}
+                                  size={16}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          <p className="text-sm mb-4">{review.comment}</p>
+
+                          {review.images.length > 0 && (
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                              {review.images.map((image, index) => (
+                                <div key={index} className="relative group">
+                                  <img
+                                    src={image}
+                                    alt={`Review image ${index + 1}`}
+                                    className="w-24 h-24 object-cover rounded-lg"
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeImage(index);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {review.dishes.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {review.dishes.map((dish) => (
+                                <span
+                                  key={dish}
+                                  className={`text-xs px-2 py-1 rounded-full `}
+                                >
+                                  {dish}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">{review.date}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isReviewModalOpen && (
+          <div
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${colors.overlay}`}
+          >
+            <motion.div
+              ref={reviewModalRef}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl ${colors.card} shadow-xl`}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold font-playfair">
+                    Write a Review
+                  </h2>
+                  <button
+                    className="p-2 rounded-full cursor-pointer"
+                    onClick={() => setIsReviewModalOpen(false)}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block font-medium mb-2">
+                    Select Restaurant
+                  </label>
+                  <select
+                    className={`w-full p-3 rounded-lg border ${colors.border} ${colors.input}`}
+                    value={newReview.restaurantId}
+                    onChange={(e) => {
+                      const restaurantId = e.target.value;
+                      setNewReview((prev) => ({
+                        ...prev,
+                        restaurantId,
+                      }));
+                      setSelectedRestaurant(
+                        mockRestaurantsState.find(
+                          (r) => r.id === restaurantId
+                        ) || null
+                      );
+                    }}
+                  >
+                    <option value="">Select a restaurant</option>
+                    {mockRestaurantsState.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block font-medium mb-2">Rating</label>
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`${
+                          i < newReview.rating
+                            ? colors.rating + " fill-current"
+                            : colors.muted
+                        }`}
+                        size={20}
+                        onClick={() =>
+                          setNewReview({ ...newReview, rating: i + 1 })
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block font-medium mb-2">Comment</label>
+                  <textarea
+                    className={`w-full p-3 rounded-lg border ${colors.border} ${colors.input}`}
+                    value={newReview.comment}
+                    onChange={(e) =>
+                      setNewReview({ ...newReview, comment: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block font-medium mb-2">Add Photos</label>
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed ${colors.border} hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer`}
+                    >
+                      <Camera size={24} />
+                      <span className="text-xs">Add Photos</span>
+                    </button>
+
+                    {newReview.images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image}
+                          alt={`Review image ${index + 1}`}
+                          className="w-24 h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(index);
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10 cursor-pointer"
+                        >
+                          <X size={14} />
+                        </button>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+                      </div>
+                    ))}
+
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  {newReview.images.length > 0 && (
+                    <p className="text-sm mt-2 text-gray-500">
+                      {newReview.images.length} photo
+                      {newReview.images.length !== 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </div>
+
+                <div className="mb-6">
+                  <label className="block font-medium mb-2">
+                    Dishes You Tried
+                  </label>
+                  {selectedRestaurant && (
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {selectedRestaurant.dishes.map((dish) => (
+                        <div
+                          key={dish.id}
+                          onClick={() => {
+                            setNewReview((prev) => ({
+                              ...prev,
+                              dishes: prev.dishes.includes(dish.name)
+                                ? prev.dishes.filter((d) => d !== dish.name)
+                                : [...prev.dishes, dish.name],
+                            }));
+                          }}
+                          className={`p-3 rounded-lg border ${
+                            colors.border
+                          } cursor-pointer transition-colors ${
+                            newReview.dishes.includes(dish.name)
+                              ? colors.primary + " text-white"
+                              : colors.input
+                          }`}
+                        >
+                          <p className="font-medium">{dish.name}</p>
+                          <p className="text-sm opacity-75">
+                            ${dish.price.toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    className={`w-full px-4 py-3 rounded-full ${colors.primary} text-white font-medium cursor-pointer flex items-center justify-center gap-2`}
+                    onClick={handleSubmitReview}
+                  >
+                    <Send size={20} />
+                    Submit Review
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 right-4 z-50"
+          >
+            <div
+              className={`px-6 py-3 rounded-lg shadow-lg ${
+                toastMessage.includes("successfully")
+                  ? "bg-green-500"
+                  : "bg-red-500"
+              } text-white`}
+            >
+              {toastMessage}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
