@@ -1,2062 +1,1427 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext } from "react";
+import {  Montserrat } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search,
+  ShoppingCart,
+  X,
+  Sun,
+  Moon,
   Star,
   StarHalf,
-  MapPin,
-  Clock,
-  X,
-  Moon,
-  Sun,
-  Camera,
-  Send,
-  Menu,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+  Eye,
+  Plus,
+  Minus,
+  Trash2,
 } from "lucide-react";
-import { Playfair_Display, Montserrat } from "next/font/google";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-});
 
 const montserrat = Montserrat({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
   variable: "--font-montserrat",
 });
 
 type ThemeType = "light" | "dark";
-type ThemeColors = {
+
+interface ThemeColors {
   background: string;
   foreground: string;
   primary: string;
+  primaryHover: string;
   secondary: string;
   accent: string;
   muted: string;
-  card: string;
   border: string;
-  input: string;
-  rating: string;
-  success: string;
-  warning: string;
-  error: string;
-  overlay: string;
-};
+  card: string;
+  cardHover: string;
+}
 
-const themeConfig: Record<ThemeType, ThemeColors> = {
+interface ThemeConfig {
+  light: ThemeColors;
+  dark: ThemeColors;
+}
+
+const themeConfig: ThemeConfig = {
   light: {
-    background: "bg-[#f8f9fa]",
-    foreground: "text-[#212529]",
-    primary: "bg-[#e63946]",
-    secondary: "bg-[#457b9d]",
-    accent: "text-[#e63946]",
-    muted: "text-[#6c757d]",
+    background: "bg-gray-50",
+    foreground: "text-gray-900",
+    primary: "bg-rose-600",
+    primaryHover: "hover:bg-rose-700",
+    secondary: "bg-indigo-600",
+    accent: "text-rose-600",
+    muted: "text-gray-500",
+    border: "border-gray-200",
     card: "bg-white",
-    border: "border-[#dee2e6]",
-    input: "bg-white",
-    rating: "text-[#ffc107]",
-    success: "bg-[#28a745]",
-    warning: "bg-[#ffc107]",
-    error: "bg-[#dc3545]",
-    overlay: "bg-black/50",
+    cardHover: "hover:bg-gray-50",
   },
   dark: {
-    background: "bg-[#121212]",
-    foreground: "text-[#f8f9fa]",
-    primary: "bg-[#e63946]",
-    secondary: "bg-[#457b9d]",
-    accent: "text-[#e63946]",
-    muted: "text-[#adb5bd]",
-    card: "bg-[#1e1e1e]",
-    border: "border-[#2d2d2d]",
-    input: "bg-[#2d2d2d]",
-    rating: "text-[#ffc107]",
-    success: "bg-[#28a745]",
-    warning: "bg-[#ffc107]",
-    error: "bg-[#dc3545]",
-    overlay: "bg-black/70",
+    background: "bg-gray-950",
+    foreground: "text-gray-100",
+    primary: "bg-rose-500",
+    primaryHover: "hover:bg-rose-600",
+    secondary: "bg-indigo-500",
+    accent: "text-rose-400",
+    muted: "text-gray-400",
+    border: "border-gray-800",
+    card: "bg-gray-900",
+    cardHover: "hover:bg-gray-800",
   },
 };
 
-type Cuisine =
-  | "Italian"
-  | "Japanese"
-  | "Mexican"
-  | "Indian"
-  | "American"
-  | "Thai"
-  | "French"
-  | "Chinese"
-  | "Mediterranean"
-  | "Korean";
-type PriceRange = "$" | "$$" | "$$$" | "$$$$";
-type Category =
-  | "Trending"
-  | "Budget-friendly"
-  | "Family spots"
-  | "Late-night eats"
-  | "Date night"
-  | "Healthy options";
-type Location =
-  | "Downtown"
-  | "Uptown"
-  | "Midtown"
-  | "West End"
-  | "East Side"
-  | "Waterfront"
-  | "Suburbs";
-
-interface Dish {
+interface Product {
   id: string;
   name: string;
+  description: string;
   price: number;
+  images: string[];
+  rating: number;
+  category: string;
+  franchise: string;
+  genre: string[];
+  rarity: "Common" | "Uncommon" | "Rare" | "Ultra Rare" | "Limited Edition";
+  inStock: boolean;
+  releaseDate: string;
+  featured?: boolean;
+  newArrival?: boolean;
+}
+
+interface Collection {
+  id: string;
+  name: string;
   description: string;
   image: string;
-  popular: boolean;
+  products: string[];
 }
 
-interface Review {
+interface Banner {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  rating: number;
-  comment: string;
-  date: string;
-  images: string[];
-  likes: number;
-  dishes: string[];
+  title: string;
+  subtitle: string;
+  image: string;
+  link: string;
 }
 
-interface Restaurant {
-  id: string;
-  name: string;
-  description: string;
-  cuisine: Cuisine;
-  priceRange: PriceRange;
-  location: Location;
-  address: string;
-  phone: string;
-  website: string;
-  hours: {
-    open: string;
-    close: string;
-  };
-  rating: number;
-  reviewCount: number;
-  images: string[];
-  categories: Category[];
-  dishes: Dish[];
-  reviews: Review[];
-  featured: boolean;
+interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
-interface User {
-  id: string;
-  name: string;
-  avatar: string;
-  reviewCount: number;
-  favoriteRestaurants: string[];
+interface FilterOptions {
+  franchise: string[];
+  genre: string[];
+  priceRange: [number, number];
+  rarity: string[];
 }
 
-const mockRestaurants: Restaurant[] = [
+interface SortOption {
+  label: string;
+  value: string;
+}
+
+interface ThemeContextType {
+  theme: ThemeType;
+  toggleTheme: () => void;
+  colors: ThemeColors;
+}
+
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "light",
+  toggleTheme: () => {},
+  colors: themeConfig.light,
+});
+
+const mockProducts: Product[] = [
   {
-    id: "1",
-    name: "Bella Napoli",
+    id: "p1",
+    name: "Iron Man Mark XLII Helmet",
     description:
-      "Authentic Neapolitan pizzas and traditional Italian dishes in a cozy, rustic setting with a wood-fired oven.",
-    cuisine: "Italian",
-    priceRange: "$$",
-    location: "Downtown",
-    address: "123 Main St, Cityville",
-    phone: "(555) 123-4567",
-    website: "www.bellanapoli.com",
-    hours: {
-      open: "11:00 AM",
-      close: "10:00 PM",
-    },
-    rating: 4.7,
-    reviewCount: 342,
+      "Limited edition 1:1 scale Iron Man helmet with light-up eyes and detailed paint job. Perfect for display or cosplay.",
+    price: 299.99,
     images: [
-      "https://images.unsplash.com/photo-1579684947550-22e945225d9a?q=80&w=2574&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=2681&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1636840438199-9125cd03c3b0?q=80&w=1000",
+      "https://images.unsplash.com/photo-1593085260707-5377ba37f868?q=80&w=1000",
     ],
-    categories: ["Trending", "Family spots"],
-    dishes: [
-      {
-        id: "d1",
-        name: "Margherita Pizza",
-        price: 14.99,
-        description:
-          "Classic pizza with tomato sauce, fresh mozzarella, and basil",
-        image:
-          "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?q=80&w=2669&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d2",
-        name: "Spaghetti Carbonara",
-        price: 16.99,
-        description:
-          "Pasta with pancetta, eggs, Pecorino Romano, and black pepper",
-        image:
-          "https://images.unsplash.com/photo-1612874742237-6526221588e3?q=80&w=2671&auto=format&fit=crop",
-        popular: true,
-      },
-    ],
-    reviews: [
-      {
-        id: "r1",
-        userId: "u1",
-        userName: "Emma Wilson",
-        userAvatar:
-          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=2787&auto=format&fit=crop",
-        rating: 5,
-        comment:
-          "The pizza here is absolutely amazing! Authentic Italian flavors that transported me straight to Naples. The crust was perfectly crispy yet chewy. Will definitely be back!",
-        date: "2023-11-15",
-        images: [
-          "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=2681&auto=format&fit=crop",
-        ],
-        likes: 24,
-        dishes: ["Margherita Pizza"],
-      },
-    ],
-    featured: true,
-  },
-  {
-    id: "2",
-    name: "Sakura Sushi",
-    description:
-      "Premium Japanese sushi restaurant offering the freshest fish and traditional dishes in an elegant atmosphere.",
-    cuisine: "Japanese",
-    priceRange: "$$$",
-    location: "Waterfront",
-    address: "456 Ocean Ave, Cityville",
-    phone: "(555) 987-6543",
-    website: "www.sakurasushi.com",
-    hours: {
-      open: "12:00 PM",
-      close: "11:00 PM",
-    },
-    rating: 4.9,
-    reviewCount: 528,
-    images: [
-      "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1611143669185-af224c5e3252?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=2625&auto=format&fit=crop",
-    ],
-    categories: ["Trending", "Date night"],
-    dishes: [
-      {
-        id: "d3",
-        name: "Omakase Set",
-        price: 89.99,
-        description: "Chef's selection of premium sushi and sashimi",
-        image:
-          "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?q=80&w=2688&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d4",
-        name: "Dragon Roll",
-        price: 18.99,
-        description: "Eel, avocado, and cucumber roll topped with avocado",
-        image:
-          "https://images.unsplash.com/photo-1617196034183-421b4917c92d?q=80&w=2670&auto=format&fit=crop",
-        popular: false,
-      },
-    ],
-    reviews: [
-      {
-        id: "r2",
-        userId: "u2",
-        userName: "James Chen",
-        userAvatar:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2787&auto=format&fit=crop",
-        rating: 5,
-        comment:
-          "Best sushi in town! The fish is incredibly fresh and the presentation is beautiful. The omakase experience is worth every penny.",
-        date: "2023-12-03",
-        images: [
-          "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=2670&auto=format&fit=crop",
-        ],
-        likes: 42,
-        dishes: ["Omakase Set"],
-      },
-    ],
-    featured: true,
-  },
-  {
-    id: "3",
-    name: "El Camino",
-    description:
-      "Vibrant Mexican cantina serving authentic tacos, enchiladas, and margaritas in a colorful, festive environment.",
-    cuisine: "Mexican",
-    priceRange: "$$",
-    location: "Midtown",
-    address: "789 Central Blvd, Cityville",
-    phone: "(555) 456-7890",
-    website: "www.elcamino.com",
-    hours: {
-      open: "11:30 AM",
-      close: "12:00 AM",
-    },
-    rating: 4.5,
-    reviewCount: 287,
-    images: [
-      "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=2680&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1613514785940-daed07799d9b?q=80&w=2680&auto=format&fit=crop",
-    ],
-    categories: ["Budget-friendly", "Late-night eats"],
-    dishes: [
-      {
-        id: "d5",
-        name: "Street Tacos",
-        price: 12.99,
-        description:
-          "Three authentic corn tortilla tacos with your choice of meat",
-        image:
-          "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d6",
-        name: "Enchiladas Verdes",
-        price: 15.99,
-        description:
-          "Chicken enchiladas with green tomatillo sauce and queso fresco",
-        image:
-          "https://images.unsplash.com/photo-1534352956036-cd81e27dd615?q=80&w=2670&auto=format&fit=crop",
-        popular: false,
-      },
-    ],
-    reviews: [
-      {
-        id: "r3",
-        userId: "u3",
-        userName: "Sophia Rodriguez",
-        userAvatar:
-          "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=2670&auto=format&fit=crop",
-        rating: 4,
-        comment:
-          "Great tacos and the margaritas are fantastic! The atmosphere is lively and fun. Only giving 4 stars because it can get pretty loud on weekends.",
-        date: "2023-10-22",
-        images: [
-          "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=2680&auto=format&fit=crop",
-        ],
-        likes: 18,
-        dishes: ["Street Tacos"],
-      },
-    ],
-    featured: false,
-  },
-  {
-    id: "4",
-    name: "Spice Route",
-    description:
-      "Authentic Indian cuisine featuring flavorful curries, tandoori specialties, and fresh-baked naan in a warm, inviting space.",
-    cuisine: "Indian",
-    priceRange: "$$",
-    location: "East Side",
-    address: "321 Curry Lane, Cityville",
-    phone: "(555) 789-0123",
-    website: "www.spiceroute.com",
-    hours: {
-      open: "12:00 PM",
-      close: "10:30 PM",
-    },
-    rating: 4.6,
-    reviewCount: 203,
-    images: [
-      "https://images.pexels.com/photos/260922/pexels-photo-260922.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.unsplash.com/photo-1631515242808-497c3fbd3972?q=80&w=2788&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2645&auto=format&fit=crop",
-    ],
-    categories: ["Family spots", "Budget-friendly"],
-    dishes: [
-      {
-        id: "d7",
-        name: "Butter Chicken",
-        price: 17.99,
-        description: "Tender chicken in a rich, creamy tomato sauce",
-        image:
-          "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d8",
-        name: "Vegetable Biryani",
-        price: 15.99,
-        description:
-          "Fragrant basmati rice with mixed vegetables and aromatic spices",
-        image:
-          "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2788&auto=format&fit=crop",
-        popular: false,
-      },
-    ],
-    reviews: [
-      {
-        id: "r4",
-        userId: "u4",
-        userName: "Raj Patel",
-        userAvatar:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=2787&auto=format&fit=crop",
-        rating: 5,
-        comment:
-          "Absolutely delicious and authentic Indian food! The butter chicken is to die for, and the naan bread is perfectly baked. Generous portions too!",
-        date: "2023-11-05",
-        images: [
-          "https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-        ],
-        likes: 31,
-        dishes: ["Butter Chicken"],
-      },
-    ],
-    featured: false,
-  },
-  {
-    id: "5",
-    name: "The Burger Joint",
-    description:
-      "Classic American diner serving gourmet burgers, hand-cut fries, and creamy milkshakes in a nostalgic 50s-inspired setting.",
-    cuisine: "American",
-    priceRange: "$",
-    location: "West End",
-    address: "555 Patty Ave, Cityville",
-    phone: "(555) 234-5678",
-    website: "www.burgerjoint.com",
-    hours: {
-      open: "11:00 AM",
-      close: "11:00 PM",
-    },
-    rating: 4.4,
-    reviewCount: 412,
-    images: [
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=2899&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2565&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=2670&auto=format&fit=crop",
-    ],
-    categories: ["Budget-friendly", "Late-night eats"],
-    dishes: [
-      {
-        id: "d9",
-        name: "Classic Cheeseburger",
-        price: 9.99,
-        description:
-          "Angus beef patty with cheddar, lettuce, tomato, and special sauce",
-        image:
-          "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=2899&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d10",
-        name: "Loaded Fries",
-        price: 7.99,
-        description:
-          "Hand-cut fries topped with cheese, bacon, and green onions",
-        image:
-          "https://images.unsplash.com/photo-1585109649139-366815a0d713?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-    ],
-    reviews: [
-      {
-        id: "r5",
-        userId: "u5",
-        userName: "Mike Johnson",
-        userAvatar:
-          "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=2787&auto=format&fit=crop",
-        rating: 4,
-        comment:
-          "Great burgers at a reasonable price! The loaded fries are amazing too. Service can be a bit slow during peak hours, but the food is worth the wait.",
-        date: "2023-12-10",
-        images: [
-          "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2565&auto=format&fit=crop",
-        ],
-        likes: 15,
-        dishes: ["Classic Cheeseburger", "Loaded Fries"],
-      },
-    ],
-    featured: true,
-  },
-  {
-    id: "6",
-    name: "Bangkok Kitchen",
-    description:
-      "Authentic Thai restaurant offering flavorful curries, noodle dishes, and stir-fries with fresh ingredients and aromatic spices.",
-    cuisine: "Thai",
-    priceRange: "$$",
-    location: "Uptown",
-    address: "888 Spice Street, Cityville",
-    phone: "(555) 345-6789",
-    website: "www.bangkokkitchen.com",
-    hours: {
-      open: "11:30 AM",
-      close: "10:00 PM",
-    },
     rating: 4.8,
-    reviewCount: 176,
-    images: [
-      "https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?q=80&w=2532&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1569562211093-4ed0d0758f12?q=80&w=2574&auto=format&fit=crop",
-    ],
-    categories: ["Healthy options", "Date night"],
-    dishes: [
-      {
-        id: "d11",
-        name: "Pad Thai",
-        price: 14.99,
-        description:
-          "Stir-fried rice noodles with egg, tofu, bean sprouts, and peanuts",
-        image:
-          "https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d12",
-        name: "Green Curry",
-        price: 16.99,
-        description:
-          "Spicy coconut curry with bamboo shoots, bell peppers, and basil",
-        image:
-          "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?q=80&w=2670&auto=format&fit=crop",
-        popular: false,
-      },
-    ],
-    reviews: [
-      {
-        id: "r6",
-        userId: "u6",
-        userName: "Lisa Wong",
-        userAvatar:
-          "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=2688&auto=format&fit=crop",
-        rating: 5,
-        comment:
-          "The most authentic Thai food I've had outside of Thailand! The Pad Thai is perfectly balanced and the curry has just the right amount of spice. Highly recommend!",
-        date: "2023-11-28",
-        images: [
-          "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?q=80&w=2532&auto=format&fit=crop",
-        ],
-        likes: 27,
-        dishes: ["Pad Thai", "Green Curry"],
-      },
-    ],
-    featured: false,
-  },
-  {
-    id: "7",
-    name: "Bistro Parisienne",
-    description:
-      "Charming French bistro offering classic dishes like coq au vin, beef bourguignon, and crème brûlée in an intimate, romantic setting.",
-    cuisine: "French",
-    priceRange: "$$$",
-    location: "Downtown",
-    address: "777 Rue de Paris, Cityville",
-    phone: "(555) 567-8901",
-    website: "www.bistroparisienne.com",
-    hours: {
-      open: "5:00 PM",
-      close: "11:00 PM",
-    },
-    rating: 4.9,
-    reviewCount: 231,
-    images: [
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=2670&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?q=80&w=2670&auto=format&fit=crop",
-    ],
-    categories: ["Date night", "Trending"],
-    dishes: [
-      {
-        id: "d13",
-        name: "Coq au Vin",
-        price: 28.99,
-        description: "Chicken braised with wine, mushrooms, and pearl onions",
-        image:
-          "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d14",
-        name: "Crème Brûlée",
-        price: 10.99,
-        description: "Classic vanilla custard with caramelized sugar top",
-        image:
-          "https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-    ],
-    reviews: [
-      {
-        id: "r7",
-        userId: "u7",
-        userName: "Pierre Dubois",
-        userAvatar:
-          "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=2787&auto=format&fit=crop",
-        rating: 5,
-        comment:
-          "Magnifique! The atmosphere is truly Parisian and the food is exceptional. The coq au vin transported me straight to France. Perfect for a special occasion.",
-        date: "2023-12-15",
-        images: [
-          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2670&auto=format&fit=crop",
-        ],
-        likes: 39,
-        dishes: ["Coq au Vin", "Crème Brûlée"],
-      },
-    ],
+    category: "Prop Replicas",
+    franchise: "Marvel",
+    genre: ["Superhero", "Action"],
+    rarity: "Limited Edition",
+    inStock: true,
+    releaseDate: "2023-05-15",
     featured: true,
   },
   {
-    id: "8",
-    name: "Golden Dragon",
+    id: "p2",
+    name: "Star Wars: The Mandalorian Poster",
     description:
-      "Traditional Chinese restaurant specializing in dim sum, Peking duck, and regional specialties from Sichuan, Cantonese, and Hunan cuisines.",
-    cuisine: "Chinese",
-    priceRange: "$$",
-    location: "Suburbs",
-    address: "999 Dragon Street, Cityville",
-    phone: "(555) 678-9012",
-    website: "www.goldendragon.com",
-    hours: {
-      open: "11:00 AM",
-      close: "10:30 PM",
-    },
-    rating: 4.5,
-    reviewCount: 318,
+      "Official movie poster from The Mandalorian series, featuring Din Djarin and Grogu. Printed on premium paper with vibrant colors.",
+    price: 24.99,
     images: [
-      "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=2729&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=2574&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=2670&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
+      "https://images.unsplash.com/photo-1596727147705-61a532a659bd?q=80&w=1000",
     ],
-    categories: ["Family spots", "Budget-friendly"],
-    dishes: [
-      {
-        id: "d15",
-        name: "Peking Duck",
-        price: 32.99,
-        description:
-          "Roasted duck with thin pancakes, scallions, and hoisin sauce",
-        image:
-          "https://images.unsplash.com/photo-1518983546435-91f8b87fe561?q=80&w=2670&auto=format&fit=crop",
-        popular: true,
-      },
-      {
-        id: "d16",
-        name: "Dim Sum Platter",
-        price: 18.99,
-        description: "Assortment of steamed dumplings, buns, and small bites",
-        image:
-          "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=2729&auto=format&fit=crop",
-        popular: true,
-      },
+    rating: 4.5,
+    category: "Posters",
+    franchise: "Star Wars",
+    genre: ["Sci-Fi", "Adventure"],
+    rarity: "Common",
+    inStock: true,
+    releaseDate: "2022-11-30",
+    featured: true,
+  },
+  {
+    id: "p3",
+    name: "Harry Potter Wand Collection",
+    description:
+      "Set of 5 character wands from the Harry Potter series, including Harry, Hermione, Ron, Dumbledore, and Voldemort. Each wand comes with a display stand.",
+    price: 149.99,
+    images: [
+      "https://images.unsplash.com/photo-1551269901-5c5e14c25df7?q=80&w=1000",
+      "https://images.unsplash.com/photo-1535666669445-e8c15cd2e7d9?q=80&w=1000",
     ],
-    reviews: [
-      {
-        id: "r8",
-        userId: "u8",
-        userName: "David Lee",
-        userAvatar:
-          "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=2787&auto=format&fit=crop",
-        rating: 4,
-        comment:
-          "Great dim sum and the Peking duck is excellent! The restaurant can get very busy on weekends, so I recommend making a reservation. Good value for the quality.",
-        date: "2023-10-30",
-        images: [
-          "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=2574&auto=format&fit=crop",
-        ],
-        likes: 22,
-        dishes: ["Dim Sum Platter", "Peking Duck"],
-      },
+    rating: 4.7,
+    category: "Prop Replicas",
+    franchise: "Harry Potter",
+    genre: ["Fantasy", "Adventure"],
+    rarity: "Uncommon",
+    inStock: true,
+    releaseDate: "2023-01-10",
+    newArrival: true,
+  },
+  {
+    id: "p4",
+    name: "Stranger Things Demogorgon Figure",
+    description:
+      "Highly detailed 12-inch Demogorgon action figure with multiple points of articulation and interchangeable heads.",
+    price: 59.99,
+    images: [
+      "https://images.unsplash.com/photo-1626379616459-b2ce1d9decbc?q=80&w=1000",
+      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
     ],
-    featured: false,
+    rating: 4.3,
+    category: "Action Figures",
+    franchise: "Stranger Things",
+    genre: ["Horror", "Sci-Fi"],
+    rarity: "Rare",
+    inStock: false,
+    releaseDate: "2022-08-22",
+    featured: true,
+  },
+  {
+    id: "p5",
+    name: "Jurassic Park Amber Collection",
+    description:
+      "Authentic replica of the amber-encased mosquito from Jurassic Park. Comes with a wooden display case and certificate of authenticity.",
+    price: 199.99,
+    images: [
+      "https://images.pexels.com/photos/1369466/pexels-photo-1369466.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+      "https://images.unsplash.com/photo-1620336655055-088d06e36bf0?q=80&w=1000",
+    ],
+    rating: 4.9,
+    category: "Prop Replicas",
+    franchise: "Jurassic Park",
+    genre: ["Sci-Fi", "Adventure"],
+    rarity: "Ultra Rare",
+    inStock: true,
+    releaseDate: "2023-03-05",
+    newArrival: true,
+  },
+  {
+    id: "p6",
+    name: "The Godfather Movie Poster",
+    description:
+      "Classic poster from the 1972 film The Godfather. Features Marlon Brando as Don Vito Corleone.",
+    price: 34.99,
+    images: [
+      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000",
+      "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=1000",
+    ],
+    rating: 4.6,
+    category: "Posters",
+    franchise: "The Godfather",
+    genre: ["Crime", "Drama"],
+    rarity: "Uncommon",
+    inStock: true,
+    releaseDate: "2022-10-15",
+  },
+  {
+    id: "p7",
+    name: "Batman Batarang Replica",
+    description:
+      "Screen-accurate replica of Batman's Batarang from The Dark Knight trilogy. Made of die-cast metal with a matte black finish.",
+    price: 79.99,
+    images: [
+      "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?q=80&w=1000",
+      "https://images.unsplash.com/photo-1600480505021-e9cfb05527f1?q=80&w=1000",
+    ],
+    rating: 4.7,
+    category: "Prop Replicas",
+    franchise: "DC",
+    genre: ["Superhero", "Action"],
+    rarity: "Rare",
+    inStock: true,
+    releaseDate: "2023-02-18",
+    newArrival: true,
+  },
+  {
+    id: "p8",
+    name: "Lord of the Rings: One Ring",
+    description:
+      "Replica of the One Ring from The Lord of the Rings. Made of gold-plated tungsten with Elvish inscription.",
+    price: 129.99,
+    images: [
+      "https://images.unsplash.com/photo-1610296669228-602fa827fc1f?q=80&w=1000",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000",
+    ],
+    rating: 4.9,
+    category: "Prop Replicas",
+    franchise: "Lord of the Rings",
+    genre: ["Fantasy", "Adventure"],
+    rarity: "Limited Edition",
+    inStock: true,
+    releaseDate: "2022-12-25",
+    featured: true,
   },
 ];
 
-const currentUser: User = {
-  id: "current",
-  name: "Alex Morgan",
-  avatar:
-    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=2680&auto=format&fit=crop",
-  reviewCount: 28,
-  favoriteRestaurants: ["1", "2", "7"],
-};
+const mockCollections: Collection[] = [
+  {
+    id: "c1",
+    name: "Marvel Vault",
+    description: "Exclusive collectibles from the Marvel Cinematic Universe",
+    image:
+      "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000",
+    products: ["p1", "p4"],
+  },
+  {
+    id: "c2",
+    name: "Sci-Fi Legends",
+    description: "Iconic items from the greatest sci-fi franchises",
+    image:
+      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
+    products: ["p2", "p5"],
+  },
+  {
+    id: "c3",
+    name: "Oscar Winners",
+    description: "Collectibles from Academy Award-winning films",
+    image:
+      "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000",
+    products: ["p6", "p8"],
+  },
+];
 
-export default function RestaurantReviewPlatform() {
+const mockBanners: Banner[] = [
+  {
+    id: "b1",
+    title: "Marvel Cinematic Universe Collection",
+    subtitle: "Exclusive collectibles from your favorite superhero films",
+    image:
+      "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000",
+    link: "/collections/marvel",
+  },
+  {
+    id: "b2",
+    title: "Star Wars: The Mandalorian",
+    subtitle: "This is the way. New items from the hit series",
+    image:
+      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
+    link: "/collections/star-wars",
+  },
+  {
+    id: "b3",
+    title: "Limited Edition Collectibles",
+    subtitle: "One-of-a-kind items for the serious collector",
+    image:
+      "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000",
+    link: "/collections/limited-edition",
+  },
+];
+
+const sortOptions: SortOption[] = [
+  { label: "Featured", value: "featured" },
+  { label: "Price: Low to High", value: "price-asc" },
+  { label: "Price: High to Low", value: "price-desc" },
+  { label: "Newest", value: "newest" },
+  { label: "Rating", value: "rating" },
+];
+
+export default function Home() {
   const [theme, setTheme] = useState<ThemeType>("light");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCuisine, setSelectedCuisine] = useState<Cuisine | "All">(
-    "All"
-  );
-  const [selectedLocation, setSelectedLocation] = useState<Location | "All">(
-    "All"
-  );
-  const [selectedCategory, setSelectedCategory] = useState<Category | "All">(
-    "All"
-  );
-  const [selectedPriceRange, setSelectedPriceRange] = useState<
-    PriceRange | "All"
-  >("All");
-  const [selectedRestaurant, setSelectedRestaurant] =
-    useState<Restaurant | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [mockRestaurantsState, setMockRestaurantsState] =
-    useState(mockRestaurants);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const [sortBy, setSortBy] = useState<string>("featured");
   const [toastMessage, setToastMessage] = useState("");
-  const [newReview, setNewReview] = useState({
-    rating: 0,
-    comment: "",
-    images: [] as string[],
-    dishes: [] as string[],
-    restaurantId: "",
-  });
+  const [showToast, setShowToast] = useState(false);
 
-  const modalRef = useRef<HTMLDivElement>(null);
-  const reviewModalRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const allRestaurantsRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isModalOpen || isReviewModalOpen) {
+    const savedTheme = localStorage.getItem("theme") as ThemeType;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      setTheme(prefersDark ? "dark" : "light");
+    }
+
+    const bannerInterval = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % mockBanners.length);
+    }, 5000);
+
+    return () => clearInterval(bannerInterval);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+
+    if (isProductModalOpen || isCartOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
-
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isModalOpen, isReviewModalOpen]);
+  }, [theme, isProductModalOpen, isCartOpen]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
-      ) {
-        setIsModalOpen(false);
-      }
-      if (
-        reviewModalRef.current &&
-        !reviewModalRef.current.contains(event.target as Node)
-      ) {
-        setIsReviewModalOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
-  const filteredRestaurants = mockRestaurants.filter((restaurant) => {
-    const matchesSearch =
-      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCuisine =
-      selectedCuisine === "All" || restaurant.cuisine === selectedCuisine;
-    const matchesLocation =
-      selectedLocation === "All" || restaurant.location === selectedLocation;
-    const matchesCategory =
-      selectedCategory === "All" ||
-      restaurant.categories.includes(selectedCategory);
-    const matchesPriceRange =
-      selectedPriceRange === "All" ||
-      restaurant.priceRange === selectedPriceRange;
-
-    return (
-      matchesSearch &&
-      matchesCuisine &&
-      matchesLocation &&
-      matchesCategory &&
-      matchesPriceRange
-    );
-  });
-
-  const trendingRestaurants = mockRestaurants
-    .filter((restaurant) => restaurant.categories.includes("Trending"))
-    .sort((a, b) => b.rating - a.rating)
-    .slice(0, 4);
-
-  const featuredReviews = mockRestaurants
-    .flatMap((restaurant) =>
-      restaurant.reviews.map((review) => ({
-        ...review,
-        restaurantName: restaurant.name,
-        restaurantId: restaurant.id,
-        restaurantImage: restaurant.images[0],
-      }))
-    )
-    .sort((a, b) => b.likes - a.likes)
-    .slice(0, 3);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newImages = Array.from(files).map((file) =>
-      URL.createObjectURL(file)
-    );
-    setNewReview((prev) => ({
-      ...prev,
-      images: [...prev.images, ...newImages],
-    }));
-  };
-
-  const removeImage = (indexToRemove: number) => {
-    setNewReview((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, index) => index !== indexToRemove),
-    }));
-    URL.revokeObjectURL(newReview.images[indexToRemove]);
-  };
-
-  const handleRestaurantSelect = (restaurantId: string) => {
-    const restaurant = mockRestaurantsState.find((r) => r.id === restaurantId);
-    setSelectedRestaurant(restaurant || null);
-    setNewReview((prev) => ({
-      ...prev,
-      restaurantId,
-      dishes: [],
-    }));
-  };
-
-  const calculateNewRating = (
-    currentRating: number,
-    currentCount: number,
-    newRatingValue: number
-  ): number => {
-    const totalRating = currentRating * currentCount + newRatingValue;
-    return Number((totalRating / (currentCount + 1)).toFixed(1));
-  };
-
-  const handleSubmitReview = () => {
-    if (newReview.rating === 0) {
-      showToastMessage("Please select a rating");
-      return;
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-
-    if (newReview.comment.trim() === "") {
-      showToastMessage("Please add a comment");
-      return;
-    }
-
-    if (!newReview.restaurantId) {
-      showToastMessage("Please select a restaurant");
-      return;
-    }
-
-    const targetRestaurant = mockRestaurantsState.find(
-      (r) => r.id === newReview.restaurantId
-    );
-    if (!targetRestaurant) {
-      showToastMessage("Selected restaurant not found");
-      return;
-    }
-
-    const newReviewObj: Review = {
-      id: `r${Date.now()}`,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userAvatar: currentUser.avatar,
-      rating: newReview.rating,
-      comment: newReview.comment,
-      date: new Date().toISOString().split("T")[0],
-      images: newReview.images,
-      likes: 0,
-      dishes: newReview.dishes,
-    };
-
-    const updatedRestaurants = mockRestaurantsState.map((restaurant) => {
-      if (restaurant.id === newReview.restaurantId) {
-        const updatedRestaurant = {
-          ...restaurant,
-          reviews: [newReviewObj, ...restaurant.reviews],
-          rating: calculateNewRating(
-            restaurant.rating,
-            restaurant.reviewCount,
-            newReview.rating
-          ),
-          reviewCount: restaurant.reviewCount + 1,
-        };
-        if (selectedRestaurant?.id === restaurant.id) {
-          setSelectedRestaurant(updatedRestaurant);
-        }
-        return updatedRestaurant;
-      }
-      return restaurant;
-    });
-
-    setMockRestaurantsState(updatedRestaurants);
-    showToastMessage(
-      "Review submitted successfully! Please wait for it to be approved."
-    );
-    setIsReviewModalOpen(false);
-    setNewReview({
-      rating: 0,
-      comment: "",
-      images: [],
-      dishes: [],
-      restaurantId: "",
-    });
-  };
+  }, [showToast]);
 
   const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   const colors = themeConfig[theme];
 
-  const getPriceRangeText = (priceRange: PriceRange): string => {
-    switch (priceRange) {
-      case "$":
-        return "$10-30";
-      case "$$":
-        return "$30-60";
-      case "$$$":
-        return "$60-100";
-      case "$$$$":
-        return "$100+";
+  const addToCart = (product: Product, quantity = 1) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find(
+        (item) => item.product.id === product.id
+      );
+
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      } else {
+        return [...prevCart, { product, quantity }];
+      }
+    });
+
+    showToastMessage(`Added ${product.name} to cart`);
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart((prevCart) =>
+      prevCart.filter((item) => item.product.id !== productId)
+    );
+    showToastMessage("Item removed from cart");
+  };
+
+  const updateCartItemQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      removeFromCart(productId);
+      return;
+    }
+
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.product.id === productId
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
+  };
+
+  const cartTotal = cart.reduce(
+    (total, item) => total + item.product.price * item.quantity,
+    0
+  );
+
+  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
+
+  const sortedProducts = [...mockProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-asc":
+        return a.price - b.price;
+      case "price-desc":
+        return b.price - a.price;
+      case "newest":
+        return (
+          new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+        );
+      case "rating":
+        return b.rating - a.rating;
+      case "featured":
       default:
-        return priceRange;
+        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
     }
+  });
+
+  const featuredProducts = mockProducts.filter((product) => product.featured);
+
+  const newArrivals = mockProducts.filter((product) => product.newArrival);
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
   };
 
-  const scrollToRestaurants = () => {
-    allRestaurantsRef.current?.scrollIntoView({ behavior: "smooth" });
+  const openProductModal = (product: Product) => {
+    setActiveProduct(product);
+    setIsProductModalOpen(true);
+    setActiveImageIndex(0);
   };
 
-  const nextImage = () => {
-    if (selectedRestaurant) {
-      setCurrentImageIndex((prev) =>
-        prev === selectedRestaurant.images.length - 1 ? 0 : prev + 1
+  const uniqueFranchises = Array.from(
+    new Set(mockProducts.map((p) => p.franchise))
+  );
+  const uniqueGenres = Array.from(
+    new Set(mockProducts.flatMap((p) => p.genre))
+  );
+  const uniqueRarities = Array.from(new Set(mockProducts.map((p) => p.rarity)));
+
+  const renderRating = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(
+        <Star
+          key={`star-${i}`}
+          className="w-4 h-4 fill-yellow-400 text-yellow-400"
+        />
       );
     }
-  };
 
-  const prevImage = () => {
-    if (selectedRestaurant) {
-      setCurrentImageIndex((prev) =>
-        prev === 0 ? selectedRestaurant.images.length - 1 : prev - 1
+    if (hasHalfStar) {
+      stars.push(
+        <StarHalf
+          key="half-star"
+          className="w-4 h-4 fill-yellow-400 text-yellow-400"
+        />
       );
     }
+
+    const emptyStars = 5 - stars.length;
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(
+        <Star key={`empty-star-${i}`} className="w-4 h-4 text-gray-300" />
+      );
+    }
+
+    return <div className="flex">{stars}</div>;
+  };
+
+  const renderRarityBadge = (rarity: string) => {
+    let bgColor = "";
+
+    switch (rarity) {
+      case "Common":
+        bgColor = "bg-gray-500";
+        break;
+      case "Uncommon":
+        bgColor = "bg-green-500";
+        break;
+      case "Rare":
+        bgColor = "bg-blue-500";
+        break;
+      case "Ultra Rare":
+        bgColor = "bg-purple-500";
+        break;
+      case "Limited Edition":
+        bgColor = "bg-amber-500";
+        break;
+      default:
+        bgColor = "bg-gray-500";
+    }
+
+    return (
+      <span
+        className={`${bgColor} text-white text-xs font-semibold px-2 py-1 rounded-full`}
+      >
+        {rarity}
+      </span>
+    );
   };
 
   return (
-    <div
-      className={`min-h-screen ${colors.background} ${colors.foreground} ${playfair.variable} ${montserrat.variable} font-sans transition-colors duration-300`}
-    >
-      <header
-        className={`sticky top-0 z-10 ${colors.card} border-b ${colors.border} shadow-sm`}
+    <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>
+      <div
+        className={`${montserrat.variable} font-sans min-h-screen ${colors.background} ${colors.foreground} transition-colors duration-300`}
       >
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <h1 className="text-2xl md:text-3xl font-bold font-playfair">
-              <span className={colors.accent}>Taste</span> Explorer
-            </h1>
-          </div>
+        <header
+          ref={headerRef}
+          className={`sticky top-0 z-40 ${colors.card} ${colors.border} border-b shadow-sm`}
+        >
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <h1
+                  className={`text-2xl font-bold ${colors.accent} font-heading`}
+                >
+                  CineCollect
+                </h1>
+              </div>
 
-          <div className="hidden md:flex items-center space-x-6">
-            <button
-              className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium transition-transform hover:scale-105 cursor-pointer`}
-              onClick={() => setIsReviewModalOpen(true)}
-            >
-              Write a Review
-            </button>
+              <nav className="hidden md:flex items-center space-x-8">
+                <a
+                  href="#home"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`font-medium hover:${colors.accent} transition-colors`}
+                >
+                  Home
+                </a>
+                <a
+                  href="#collections"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .querySelector("#collections")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className={`font-medium hover:${colors.accent} transition-colors`}
+                >
+                  Collections
+                </a>
+                <a
+                  href="#new-arrivals"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .querySelector("#new-arrivals")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className={`font-medium hover:${colors.accent} transition-colors`}
+                >
+                  New Arrivals
+                </a>
+                <a
+                  href="#all-products"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document
+                      .querySelector("#all-products")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className={`font-medium hover:${colors.accent} transition-colors`}
+                >
+                  All Products
+                </a>
+              </nav>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-full transition-colors cursor-pointer"
+                  aria-label="Toggle theme"
+                >
+                  {theme === "light" ? (
+                    <Moon className="w-5 h-5" />
+                  ) : (
+                    <Sun className="w-5 h-5" />
+                  )}
+                </button>
 
-            <button
-              className="p-2 rounded-full transition-colors cursor-pointer"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-
-            <div className="flex items-center space-x-2">
-              <img
-                src={currentUser.avatar || "/placeholder.svg"}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-full object-cover"
-              />
-              <span className="font-medium">{currentUser.name}</span>
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className="p-2 rounded-full transition-colors relative cursor-pointer"
+                  aria-label="Open cart"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartItemCount > 0 && (
+                    <span
+                      className={`absolute -top-1 -right-1 ${colors.primary} text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center`}
+                    >
+                      {cartItemCount}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-
-          <button
-            className="md:hidden p-2 cursor-pointer"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            <Menu size={24} />
-          </button>
-        </div>
+        </header>
 
         <AnimatePresence>
-          {isMobileMenuOpen && (
+          {isCartOpen && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className={`md:hidden ${colors.card} border-b ${colors.border}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-opacity-50 backdrop-blur-sm"
+              onClick={() => setIsCartOpen(false)}
             >
-              <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-                <div className="flex items-center space-x-2">
-                  <img
-                    src={currentUser.avatar || "/placeholder.svg"}
-                    alt={currentUser.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                  <span className="font-medium">{currentUser.name}</span>
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "tween", duration: 0.3 }}
+                className={`fixed right-0 top-0 h-full w-full sm:w-96 ${colors.card} shadow-xl`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 flex justify-between items-center border-b">
+                  <h2 className="text-xl font-bold">Your Cart</h2>
+                  <button
+                    onClick={() => setIsCartOpen(false)}
+                    className="p-2 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <button
-                  className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
-                  onClick={() => {
-                    setIsReviewModalOpen(true);
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  Write a Review
-                </button>
+                <div className="p-4 flex flex-col h-[calc(100%-8rem)]">
+                  {cart.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <ShoppingCart className="w-16 h-16 text-gray-300 mb-4" />
+                      <p className="text-lg font-medium mb-2">
+                        Your cart is empty
+                      </p>
+                      <p className={`${colors.muted} text-center mb-6`}>
+                        Looks like you haven't added any items to your cart yet.
+                      </p>
+                      <button
+                        onClick={() => setIsCartOpen(false)}
+                        className={`${colors.primary} ${colors.primaryHover} text-white px-6 py-2 rounded-full transition-colors cursor-pointer`}
+                      >
+                        Continue Shopping
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col h-full">
+                      <div className="flex-1 overflow-y-auto space-y-4">
+                        {cart.map((item) => (
+                          <div
+                            key={item.product.id}
+                            className={`flex items-center space-x-4 p-3 rounded-lg ${colors.cardHover} transition-colors`}
+                          >
+                            <img
+                              src={item.product.images[0] || "/placeholder.svg"}
+                              alt={item.product.name}
+                              className="w-16 h-16 object-cover rounded-md"
+                            />
+                            <div className="flex-1">
+                              <h3 className="font-medium">
+                                {item.product.name}
+                              </h3>
+                              <p className={`${colors.muted} text-sm`}>
+                                ${item.product.price.toFixed(2)}
+                              </p>
+                              <div className="flex items-center mt-1">
+                                <button
+                                  onClick={() =>
+                                    updateCartItemQuantity(
+                                      item.product.id,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                  className={`${colors.border} border rounded-full p-1 cursor-pointer`}
+                                  aria-label="Decrease quantity"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="mx-2">{item.quantity}</span>
+                                <button
+                                  onClick={() =>
+                                    updateCartItemQuantity(
+                                      item.product.id,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                  className={`${colors.border} border rounded-full p-1 cursor-pointer`}
+                                  aria-label="Increase quantity"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                $
+                                {(item.product.price * item.quantity).toFixed(
+                                  2
+                                )}
+                              </p>
+                              <button
+                                onClick={() => removeFromCart(item.product.id)}
+                                className="text-red-500 hover:text-red-700 transition-colors mt-1 cursor-pointer"
+                                aria-label="Remove item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                <button
-                  className="flex items-center space-x-2 p-2 cursor-pointer"
-                  onClick={toggleTheme}
+                      <div className={`mt-4 pt-4 border-t ${colors.border}`}>
+                        <div className="flex justify-between mb-2">
+                          <span>Subtotal</span>
+                          <span>${cartTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between mb-4">
+                          <span>Shipping</span>
+                          <span>Calculated at checkout</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setCart([]);
+                            setIsCartOpen(false);
+                            showToastMessage(
+                              "Order placed successfully! Thank you for shopping with us."
+                            );
+                          }}
+                          className={`${colors.primary} ${colors.primaryHover} text-white w-full py-3 rounded-full font-medium transition-colors cursor-pointer`}
+                        >
+                          Checkout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isProductModalOpen && activeProduct && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-opacity-50 backdrop-blur-sm overflow-y-auto"
+              onClick={() => setIsProductModalOpen(false)}
+            >
+              <div className="min-h-screen flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className={`${colors.card} rounded-xl shadow-2xl max-w-4xl w-full overflow-hidden`}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-                  <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
-                </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsProductModalOpen(false)}
+                      className="absolute top-4 right-4 z-50 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors cursor-pointer"
+                      aria-label="Close modal"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="p-6">
+                        <div className="aspect-square overflow-hidden rounded-lg mb-4">
+                          <img
+                            src={
+                              activeProduct.images[activeImageIndex] ||
+                              "/placeholder.svg"
+                            }
+                            alt={activeProduct.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        <div className="flex space-x-2 overflow-x-auto pb-2">
+                          {activeProduct.images.map((image, index) => (
+                            <div
+                              key={index}
+                              onClick={() => setActiveImageIndex(index)}
+                              className={`w-16 h-16 rounded-md overflow-hidden flex-shrink-0 cursor-pointer ${
+                                colors.border
+                              } border-2 ${
+                                index === activeImageIndex
+                                  ? "border-rose-500"
+                                  : ""
+                              }`}
+                            >
+                              <img
+                                src={image || "/placeholder.svg"}
+                                alt={`${activeProduct.name} - Image ${
+                                  index + 1
+                                }`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-6">
+                        <div className="flex flex-wrap items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+                            {renderRarityBadge(activeProduct.rarity)}
+                            {activeProduct.newArrival && (
+                              <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                                New Arrival
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center overflow-hidden sm:pr-8">
+                            {renderRating(activeProduct.rating)}
+                            <span className="ml-1 text-sm">
+                              ({activeProduct.rating.toFixed(1)})
+                            </span>
+                          </div>
+                        </div>
+
+                        <h2 className="text-2xl font-bold mb-2">
+                          {activeProduct.name}
+                        </h2>
+
+                        <p className="text-3xl font-bold mb-4">
+                          ${activeProduct.price.toFixed(2)}
+                        </p>
+
+                        <div className="mb-6">
+                          <h3 className="font-semibold mb-2">Description</h3>
+                          <p className={`${colors.muted} mb-4`}>
+                            {activeProduct.description}
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                Franchise
+                              </h4>
+                              <p>{activeProduct.franchise}</p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                Category
+                              </h4>
+                              <p>{activeProduct.category}</p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold">Genre</h4>
+                              <p>{activeProduct.genre.join(", ")}</p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                Release Date
+                              </h4>
+                              <p>
+                                {new Date(
+                                  activeProduct.releaseDate
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mb-6">
+                            <h4 className="text-sm font-semibold mb-1">
+                              Availability
+                            </h4>
+                            {activeProduct.inStock ? (
+                              <span className="text-green-500 font-medium">
+                                In Stock
+                              </span>
+                            ) : (
+                              <span className="text-red-500 font-medium">
+                                Out of Stock
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex space-x-4">
+                          <button
+                            onClick={() => {
+                              addToCart(activeProduct);
+                              setIsProductModalOpen(false);
+                            }}
+                            disabled={!activeProduct.inStock}
+                            className={`flex-1 ${
+                              activeProduct.inStock
+                                ? `${colors.primary} ${colors.primaryHover}`
+                                : "bg-gray-400"
+                            } text-white py-3 rounded-full font-medium transition-colors cursor-pointer`}
+                          >
+                            {activeProduct.inStock
+                              ? "Add to Cart"
+                              : "Out of Stock"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <section className="mb-12">
-          <div className={`rounded-xl overflow-hidden relative h-[80vh] mb-6`}>
-            <img
-              src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2670&auto=format&fit=crop"
-              alt="Restaurant hero"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-playfair text-center mb-4">
-                Discover Your Next Favorite Spot
-              </h2>
-              <p className="text-lg md:text-xl text-center mb-6 max-w-2xl">
-                Explore the best restaurants in your area with reviews from food
-                lovers like you
-              </p>
-              <button
-                onClick={scrollToRestaurants}
-                className="px-8 py-3 bg-white text-black rounded-full font-medium hover:bg-opacity-90 transition-all transform hover:scale-105 cursor-pointer"
-              >
-                Explore Restaurants
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold font-playfair">
-              Trending Restaurants
-            </h2>
-            <button
-              onClick={scrollToRestaurants}
-              className={`text-sm font-medium ${colors.accent} cursor-pointer`}
-            >
-              View all
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {trendingRestaurants.map((restaurant) => (
-              <motion.div
-                key={restaurant.id}
-                whileHover={{ y: -5 }}
-                className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border} cursor-pointer`}
-                onClick={() => {
-                  setSelectedRestaurant(restaurant);
-                  setIsModalOpen(true);
-                }}
-              >
-                <div className="relative h-48">
-                  <img
-                    src={restaurant.images[0] || "/placeholder.svg"}
-                    alt={restaurant.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
-                    <Star
-                      className={`${colors.rating} fill-current`}
-                      size={16}
-                    />
-                    <span className="ml-1 text-black font-medium text-sm">
-                      {restaurant.rating.toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg mb-1">
-                        {restaurant.name}
-                      </h3>
-                      <div className="flex items-center text-sm mb-2">
-                        <span className={`${colors.muted} mr-2`}>
-                          {restaurant.cuisine}
-                        </span>
-                        <span className="mr-2">•</span>
-                        <span className={colors.muted}>
-                          {getPriceRangeText(restaurant.priceRange)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center mt-2">
-                    <MapPin size={16} className={colors.muted} />
-                    <span className="text-sm ml-1">{restaurant.location}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold font-playfair mb-6">
-            Featured Reviews
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredReviews.map((review) => (
-              <motion.div
-                key={review.id}
-                whileHover={{ y: -5 }}
-                className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border}`}
-              >
-                <div className="relative h-48">
-                  <img
-                    src={review.images[0] || review.restaurantImage}
-                    alt={review.restaurantName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center">
-                      <img
-                        src={review.userAvatar || "/placeholder.svg"}
-                        alt={review.userName}
-                        className="w-10 h-10 rounded-full object-cover mr-3"
-                      />
-                      <div>
-                        <h4 className="font-medium">{review.userName}</h4>
-                        <p className="text-sm">{review.restaurantName}</p>
-                      </div>
-                    </div>
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`${
-                            i < review.rating
-                              ? colors.rating + " fill-current"
-                              : colors.muted
-                          }`}
-                          size={16}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-sm mb-3 line-clamp-3">{review.comment}</p>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs">{review.date}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        <section ref={allRestaurantsRef}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl md:text-3xl font-bold font-playfair">
-              All Restaurants
-            </h2>
-          </div>
-
-          <div className="space-y-6 mb-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search for restaurants, cuisines, or dishes..."
-                className={`w-full px-4 py-3 pl-12 rounded-lg ${colors.card} border ${colors.border} focus:outline-none focus:ring-2 focus:ring-primary`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"
-                size={20}
-              />
-            </div>
-
-            <div
-              className={`flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg ${colors.card} border ${colors.border}`}
-            >
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border cursor-pointer ${
-                    colors.border
-                  } ${
-                    selectedCuisine === "All"
-                      ? colors.primary + " text-white"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedCuisine("All")}
+        <main className="container mx-auto px-4 py-8">
+          <section className="mb-12">
+            <div className="relative h-[80vh] rounded-2xl overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentBanner}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0"
                 >
-                  All Cuisines
-                </button>
-                {(
-                  [
-                    "Italian",
-                    "Japanese",
-                    "Mexican",
-                    "Indian",
-                    "American",
-                  ] as Cuisine[]
-                ).map((cuisine) => (
+                  <img
+                    src={mockBanners[currentBanner].image || "/placeholder.svg"}
+                    alt={mockBanners[currentBanner].title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
+                    <div className="p-8 md:p-12 max-w-lg">
+                      <motion.h2
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-heading"
+                      >
+                        {mockBanners[currentBanner].title}
+                      </motion.h2>
+                      <motion.p
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-white text-lg mb-6"
+                      >
+                        {mockBanners[currentBanner].subtitle}
+                      </motion.p>
+                      <motion.button
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        onClick={() => {
+                          document
+                            .querySelector("#collections")
+                            ?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                        }}
+                        className={`${colors.primary} ${colors.primaryHover} text-white px-6 py-3 rounded-full font-medium transition-colors cursor-pointer`}
+                      >
+                        Explore Collection
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+                {mockBanners.map((_, index) => (
                   <button
-                    key={cuisine}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border cursor-pointer ${
-                      colors.border
-                    } ${
-                      selectedCuisine === cuisine
-                        ? colors.primary + " text-white"
-                        : ""
-                    }`}
-                    onClick={() => setSelectedCuisine(cuisine)}
-                  >
-                    {cuisine}
-                  </button>
+                    key={index}
+                    onClick={() => setCurrentBanner(index)}
+                    className={`w-2 h-2 rounded-full ${
+                      currentBanner === index ? "bg-white" : "bg-white/50"
+                    } transition-colors cursor-pointer`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  ></button>
                 ))}
               </div>
 
-              <div className="flex items-center gap-2">
-                <select
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border ${colors.border} ${colors.foreground} cursor-pointer bg-transparent`}
-                  value={selectedPriceRange}
-                  onChange={(e) =>
-                    setSelectedPriceRange(e.target.value as PriceRange)
-                  }
-                >
-                  <option
-                    value="All"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    All Prices
-                  </option>
-                  <option
-                    value="$"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    $10-30
-                  </option>
-                  <option
-                    value="$$"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    $30-60
-                  </option>
-                  <option
-                    value="$$$"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    $60-100
-                  </option>
-                  <option
-                    value="$$$$"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    $100+
-                  </option>
-                </select>
-
-                <select
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border ${colors.border} ${colors.foreground} cursor-pointer bg-transparent`}
-                  value={selectedLocation}
-                  onChange={(e) =>
-                    setSelectedLocation(e.target.value as Location)
-                  }
-                >
-                  <option
-                    value="All"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    All Locations
-                  </option>
-                  <option
-                    value="Downtown"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    Downtown
-                  </option>
-                  <option
-                    value="Uptown"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    Uptown
-                  </option>
-                  <option
-                    value="Midtown"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    Midtown
-                  </option>
-                  <option
-                    value="West End"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    West End
-                  </option>
-                  <option
-                    value="East Side"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    East Side
-                  </option>
-                  <option
-                    value="Waterfront"
-                    className={`${colors.card} ${colors.foreground}`}
-                  >
-                    Waterfront
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {filteredRestaurants.length === 0 ? (
-            <div
-              className={`p-8 rounded-lg ${colors.card} border ${colors.border} text-center`}
-            >
-              <p className="text-lg">
-                No restaurants found matching your criteria.
-              </p>
               <button
-                className={`mt-4 px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCuisine("All");
-                  setSelectedLocation("All");
-                  setSelectedCategory("All");
-                  setSelectedPriceRange("All");
-                }}
+                onClick={() =>
+                  setCurrentBanner(
+                    (currentBanner - 1 + mockBanners.length) %
+                      mockBanners.length
+                  )
+                }
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-full hover:bg-black/50 transition-colors cursor-pointer"
+                aria-label="Previous slide"
               >
-                Clear Filters
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+
+              <button
+                onClick={() =>
+                  setCurrentBanner((currentBanner + 1) % mockBanners.length)
+                }
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-full hover:bg-black/50 transition-colors cursor-pointer"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-6 h-6" />
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockRestaurantsState
-                .filter((restaurant) => {
-                  const matchesSearch =
-                    restaurant.name
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase()) ||
-                    restaurant.description
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase());
-                  const matchesCuisine =
-                    selectedCuisine === "All" ||
-                    restaurant.cuisine === selectedCuisine;
-                  const matchesLocation =
-                    selectedLocation === "All" ||
-                    restaurant.location === selectedLocation;
-                  const matchesCategory =
-                    selectedCategory === "All" ||
-                    restaurant.categories.includes(selectedCategory);
-                  const matchesPriceRange =
-                    selectedPriceRange === "All" ||
-                    restaurant.priceRange === selectedPriceRange;
+          </section>
 
-                  return (
-                    matchesSearch &&
-                    matchesCuisine &&
-                    matchesLocation &&
-                    matchesCategory &&
-                    matchesPriceRange
-                  );
-                })
-                .map((restaurant) => (
-                  <motion.div
-                    key={restaurant.id}
-                    whileHover={{ y: -5 }}
-                    className={`rounded-lg overflow-hidden shadow-md ${colors.card} border ${colors.border} cursor-pointer`}
-                    onClick={() => {
-                      setSelectedRestaurant(restaurant);
-                      setIsModalOpen(true);
-                    }}
+          <section id="collections" className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold font-heading">
+                Curated Collections
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {mockCollections.map((collection) => (
+                <motion.div
+                  key={collection.id}
+                  whileHover={{ y: -5 }}
+                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
+                >
+                  <div className="relative h-48">
+                    <img
+                      src={collection.image || "/placeholder.svg"}
+                      alt={collection.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
+                      <div className="p-4">
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          {collection.name}
+                        </h3>
+                        <p className="text-white/80 text-sm">
+                          {collection.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold font-heading">
+                Featured Products
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <motion.div
+                  key={product.id}
+                  whileHover={{ y: -5 }}
+                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
+                >
+                  <div
+                    className="relative cursor-pointer"
+                    onClick={() => openProductModal(product)}
                   >
-                    <div className="relative h-48">
+                    <div className="relative h-56 overflow-hidden">
                       <img
-                        src={restaurant.images[0] || "/placeholder.svg"}
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover"
+                        src={product.images[0] || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                      <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
-                        <Star
-                          className={`${colors.rating} fill-current`}
-                          size={16}
-                        />
-                        <span className="ml-1 text-black font-medium text-sm">
-                          {restaurant.rating.toFixed(1)}
-                        </span>
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        {product.newArrival && (
+                          <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                            New
+                          </span>
+                        )}
+                        {renderRarityBadge(product.rarity)}
+                      </div>
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(product);
+                          }}
+                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
+                          disabled={!product.inStock}
+                        >
+                          {product.inStock ? "Add to Cart" : "Out of Stock"}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openProductModal(product);
+                          }}
+                          className="bg-white text-gray-900 p-2 rounded-full transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
                     <div className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-lg mb-1">
-                            {restaurant.name}
-                          </h3>
-                          <div className="flex items-center text-sm mb-2">
-                            <span className={`${colors.muted} mr-2`}>
-                              {restaurant.cuisine}
-                            </span>
-                            <span className="mr-2">•</span>
-                            <span className={colors.muted}>
-                              {getPriceRangeText(restaurant.priceRange)}
-                            </span>
-                          </div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex">
+                          {renderRating(product.rating)}
                         </div>
+                        <span
+                          className={`${
+                            product.inStock ? "text-green-500" : "text-red-500"
+                          } text-sm font-medium`}
+                        >
+                          {product.inStock ? "In Stock" : "Out of Stock"}
+                        </span>
                       </div>
-
-                      <p className="text-sm mb-3 line-clamp-2">
-                        {restaurant.description}
+                      <h3 className="font-semibold mb-1 line-clamp-1">
+                        {product.name}
+                      </h3>
+                      <p
+                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
+                      >
+                        {product.description}
                       </p>
-
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {restaurant.categories.map((category) => (
-                          <span
-                            key={category}
-                            className={`text-xs px-2 py-1 rounded-full ${colors.secondary} text-white`}
-                          >
-                            {category}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center">
-                        <MapPin size={16} className={colors.muted} />
-                        <span className="text-sm ml-1">
-                          {restaurant.location}
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-lg">
+                          ${product.price.toFixed(2)}
                         </span>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          )}
-        </section>
-      </main>
+          </section>
 
-      <footer
-        className={`${colors.card} border-t ${colors.border} mt-16 py-12`}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center text-center">
-            <h3 className="text-2xl font-bold font-playfair mb-2">
-              <span className={colors.accent}>Taste</span> Explorer
-            </h3>
-            <p className={`${colors.muted} mb-6 max-w-md`}>
-              Discover the best local restaurants and share your dining
-              experiences with food lovers around the world.
-            </p>
-            <p className={`text-sm ${colors.muted}`}>
-              © {new Date().getFullYear()} Taste Explorer. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+          <section id="new-arrivals" className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold font-heading">
+                New Arrivals
+              </h2>
+            </div>
 
-      <AnimatePresence>
-        {isModalOpen && selectedRestaurant && (
-          <div
-            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${colors.overlay}`}
-          >
-            <motion.div
-              ref={modalRef}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-xl ${colors.card} shadow-xl relative`}
-            >
-              <div className="relative w-full">
-                <div className="relative h-64 md:h-80 w-full overflow-hidden">
-                  <AnimatePresence initial={false} mode="wait">
-                    <motion.div
-                      key={currentImageIndex}
-                      className="absolute inset-0"
-                      initial={{ opacity: 0, x: 100 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -100 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <img
-                        src={selectedRestaurant.images[currentImageIndex]}
-                        alt={`${selectedRestaurant.name} ${
-                          currentImageIndex + 1
-                        }`}
-                        className="w-full h-full object-cover"
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all cursor-pointer"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all cursor-pointer"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {selectedRestaurant.images.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-                          index === currentImageIndex
-                            ? "bg-white w-4"
-                            : "bg-white/50 hover:bg-white/75"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  className="absolute top-4 right-4 bg-white rounded-full p-2 cursor-pointer"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setCurrentImageIndex(0);
-                  }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {newArrivals.map((product) => (
+                <motion.div
+                  key={product.id}
+                  whileHover={{ y: -5 }}
+                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
                 >
-                  <X size={20} className="text-black" />
-                </button>
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold font-playfair mb-2">
-                      {selectedRestaurant.name}
-                    </h2>
-                    <div className="flex items-center flex-wrap gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => {
-                          const rating = selectedRestaurant.rating;
-                          if (i < Math.floor(rating)) {
-                            return (
-                              <Star
-                                key={i}
-                                className={`${colors.rating} fill-current`}
-                                size={18}
-                              />
-                            );
-                          } else if (
-                            i === Math.floor(rating) &&
-                            rating % 1 >= 0.5
-                          ) {
-                            return (
-                              <StarHalf
-                                key={i}
-                                className={`${colors.rating} fill-current`}
-                                size={18}
-                              />
-                            );
-                          } else {
-                            return (
-                              <Star
-                                key={i}
-                                className={colors.muted}
-                                size={18}
-                              />
-                            );
-                          }
-                        })}
-                      </div>
-                      <span className="text-sm">
-                        {selectedRestaurant.rating.toFixed(1)} (
-                        {selectedRestaurant.reviewCount} reviews)
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-                      <span className="text-sm">
-                        {selectedRestaurant.cuisine}
-                      </span>
-                      <span className="text-sm">
-                        {getPriceRangeText(selectedRestaurant.priceRange)}
-                      </span>
-                      <div className="flex items-center">
-                        <MapPin size={16} className="mr-1" />
-                        <span className="text-sm">
-                          {selectedRestaurant.location}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <Clock size={16} className="mr-1" />
-                        <span className="text-sm">
-                          {selectedRestaurant.hours.open} -{" "}
-                          {selectedRestaurant.hours.close}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mb-6">{selectedRestaurant.description}</p>
-
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {selectedRestaurant.categories.map((category) => (
-                    <span
-                      key={category}
-                      className={`text-xs px-2 py-1 rounded-full ${colors.secondary} text-white`}
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-
-                <div className={`p-4 rounded-lg border ${colors.border} mb-6`}>
-                  <h3 className="font-bold text-lg mb-3">
-                    Contact Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm mb-1">
-                        <span className="font-medium">Address:</span>{" "}
-                        {selectedRestaurant.address}
-                      </p>
-                      <p className="text-sm mb-1">
-                        <span className="font-medium">Phone:</span>{" "}
-                        {selectedRestaurant.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm mb-1">
-                        <span className="font-medium">Website:</span>{" "}
-                        {selectedRestaurant.website}
-                      </p>
-                      <p className="text-sm">
-                        <span className="font-medium">Hours:</span>{" "}
-                        {selectedRestaurant.hours.open} -{" "}
-                        {selectedRestaurant.hours.close}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <h3 className="font-bold text-lg mb-4">Popular Dishes</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {selectedRestaurant.dishes
-                      .filter((dish) => dish.popular)
-                      .map((dish) => (
-                        <div
-                          key={dish.id}
-                          className={`flex rounded-lg overflow-hidden border ${colors.border}`}
-                        >
-                          <img
-                            src={dish.image || "/placeholder.svg"}
-                            alt={dish.name}
-                            className="w-24 h-24 object-cover"
-                          />
-                          <div className="p-3">
-                            <h4 className="font-medium mb-1">{dish.name}</h4>
-                            <p className="text-sm mb-1 line-clamp-1">
-                              {dish.description}
-                            </p>
-                            <p className="font-medium">
-                              ${dish.price.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg">Reviews</h3>
-                    <button
-                      className={`px-4 py-2 rounded-full ${colors.primary} text-white font-medium cursor-pointer`}
-                      onClick={() => {
-                        setIsReviewModalOpen(true);
-                        setIsModalOpen(false);
-                        setNewReview((prev) => ({
-                          ...prev,
-                          restaurantId: selectedRestaurant.id,
-                          dishes: [],
-                        }));
-                      }}
-                    >
-                      Write a Review
-                    </button>
-                  </div>
-
-                  {selectedRestaurant.reviews.length === 0 ? (
-                    <p className="text-center py-6">
-                      No reviews yet. Be the first to review!
-                    </p>
-                  ) : (
-                    <div className="space-y-6">
-                      {selectedRestaurant.reviews.map((review) => (
-                        <div
-                          key={review.id}
-                          className={`p-4 rounded-lg border ${colors.border}`}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center">
-                              <img
-                                src={review.userAvatar || "/placeholder.svg"}
-                                alt={review.userName}
-                                className="w-10 h-10 rounded-full object-cover mr-3"
-                              />
-                              <div>
-                                <h4 className="font-medium">
-                                  {review.userName}
-                                </h4>
-                                <p className="text-xs">{review.date}</p>
-                              </div>
-                            </div>
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`${
-                                    i < review.rating
-                                      ? colors.rating + " fill-current"
-                                      : colors.muted
-                                  }`}
-                                  size={16}
-                                />
-                              ))}
-                            </div>
-                          </div>
-
-                          <p className="text-sm mb-4">{review.comment}</p>
-
-                          {review.images.length > 0 && (
-                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                              {review.images.map((image, index) => (
-                                <div key={index} className="relative group">
-                                  <img
-                                    src={image}
-                                    alt={`Review image ${index + 1}`}
-                                    className="w-24 h-24 object-cover rounded-lg"
-                                  />
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeImage(index);
-                                    }}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {review.dishes.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {review.dishes.map((dish) => (
-                                <span
-                                  key={dish}
-                                  className={`text-xs px-2 py-1 rounded-full `}
-                                >
-                                  {dish}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs">{review.date}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isReviewModalOpen && (
-          <div
-            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${colors.overlay}`}
-          >
-            <motion.div
-              ref={reviewModalRef}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl ${colors.card} shadow-xl`}
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold font-playfair">
-                    Write a Review
-                  </h2>
-                  <button
-                    className="p-2 rounded-full cursor-pointer"
-                    onClick={() => setIsReviewModalOpen(false)}
+                  <div
+                    className="relative cursor-pointer"
+                    onClick={() => openProductModal(product)}
                   >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block font-medium mb-2">
-                    Select Restaurant
-                  </label>
-                  <select
-                    className={`w-full p-3 rounded-lg border ${colors.border} ${colors.input}`}
-                    value={newReview.restaurantId}
-                    onChange={(e) => {
-                      const restaurantId = e.target.value;
-                      setNewReview((prev) => ({
-                        ...prev,
-                        restaurantId,
-                      }));
-                      setSelectedRestaurant(
-                        mockRestaurantsState.find(
-                          (r) => r.id === restaurantId
-                        ) || null
-                      );
-                    }}
-                  >
-                    <option value="">Select a restaurant</option>
-                    {mockRestaurantsState.map((restaurant) => (
-                      <option key={restaurant.id} value={restaurant.id}>
-                        {restaurant.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block font-medium mb-2">Rating</label>
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`${
-                          i < newReview.rating
-                            ? colors.rating + " fill-current"
-                            : colors.muted
-                        }`}
-                        size={20}
-                        onClick={() =>
-                          setNewReview({ ...newReview, rating: i + 1 })
-                        }
+                    <div className="relative h-56 overflow-hidden">
+                      <img
+                        src={product.images[0] || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block font-medium mb-2">Comment</label>
-                  <textarea
-                    className={`w-full p-3 rounded-lg border ${colors.border} ${colors.input}`}
-                    value={newReview.comment}
-                    onChange={(e) =>
-                      setNewReview({ ...newReview, comment: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label className="block font-medium mb-2">Add Photos</label>
-                  <div className="flex flex-wrap gap-4">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed ${colors.border} hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer`}
-                    >
-                      <Camera size={24} />
-                      <span className="text-xs">Add Photos</span>
-                    </button>
-
-                    {newReview.images.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={image}
-                          alt={`Review image ${index + 1}`}
-                          className="w-24 h-24 object-cover rounded-lg"
-                        />
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                          New
+                        </span>
+                        {renderRarityBadge(product.rarity)}
+                      </div>
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeImage(index);
+                            addToCart(product);
                           }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10 cursor-pointer"
+                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
+                          disabled={!product.inStock}
                         >
-                          <X size={14} />
+                          {product.inStock ? "Add to Cart" : "Out of Stock"}
                         </button>
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-                      </div>
-                    ))}
-
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </div>
-                  {newReview.images.length > 0 && (
-                    <p className="text-sm mt-2 text-gray-500">
-                      {newReview.images.length} photo
-                      {newReview.images.length !== 1 ? "s" : ""} selected
-                    </p>
-                  )}
-                </div>
-
-                <div className="mb-6">
-                  <label className="block font-medium mb-2">
-                    Dishes You Tried
-                  </label>
-                  {selectedRestaurant && (
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {selectedRestaurant.dishes.map((dish) => (
-                        <div
-                          key={dish.id}
-                          onClick={() => {
-                            setNewReview((prev) => ({
-                              ...prev,
-                              dishes: prev.dishes.includes(dish.name)
-                                ? prev.dishes.filter((d) => d !== dish.name)
-                                : [...prev.dishes, dish.name],
-                            }));
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openProductModal(product);
                           }}
-                          className={`p-3 rounded-lg border ${
-                            colors.border
-                          } cursor-pointer transition-colors ${
-                            newReview.dishes.includes(dish.name)
-                              ? colors.primary + " text-white"
-                              : colors.input
-                          }`}
+                          className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                         >
-                          <p className="font-medium">{dish.name}</p>
-                          <p className="text-sm opacity-75">
-                            ${dish.price.toFixed(2)}
-                          </p>
-                        </div>
-                      ))}
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                <div className="mt-6">
-                  <button
-                    className={`w-full px-4 py-3 rounded-full ${colors.primary} text-white font-medium cursor-pointer flex items-center justify-center gap-2`}
-                    onClick={handleSubmitReview}
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex">
+                          {renderRating(product.rating)}
+                        </div>
+                        <span
+                          className={`${
+                            product.inStock ? "text-green-500" : "text-red-500"
+                          } text-sm font-medium`}
+                        >
+                          {product.inStock ? "In Stock" : "Out of Stock"}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold mb-1 line-clamp-1">
+                        {product.name}
+                      </h3>
+                      <p
+                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
+                      >
+                        {product.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-lg">
+                          ${product.price.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+
+          <section id="all-products">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+              <h2 className="text-2xl md:text-3xl font-bold font-heading">
+                All Products
+              </h2>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className={`appearance-none ${colors.border} border rounded-lg px-4 py-2 pr-10 ${colors.card} cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500 w-full`}
                   >
-                    <Send size={20} />
-                    Submit Review
-                  </button>
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <SlidersHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-5 h-5" />
                 </div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 right-4 z-50"
-          >
-            <div
-              className={`px-6 py-3 rounded-lg shadow-lg ${
-                toastMessage.includes("successfully")
-                  ? "bg-green-500"
-                  : "bg-red-500"
-              } text-white`}
-            >
-              {toastMessage}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {sortedProducts.map((product) => (
+                <motion.div
+                  key={product.id}
+                  whileHover={{ y: -5 }}
+                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
+                >
+                  <div
+                    className="relative cursor-pointer"
+                    onClick={() => openProductModal(product)}
+                  >
+                    <div className="relative h-56 overflow-hidden">
+                      <img
+                        src={product.images[0] || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                      />
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        {product.newArrival && (
+                          <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                            New
+                          </span>
+                        )}
+                        {renderRarityBadge(product.rarity)}
+                      </div>
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(product);
+                          }}
+                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
+                          disabled={!product.inStock}
+                        >
+                          {product.inStock ? "Add to Cart" : "Out of Stock"}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openProductModal(product);
+                          }}
+                          className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex">
+                          {renderRating(product.rating)}
+                        </div>
+                        <span
+                          className={`${
+                            product.inStock ? "text-green-500" : "text-red-500"
+                          } text-sm font-medium`}
+                        >
+                          {product.inStock ? "In Stock" : "Out of Stock"}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold mb-1 line-clamp-1">
+                        {product.name}
+                      </h3>
+                      <p
+                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
+                      >
+                        {product.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-lg">
+                          ${product.price.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <footer className={`mt-16 ${colors.card} ${colors.border} border-t`}>
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="text-center md:text-left">
+                <h3
+                  className={`text-xl font-bold ${colors.accent} mb-2 font-heading`}
+                >
+                  CineCollect
+                </h3>
+                <p className={`${colors.muted}`}>
+                  Your premier destination for movie collectibles
+                </p>
+              </div>
+              <div className={`${colors.muted} text-center md:text-right`}>
+                <p>© 2025 CineCollect. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+        <AnimatePresence>
+          {showToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-4 right-4 z-50"
+            >
+              <div
+                className={`${colors.card} shadow-lg rounded-lg px-4 py-3 flex items-center`}
+              >
+                <div className={`${colors.accent} mr-3`}>
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <p>{toastMessage}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </ThemeContext.Provider>
   );
 }
