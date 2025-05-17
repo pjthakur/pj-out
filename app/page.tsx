@@ -1,728 +1,593 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, UserPlus, Moon, Sun, MoreVertical, Instagram, Twitch, Music, Heart, Share2, Headphones, X } from "lucide-react";
-import { Inter } from "next/font/google";
+import { Star, Sun, Moon, Filter, Package, MessageSquare, Heart, CheckCircle } from "lucide-react";
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
+type Review = {
+  id: string;
+  rating: number;
+  comment: string;
+  date: Date;
+  name: string;
+};
+
+const initialReviews: Review[] = [
+  {
+    id: "1",
+    rating: 5,
+    comment: "The noise cancellation on these headphones is incredible! I can't hear any background noise when I'm working or traveling. The battery life is also impressive - I only need to charge them about once a week with daily use.",
+    date: new Date(Date.now() - 86400000 * 2),
+    name: "Alex Johnson"
+  },
+  {
+    id: "2",
+    rating: 4,
+    comment: "Very comfortable for long listening sessions. The sound quality is excellent for the price point. I'd give 5 stars if the app had more EQ customization options.",
+    date: new Date(Date.now() - 86400000 * 7),
+    name: "Samantha Chen"
+  },
+  {
+    id: "3",
+    rating: 5,
+    comment: "These are by far the best headphones I've ever owned! The comfort level is outstanding, and I can wear them all day without any discomfort. Highly recommended!",
+    date: new Date(Date.now() - 86400000 * 14),
+    name: "Michael Garcia"
+  },
+  {
+    id: "4",
+    rating: 3,
+    comment: "Good sound quality, but I was expecting better noise cancellation at this price point. The ear cushions are very comfortable though.",
+    date: new Date(Date.now() - 86400000 * 30),
+    name: "Taylor Kim"
+  }
+];
 
 export default function Home() {
-  const [theme, setTheme] = useState("dark");
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [showMessage, setShowMessage] = useState(false);
-  const [likedPhotos, setLikedPhotos] = useState<{[key: number]: boolean}>({});
-  const [playingVideo, setPlayingVideo] = useState<number | null>(null);
-  const [selectedImage, setSelectedImage] = useState<{src: string, alt: string} | null>(null);
+  const [reviews, setReviews] = useState<Review[]>(initialReviews);
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [sortBy, setSortBy] = useState<"newest" | "highest">("newest");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [showSubmitPopup, setShowSubmitPopup] = useState<boolean>(false);
 
-  const mockContent = {
-    photos: [
-      { id: 1, src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=1200&h=1200&q=100", alt: "Photo 1" },
-      { id: 2, src: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1200&h=1200&q=100", alt: "Photo 2" },
-      { id: 3, src: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&h=1200&q=100", alt: "Photo 3" },
-      { id: 4, src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=1200&q=100", alt: "Photo 4" },
-      { id: 5, src: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=1200&h=1200&q=100", alt: "Photo 5" },
-      { id: 6, src: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=1200&h=1200&q=100", alt: "Photo 6" },
-    ],
-    videos: [
-      { id: 1, src: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=1200&h=1200&q=100", alt: "Video thumbnail 1", duration: "3:24" },
-      { id: 2, src: "https://images.unsplash.com/photo-1518640467707-6811f4a6ab73?w=1200&h=1200&q=100", alt: "Video thumbnail 2", duration: "1:08" },
-      { id: 3, src: "https://images.unsplash.com/photo-1726409724841-016b6f4f8b1b?w=1200&h=1200&q=100", alt: "Video thumbnail 3", duration: "2:17" },
-      { id: 4, src: "https://images.unsplash.com/photo-1584661156681-540e80a161d3?w=1200&h=1200&q=100", alt: "Video thumbnail 4", duration: "0:45" },
-      { id: 5, src: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1200&h=1200&q=100", alt: "Video thumbnail 5", duration: "4:02" },
-      { id: 6, src: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&h=1200&q=100", alt: "Video thumbnail 6", duration: "1:55" },
-    ]
+  const calculateAverageRating = () => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return sum / reviews.length;
   };
 
+  const averageRating = calculateAverageRating();
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("theme") || "dark";
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    if (savedTheme) {
       setTheme(savedTheme);
-      document.body.className = savedTheme;
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme("dark");
     }
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const glowVariants = {
+    initial: {
+      boxShadow: theme === 'dark'
+        ? '0 0 20px rgba(139,92,246,0.2)'
+        : '0 0 20px rgba(124,58,237,0.1)'
+    },
+    animate: {
+      boxShadow: theme === 'dark'
+        ? '0 0 40px rgba(139,92,246,0.4)'
+        : '0 0 40px rgba(124,58,237,0.2)'
+    }
+  };
+
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("theme", newTheme);
-      document.body.className = newTheme;
-    }
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
-  const handleFollowClick = () => {
-    setIsFollowing(!isFollowing);
+  const handleRatingClick = (value: number) => {
+    setRating(value);
   };
 
-  const handleMessageClick = () => {
-    setShowMessage(true);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0 || !name.trim()) return;
+
+    const newReview: Review = {
+      id: Date.now().toString(),
+      rating,
+      comment,
+      date: new Date(),
+      name: name.trim()
+    };
+
+    setReviews([newReview, ...reviews]);
+    setRating(0);
+    setComment("");
+    setName("");
+
+    setShowSubmitPopup(true);
+
     setTimeout(() => {
-      setShowMessage(false);
-    }, 2000);
+      setShowSubmitPopup(false);
+    }, 3000);
   };
 
-  const handleTabClick = (tab: string) => {
-    setActiveTab(tab);
+  const getSortedReviews = () => {
+    return [...reviews].sort((a, b) => {
+      if (sortBy === "newest") {
+        return b.date.getTime() - a.date.getTime();
+      } else {
+        return b.rating - a.rating;
+      }
+    });
   };
 
-  const handleLikeClick = (id: number, type: string) => {
-    setLikedPhotos(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-  
-  const handleMusicClick = (id: number) => {
-    if (playingVideo === id) {
-      setPlayingVideo(null);
-    } else {
-      setPlayingVideo(id);
-    }
-  };
-
-  const handleImageClick = (src: string, alt: string) => {
-    setSelectedImage({ src, alt });
-  };
-
-  const handleCloseModal = () => {
-    setSelectedImage(null);
+  const themeClass = theme === "dark" ? {
+    bg: "bg-slate-950",
+    text: "text-slate-100",
+    subtext: "text-slate-300",
+    cardBg: "bg-slate-900/80 backdrop-blur-md border-slate-800",
+    inputBg: "bg-slate-900 border-slate-700",
+    buttonBg: "bg-purple-600 hover:bg-purple-700",
+    buttonText: "text-white",
+    starFilled: "text-amber-400",
+    starEmpty: "text-slate-600",
+    gradientFrom: "from-purple-900",
+    gradientTo: "to-indigo-900",
+    shadowColor: "shadow-purple-900/30",
+    formBg: "bg-gradient-to-br from-slate-900/90 to-slate-950/90",
+    accent: "text-purple-400",
+    highlight: "bg-purple-500/20",
+    border: "border-slate-800",
+    divider: "border-slate-800"
+  } : {
+    bg: "bg-gradient-to-br from-blue-50 to-indigo-50",
+    text: "text-slate-800",
+    subtext: "text-slate-600",
+    cardBg: "bg-white/70 backdrop-blur-md border-slate-200",
+    inputBg: "bg-white border-slate-200",
+    buttonBg: "bg-blue-600 hover:bg-blue-700",
+    buttonText: "text-white",
+    starFilled: "text-amber-500",
+    starEmpty: "text-slate-300",
+    gradientFrom: "from-blue-500",
+    gradientTo: "to-indigo-500",
+    shadowColor: "shadow-blue-500/30",
+    formBg: "bg-gradient-to-br from-white/95 to-slate-50/95",
+    accent: "text-blue-600",
+    highlight: "bg-blue-50",
+    border: "border-slate-200",
+    divider: "border-slate-200"
   };
 
   return (
-    <div className={`min-h-screen transition-all duration-300 flex justify-center ${inter.className} ${
-      theme === "dark" 
-        ? "bg-gradient-to-br from-gray-950 via-purple-950 to-gray-950 text-white" 
-        : "bg-gradient-to-br from-sky-100 via-purple-100 to-pink-100 text-gray-900"
-    }`}>
-      <motion.button 
-        onClick={toggleTheme} 
-        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        className={`fixed top-4 right-4 z-50 p-3 rounded-full backdrop-blur-md shadow-lg ${
-          theme === "dark" 
-            ? "bg-violet-900/40 text-yellow-300 border border-violet-700/40 shadow-[0_0_15px_3px_rgba(139,92,246,0.5)]" 
-            : "bg-white/40 text-purple-700 border border-white/50 shadow-[0_0_15px_3px_rgba(236,72,153,0.3)]"
-        }`}
-        whileHover={{ 
-          scale: 1.1, 
-          rotate: 15, 
-          boxShadow: theme === "dark" 
-            ? "0 0 25px 5px rgba(139, 92, 246, 0.6)" 
-            : "0 0 25px 5px rgba(236, 72, 153, 0.4)" 
-        }}
-        whileTap={{ scale: 0.9 }}
-      >
-        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-      </motion.button>
+    <div className={`${themeClass.bg} ${themeClass.text} transition-colors duration-500 min-h-screen`}>
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {theme === "dark" ? (
+          <>
 
-      <div className="max-w-2xl w-full sm:my-8 my-0 sm:px-0 px-0">
-          <div className="hidden bg-white/60 backdrop-blur-xl border border-pink-200/60 shadow-[0_0_40px_10px_rgba(236,72,153,0.15)]"></div>
-        <motion.div 
-          className={`pt-8 px-6 rounded-2xl overflow-hidden ${
-            theme === "dark" 
-              ? "bg-gray-900/40 backdrop-blur-xl border border-purple-800/30 shadow-[0_0_40px_10px_rgba(139,92,246,0.15)]" 
-              : "bg-white/60 backdrop-blur-xl border border-pink-200/60 shadow-[0_0_40px_10px_rgba(236,72,153,0.15)]"
-          }`}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex flex-col md:flex-row items-center md:items-start mb-6">
-            <motion.div 
-              className="relative mb-5 md:mb-0 md:mr-5"
-              whileHover={{ scale: 1.05 }}
-            >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500 p-0.5 shadow-[0_0_25px_rgba(168,85,247,0.5)]">
-                <div className="w-full h-full rounded-full overflow-hidden">
-                  <motion.div 
-                    className="w-full h-full"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <img
-                      src="https://randomuser.me/api/portraits/women/44.jpg"
-                      alt="Profile picture"
-                      className="w-full h-full object-cover"
-                      loading="eager"
-                    />
-                  </motion.div>
-                </div>
-              </div>
-              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center ${
-                theme === "dark" ? "bg-gray-800/80" : "bg-white/80"
-              } backdrop-blur-sm border ${
-                theme === "dark" ? "border-purple-700/50" : "border-pink-300/80"
-              } shadow-[0_0_15px_rgba(168,85,247,0.5)]`}>
-                <span className="text-pink-500 text-lg">★</span>
-              </div>
-            </motion.div>
-
-            <div className="flex-1 w-full text-center md:text-left">
-              <div className="flex justify-center md:justify-start items-center">
-                <motion.h1 
-                  className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
-                  animate={{ 
-                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                  }}
-                  transition={{ 
-                    duration: 15, 
-                    repeat: Infinity,
-                    ease: "linear" 
-                  }}
-                >
-                  Mollika
-                </motion.h1>
-              </div>
-              <p className={`text-sm mt-1 ${theme === "dark" ? "text-purple-300" : "text-purple-600"}`}>
-                Member of ABC industry
-              </p>
-              
-              <motion.div 
-                className={`mt-4 p-4 rounded-xl w-full ${
-                  theme === "dark" 
-                    ? "bg-gray-800/50 backdrop-blur-sm border border-purple-700/50" 
-                    : "bg-white/50 backdrop-blur-sm border border-pink-200/70"
-                } ${
-                  theme === "dark"
-                    ? "shadow-[0_0_25px_rgba(139,92,246,0.2)]"
-                    : "shadow-[0_0_25px_rgba(236,72,153,0.15)]"
-                }`}
-                whileHover={{ 
-                  scale: 1.01, 
-                  boxShadow: theme === "dark" 
-                    ? "0 0 30px rgba(139, 92, 246, 0.3)" 
-                    : "0 0 30px rgba(236, 72, 153, 0.2)" 
+            <div className="absolute inset-0 bg-slate-950">
+              <div className="absolute inset-0 opacity-30"
+                style={{
+                  backgroundImage: "url('https://source.unsplash.com/random?pattern,dark&w=1920&h=1080')",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center"
+                }}></div>
+              <div
+                className="absolute inset-0 opacity-50"
+                style={{
+                  background: "radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 40%), radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.3) 0%, transparent 50%)"
                 }}
-              >
-                <p className={`text-sm ${theme === "dark" ? "text-purple-200" : "text-purple-800"}`}>
-                  Passionate photographer and digital creator. Exploring the world one frame at a time. ✨ #TravelLover #ContentCreator
-                </p>
-              </motion.div>
+              ></div>
             </div>
-          </div>
+          </>
+        ) : (
+          <>
 
-          <div className={`flex justify-between mb-6 p-4 rounded-xl ${
-            theme === "dark" 
-              ? "bg-gray-800/30 backdrop-blur-sm border border-purple-700/40 shadow-[0_0_25px_rgba(139,92,246,0.15)]" 
-              : "bg-white/50 backdrop-blur-sm border border-pink-200/50 shadow-[0_0_25px_rgba(236,72,153,0.15)]"
-          }`}>
-            <motion.div 
-              className="text-center"
-              whileHover={{ y: -5, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <p className={`text-xl font-bold ${
-                theme === "dark" ? "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" : "text-gray-800"
-              }`}>110</p>
-              <p className={`text-xs uppercase ${theme === "dark" ? "text-pink-300" : "text-purple-600"}`}>
-                Posts
-              </p>
-            </motion.div>
-            <motion.div 
-              className="text-center"
-              whileHover={{ y: -5, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <p className={`text-xl font-bold ${
-                theme === "dark" ? "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" : "text-gray-800"
-              }`}>{isFollowing ? '801' : '800'}</p>
-              <p className={`text-xs uppercase ${theme === "dark" ? "text-pink-300" : "text-purple-600"}`}>
-                Followers
-              </p>
-            </motion.div>
-            <motion.div 
-              className="text-center"
-              whileHover={{ y: -5, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <p className={`text-xl font-bold ${
-                theme === "dark" ? "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" : "text-gray-800"
-              }`}>500</p>
-              <p className={`text-xs uppercase ${theme === "dark" ? "text-pink-300" : "text-purple-600"}`}>
-                Following
-              </p>
-            </motion.div>
-          </div>
-
-          <div className="flex gap-3 mb-6">
-            <motion.button
-              onClick={handleFollowClick}
-              className={`flex-1 py-2.5 px-4 rounded-lg font-medium flex items-center justify-center backdrop-blur-sm ${
-                isFollowing 
-                  ? `${theme === "dark" 
-                      ? "bg-gray-800/80 text-white border border-purple-700/50 shadow-[0_0_15px_rgba(139,92,246,0.2)]" 
-                      : "bg-gray-200/80 text-gray-700 border border-gray-300 shadow-[0_0_15px_rgba(236,72,153,0.15)]"
-                    }`
-                  : `${theme === "dark"
-                      ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-[0_0_25px_rgba(168,85,247,0.4)]" 
-                      : "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-[0_0_25px_rgba(236,72,153,0.3)]"
-                    }`
-              }`}
-              whileHover={{ 
-                scale: 1.03, 
-                boxShadow: !isFollowing 
-                  ? theme === "dark"
-                    ? "0 0 35px rgba(168, 85, 247, 0.6)" 
-                    : "0 0 35px rgba(236, 72, 153, 0.4)"
-                  : theme === "dark"
-                    ? "0 0 20px rgba(139, 92, 246, 0.3)" 
-                    : "0 0 20px rgba(236, 72, 153, 0.2)" 
-              }}
-              whileTap={{ scale: 0.97 }}
-            >
-              {isFollowing ? 'Following' : 'Follow'}
-              {!isFollowing && <UserPlus size={16} className="ml-1" />}
-            </motion.button>
-            
-            <motion.button
-              onClick={handleMessageClick}
-              className={`flex-1 py-2.5 px-4 rounded-lg font-medium flex items-center justify-center ${
-                theme === "dark" 
-                  ? "bg-gray-800/60 backdrop-blur-sm text-white border border-purple-700/50 shadow-[0_0_15px_rgba(139,92,246,0.2)]" 
-                  : "bg-white/60 backdrop-blur-sm border border-pink-300/50 text-purple-700 shadow-[0_0_15px_rgba(236,72,153,0.15)]"
-              }`}
-              whileHover={{ 
-                scale: 1.03, 
-                boxShadow: theme === "dark" 
-                  ? "0 0 25px rgba(139, 92, 246, 0.3)" 
-                  : "0 0 25px rgba(236, 72, 153, 0.25)" 
-              }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Message
-              <MessageCircle size={16} className="ml-1" />
-            </motion.button>
-          </div>
-          
-          <AnimatePresence>
-            {showMessage && (
-              <motion.div 
-                className={`py-2.5 px-4 rounded-lg text-sm mb-5 backdrop-blur-md ${
-                  theme === "dark" 
-                    ? "bg-gray-800/70 border border-purple-700/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]" 
-                    : "bg-white/60 border border-pink-200/50 shadow-[0_0_20px_rgba(236,72,153,0.25)]"
-                }`}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-              >
-                <div className="flex items-center">
-                  <MessageCircle size={16} className={`mr-2 ${theme === "dark" ? "text-pink-400" : "text-purple-500"}`} />
-                  <span>Coming soon</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className={`border-b ${theme === "dark" ? "border-purple-700/30" : "border-pink-200/40"} flex mb-2`}>
-            <div className="flex w-full">
-              <motion.button
-                onClick={() => handleTabClick("all")}
-                className={`flex-1 py-3 text-center relative ${
-                  activeTab === "all" 
-                    ? `font-medium ${theme === "dark" ? "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.7)]" : "text-purple-600"}` 
-                    : `${theme === "dark" ? "text-gray-400" : "text-gray-500"}`
-                }`}
-                whileHover={{ y: -1 }}
-                whileTap={{ y: 0 }}
-              >
-                All
-                {activeTab === "all" && (
-                  <motion.div 
-                    className={`absolute bottom-0 left-0 w-full h-1 rounded-t-full ${
-                      theme === "dark" 
-                        ? "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_10px_3px_rgba(236,72,153,0.5)]" 
-                        : "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_8px_2px_rgba(236,72,153,0.4)]"
-                    }`}
-                    layoutId="activeTab"
-                  />
-                )}
-              </motion.button>
-              
-              <motion.button
-                onClick={() => handleTabClick("photo")}
-                className={`flex-1 py-3 text-center relative ${
-                  activeTab === "photo" 
-                    ? `font-medium ${theme === "dark" ? "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.7)]" : "text-purple-600"}` 
-                    : `${theme === "dark" ? "text-gray-400" : "text-gray-500"}`
-                }`}
-                whileHover={{ y: -1 }}
-                whileTap={{ y: 0 }}
-              >
-                Photo
-                {activeTab === "photo" && (
-                  <motion.div 
-                    className={`absolute bottom-0 left-0 w-full h-1 rounded-t-full ${
-                      theme === "dark" 
-                        ? "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_10px_3px_rgba(236,72,153,0.5)]" 
-                        : "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_8px_2px_rgba(236,72,153,0.4)]"
-                    }`}
-                    layoutId="activeTab"
-                  />
-                )}
-              </motion.button>
-              
-              <motion.button
-                onClick={() => handleTabClick("video")}
-                className={`flex-1 py-3 text-center relative ${
-                  activeTab === "video" 
-                    ? `font-medium ${theme === "dark" ? "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.7)]" : "text-purple-600"}` 
-                    : `${theme === "dark" ? "text-gray-400" : "text-gray-500"}`
-                }`}
-                whileHover={{ y: -1 }}
-                whileTap={{ y: 0 }}
-              >
-                Video
-                {activeTab === "video" && (
-                  <motion.div 
-                    className={`absolute bottom-0 left-0 w-full h-1 rounded-t-full ${
-                      theme === "dark" 
-                        ? "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_10px_3px_rgba(236,72,153,0.5)]" 
-                        : "bg-gradient-to-r from-pink-500 to-purple-600 shadow-[0_0_8px_2px_rgba(236,72,153,0.4)]"
-                    }`}
-                    layoutId="activeTab"
-                  />
-                )}
-              </motion.button>
-             
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <div className="absolute inset-0 opacity-30"
+                style={{
+                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='0.16'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+                  backgroundSize: "60px 60px"
+                }}
+              ></div>
+              <div
+                className="absolute inset-0 opacity-40"
+                style={{
+                  background: "radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 40%), radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%)"
+                }}
+              ></div>
             </div>
-          </div>
-
-          <div className="p-3">
-            {activeTab === "all" && (
-              <motion.div 
-                className="grid grid-cols-3 gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ staggerChildren: 0.05 }}
-              >
-                {mockContent.photos.map((photo, index) => (
-                  <motion.div 
-                    key={`photo-${photo.id}`} 
-                    className={`aspect-square relative overflow-hidden rounded-xl cursor-pointer ${
-                      theme === "dark" 
-                        ? "shadow-[0_0_20px_rgba(139,92,246,0.25)]" 
-                        : "shadow-[0_0_20px_rgba(236,72,153,0.2)]"
-                    }`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    whileHover={{ 
-                      scale: 1.03, 
-                      boxShadow: theme === "dark" 
-                        ? "0 0 30px rgba(139, 92, 246, 0.5)" 
-                        : "0 0 30px rgba(236, 72, 153, 0.3)" 
-                    }}
-                    onClick={() => handleImageClick(photo.src, photo.alt)}
-                  >
-                    <img
-                      src={photo.src}
-                      alt={photo.alt}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                    <motion.div 
-                      className="absolute bottom-2 right-2"
-                      whileHover={{ scale: 1.2 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLikeClick(photo.id, 'photo');
-                      }}
-                    >
-                      <div className={`rounded-full p-1.5 backdrop-blur-md ${
-                        likedPhotos[photo.id]
-                          ? "bg-pink-600/90 shadow-[0_0_20px_rgba(236,72,153,0.7)]"
-                          : theme === "dark" 
-                            ? "bg-pink-500/70 shadow-[0_0_15px_rgba(236,72,153,0.5)]" 
-                            : "bg-pink-500/80 shadow-[0_0_15px_rgba(236,72,153,0.4)]"
-                      }`}>
-                        <Heart 
-                          size={16} 
-                          className={`${likedPhotos[photo.id] ? "text-white fill-white" : "text-white"} drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]`} 
-                        />
-                      </div>                     
-                    </motion.div>
-                  </motion.div>
-                ))}
-                {mockContent.videos.map((video, index) => (
-                  <motion.div 
-                    key={`video-${video.id}`} 
-                    className={`aspect-square relative overflow-hidden rounded-xl ${
-                      theme === "dark" 
-                        ? "shadow-[0_0_20px_rgba(139,92,246,0.25)]" 
-                        : "shadow-[0_0_20px_rgba(236,72,153,0.2)]"
-                    }`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: (index + mockContent.photos.length) * 0.05 }}
-                    whileHover={{ 
-                      scale: 1.03, 
-                      boxShadow: theme === "dark" 
-                        ? "0 0 30px rgba(139, 92, 246, 0.5)" 
-                        : "0 0 30px rgba(236, 72, 153, 0.3)" 
-                    }}
-                  >
-                    <img
-                      src={video.src}
-                      alt={video.alt}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 to-transparent"></div>
-                    
-                    <div className="absolute top-3 left-3">
-                      {index % 3 === 0 ? (
-                        <Instagram size={18} className="text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.9)]" />
-                      ) : index % 3 === 1 ? (
-                        <Headphones size={18} className="text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.9)]" />
-                      ) : (
-                        <Twitch size={18} className="text-purple-400 drop-shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
-                      )}
-                    </div>
-
-                    <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white font-medium flex items-center shadow-[0_0_10px_rgba(0,0,0,0.3)] border border-white/10">
-                      {video.duration}
-                    </div>
-
-                    <motion.div 
-                      className="absolute inset-0 flex items-center justify-center"
-                      whileHover={{ scale: 1.2 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMusicClick(video.id);
-                      }}
-                    >
-                      <div className={`rounded-full backdrop-blur-sm p-2.5 ${
-                        playingVideo === video.id
-                          ? "bg-purple-600/90 shadow-[0_0_25px_rgba(168,85,247,0.8)]"
-                          : "bg-pink-500/80 shadow-[0_0_20px_rgba(236,72,153,0.5)]"
-                      } border border-white/20`}>
-                        <Music 
-                          size={16} 
-                          className="text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" 
-                        />
-                      </div>
-                      {playingVideo === video.id && (
-                        <motion.div 
-                          className="absolute inset-0 flex items-center justify-center"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                        >
-                          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
-                          <motion.div 
-                            className="relative z-10"
-                            animate={{ 
-                              scale: [1, 1.05, 1],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 2
-                            }}
-                          >
-                            <div className="text-white font-medium text-lg sm:text-base text-center flex flex-col items-center justify-center">
-                              <Music size={24} className="mb-1" />
-                              Now Playing
-                            </div>
-                          </motion.div>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-            
-            {activeTab === "photo" && (
-              <motion.div 
-                className="grid grid-cols-3 gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ staggerChildren: 0.05 }}
-              >
-                {mockContent.photos.map((photo, index) => (
-                  <motion.div 
-                    key={`photo-${photo.id}`} 
-                    className={`aspect-square relative overflow-hidden rounded-xl cursor-pointer ${
-                      theme === "dark" 
-                        ? "shadow-[0_0_20px_rgba(139,92,246,0.25)]" 
-                        : "shadow-[0_0_20px_rgba(236,72,153,0.2)]"
-                    }`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    whileHover={{ 
-                      scale: 1.03, 
-                      boxShadow: theme === "dark" 
-                        ? "0 0 30px rgba(139, 92, 246, 0.5)" 
-                        : "0 0 30px rgba(236, 72, 153, 0.3)" 
-                    }}
-                    onClick={() => handleImageClick(photo.src, photo.alt)}
-                  >
-                    <img
-                      src={photo.src}
-                      alt={photo.alt}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30 opacity-0 hover:opacity-100 transition-all duration-300 backdrop-blur-sm flex items-center justify-center gap-3">
-                      <motion.div 
-                        whileHover={{ scale: 1.2, boxShadow: "0 0 25px rgba(244, 114, 182, 0.7)" }}
-                        className={`${likedPhotos[photo.id] ? "bg-pink-600/90" : "bg-pink-500/70"} backdrop-blur-md p-2 rounded-full shadow-[0_0_15px_rgba(236,72,153,0.5)] border border-white/20`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLikeClick(photo.id, 'photo');
-                        }}
-                      >
-                        <Heart 
-                          size={20} 
-                          className={`${likedPhotos[photo.id] ? "text-white fill-white" : "text-white"} drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]`} 
-                        />
-                      </motion.div>
-                      {likedPhotos[photo.id] && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.5 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute top-8 right-8 z-10 w-6 h-6 bg-pink-500/90 rounded-full backdrop-blur-sm shadow-[0_0_10px_rgba(236,72,153,0.6)] border border-white/20"
-                        />
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-            
-            {activeTab === "video" && (
-              <motion.div 
-                className="grid grid-cols-3 gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ staggerChildren: 0.05 }}
-              >
-                {mockContent.videos.map((video, index) => (
-                  <motion.div 
-                    key={`video-${video.id}`} 
-                    className={`aspect-square relative overflow-hidden rounded-xl ${
-                      theme === "dark" 
-                        ? "shadow-[0_0_20px_rgba(139,92,246,0.25)]" 
-                        : "shadow-[0_0_20px_rgba(236,72,153,0.2)]"
-                    }`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    whileHover={{ 
-                      scale: 1.03, 
-                      boxShadow: theme === "dark" 
-                        ? "0 0 30px rgba(139, 92, 246, 0.5)" 
-                        : "0 0 30px rgba(236, 72, 153, 0.3)" 
-                    }}
-                  >
-                    <img
-                      src={video.src}
-                      alt={video.alt}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 to-transparent"></div>
-                    
-                    <div className="absolute top-3 left-3">
-                      {index % 3 === 0 ? (
-                        <Instagram size={18} className="text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.9)]" />
-                      ) : index % 3 === 1 ? (
-                        <Headphones size={18} className="text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.9)]" />
-                      ) : (
-                        <Twitch size={18} className="text-purple-400 drop-shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
-                      )}
-                    </div>
-
-                    <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white font-medium flex items-center shadow-[0_0_10px_rgba(0,0,0,0.3)] border border-white/10">
-                      {video.duration}
-                    </div>
-
-                    <motion.div 
-                      className="absolute inset-0 flex items-center justify-center"
-                      whileHover={{ scale: 1.2 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMusicClick(video.id);
-                      }}
-                    >
-                      <div className={`rounded-full backdrop-blur-sm p-2.5 ${
-                        playingVideo === video.id
-                          ? "bg-purple-600/90 shadow-[0_0_25px_rgba(168,85,247,0.8)]"
-                          : "bg-pink-500/80 shadow-[0_0_20px_rgba(236,72,153,0.5)]"
-                      } border border-white/20`}>
-                        <Music 
-                          size={16} 
-                          className="text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" 
-                        />
-                      </div>
-                      {playingVideo === video.id && (
-                        <motion.div 
-                          className="absolute inset-0 flex items-center justify-center"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                        >
-                          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
-                          <motion.div 
-                            className="relative z-10"
-                            animate={{ 
-                              scale: [1, 1.05, 1],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 2
-                            }}
-                          >
-                            <div className="text-white font-medium text-lg sm:text-base text-center flex flex-col items-center justify-center">
-                              <Music size={24} className="mb-1" />
-                              Now Playing
-                            </div>
-                          </motion.div>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        </motion.div>
+          </>
+        )}
       </div>
 
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm"
-            onClick={handleCloseModal}
+
+      <button
+        onClick={toggleTheme}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-full ${themeClass.cardBg} ${themeClass.border} shadow-lg transition-all duration-300`}
+      >
+        {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+      </button>
+
+      <div className="min-h-screen w-full flex flex-col md:flex-row">
+        <div className="md:fixed md:top-0 md:left-0 md:bottom-0 md:w-[350px] md:min-w-[350px] md:z-40">
+          <div
+            className={`${themeClass.cardBg} ${themeClass.border} md:border-r md:h-screen`}
           >
+            <div className="p-8 pt-20 h-full overflow-y-auto">
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center justify-center">
+                  <div className="relative">
+                    <div className={`absolute -inset-10 ${themeClass.highlight} rounded-full opacity-50 blur-xl`}></div>
+                    <div className={`w-32 h-32 rounded-2xl shadow-lg relative overflow-hidden`}>
+                      <img
+                        src="https://images.unsplash.com/photo-1746645297670-80e76130ceca?q=80&w=1974&auto=format&fit=crop"
+                        alt="Product image"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center mt-8">
+                  <h1 className="text-2xl font-bold mb-2">Ultra Comfort X1</h1>
+                  <div className="flex justify-center items-center mb-2">
+                    <div className="flex mx-auto">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Star
+                          key={value}
+                          size={18}
+                          fill={value <= Math.round(averageRating) ? "currentColor" : "none"}
+                          className={value <= Math.round(averageRating) ? themeClass.starFilled : themeClass.starEmpty}
+                        />
+                      ))}
+                    </div>
+                    <span className={`ml-2 ${themeClass.subtext} text-sm`}>({reviews.length})</span>
+                  </div>
+                  <div className={`text-sm ${themeClass.subtext} mt-1`}>
+                    Average Rating: {averageRating.toFixed(1)} / 5.0
+                  </div>
+                </div>
+
+                <div className={`mt-8 p-5 rounded-xl ${themeClass.highlight} ${themeClass.border}`}>
+                  <div className="text-center mb-4">
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${themeClass.accent} border ${themeClass.border}`}>
+                      Premium Wireless Headphones
+                    </span>
+                  </div>
+                  <p className={`text-sm ${themeClass.subtext} text-center mb-6`}>
+                    Experience crystal-clear sound with our advanced Ultra Comfort X1 headphones, featuring 40 hours of battery life and active noise cancellation technology.
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold">Noise Cancellation</div>
+                          <div className={`text-xs ${themeClass.subtext}`}>Advanced ANC technology</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="18" height="12" rx="2"></rect><path d="M20.4 9H23v6h-2.6"></path></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold">40Hr Battery</div>
+                          <div className={`text-xs ${themeClass.subtext}`}>Long-lasting performance</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17" y1="15" x2="9" y2="15"></line></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold">Premium Comfort</div>
+                          <div className={`text-xs ${themeClass.subtext}`}>Plush ear cushions</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`mt-8 text-center ${themeClass.subtext} text-sm`}>
+                  <p className="italic">
+                    Thank you for purchasing our premium headphones. Your feedback helps us improve our products.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 px-4 py-10 md:px-8 md:py-16 overflow-auto md:ml-[350px]">
+          <div className="max-w-3xl mx-auto">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-auto h-auto max-w-full max-h-[90vh] p-2 sm:p-6 flex items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.7 }}
             >
-              <button
-                onClick={handleCloseModal}
-                className="absolute -top-12 right-0 p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+              <motion.div
+                className={`${themeClass.cardBg} ${themeClass.border} rounded-3xl shadow-xl overflow-hidden`}
+                initial="initial"
+                animate="animate"
+                variants={glowVariants}
+                transition={{
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  duration: 2,
+                  ease: "easeInOut"
+                }}
               >
-                <X size={24} className="text-white" />
-              </button>
-              <img
-                src={selectedImage.src}
-                alt={selectedImage.alt}
-                className="max-w-full max-h-[80vh] w-auto h-auto mx-auto block rounded-lg shadow-2xl"
-              />
+                <div className="relative">
+                  <div className={`absolute -inset-0 opacity-60 bg-gradient-to-r ${themeClass.gradientFrom} ${themeClass.gradientTo}`} style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 0% 100%)' }}></div>
+                  <div className="relative pt-8 pb-16 px-6 md:px-10">
+                    <div className="flex items-center">
+                      <MessageSquare className="text-white mr-3" size={24} />
+                      <h2 className="text-2xl font-bold text-white drop-shadow-sm">Share Your Experience</h2>
+                    </div>
+                    <p className={`mt-2 max-w-lg ${theme === 'dark' ? 'text-white/80' : 'text-white/90'} font-medium`}>
+                      Your feedback helps us improve our products and assists other customers in making informed decisions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-6 md:p-10 -mt-10">
+                  <form onSubmit={handleSubmit} className="space-y-8 relative">
+                    <div>
+                      <label className={`block mb-4 font-medium text-lg ${themeClass.text}`}>
+                        How would you rate this product?
+                      </label>
+                      <div className="flex items-center justify-center bg-gradient-to-r from-transparent via-gray-200/10 to-transparent py-5 px-3 rounded-xl">
+                        <div className="flex gap-3">
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <motion.button
+                              key={value}
+                              type="button"
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleRatingClick(value)}
+                              onMouseEnter={() => setHoverRating(value)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              className={`flex flex-col items-center focus:outline-none group`}
+                            >
+                              <Star
+                                size={40}
+                                fill={(hoverRating || rating) >= value ? "currentColor" : "none"}
+                                strokeWidth={1.5}
+                                className={(hoverRating || rating) >= value
+                                  ? themeClass.starFilled
+                                  : themeClass.starEmpty
+                                }
+                              />
+                              <span className={`text-xs mt-1 transition-opacity ${(hoverRating || rating) >= value
+                                ? "opacity-100" + " " + themeClass.accent
+                                : "opacity-60" + " " + themeClass.subtext
+                                }`}>
+                                {value === 1 ? 'Poor' : value === 2 ? 'Fair' : value === 3 ? 'Good' : value === 4 ? 'Great' : 'Excellent'}
+                              </span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="name" className={`block mb-3 font-medium text-lg ${themeClass.text}`}>
+                        Your Name
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="name"
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className={`w-full rounded-xl ${themeClass.inputBg} border ${theme === 'dark' ? 'border-slate-600 focus:border-purple-500 shadow-[0_0_8px_rgba(139,92,246,0.15)]' : 'border-slate-300 focus:border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.1)]'} p-4 focus:ring-1 focus:ring-opacity-50 ${theme === 'dark' ? 'focus:ring-purple-500 focus:shadow-[0_0_15px_rgba(139,92,246,0.25)]' : 'focus:ring-blue-500 focus:shadow-[0_0_15px_rgba(59,130,246,0.2)]'} outline-none transition-all duration-300 text-base ${theme === 'dark' ? 'placeholder:text-slate-400' : 'placeholder:text-slate-600'}`}
+                          placeholder="Enter your name here..."
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="comment" className={`block mb-3 font-medium text-lg ${themeClass.text}`}>
+                        Your Review
+                      </label>
+                      <div className="relative">
+                        <textarea
+                          id="comment"
+                          rows={6}
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          className={`w-full rounded-xl ${themeClass.inputBg} border ${theme === 'dark' ? 'border-slate-600 focus:border-purple-500 shadow-[0_0_8px_rgba(139,92,246,0.15)]' : 'border-slate-300 focus:border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.1)]'} p-4 focus:ring-1 focus:ring-opacity-50 ${theme === 'dark' ? 'focus:ring-purple-500 focus:shadow-[0_0_15px_rgba(139,92,246,0.25)]' : 'focus:ring-blue-500 focus:shadow-[0_0_15px_rgba(59,130,246,0.2)]'} outline-none transition-all duration-300 text-base ${theme === 'dark' ? 'placeholder:text-slate-400' : 'placeholder:text-slate-600'}`}
+                          placeholder="Share your thoughts about this product..."
+                        ></textarea>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        disabled={rating === 0}
+                        className={`${themeClass.buttonBg} ${themeClass.buttonText} px-8 py-4 rounded-xl font-medium text-base w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                      >
+                        <Heart size={18} className="mr-2" />
+                        Submit Your Review
+                      </motion.button>
+                    </div>
+                  </form>
+
+                  <AnimatePresence>
+                    {showSubmitPopup && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.7 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border rounded-xl shadow-xl py-6 px-10 flex items-center min-w-[300px] max-w-[90%]`}
+                        style={{
+                          boxShadow: theme === 'dark'
+                            ? '0 0 30px rgba(139,92,246,0.4)'
+                            : '0 0 30px rgba(59,130,246,0.3)'
+                        }}
+                      >
+                        <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-purple-500' : 'bg-blue-500'} text-white`}>
+                          <CheckCircle size={16} />
+                        </div>
+                        <div className="ml-2">
+                          <h3 className="font-semibold text-lg">Thank you for your feedback!</h3>
+                          <p className={`text-sm ${themeClass.subtext} mt-1`}>Your review has been successfully submitted.</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {reviews.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="mt-12"
+              >
+                <motion.div
+                  className={`rounded-2xl ${themeClass.cardBg} ${themeClass.border} shadow-lg overflow-hidden`}
+                  initial={{ boxShadow: theme === 'dark' ? '0 0 15px rgba(139,92,246,0.1)' : '0 0 15px rgba(124,58,237,0.05)' }}
+                  animate={{ boxShadow: theme === 'dark' ? '0 0 25px rgba(139,92,246,0.2)' : '0 0 25px rgba(124,58,237,0.1)' }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    duration: 3,
+                    ease: "easeInOut",
+                    delay: 1
+                  }}>
+                  <div className="p-6 md:p-8">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold">Customer Reviews</h2>
+                      <div className="relative">
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowFilters(!showFilters)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${themeClass.cardBg} ${themeClass.border}`}
+                        >
+                          <Filter size={16} />
+                          <span className="hidden sm:inline text-sm">Sort By</span>
+                        </motion.button>
+
+                        <AnimatePresence>
+                          {showFilters && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className={`absolute right-0 mt-2 w-48 ${themeClass.cardBg} ${themeClass.border} rounded-lg shadow-lg z-10`}
+                            >
+                              <button
+                                onClick={() => {
+                                  setSortBy("newest");
+                                  setShowFilters(false);
+                                }}
+                                className={`block w-full text-left px-4 py-2 hover:${themeClass.highlight} rounded-t-lg ${sortBy === "newest" ? "font-bold " + themeClass.accent : ""}`}
+                              >
+                                Newest First
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSortBy("highest");
+                                  setShowFilters(false);
+                                }}
+                                className={`block w-full text-left px-4 py-2 hover:${themeClass.highlight} rounded-b-lg ${sortBy === "highest" ? "font-bold " + themeClass.accent : ""}`}
+                              >
+                                Highest Rated
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {getSortedReviews().map((review) => (
+                          <motion.div
+                            key={review.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            layout
+                            className={`p-4 rounded-xl ${themeClass.cardBg} ${themeClass.border} hover:shadow-md transition-shadow duration-300`}
+                          >
+                            <div className="flex flex-wrap justify-between items-center mb-3">
+                              <div className="flex mb-2 md:mb-0">
+                                {[1, 2, 3, 4, 5].map((value) => (
+                                  <Star
+                                    key={value}
+                                    size={18}
+                                    fill={review.rating >= value ? "currentColor" : "none"}
+                                    className={review.rating >= value
+                                      ? themeClass.starFilled
+                                      : themeClass.starEmpty
+                                    }
+                                  />
+                                ))}
+                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${themeClass.highlight} ${themeClass.accent}`}>
+                                  {review.rating === 5 ? "Excellent" :
+                                    review.rating === 4 ? "Great" :
+                                      review.rating === 3 ? "Good" :
+                                        review.rating === 2 ? "Fair" : "Poor"}
+                                </span>
+                              </div>
+                              <span className={`text-sm ${themeClass.subtext}`}>
+                                {new Date(review.date).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <div className={`pt-2 border-t ${themeClass.divider}`}>
+                              <div className="flex items-center mb-2">
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-50'} mr-2`}>
+                                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-purple-400' : 'text-blue-600'}`}>
+                                    {review.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className={`font-medium ${themeClass.text}`}>{review.name}</span>
+                              </div>
+                              <p className="mt-2">{review.comment}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
