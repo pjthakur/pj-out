@@ -1,1427 +1,1034 @@
 "use client";
 
-import { useState, useEffect, useRef, createContext } from "react";
-import {  Montserrat } from "next/font/google";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShoppingCart,
-  X,
-  Sun,
+  Sparkles,
   Moon,
-  Star,
-  StarHalf,
-  ChevronLeft,
+  Sun,
+  HelpCircle,
+  X,
+  Trophy,
+  RotateCcw,
+  Zap,
+  Shield,
+  Rocket,
+  AlertTriangle,
+  Check,
   ChevronRight,
-  SlidersHorizontal,
-  Eye,
-  Plus,
-  Minus,
-  Trash2,
+  XCircle,
+  Info,
 } from "lucide-react";
+import { Montserrat } from "next/font/google";
 
 const montserrat = Montserrat({
-  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-montserrat",
 });
 
 type ThemeType = "light" | "dark";
-
-interface ThemeColors {
-  background: string;
-  foreground: string;
-  primary: string;
-  primaryHover: string;
-  secondary: string;
-  accent: string;
-  muted: string;
-  border: string;
-  card: string;
-  cardHover: string;
-}
-
-interface ThemeConfig {
-  light: ThemeColors;
-  dark: ThemeColors;
-}
-
-const themeConfig: ThemeConfig = {
-  light: {
-    background: "bg-gray-50",
-    foreground: "text-gray-900",
-    primary: "bg-rose-600",
-    primaryHover: "hover:bg-rose-700",
-    secondary: "bg-indigo-600",
-    accent: "text-rose-600",
-    muted: "text-gray-500",
-    border: "border-gray-200",
-    card: "bg-white",
-    cardHover: "hover:bg-gray-50",
-  },
-  dark: {
-    background: "bg-gray-950",
-    foreground: "text-gray-100",
-    primary: "bg-rose-500",
-    primaryHover: "hover:bg-rose-600",
-    secondary: "bg-indigo-500",
-    accent: "text-rose-400",
-    muted: "text-gray-400",
-    border: "border-gray-800",
-    card: "bg-gray-900",
-    cardHover: "hover:bg-gray-800",
-  },
-};
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
-  rating: number;
-  category: string;
-  franchise: string;
-  genre: string[];
-  rarity: "Common" | "Uncommon" | "Rare" | "Ultra Rare" | "Limited Edition";
-  inStock: boolean;
-  releaseDate: string;
-  featured?: boolean;
-  newArrival?: boolean;
-}
-
-interface Collection {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  products: string[];
-}
-
-interface Banner {
-  id: string;
-  title: string;
-  subtitle: string;
-  image: string;
-  link: string;
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-interface FilterOptions {
-  franchise: string[];
-  genre: string[];
-  priceRange: [number, number];
-  rarity: string[];
-}
-
-interface SortOption {
-  label: string;
-  value: string;
-}
-
-interface ThemeContextType {
+type ThemeContextType = {
   theme: ThemeType;
   toggleTheme: () => void;
-  colors: ThemeColors;
-}
+  colors: typeof themeColors.light;
+};
+
+const themeColors = {
+  light: {
+    background: "bg-gradient-to-br from-blue-50 to-purple-100",
+    text: "text-slate-800",
+    card: "bg-white",
+    primary: "bg-purple-600",
+    primaryHover: "hover:bg-purple-700",
+    secondary: "bg-blue-500",
+    secondaryHover: "hover:bg-blue-600",
+    accent: "bg-pink-500",
+    accentHover: "hover:bg-pink-600",
+    border: "border-slate-200",
+    shadow: "shadow-lg shadow-slate-200/50",
+    muted: "text-slate-500",
+    success: "bg-green-500",
+    warning: "bg-amber-500",
+    danger: "bg-red-500",
+    info: "bg-cyan-500",
+  },
+  dark: {
+    background: "bg-gradient-to-br from-slate-900 to-purple-950",
+    text: "text-slate-100",
+    card: "bg-slate-800",
+    primary: "bg-purple-700",
+    primaryHover: "hover:bg-purple-800",
+    secondary: "bg-blue-600",
+    secondaryHover: "hover:bg-blue-700",
+    accent: "bg-pink-600",
+    accentHover: "hover:bg-pink-700",
+    border: "border-slate-700",
+    shadow: "shadow-lg shadow-black/30",
+    muted: "text-slate-400",
+    success: "bg-green-600",
+    warning: "bg-amber-600",
+    danger: "bg-red-600",
+    info: "bg-cyan-600",
+  },
+};
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: "light",
   toggleTheme: () => {},
-  colors: themeConfig.light,
+  colors: themeColors.light,
 });
 
-const mockProducts: Product[] = [
+const DIFFICULTY_SETTINGS = {
+  easy: {
+    name: "Easy",
+    gridSize: 3,
+    initialSpeed: 1000,
+    speedReduction: 50,
+    minSpeed: 600,
+    maxRounds: 10,
+  },
+  medium: {
+    name: "Medium",
+    gridSize: 6,
+    initialSpeed: 800,
+    speedReduction: 50,
+    minSpeed: 500,
+    maxRounds: 15,
+  },
+  hard: {
+    name: "Hard",
+    gridSize: 9,
+    initialSpeed: 600,
+    speedReduction: 50,
+    minSpeed: 400,
+    maxRounds: 20,
+  },
+};
+
+const PAD_COLORS = [
   {
-    id: "p1",
-    name: "Iron Man Mark XLII Helmet",
-    description:
-      "Limited edition 1:1 scale Iron Man helmet with light-up eyes and detailed paint job. Perfect for display or cosplay.",
-    price: 299.99,
-    images: [
-      "https://images.unsplash.com/photo-1636840438199-9125cd03c3b0?q=80&w=1000",
-      "https://images.unsplash.com/photo-1593085260707-5377ba37f868?q=80&w=1000",
-    ],
-    rating: 4.8,
-    category: "Prop Replicas",
-    franchise: "Marvel",
-    genre: ["Superhero", "Action"],
-    rarity: "Limited Edition",
-    inStock: true,
-    releaseDate: "2023-05-15",
-    featured: true,
+    name: "red",
+    bg: "bg-red-500",
+    activeBg: "bg-red-400",
+    glow: "shadow-red-500/70",
   },
   {
-    id: "p2",
-    name: "Star Wars: The Mandalorian Poster",
-    description:
-      "Official movie poster from The Mandalorian series, featuring Din Djarin and Grogu. Printed on premium paper with vibrant colors.",
-    price: 24.99,
-    images: [
-      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
-      "https://images.unsplash.com/photo-1596727147705-61a532a659bd?q=80&w=1000",
-    ],
-    rating: 4.5,
-    category: "Posters",
-    franchise: "Star Wars",
-    genre: ["Sci-Fi", "Adventure"],
-    rarity: "Common",
-    inStock: true,
-    releaseDate: "2022-11-30",
-    featured: true,
+    name: "blue",
+    bg: "bg-blue-500",
+    activeBg: "bg-blue-400",
+    glow: "shadow-blue-500/70",
   },
   {
-    id: "p3",
-    name: "Harry Potter Wand Collection",
-    description:
-      "Set of 5 character wands from the Harry Potter series, including Harry, Hermione, Ron, Dumbledore, and Voldemort. Each wand comes with a display stand.",
-    price: 149.99,
-    images: [
-      "https://images.unsplash.com/photo-1551269901-5c5e14c25df7?q=80&w=1000",
-      "https://images.unsplash.com/photo-1535666669445-e8c15cd2e7d9?q=80&w=1000",
-    ],
-    rating: 4.7,
-    category: "Prop Replicas",
-    franchise: "Harry Potter",
-    genre: ["Fantasy", "Adventure"],
-    rarity: "Uncommon",
-    inStock: true,
-    releaseDate: "2023-01-10",
-    newArrival: true,
+    name: "green",
+    bg: "bg-green-500",
+    activeBg: "bg-green-400",
+    glow: "shadow-green-500/70",
   },
   {
-    id: "p4",
-    name: "Stranger Things Demogorgon Figure",
-    description:
-      "Highly detailed 12-inch Demogorgon action figure with multiple points of articulation and interchangeable heads.",
-    price: 59.99,
-    images: [
-      "https://images.unsplash.com/photo-1626379616459-b2ce1d9decbc?q=80&w=1000",
-      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
-    ],
-    rating: 4.3,
-    category: "Action Figures",
-    franchise: "Stranger Things",
-    genre: ["Horror", "Sci-Fi"],
-    rarity: "Rare",
-    inStock: false,
-    releaseDate: "2022-08-22",
-    featured: true,
+    name: "yellow",
+    bg: "bg-yellow-500",
+    activeBg: "bg-yellow-400",
+    glow: "shadow-yellow-500/70",
   },
   {
-    id: "p5",
-    name: "Jurassic Park Amber Collection",
-    description:
-      "Authentic replica of the amber-encased mosquito from Jurassic Park. Comes with a wooden display case and certificate of authenticity.",
-    price: 199.99,
-    images: [
-      "https://images.pexels.com/photos/1369466/pexels-photo-1369466.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      "https://images.unsplash.com/photo-1620336655055-088d06e36bf0?q=80&w=1000",
-    ],
-    rating: 4.9,
-    category: "Prop Replicas",
-    franchise: "Jurassic Park",
-    genre: ["Sci-Fi", "Adventure"],
-    rarity: "Ultra Rare",
-    inStock: true,
-    releaseDate: "2023-03-05",
-    newArrival: true,
+    name: "purple",
+    bg: "bg-purple-500",
+    activeBg: "bg-purple-400",
+    glow: "shadow-purple-500/70",
   },
   {
-    id: "p6",
-    name: "The Godfather Movie Poster",
-    description:
-      "Classic poster from the 1972 film The Godfather. Features Marlon Brando as Don Vito Corleone.",
-    price: 34.99,
-    images: [
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000",
-      "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=1000",
-    ],
-    rating: 4.6,
-    category: "Posters",
-    franchise: "The Godfather",
-    genre: ["Crime", "Drama"],
-    rarity: "Uncommon",
-    inStock: true,
-    releaseDate: "2022-10-15",
+    name: "pink",
+    bg: "bg-pink-500",
+    activeBg: "bg-pink-400",
+    glow: "shadow-pink-500/70",
   },
   {
-    id: "p7",
-    name: "Batman Batarang Replica",
-    description:
-      "Screen-accurate replica of Batman's Batarang from The Dark Knight trilogy. Made of die-cast metal with a matte black finish.",
-    price: 79.99,
-    images: [
-      "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?q=80&w=1000",
-      "https://images.unsplash.com/photo-1600480505021-e9cfb05527f1?q=80&w=1000",
-    ],
-    rating: 4.7,
-    category: "Prop Replicas",
-    franchise: "DC",
-    genre: ["Superhero", "Action"],
-    rarity: "Rare",
-    inStock: true,
-    releaseDate: "2023-02-18",
-    newArrival: true,
+    name: "cyan",
+    bg: "bg-cyan-500",
+    activeBg: "bg-cyan-400",
+    glow: "shadow-cyan-500/70",
   },
   {
-    id: "p8",
-    name: "Lord of the Rings: One Ring",
-    description:
-      "Replica of the One Ring from The Lord of the Rings. Made of gold-plated tungsten with Elvish inscription.",
-    price: 129.99,
-    images: [
-      "https://images.unsplash.com/photo-1610296669228-602fa827fc1f?q=80&w=1000",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000",
-    ],
-    rating: 4.9,
-    category: "Prop Replicas",
-    franchise: "Lord of the Rings",
-    genre: ["Fantasy", "Adventure"],
-    rarity: "Limited Edition",
-    inStock: true,
-    releaseDate: "2022-12-25",
-    featured: true,
+    name: "amber",
+    bg: "bg-amber-500",
+    activeBg: "bg-amber-400",
+    glow: "shadow-amber-500/70",
+  },
+  {
+    name: "emerald",
+    bg: "bg-emerald-500",
+    activeBg: "bg-emerald-400",
+    glow: "shadow-emerald-500/70",
   },
 ];
 
-const mockCollections: Collection[] = [
-  {
-    id: "c1",
-    name: "Marvel Vault",
-    description: "Exclusive collectibles from the Marvel Cinematic Universe",
-    image:
-      "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000",
-    products: ["p1", "p4"],
-  },
-  {
-    id: "c2",
-    name: "Sci-Fi Legends",
-    description: "Iconic items from the greatest sci-fi franchises",
-    image:
-      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
-    products: ["p2", "p5"],
-  },
-  {
-    id: "c3",
-    name: "Oscar Winners",
-    description: "Collectibles from Academy Award-winning films",
-    image:
-      "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000",
-    products: ["p6", "p8"],
-  },
-];
+type GameState =
+  | "idle"
+  | "displaying"
+  | "awaiting"
+  | "success"
+  | "failure"
+  | "complete";
+type Difficulty = "easy" | "medium" | "hard";
+type Pad = { id: number; color: (typeof PAD_COLORS)[number] };
 
-const mockBanners: Banner[] = [
-  {
-    id: "b1",
-    title: "Marvel Cinematic Universe Collection",
-    subtitle: "Exclusive collectibles from your favorite superhero films",
-    image:
-      "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000",
-    link: "/collections/marvel",
-  },
-  {
-    id: "b2",
-    title: "Star Wars: The Mandalorian",
-    subtitle: "This is the way. New items from the hit series",
-    image:
-      "https://images.unsplash.com/photo-1608346128025-1896b97a6fa7?q=80&w=1000",
-    link: "/collections/star-wars",
-  },
-  {
-    id: "b3",
-    title: "Limited Edition Collectibles",
-    subtitle: "One-of-a-kind items for the serious collector",
-    image:
-      "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000",
-    link: "/collections/limited-edition",
-  },
-];
+type ToastType = "success" | "error" | "info" | "warning";
+type Toast = {
+  id: string;
+  message: string;
+  type: ToastType;
+  duration: number;
+};
 
-const sortOptions: SortOption[] = [
-  { label: "Featured", value: "featured" },
-  { label: "Price: Low to High", value: "price-asc" },
-  { label: "Price: High to Low", value: "price-desc" },
-  { label: "Newest", value: "newest" },
-  { label: "Rating", value: "rating" },
-];
+export default function Page() {
+  const [currentTheme, setCurrentTheme] = useState<ThemeType>("light");
+  const colors = themeColors[currentTheme];
 
-export default function Home() {
-  const [theme, setTheme] = useState<ThemeType>("light");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [currentBanner, setCurrentBanner] = useState(0);
-  const [sortBy, setSortBy] = useState<string>("featured");
-  const [toastMessage, setToastMessage] = useState("");
-  const [showToast, setShowToast] = useState(false);
-
-  const headerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as ThemeType;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      setTheme(prefersDark ? "dark" : "light");
-    }
-
-    const bannerInterval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % mockBanners.length);
-    }, 5000);
-
-    return () => clearInterval(bannerInterval);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-
-    if (isProductModalOpen || isCartOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
-  }, [theme, isProductModalOpen, isCartOpen]);
-
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [gameState, setGameState] = useState<GameState>("idle");
+  const [sequence, setSequence] = useState<number[]>([]);
+  const [playerSequence, setPlayerSequence] = useState<number[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [round, setRound] = useState(1);
+  const [highScore, setHighScore] = useState<Record<Difficulty, number>>({
+    easy: 0,
+    medium: 0,
+    hard: 0,
+  });
+  const [gamesPlayed, setGamesPlayed] = useState(0);
+  const [displaySpeed, setDisplaySpeed] = useState(
+    DIFFICULTY_SETTINGS[difficulty].initialSpeed
+  );
+  const [pads, setPads] = useState<Pad[]>([]);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiRef = useRef<HTMLCanvasElement>(null);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setCurrentTheme((prev) => (prev === "light" ? "dark" : "light"));
+    showToast("Theme changed", "info");
   };
 
-  const colors = themeConfig[theme];
+  const themeContextValue = {
+    theme: currentTheme,
+    toggleTheme,
+    colors,
+  };
 
-  const addToCart = (product: Product, quantity = 1) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find(
-        (item) => item.product.id === product.id
-      );
+  useEffect(() => {
+    const gridSize = DIFFICULTY_SETTINGS[difficulty].gridSize;
+    const newPads = Array.from({ length: gridSize }, (_, i) => ({
+      id: i,
+      color: PAD_COLORS[i % PAD_COLORS.length],
+    }));
+    setPads(newPads);
+    setDisplaySpeed(DIFFICULTY_SETTINGS[difficulty].initialSpeed);
+  }, [difficulty]);
 
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      } else {
-        return [...prevCart, { product, quantity }];
-      }
+  const showToast = (
+    message: string,
+    type: ToastType = "info",
+    duration = 3000
+  ) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => {
+      const updatedToasts =
+        prev.length >= 2 ? [prev[prev.length - 1]] : [...prev];
+      return [...updatedToasts, { id, message, type, duration }];
     });
 
-    showToastMessage(`Added ${product.name} to cart`);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, duration);
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prevCart) =>
-      prevCart.filter((item) => item.product.id !== productId)
-    );
-    showToastMessage("Item removed from cart");
+  const startGame = () => {
+    setSequence([]);
+    setPlayerSequence([]);
+    setRound(1);
+    setGameState("idle");
+    setDisplaySpeed(DIFFICULTY_SETTINGS[difficulty].initialSpeed);
+    setGamesPlayed((prev) => prev + 1);
+    setTimeout(() => {
+      const newStep = Math.floor(Math.random() * pads.length);
+      setSequence([newStep]);
+      setGameState("displaying");
+      displaySequence([newStep]);
+    }, 100);
   };
 
-  const updateCartItemQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
-      removeFromCart(productId);
+  const nextRound = () => {
+    const newStep = Math.floor(Math.random() * pads.length);
+    const newSequence = [...sequence, newStep];
+    setSequence(newSequence);
+    setPlayerSequence([]);
+    setGameState("displaying");
+    displaySequence(newSequence);
+  };
+
+  const displaySequence = async (seq: number[]) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    for (let i = 0; i < seq.length; i++) {
+      setActiveIndex(seq[i]);
+      await new Promise((resolve) => setTimeout(resolve, displaySpeed));
+      setActiveIndex(null);
+      await new Promise((resolve) => setTimeout(resolve, displaySpeed / 2));
+    }
+
+    setGameState("awaiting");
+  };
+
+  const handlePadClick = (padId: number) => {
+    if (gameState !== "awaiting") return;
+
+    setActiveIndex(padId);
+    setTimeout(() => setActiveIndex(null), 300);
+
+    const newPlayerSequence = [...playerSequence, padId];
+    setPlayerSequence(newPlayerSequence);
+
+    const currentIndex = playerSequence.length;
+    if (padId !== sequence[currentIndex]) {
+      setGameState("failure");
+      showToast("Wrong move! Try again.", "error");
+
+      if (round > highScore[difficulty]) {
+        setHighScore((prev) => ({ ...prev, [difficulty]: round }));
+        showToast(`New high score: ${round}!`, "success");
+      }
       return;
     }
 
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
-    );
-  };
+    if (newPlayerSequence.length === sequence.length) {
+      setGameState("success");
+      showToast(`Round ${round} completed!`, "success");
 
-  const cartTotal = cart.reduce(
-    (total, item) => total + item.product.price * item.quantity,
-    0
-  );
-
-  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
-
-  const sortedProducts = [...mockProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price-asc":
-        return a.price - b.price;
-      case "price-desc":
-        return b.price - a.price;
-      case "newest":
-        return (
-          new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+      if (round >= DIFFICULTY_SETTINGS[difficulty].maxRounds) {
+        setGameState("complete");
+        showToast(
+          `Congratulations! You've completed all ${round} rounds!`,
+          "success",
+          5000
         );
-      case "rating":
-        return b.rating - a.rating;
-      case "featured":
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 5000);
+
+        if (round > highScore[difficulty]) {
+          setHighScore((prev) => ({ ...prev, [difficulty]: round }));
+        }
+        return;
+      }
+
+      setTimeout(() => {
+        setRound(round + 1);
+
+        const settings = DIFFICULTY_SETTINGS[difficulty];
+        const newSpeed = Math.max(
+          settings.minSpeed,
+          displaySpeed - settings.speedReduction
+        );
+        setDisplaySpeed(newSpeed);
+
+        nextRound();
+      }, 1000);
+    }
+  };
+
+  const changeDifficulty = (newDifficulty: Difficulty) => {
+    if (newDifficulty === difficulty) return;
+
+    if (
+      gameState === "idle" ||
+      gameState === "failure" ||
+      gameState === "complete"
+    ) {
+      setDifficulty(newDifficulty);
+      showToast(
+        `Difficulty set to ${DIFFICULTY_SETTINGS[newDifficulty].name}`,
+        "info"
+      );
+    } else {
+      showToast("Can't change difficulty during an active game", "warning");
+    }
+  };
+
+  const getGridColumns = () => {
+    switch (difficulty) {
+      case "easy":
+        return "grid-cols-3";
+      case "medium":
+        return "grid-cols-3";
+      case "hard":
+        return "grid-cols-3";
       default:
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+        return "grid-cols-3";
     }
-  });
-
-  const featuredProducts = mockProducts.filter((product) => product.featured);
-
-  const newArrivals = mockProducts.filter((product) => product.newArrival);
-
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
   };
 
-  const openProductModal = (product: Product) => {
-    setActiveProduct(product);
-    setIsProductModalOpen(true);
-    setActiveImageIndex(0);
-  };
-
-  const uniqueFranchises = Array.from(
-    new Set(mockProducts.map((p) => p.franchise))
-  );
-  const uniqueGenres = Array.from(
-    new Set(mockProducts.flatMap((p) => p.genre))
-  );
-  const uniqueRarities = Array.from(new Set(mockProducts.map((p) => p.rarity)));
-
-  const renderRating = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Star
-          key={`star-${i}`}
-          className="w-4 h-4 fill-yellow-400 text-yellow-400"
-        />
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <StarHalf
-          key="half-star"
-          className="w-4 h-4 fill-yellow-400 text-yellow-400"
-        />
-      );
-    }
-
-    const emptyStars = 5 - stars.length;
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <Star key={`empty-star-${i}`} className="w-4 h-4 text-gray-300" />
-      );
-    }
-
-    return <div className="flex">{stars}</div>;
-  };
-
-  const renderRarityBadge = (rarity: string) => {
-    let bgColor = "";
-
-    switch (rarity) {
-      case "Common":
-        bgColor = "bg-gray-500";
-        break;
-      case "Uncommon":
-        bgColor = "bg-green-500";
-        break;
-      case "Rare":
-        bgColor = "bg-blue-500";
-        break;
-      case "Ultra Rare":
-        bgColor = "bg-purple-500";
-        break;
-      case "Limited Edition":
-        bgColor = "bg-amber-500";
-        break;
+  const getToastBg = (type: ToastType) => {
+    switch (type) {
+      case "success":
+        return colors.success;
+      case "error":
+        return colors.danger;
+      case "warning":
+        return colors.warning;
+      case "info":
+        return colors.info;
       default:
-        bgColor = "bg-gray-500";
+        return colors.primary;
+    }
+  };
+
+  const getToastIcon = (type: ToastType) => {
+    switch (type) {
+      case "success":
+        return <Check className="h-5 w-5" />;
+      case "error":
+        return <X className="h-5 w-5" />;
+      case "warning":
+        return <AlertTriangle className="h-5 w-5" />;
+      case "info":
+        return <ChevronRight className="h-5 w-5" />;
+      default:
+        return null;
+    }
+  };
+
+  useEffect(() => {
+    if (showConfetti && confettiRef.current) {
+      const canvas = confettiRef.current;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles: {
+        x: number;
+        y: number;
+        size: number;
+        color: string;
+        speed: number;
+        angle: number;
+        rotation: number;
+        rotationSpeed: number;
+      }[] = [];
+
+      const colors = [
+        "#FF577F",
+        "#FF884B",
+        "#FFDEB4",
+        "#FFF9CA",
+        "#B1B2FF",
+        "#AAC4FF",
+        "#D2DAFF",
+        "#EEF1FF",
+      ];
+
+      for (let i = 0; i < 200; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          size: Math.random() * 10 + 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          speed: Math.random() * 5 + 2,
+          angle: Math.random() * Math.PI * 2,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.2,
+        });
+      }
+
+      let animationId: number;
+      const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach((p) => {
+          p.x += Math.cos(p.angle) * p.speed;
+          p.y += Math.sin(p.angle) * p.speed + 0.5;
+          p.rotation += p.rotationSpeed;
+          p.speed *= 0.99;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+        });
+
+        if (showConfetti) {
+          animationId = requestAnimationFrame(animate);
+        }
+      };
+
+      animate();
+
+      return () => {
+        cancelAnimationFrame(animationId);
+      };
+    }
+  }, [showConfetti]);
+
+  const exitGame = () => {
+    setSequence([]);
+    setPlayerSequence([]);
+    setRound(1);
+    setGameState("idle");
+    setDisplaySpeed(DIFFICULTY_SETTINGS[difficulty].initialSpeed);
+    showToast("Game exited", "info");
+  };
+
+  useEffect(() => {
+    if (showRules || showStats || showInfo) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
     }
 
-    return (
-      <span
-        className={`${bgColor} text-white text-xs font-semibold px-2 py-1 rounded-full`}
-      >
-        {rarity}
-      </span>
-    );
-  };
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showRules, showStats, showInfo]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>
-      <div
-        className={`${montserrat.variable} font-sans min-h-screen ${colors.background} ${colors.foreground} transition-colors duration-300`}
+    <ThemeContext.Provider value={themeContextValue}>
+      <main
+        className={`min-h-screen ${colors.background} ${colors.text} ${montserrat.variable} font-montserrat transition-colors duration-300 ease-in-out overflow-hidden`}
       >
-        <header
-          ref={headerRef}
-          className={`sticky top-0 z-40 ${colors.card} ${colors.border} border-b shadow-sm`}
-        >
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <h1
-                  className={`text-2xl font-bold ${colors.accent} font-heading`}
-                >
-                  CineCollect
-                </h1>
+        {showConfetti && (
+          <canvas
+            ref={confettiRef}
+            className="fixed inset-0 pointer-events-none z-50"
+          />
+        )}
+
+        <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+          <header className="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center sm:mb-6 mb-4">
+            <div className="flex items-center mb-4 sm:mb-0">
+              <motion.div
+                initial={{ rotate: 0 }}
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 20,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: "linear",
+                }}
+                className="mr-3"
+              >
+                <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500" />
+              </motion.div>
+              <h1
+                className={`text-3xl sm:text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-500 inline-block py-2`}
+              >
+                Simon Says
+              </h1>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={toggleTheme}
+                className={`p-2 rounded-full ${colors.card} ${colors.border} border transition-all duration-200 hover:scale-110 cursor-pointer`}
+                aria-label={
+                  currentTheme === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+              >
+                {currentTheme === "dark" ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowInfo(true)}
+                className={`p-2 rounded-full ${colors.card} ${colors.border} border transition-all duration-200 hover:scale-110 cursor-pointer`}
+                aria-label="Show information"
+              >
+                <Info className="h-5 w-5" />
+              </button>
+
+              <button
+                onClick={() => setShowStats(true)}
+                className={`p-2 rounded-full ${colors.card} ${colors.border} border transition-all duration-200 hover:scale-110 cursor-pointer`}
+                aria-label="Show statistics"
+              >
+                <Trophy className="h-5 w-5" />
+              </button>
+
+              <button
+                onClick={() => setShowRules(true)}
+                className={`p-2 rounded-full ${colors.card} ${colors.border} border transition-all duration-200 hover:scale-110  cursor-pointer`}
+                aria-label="Show game rules"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+            </div>
+          </header>
+
+          <div
+            className={`w-full max-w-4xl ${colors.card} ${colors.border} border rounded-xl ${colors.shadow} p-3 sm:p-4 mb-3 sm:mb-6 flex flex-wrap justify-between items-center`}
+          >
+            <div className="flex items-center justify-between w-full mb-2 sm:mb-0 sm:flex-row sm:w-auto">
+              <div className="flex flex-col items-center px-2 sm:px-4">
+                <p className="text-xs sm:text-sm opacity-70">Current Round</p>
+                <p className="text-2xl sm:text-3xl font-bold">{round}</p>
               </div>
 
-              <nav className="hidden md:flex items-center space-x-8">
-                <a
-                  href="#home"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className={`font-medium hover:${colors.accent} transition-colors`}
-                >
-                  Home
-                </a>
-                <a
-                  href="#collections"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .querySelector("#collections")
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  className={`font-medium hover:${colors.accent} transition-colors`}
-                >
-                  Collections
-                </a>
-                <a
-                  href="#new-arrivals"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .querySelector("#new-arrivals")
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  className={`font-medium hover:${colors.accent} transition-colors`}
-                >
-                  New Arrivals
-                </a>
-                <a
-                  href="#all-products"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .querySelector("#all-products")
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  className={`font-medium hover:${colors.accent} transition-colors`}
-                >
-                  All Products
-                </a>
-              </nav>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-full transition-colors cursor-pointer"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "light" ? (
-                    <Moon className="w-5 h-5" />
-                  ) : (
-                    <Sun className="w-5 h-5" />
-                  )}
-                </button>
+              <div className="flex flex-col items-center px-2 sm:px-4">
+                <p className="text-xs sm:text-sm opacity-70">High Score</p>
+                <p className="text-2xl sm:text-3xl font-bold">{highScore[difficulty]}</p>
+              </div>
+            </div>
 
-                <button
-                  onClick={() => setIsCartOpen(true)}
-                  className="p-2 rounded-full transition-colors relative cursor-pointer"
-                  aria-label="Open cart"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  {cartItemCount > 0 && (
-                    <span
-                      className={`absolute -top-1 -right-1 ${colors.primary} text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center`}
+            <div className="flex flex-col items-center mx-auto sm:mx-0">
+              <p className="text-xs sm:text-sm opacity-70">Difficulty</p>
+              <div className="flex space-x-2 mt-1">
+                {(Object.keys(DIFFICULTY_SETTINGS) as Difficulty[]).map(
+                  (level) => (
+                    <button
+                      key={level}
+                      onClick={() => changeDifficulty(level)}
+                      className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full transition-all duration-200 cursor-pointer ${
+                        difficulty === level
+                          ? `${colors.primary} text-white`
+                          : `${colors.card} ${colors.border} border hover:opacity-80`
+                      }`}
                     >
-                      {cartItemCount}
-                    </span>
-                  )}
-                </button>
+                      {DIFFICULTY_SETTINGS[level].name}
+                    </button>
+                  )
+                )}
               </div>
             </div>
           </div>
-        </header>
 
-        <AnimatePresence>
-          {isCartOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-opacity-50 backdrop-blur-sm"
-              onClick={() => setIsCartOpen(false)}
-            >
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "tween", duration: 0.3 }}
-                className={`fixed right-0 top-0 h-full w-full sm:w-96 ${colors.card} shadow-xl`}
-                onClick={(e) => e.stopPropagation()}
+          <div className="mb-2 sm:mb-6 text-center">
+            {gameState === "idle" && (
+              <p className="text-lg sm:text-xl">Press Start to begin!</p>
+            )}
+            {gameState === "displaying" && (
+              <p className="text-lg sm:text-xl animate-pulse">Watch the sequence...</p>
+            )}
+            {gameState === "awaiting" && (
+              <p className="text-lg sm:text-xl">Your turn! Repeat the sequence.</p>
+            )}
+            {gameState === "success" && (
+              <p className="text-lg sm:text-xl">Correct! Get ready for the next round.</p>
+            )}
+            {gameState === "failure" && (
+              <p className="text-lg sm:text-xl">Game Over! Try again?</p>
+            )}
+            {gameState === "complete" && (
+              <p className="text-lg sm:text-xl">
+                Congratulations! You've completed all rounds!
+              </p>
+            )}
+          </div>
+
+          <div
+            className={`grid ${getGridColumns()} gap-2 sm:gap-4 mb-3 sm:mb-8 max-w-md mx-auto`}
+            style={{
+              gridTemplateRows: `repeat(${Math.ceil(
+                pads.length / 3
+              )}, minmax(0, 1fr))`,
+            }}
+          >
+            {pads.map((pad) => (
+              <motion.button
+                key={pad.id}
+                onClick={() => handlePadClick(pad.id)}
+                disabled={gameState !== "awaiting"}
+                className={`
+                  w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-xl cursor-pointer
+                  ${pad.color.bg} 
+                  ${activeIndex === pad.id ? pad.color.activeBg : ""} 
+                  transition-all duration-300 ease-out
+                  ${
+                    activeIndex === pad.id
+                      ? `shadow-2xl ${pad.color.glow}`
+                      : "shadow-md"
+                  }
+                  hover:scale-105 transform
+                  disabled:cursor-not-allowed disabled:opacity-50
+                `}
+                whileTap={{ scale: 0.9 }}
+                animate={{
+                  scale: activeIndex === pad.id ? 1.05 : 1,
+                  boxShadow:
+                    activeIndex === pad.id
+                      ? `0 0 30px 8px ${pad.color.name}`
+                      : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  transition: {
+                    duration: 0.3,
+                    ease: "easeOut",
+                  },
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
+            {(gameState === "idle" ||
+              gameState === "failure" ||
+              gameState === "complete") && (
+              <motion.button
+                onClick={startGame}
+                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-full text-base sm:text-lg font-bold ${colors.primary} ${colors.primaryHover} text-white transition-all duration-200 flex items-center cursor-pointer`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <div className="p-4 flex justify-between items-center border-b">
-                  <h2 className="text-xl font-bold">Your Cart</h2>
-                  <button
-                    onClick={() => setIsCartOpen(false)}
-                    className="p-2 rounded-full transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+                {gameState === "idle" ? (
+                  <>
+                    <Zap className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Start Game
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Play Again
+                  </>
+                )}
+              </motion.button>
+            )}
 
-                <div className="p-4 flex flex-col h-[calc(100%-8rem)]">
-                  {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <ShoppingCart className="w-16 h-16 text-gray-300 mb-4" />
-                      <p className="text-lg font-medium mb-2">
-                        Your cart is empty
-                      </p>
-                      <p className={`${colors.muted} text-center mb-6`}>
-                        Looks like you haven't added any items to your cart yet.
-                      </p>
-                      <button
-                        onClick={() => setIsCartOpen(false)}
-                        className={`${colors.primary} ${colors.primaryHover} text-white px-6 py-2 rounded-full transition-colors cursor-pointer`}
-                      >
-                        Continue Shopping
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col h-full">
-                      <div className="flex-1 overflow-y-auto space-y-4">
-                        {cart.map((item) => (
-                          <div
-                            key={item.product.id}
-                            className={`flex items-center space-x-4 p-3 rounded-lg ${colors.cardHover} transition-colors`}
-                          >
-                            <img
-                              src={item.product.images[0] || "/placeholder.svg"}
-                              alt={item.product.name}
-                              className="w-16 h-16 object-cover rounded-md"
-                            />
-                            <div className="flex-1">
-                              <h3 className="font-medium">
-                                {item.product.name}
-                              </h3>
-                              <p className={`${colors.muted} text-sm`}>
-                                ${item.product.price.toFixed(2)}
-                              </p>
-                              <div className="flex items-center mt-1">
-                                <button
-                                  onClick={() =>
-                                    updateCartItemQuantity(
-                                      item.product.id,
-                                      item.quantity - 1
-                                    )
-                                  }
-                                  className={`${colors.border} border rounded-full p-1 cursor-pointer`}
-                                  aria-label="Decrease quantity"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="mx-2">{item.quantity}</span>
-                                <button
-                                  onClick={() =>
-                                    updateCartItemQuantity(
-                                      item.product.id,
-                                      item.quantity + 1
-                                    )
-                                  }
-                                  className={`${colors.border} border rounded-full p-1 cursor-pointer`}
-                                  aria-label="Increase quantity"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold">
-                                $
-                                {(item.product.price * item.quantity).toFixed(
-                                  2
-                                )}
-                              </p>
-                              <button
-                                onClick={() => removeFromCart(item.product.id)}
-                                className="text-red-500 hover:text-red-700 transition-colors mt-1 cursor-pointer"
-                                aria-label="Remove item"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+            {(gameState === "displaying" ||
+              gameState === "awaiting" ||
+              gameState === "success") && (
+              <motion.button
+                onClick={exitGame}
+                className={`px-4 sm:px-6 py-2 sm:py-3 rounded-full text-base sm:text-lg font-bold ${colors.danger} hover:bg-red-600 text-white transition-all duration-200 flex items-center cursor-pointer`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <XCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Exit Game
+              </motion.button>
+            )}
+          </div>
 
-                      <div className={`mt-4 pt-4 border-t ${colors.border}`}>
-                        <div className="flex justify-between mb-2">
-                          <span>Subtotal</span>
-                          <span>${cartTotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between mb-4">
-                          <span>Shipping</span>
-                          <span>Calculated at checkout</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setCart([]);
-                            setIsCartOpen(false);
-                            showToastMessage(
-                              "Order placed successfully! Thank you for shopping with us."
-                            );
-                          }}
-                          className={`${colors.primary} ${colors.primaryHover} text-white w-full py-3 rounded-full font-medium transition-colors cursor-pointer`}
-                        >
-                          Checkout
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <footer
+            className={`w-full text-center py-2 sm:py-4 mt-auto ${colors.muted} text-xs sm:text-sm`}
+          >
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-2">
+              <p>© {new Date().getFullYear()} Simon Says</p>
+              <span className="hidden sm:inline">•</span>
+              <p>Train your memory!</p>
+            </div>
+          </footer>
 
-        <AnimatePresence>
-          {isProductModalOpen && activeProduct && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-opacity-50 backdrop-blur-sm overflow-y-auto"
-              onClick={() => setIsProductModalOpen(false)}
-            >
-              <div className="min-h-screen flex items-center justify-center p-4">
+          <AnimatePresence>
+            {showInfo && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+                onClick={() => setShowInfo(false)}
+              >
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
-                  transition={{ type: "spring", duration: 0.5 }}
-                  className={`${colors.card} rounded-xl shadow-2xl max-w-4xl w-full overflow-hidden`}
+                  className={`${colors.background} backdrop-blur-md bg-opacity-80 border border-white/20 rounded-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-xl`}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="relative">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Game Features</h2>
                     <button
-                      onClick={() => setIsProductModalOpen(false)}
-                      className="absolute top-4 right-4 z-50 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors cursor-pointer"
-                      aria-label="Close modal"
+                      onClick={() => setShowInfo(false)}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="h-6 w-6" />
                     </button>
+                  </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="p-6">
-                        <div className="aspect-square overflow-hidden rounded-lg mb-4">
-                          <img
-                            src={
-                              activeProduct.images[activeImageIndex] ||
-                              "/placeholder.svg"
-                            }
-                            alt={activeProduct.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-
-                        <div className="flex space-x-2 overflow-x-auto pb-2">
-                          {activeProduct.images.map((image, index) => (
-                            <div
-                              key={index}
-                              onClick={() => setActiveImageIndex(index)}
-                              className={`w-16 h-16 rounded-md overflow-hidden flex-shrink-0 cursor-pointer ${
-                                colors.border
-                              } border-2 ${
-                                index === activeImageIndex
-                                  ? "border-rose-500"
-                                  : ""
-                              }`}
-                            >
-                              <img
-                                src={image || "/placeholder.svg"}
-                                alt={`${activeProduct.name} - Image ${
-                                  index + 1
-                                }`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div
+                      className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-5 shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <Shield className="h-6 w-6 mr-2 text-blue-500" />
+                        <h3 className="text-lg font-bold">Multiple Difficulties</h3>
                       </div>
+                      <p className={`text-sm opacity-80`}>
+                        Choose from three difficulty levels: Easy (3 tiles), Medium (6
+                        tiles), or Hard (9 tiles) to test your memory skills.
+                      </p>
+                    </div>
 
-                      <div className="p-6">
-                        <div className="flex flex-wrap items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2 mb-2 sm:mb-0">
-                            {renderRarityBadge(activeProduct.rarity)}
-                            {activeProduct.newArrival && (
-                              <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                                New Arrival
-                              </span>
-                            )}
-                          </div>
+                    <div
+                      className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-5 shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <Rocket className="h-6 w-6 mr-2 text-pink-500" />
+                        <h3 className="text-lg font-bold">Progressive Challenge</h3>
+                      </div>
+                      <p className={`text-sm opacity-80`}>
+                        Each round adds one more step to the sequence, and the game
+                        speeds up as you progress through the levels.
+                      </p>
+                    </div>
 
-                          <div className="flex items-center overflow-hidden sm:pr-8">
-                            {renderRating(activeProduct.rating)}
-                            <span className="ml-1 text-sm">
-                              ({activeProduct.rating.toFixed(1)})
-                            </span>
-                          </div>
-                        </div>
+                    <div
+                      className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-5 shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <Trophy className="h-6 w-6 mr-2 text-yellow-500" />
+                        <h3 className="text-lg font-bold">Track Your Progress</h3>
+                      </div>
+                      <p className={`text-sm opacity-80`}>
+                        Keep track of your high scores for each difficulty level and
+                        challenge yourself to beat your personal best.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                        <h2 className="text-2xl font-bold mb-2">
-                          {activeProduct.name}
-                        </h2>
+          <AnimatePresence>
+            {showRules && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+                onClick={() => setShowRules(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className={`${colors.background} backdrop-blur-md bg-opacity-80 border border-white/20 rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto shadow-xl`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">How to Play</h2>
+                    <button
+                      onClick={() => setShowRules(false)}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
 
-                        <p className="text-3xl font-bold mb-4">
-                          ${activeProduct.price.toFixed(2)}
-                        </p>
+                  <div className="space-y-4">
+                    <p>Welcome to Simon Says Game!</p>
 
-                        <div className="mb-6">
-                          <h3 className="font-semibold mb-2">Description</h3>
-                          <p className={`${colors.muted} mb-4`}>
-                            {activeProduct.description}
-                          </p>
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
+                      <h3 className="font-bold mb-1">Game Rules:</h3>
+                      <ol className="list-decimal list-inside space-y-2">
+                        <li>
+                          Watch as the game displays a sequence of colored pads.
+                        </li>
+                        <li>
+                          After the sequence finishes, repeat it by clicking the
+                          pads in the same order.
+                        </li>
+                        <li>Each round adds one more step to the sequence.</li>
+                        <li>Make a mistake and the game ends.</li>
+                        <li>Complete all rounds to win!</li>
+                      </ol>
+                    </div>
 
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <h4 className="text-sm font-semibold">
-                                Franchise
-                              </h4>
-                              <p>{activeProduct.franchise}</p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold">
-                                Category
-                              </h4>
-                              <p>{activeProduct.category}</p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold">Genre</h4>
-                              <p>{activeProduct.genre.join(", ")}</p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold">
-                                Release Date
-                              </h4>
-                              <p>
-                                {new Date(
-                                  activeProduct.releaseDate
-                                ).toLocaleDateString()}
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
+                      <h3 className="font-bold mb-1">Difficulty Levels:</h3>
+                      <ul className="list-disc list-inside space-y-2">
+                        <li>
+                          <span className="font-medium">Easy:</span> 3 pads,
+                          slower sequence, 10 rounds
+                        </li>
+                        <li>
+                          <span className="font-medium">Medium:</span> 6 pads,
+                          medium speed, 15 rounds
+                        </li>
+                        <li>
+                          <span className="font-medium">Hard:</span> 9 pads,
+                          faster sequence, 20 rounds
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
+                      <h3 className="font-bold mb-1">Tips:</h3>
+                      <ul className="list-disc list-inside space-y-2">
+                        <li>
+                          Try to associate colors with positions to help
+                          remember the sequence.
+                        </li>
+                        <li>
+                          Start with Easy mode to get familiar with the game
+                          mechanics.
+                        </li>
+                        <li>
+                          Challenge yourself with harder difficulties as you
+                          improve.
+                        </li>
+                        <li>
+                          The game speeds up slightly with each round, so stay
+                          focused!
+                        </li>
+                      </ul>
+                    </div>
+
+                    <p className="text-center font-medium">Challenge yourself to beat your high score!</p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+                onClick={() => setShowStats(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className={`${colors.background} backdrop-blur-md bg-opacity-80 border border-white/20 rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto shadow-xl`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">Your Statistics</h2>
+                    <button
+                      onClick={() => setShowStats(false)}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
+                      <h3 className="font-bold mb-3">High Scores</h3>
+                      <div className={`grid grid-cols-3 gap-4`}>
+                        {(Object.keys(DIFFICULTY_SETTINGS) as Difficulty[]).map(
+                          (level) => (
+                            <div
+                              key={level}
+                              className={`bg-white/5 border border-white/10 rounded-lg p-3 text-center transition-transform hover:scale-105 duration-200`}
+                            >
+                              <p className="text-sm opacity-70">
+                                {DIFFICULTY_SETTINGS[level].name}
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {highScore[level]}
                               </p>
                             </div>
-                          </div>
-
-                          <div className="mb-6">
-                            <h4 className="text-sm font-semibold mb-1">
-                              Availability
-                            </h4>
-                            {activeProduct.inStock ? (
-                              <span className="text-green-500 font-medium">
-                                In Stock
-                              </span>
-                            ) : (
-                              <span className="text-red-500 font-medium">
-                                Out of Stock
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex space-x-4">
-                          <button
-                            onClick={() => {
-                              addToCart(activeProduct);
-                              setIsProductModalOpen(false);
-                            }}
-                            disabled={!activeProduct.inStock}
-                            className={`flex-1 ${
-                              activeProduct.inStock
-                                ? `${colors.primary} ${colors.primaryHover}`
-                                : "bg-gray-400"
-                            } text-white py-3 rounded-full font-medium transition-colors cursor-pointer`}
-                          >
-                            {activeProduct.inStock
-                              ? "Add to Cart"
-                              : "Out of Stock"}
-                          </button>
-                        </div>
+                          )
+                        )}
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        <main className="container mx-auto px-4 py-8">
-          <section className="mb-12">
-            <div className="relative h-[80vh] rounded-2xl overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentBanner}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute inset-0"
-                >
-                  <img
-                    src={mockBanners[currentBanner].image || "/placeholder.svg"}
-                    alt={mockBanners[currentBanner].title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
-                    <div className="p-8 md:p-12 max-w-lg">
-                      <motion.h2
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 font-heading"
+                    <div className="grid grid-cols-2 gap-4">
+                      <div
+                        className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-4 text-center transition-transform hover:scale-105 duration-200`}
                       >
-                        {mockBanners[currentBanner].title}
-                      </motion.h2>
-                      <motion.p
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-white text-lg mb-6"
+                        <p className="text-sm opacity-70">Games Played</p>
+                        <p className="text-2xl font-bold">{gamesPlayed}</p>
+                      </div>
+                      <div
+                        className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-4 text-center transition-transform hover:scale-105 duration-200`}
                       >
-                        {mockBanners[currentBanner].subtitle}
-                      </motion.p>
-                      <motion.button
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        onClick={() => {
-                          document
-                            .querySelector("#collections")
-                            ?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "center",
-                            });
-                        }}
-                        className={`${colors.primary} ${colors.primaryHover} text-white px-6 py-3 rounded-full font-medium transition-colors cursor-pointer`}
-                      >
-                        Explore Collection
-                      </motion.button>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
-                {mockBanners.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentBanner(index)}
-                    className={`w-2 h-2 rounded-full ${
-                      currentBanner === index ? "bg-white" : "bg-white/50"
-                    } transition-colors cursor-pointer`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  ></button>
-                ))}
-              </div>
-
-              <button
-                onClick={() =>
-                  setCurrentBanner(
-                    (currentBanner - 1 + mockBanners.length) %
-                      mockBanners.length
-                  )
-                }
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-full hover:bg-black/50 transition-colors cursor-pointer"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-
-              <button
-                onClick={() =>
-                  setCurrentBanner((currentBanner + 1) % mockBanners.length)
-                }
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-full hover:bg-black/50 transition-colors cursor-pointer"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </div>
-          </section>
-
-          <section id="collections" className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold font-heading">
-                Curated Collections
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {mockCollections.map((collection) => (
-                <motion.div
-                  key={collection.id}
-                  whileHover={{ y: -5 }}
-                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
-                >
-                  <div className="relative h-48">
-                    <img
-                      src={collection.image || "/placeholder.svg"}
-                      alt={collection.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
-                      <div className="p-4">
-                        <h3 className="text-xl font-bold text-white mb-1">
-                          {collection.name}
-                        </h3>
-                        <p className="text-white/80 text-sm">
-                          {collection.description}
+                        <p className="text-sm opacity-70">Current Difficulty</p>
+                        <p className="text-xl font-bold">
+                          {DIFFICULTY_SETTINGS[difficulty].name}
                         </p>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
 
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold font-heading">
-                Featured Products
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <motion.div
-                  key={product.id}
-                  whileHover={{ y: -5 }}
-                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
-                >
-                  <div
-                    className="relative cursor-pointer"
-                    onClick={() => openProductModal(product)}
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <img
-                        src={product.images[0] || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      />
-                      <div className="absolute top-2 right-2 flex space-x-1">
-                        {product.newArrival && (
-                          <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                            New
-                          </span>
-                        )}
-                        {renderRarityBadge(product.rarity)}
-                      </div>
-                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product);
-                          }}
-                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
-                          disabled={!product.inStock}
-                        >
-                          {product.inStock ? "Add to Cart" : "Out of Stock"}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openProductModal(product);
-                          }}
-                          className="bg-white text-gray-900 p-2 rounded-full transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex">
-                          {renderRating(product.rating)}
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-lg">
+                      <h3 className="font-bold mb-2">Achievement Progress</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-sm">Beginner</span>
+                            <span className="text-sm">
+                              {Math.min(gamesPlayed, 5)}/5
+                            </span>
+                          </div>
+                          <div
+                            className={`h-2 rounded-full bg-white/5 border border-white/10 overflow-hidden`}
+                          >
+                            <div
+                              className={`h-full ${colors.success}`}
+                              style={{
+                                width: `${Math.min(
+                                  (gamesPlayed / 5) * 100,
+                                  100
+                                )}%`,
+                              }}
+                            ></div>
+                          </div>
                         </div>
-                        <span
-                          className={`${
-                            product.inStock ? "text-green-500" : "text-red-500"
-                          } text-sm font-medium`}
-                        >
-                          {product.inStock ? "In Stock" : "Out of Stock"}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold mb-1 line-clamp-1">
-                        {product.name}
-                      </h3>
-                      <p
-                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
-                      >
-                        {product.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-lg">
-                          ${product.price.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-
-          <section id="new-arrivals" className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold font-heading">
-                New Arrivals
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {newArrivals.map((product) => (
-                <motion.div
-                  key={product.id}
-                  whileHover={{ y: -5 }}
-                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
-                >
-                  <div
-                    className="relative cursor-pointer"
-                    onClick={() => openProductModal(product)}
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <img
-                        src={product.images[0] || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      />
-                      <div className="absolute top-2 right-2 flex space-x-1">
-                        <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                          New
-                        </span>
-                        {renderRarityBadge(product.rarity)}
-                      </div>
-                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product);
-                          }}
-                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
-                          disabled={!product.inStock}
-                        >
-                          {product.inStock ? "Add to Cart" : "Out of Stock"}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openProductModal(product);
-                          }}
-                          className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex">
-                          {renderRating(product.rating)}
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-sm">Memory Master</span>
+                            <span className="text-sm">
+                              {Math.min(
+                                highScore.hard,
+                                DIFFICULTY_SETTINGS.hard.maxRounds
+                              )}
+                              /{DIFFICULTY_SETTINGS.hard.maxRounds}
+                            </span>
+                          </div>
+                          <div
+                            className={`h-2 rounded-full bg-white/5 border border-white/10 overflow-hidden`}
+                          >
+                            <div
+                              className={`h-full ${colors.primary}`}
+                              style={{
+                                width: `${Math.min(
+                                  (highScore.hard /
+                                    DIFFICULTY_SETTINGS.hard.maxRounds) *
+                                    100,
+                                  100
+                                )}%`,
+                              }}
+                            ></div>
+                          </div>
                         </div>
-                        <span
-                          className={`${
-                            product.inStock ? "text-green-500" : "text-red-500"
-                          } text-sm font-medium`}
-                        >
-                          {product.inStock ? "In Stock" : "Out of Stock"}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold mb-1 line-clamp-1">
-                        {product.name}
-                      </h3>
-                      <p
-                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
-                      >
-                        {product.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-lg">
-                          ${product.price.toFixed(2)}
-                        </span>
                       </div>
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          </section>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <section id="all-products">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-              <h2 className="text-2xl md:text-3xl font-bold font-heading">
-                All Products
-              </h2>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className={`appearance-none ${colors.border} border rounded-lg px-4 py-2 pr-10 ${colors.card} cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500 w-full`}
-                  >
-                    {sortOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <SlidersHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {sortedProducts.map((product) => (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 flex flex-col gap-2 items-center">
+            <AnimatePresence>
+              {toasts.map((toast) => (
                 <motion.div
-                  key={product.id}
-                  whileHover={{ y: -5 }}
-                  className={`${colors.card} rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl`}
+                  key={toast.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 50 }}
+                  className={`px-4 py-2 rounded-full ${getToastBg(
+                    toast.type
+                  )} text-white whitespace-nowrap flex items-center shadow-lg max-w-[90vw] overflow-hidden`}
                 >
-                  <div
-                    className="relative cursor-pointer"
-                    onClick={() => openProductModal(product)}
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <img
-                        src={product.images[0] || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      />
-                      <div className="absolute top-2 right-2 flex space-x-1">
-                        {product.newArrival && (
-                          <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                            New
-                          </span>
-                        )}
-                        {renderRarityBadge(product.rarity)}
-                      </div>
-                      <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product);
-                          }}
-                          className={`${colors.primary} ${colors.primaryHover} text-white px-4 py-2 rounded-full font-medium transition-colors mr-2 cursor-pointer`}
-                          disabled={!product.inStock}
-                        >
-                          {product.inStock ? "Add to Cart" : "Out of Stock"}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openProductModal(product);
-                          }}
-                          className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex">
-                          {renderRating(product.rating)}
-                        </div>
-                        <span
-                          className={`${
-                            product.inStock ? "text-green-500" : "text-red-500"
-                          } text-sm font-medium`}
-                        >
-                          {product.inStock ? "In Stock" : "Out of Stock"}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold mb-1 line-clamp-1">
-                        {product.name}
-                      </h3>
-                      <p
-                        className={`${colors.muted} text-sm mb-2 line-clamp-2`}
-                      >
-                        {product.description}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-lg">
-                          ${product.price.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <span className="mr-2">{getToastIcon(toast.type)}</span>
+                  <span className="truncate">{toast.message}</span>
                 </motion.div>
               ))}
-            </div>
-          </section>
-        </main>
-
-        <footer className={`mt-16 ${colors.card} ${colors.border} border-t`}>
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="text-center md:text-left">
-                <h3
-                  className={`text-xl font-bold ${colors.accent} mb-2 font-heading`}
-                >
-                  CineCollect
-                </h3>
-                <p className={`${colors.muted}`}>
-                  Your premier destination for movie collectibles
-                </p>
-              </div>
-              <div className={`${colors.muted} text-center md:text-right`}>
-                <p>© 2025 CineCollect. All rights reserved.</p>
-              </div>
-            </div>
+            </AnimatePresence>
           </div>
-        </footer>
-
-        <AnimatePresence>
-          {showToast && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-4 right-4 z-50"
-            >
-              <div
-                className={`${colors.card} shadow-lg rounded-lg px-4 py-3 flex items-center`}
-              >
-                <div className={`${colors.accent} mr-3`}>
-                  <ShoppingCart className="w-5 h-5" />
-                </div>
-                <p>{toastMessage}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        </div>
+      </main>
     </ThemeContext.Provider>
   );
 }
