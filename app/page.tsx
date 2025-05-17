@@ -2,1215 +2,1036 @@
 
 import type React from "react";
 
-import { useState, useEffect, useRef, createContext, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Montserrat } from "next/font/google";
-import { Moon, Sun, Zap, Award, RefreshCw, X } from "lucide-react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useRef } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import { Lora, Cinzel_Decorative } from "next/font/google";
+import {
+  Moon,
+  Sun,
+  MapPin,
+  Sparkles,
+  Feather,
+  Book,
+  Wand2,
+} from "lucide-react";
 
-const montserrat = Montserrat({
+const lora = Lora({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
+  variable: "--font-lora",
 });
 
-type ThemeType = "light" | "dark";
-type ThemeContextType = {
-  theme: ThemeType;
-  toggleTheme: () => void;
-};
-
-const ThemeContext = createContext<ThemeContextType>({
-  theme: "dark",
-  toggleTheme: () => {},
+const cinzel = Cinzel_Decorative({
+  weight: ["400", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-cinzel",
 });
 
-const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [theme, setTheme] = useState<ThemeType>("dark");
+type ThemeType = "hogwarts" | "azkaban";
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
+interface ThemeColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  text: string;
+  cardBg: string;
+  headerBg: string;
+  mapBg: string;
+}
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-};
-
-const themeColors = {
-  light: {
-    background: "bg-gradient-to-br from-slate-50 to-slate-200",
-    text: "text-slate-800",
-    textMuted: "text-gray-500",
-    textSecondary: "text-gray-600",
-    primary: "bg-purple-600",
-    primaryHover: "hover:bg-purple-700",
-    secondary: "bg-teal-500",
-    secondaryHover: "hover:bg-teal-600",
-    accent: "bg-amber-500",
-    card: "bg-white",
-    cardSecondary: "bg-gray-100",
-    border: "border-slate-200",
-    modalOverlay: "bg-slate-900/50",
-    buttonBg: "bg-gray-200",
-    buttonHover: "hover:bg-gray-300",
-    inputBg: "bg-white",
-    heartFilled: "text-red-500",
-    heartEmpty: "text-gray-300",
+const themes: Record<ThemeType, ThemeColors> = {
+  hogwarts: {
+    primary: "#740001",
+    secondary: "#D3A625",
+    accent: "#1A472A",
+    background: "#f5f3e8",
+    text: "#2A2D34",
+    cardBg: "rgba(255, 255, 255, 0.8)",
+    headerBg: "rgba(245, 243, 232, 0.9)",
+    mapBg: "#e0d5c0",
   },
-  dark: {
-    background: "bg-gradient-to-br from-slate-900 to-slate-800",
-    text: "text-slate-100",
-    textMuted: "text-gray-400",
-    textSecondary: "text-gray-500",
-    primary: "bg-violet-600",
-    primaryHover: "hover:bg-violet-700",
-    secondary: "bg-teal-600",
-    secondaryHover: "hover:bg-teal-700",
-    accent: "bg-amber-500",
-    card: "bg-slate-800",
-    cardSecondary: "bg-gray-700",
-    border: "border-slate-700",
-    modalOverlay: "bg-black/70",
-    buttonBg: "bg-gray-700",
-    buttonHover: "hover:bg-gray-600",
-    inputBg: "bg-gray-700",
-    heartFilled: "text-red-500",
-    heartEmpty: "text-gray-600",
+  azkaban: {
+    primary: "#2A623D",
+    secondary: "#AAAAAA",
+    accent: "#222F5B",
+    background: "#121212",
+    text: "#E0E0E0",
+    cardBg: "rgba(30, 30, 30, 0.8)",
+    headerBg: "rgba(18, 18, 18, 0.9)",
+    mapBg: "#1e1e1e",
   },
 };
 
-type ToastType = {
-  id: string;
+const houses = [
+  {
+    id: "gryffindor",
+    name: "Gryffindor",
+    colors: ["#740001", "#D3A625"],
+    animal: "Lion",
+    traits: ["Bravery", "Courage", "Determination"],
+    founder: "Godric Gryffindor",
+    image:
+      "https://images.pexels.com/photos/8391515/pexels-photo-8391515.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: "hufflepuff",
+    name: "Hufflepuff",
+    colors: ["#ECB939", "#000000"],
+    animal: "Badger",
+    traits: ["Loyalty", "Patience", "Hard work"],
+    founder: "Helga Hufflepuff",
+    image:
+      "https://images.pexels.com/photos/8391241/pexels-photo-8391241.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: "ravenclaw",
+    name: "Ravenclaw",
+    colors: ["#222F5B", "#946B2D"],
+    animal: "Eagle",
+    traits: ["Intelligence", "Creativity", "Wisdom"],
+    founder: "Rowena Ravenclaw",
+    image:
+      "https://images.pexels.com/photos/7979069/pexels-photo-7979069.jpeg?auto=compress&cs=tinysrgb&w=600",
+  },
+  {
+    id: "slytherin",
+    name: "Slytherin",
+    colors: ["#1A472A", "#5D5D5D"],
+    animal: "Serpent",
+    traits: ["Ambition", "Cunning", "Resourcefulness"],
+    founder: "Salazar Slytherin",
+    image:
+      "https://images.pexels.com/photos/7979113/pexels-photo-7979113.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+];
+
+const mapLocations = [
+  {
+    id: "hogwarts",
+    name: "Hogwarts School",
+    description:
+      "The magical school of witchcraft and wizardry, home to students of all houses.",
+    x: 50,
+    y: 30,
+    image:
+      "https://images.unsplash.com/photo-1706147602723-6cbe74cececc?q=80&w=1973&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  },
+  {
+    id: "hogsmeade",
+    name: "Hogsmeade Village",
+    description:
+      "The only all-wizarding village in Britain, famous for Honeydukes and The Three Broomsticks.",
+    x: 75,
+    y: 45,
+    image:
+      "https://plus.unsplash.com/premium_photo-1672440648762-5ba24a4feb77?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  },
+  {
+    id: "forbidden-forest",
+    name: "Forbidden Forest",
+    description:
+      "A dark and dangerous forest on the grounds of Hogwarts, home to many magical creatures.",
+    x: 25,
+    y: 60,
+    image:
+      "https://images.pexels.com/photos/13327765/pexels-photo-13327765.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: "black-lake",
+    name: "The Black Lake",
+    description:
+      "A large body of water near Hogwarts, home to the Giant Squid and merpeople.",
+    x: 60,
+    y: 70,
+    image:
+      "https://images.pexels.com/photos/10071396/pexels-photo-10071396.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+];
+
+interface ToastProps {
   message: string;
   type: "success" | "error" | "info";
-};
+  onClose: () => void;
+}
 
-type ToastContextType = {
-  toasts: ToastType[];
-  addToast: (message: string, type: ToastType["type"]) => void;
-  removeToast: (id: string) => void;
-};
-
-const ToastContext = createContext<ToastContextType>({
-  toasts: [],
-  addToast: () => {},
-  removeToast: () => {},
-});
-
-const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [mounted, setMounted] = useState(false);
-
+const Toast = ({ message, type, onClose }: ToastProps) => {
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
 
-  const [toasts, setToasts] = useState<ToastType[]>([]);
-  
-  // Deduplicate toasts with the same message and type that arrive within a short time window
-  const toastTimeouts = useRef<Record<string, number>>({});
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
-  const addToast = (message: string, type: ToastType["type"]) => {
-    // Create a unique key for this type of toast
-    const toastKey = `${message}-${type}`;
-    
-    // Check if we already have this toast in progress
-    if (toastTimeouts.current[toastKey]) {
-      return; // Skip adding duplicate toast
-    }
-    
-    const id = Math.random().toString(36).substring(2, 9);
-    
-    setToasts((prev) => {
-      const newToasts = [...prev, { id, message, type }];
-      return newToasts.slice(-2);
-    });
-
-    // Set a timeout to remove this toast
-    const timeoutId = window.setTimeout(() => {
-      removeToast(id);
-      // Clear the tracking for this toast type
-      delete toastTimeouts.current[toastKey];
-    }, 2000);
-    
-    // Track this toast type
-    toastTimeouts.current[toastKey] = timeoutId;
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
-
-  // Clear timeouts on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(toastTimeouts.current).forEach(clearTimeout);
-    };
-  }, []);
-
-  return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
-      {children}
-      {mounted &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
-            <AnimatePresence>
-              {toasts.map((toast) => (
-                <Toast
-                  key={toast.id}
-                  toast={toast}
-                  onClose={() => removeToast(toast.id)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>,
-          document.body
-        )}
-    </ToastContext.Provider>
-  );
-};
-
-const Toast: React.FC<{ toast: ToastType; onClose: () => void }> = ({
-  toast,
-  onClose,
-}) => {
-  const { theme } = useContext(ThemeContext);
-  const colors = themeColors[theme];
-
-  const bgColor = {
-    success: "bg-green-500/90",
-    error: "bg-red-500/90",
-    info: "bg-blue-500/90",
-  }[toast.type];
+  const bgColor =
+    type === "success"
+      ? "bg-green-500"
+      : type === "error"
+      ? "bg-red-500"
+      : "bg-blue-500";
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.8 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.8, transition: { duration: 0.2 } }}
-      className={`${bgColor} ${colors.text} rounded-lg shadow-lg px-4 py-2 text-center font-medium text-sm backdrop-blur-sm`}
+      className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white ${bgColor} shadow-lg z-50`}
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 50 }}
     >
-      {toast.message}
+      {message}
     </motion.div>
   );
 };
 
-type ModalContextType = {
+interface ModalProps {
   isOpen: boolean;
-  content: React.ReactNode | null;
-  openModal: (content: React.ReactNode, onClose?: () => void) => void;
-  closeModal: () => void;
-};
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
 
-const ModalContext = createContext<ModalContextType>({
-  isOpen: false,
-  content: null,
-  openModal: () => {},
-  closeModal: () => {},
-});
-
-const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [content, setContent] = useState<React.ReactNode | null>(null);
-  const [customCloseHandler, setCustomCloseHandler] = useState<(() => void) | null>(null);
-
-  const openModal = (content: React.ReactNode, onClose?: () => void) => {
-    setContent(content);
-    setIsOpen(true);
-    setCustomCloseHandler(() => onClose || null);
+const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+  useEffect(() => {
+    if (isOpen) {
     document.body.style.overflow = "hidden";
-  };
-
-  const closeModal = () => {
-    setIsOpen(false);
-    document.body.style.overflow = "auto";
-    
-    // Execute custom close handler if one was provided
-    if (customCloseHandler) {
-      customCloseHandler();
-      setCustomCloseHandler(null);
+    } else {
+      document.body.style.overflow = "auto";
     }
+
+    return () => {
+    document.body.style.overflow = "auto";
   };
-
-  return (
-    <ModalContext.Provider value={{ isOpen, content, openModal, closeModal }}>
-      {children}
-      {typeof document !== "undefined" &&
-        isOpen &&
-        createPortal(
-          <Modal content={content} onClose={closeModal} />,
-          document.body
-        )}
-    </ModalContext.Provider>
-  );
-};
-
-const Modal: React.FC<{ content: React.ReactNode; onClose: () => void }> = ({
-  content,
-  onClose,
-}) => {
-  const { theme } = useContext(ThemeContext);
-  const colors = themeColors[theme];
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={`fixed inset-0 z-50 ${colors.modalOverlay} backdrop-blur-sm flex items-center justify-center px-2`}
-        onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
+          <motion.div
+            className="relative rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
+            style={{ backgroundColor: "var(--color-card-bg)" }}
+            initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className={`${colors.card} ${colors.text} rounded-xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto relative`}
-          onClick={(e) => e.stopPropagation()}
-        >
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div
+              className="flex items-center justify-between p-4 border-b"
+              style={{ borderColor: "var(--color-accent)" }}
+            >
+              <h3
+                className={`${cinzel.className} text-xl font-bold`}
+                style={{ color: "var(--color-text)" }}
+              >
+                {title}
+              </h3>
           <button
             onClick={onClose}
-            className={`absolute top-4 right-4 ${colors.textSecondary} ${colors.buttonHover} z-10 cursor-pointer rounded-full`}
+                className="hover:opacity-70 transition-opacity cursor-pointer"
+                style={{ color: "var(--color-text)" }}
           >
-            <X size={24} />
+                ✕
           </button>
-          <div className="pt-2">{content}</div>
+            </div>
+            <div className="p-4" style={{ color: "var(--color-text)" }}>
+              {children}
+            </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };
 
-type Word = {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  speed: number;
-  color: string;
-  points: number;
-  specialEffect?: SpecialEffect;
-  matchedChars?: number;
-};
+interface FloatingElementProps {
+  children: React.ReactNode;
+  delay?: number;
+  duration?: number;
+  x?: number;
+  y?: number;
+}
 
-type SpecialEffect =
-  | "speedUp"
-  | "slowDown"
-  | "doublePoints"
-  | "clearScreen"
-  | "extraLife";
-
-type GameStats = {
-  score: number;
-  combo: number;
-  maxCombo: number;
-  wordsTyped: number;
-  accuracy: number;
-  lives: number;
-};
-
-type GameSettings = {
-  difficulty: "easy" | "medium" | "hard";
-  effectsEnabled: boolean;
-};
-
-const wordList = [
-  "code",
-  "react",
-  "next",
-  "typescript",
-  "javascript",
-  "tailwind",
-  "framer",
-  "motion",
-  "animation",
-  "component",
-  "function",
-  "variable",
-  "constant",
-  "array",
-  "object",
-  "promise",
-  "async",
-  "await",
-  "fetch",
-  "render",
-  "state",
-  "effect",
-  "context",
-  "reducer",
-  "hook",
-  "props",
-  "children",
-  "fragment",
-  "portal",
-  "memo",
-  "callback",
-  "ref",
-  "forward",
-  "lazy",
-  "suspense",
-  "error",
-  "boundary",
-  "testing",
-  "deploy",
-  "build",
-  "compile",
-  "bundle",
-  "module",
-  "import",
-  "export",
-  "default",
-  "named",
-  "dynamic",
-  "static",
-  "server",
-  "client",
-  "hydration",
-  "routing",
-  "navigation",
-  "link",
-  "redirect",
-  "params",
-  "query",
-  "middleware",
-  "api",
-  "request",
-  "response",
-  "header",
-  "cookie",
-  "session",
-  "token",
-  "auth",
-  "user",
-  "profile",
-  "dashboard",
-  "layout",
-  "theme",
-  "style",
-  "design",
-  "responsive",
-  "mobile",
-  "desktop",
-  "tablet",
-  "grid",
-  "flex",
-  "container",
-  "box",
-  "shadow",
-  "gradient",
-  "animation",
-  "transition",
-  "transform",
-  "scale",
-  "rotate",
-  "translate",
-  "opacity",
-  "visibility",
-  "z-index",
-  "position",
-  "absolute",
-  "relative",
-  "fixed",
-  "sticky",
-  "overflow",
-  "scroll",
-];
-
-const WordFallGame: React.FC = () => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
-  const { addToast } = useContext(ToastContext);
-  const { openModal, closeModal } = useContext(ModalContext);
-
-  const colors = themeColors[theme];
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const [gameActive, setGameActive] = useState(false);
-  const [words, setWords] = useState<Word[]>([]);
-  const [currentInput, setCurrentInput] = useState("");
-  const [stats, setStats] = useState<GameStats>({
-    score: 0,
-    combo: 0,
-    maxCombo: 0,
-    wordsTyped: 0,
-    accuracy: 100,
-    lives: 5,
-  });
-
-  const [settings, setSettings] = useState<GameSettings>({
-    difficulty: "medium",
-    effectsEnabled: true,
-  });
-
-  const [totalAttempts, setTotalAttempts] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-
-  useEffect(() => {
-    if (!gameActive || gameOver) return;
-
-    const difficultySettings = {
-      easy: { interval: 2000, speed: 0.2, chance: 0.05 },
-      medium: { interval: 1500, speed: 0.5, chance: 0.1 },
-      hard: { interval: 1000, speed: 1, chance: 0.15 },
-    };
-
-    const config = difficultySettings[settings.difficulty];
-
-    // Track words that have already caused life loss
-    const wordsProcessed = new Set<string>();
-
-    const wordInterval = setInterval(() => {
-      if (canvasRef.current) {
-        const canvasWidth = canvasRef.current.clientWidth;
-        const randomWord =
-          wordList[Math.floor(Math.random() * wordList.length)];
-        const randomX = Math.random() * (canvasWidth - 150);
-
-        const colors = [
-          "text-purple-500",
-          "text-teal-500",
-          "text-pink-500",
-          "text-amber-500",
-          "text-blue-500",
-          "text-emerald-500",
-        ];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-        const points = randomWord.length * 10;
-
-        let specialEffect: SpecialEffect | undefined = undefined;
-        if (settings.effectsEnabled && Math.random() < config.chance) {
-          const effects: SpecialEffect[] = [
-            "speedUp",
-            "slowDown",
-            "doublePoints",
-            "clearScreen",
-            "extraLife",
-          ];
-          specialEffect = effects[Math.floor(Math.random() * effects.length)];
-        }
-
-        const newWord: Word = {
-          id: Math.random().toString(36).substring(2, 9),
-          text: randomWord,
-          x: randomX,
-          y: 0,
-          speed: config.speed * (0.8 + Math.random() * 0.4),
-          color: randomColor,
-          points,
-          specialEffect,
-        };
-
-        setWords((prev) => [...prev, newWord]);
-      }
-    }, config.interval);
-
-    const moveInterval = setInterval(() => {
-      if (canvasRef.current) {
-        const canvasHeight = canvasRef.current.clientHeight;
-
-        setWords((prev) => {
-          // Handle words that hit the bottom
-          let lifeWasLost = false;
-          let filteredWords = [];
-
-          for (const word of prev) {
-            // Update word position
-            const updatedWord = {
-              ...word,
-              y: word.y + word.speed,
-            };
-
-            // Check if word hit the bottom
-            if (updatedWord.y > canvasHeight - 30) {
-              // Only process this word if we haven't already
-              if (!wordsProcessed.has(word.id)) {
-                wordsProcessed.add(word.id);
-                lifeWasLost = true;
-              }
-            } else {
-              // Keep words that haven't hit the bottom
-              filteredWords.push(updatedWord);
-            }
-          }
-
-          // Update lives outside the loop to ensure it happens only once
-          if (lifeWasLost) {
-            setTimeout(() => {
-              setStats((prevStats) => {
-                const newLives = prevStats.lives - 1;
-                
-                // Only show toast if we actually lost a life
-                if (newLives < prevStats.lives) {
-                  // Ensure this runs after the state update to avoid duplicate toasts
-                  setTimeout(() => {
-                    addToast("❤️ Life lost!", "error");
-                  }, 0);
-                }
-                
-                // Check if game over
-                if (newLives <= 0) {
-                  // End game on next tick to avoid state update during render
-                  setTimeout(() => {
-                    setGameOver(true);
-                    setGameActive(false);
-                    showGameOverModal();
-                  }, 0);
-                }
-                
-                return {
-                  ...prevStats,
-                  lives: Math.max(0, newLives),
-                  combo: 0,
-                };
-              });
-            }, 0);
-          }
-
-          return filteredWords;
-        });
-      }
-    }, 16);
-
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-
-    return () => {
-      clearInterval(wordInterval);
-      clearInterval(moveInterval);
-    };
-  }, [gameActive, settings, gameOver]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newInput = e.target.value;
-    setCurrentInput(newInput);
-
-    // Update matched characters for words
-    setWords((prev) =>
-      prev.map((word) => {
-        const matchedChars = word.text
-          .toLowerCase()
-          .split("")
-          .reduce((count, char, index) => {
-            return newInput.toLowerCase()[index] === char ? count + 1 : count;
-          }, 0);
-        return { ...word, matchedChars };
-      })
-    );
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!currentInput.trim()) return;
-
-    setTotalAttempts((prev) => prev + 1);
-
-    const matchedWordIndex = words.findIndex(
-      (word) => word.text.toLowerCase() === currentInput.toLowerCase()
-    );
-
-    if (matchedWordIndex !== -1) {
-      const matchedWord = words[matchedWordIndex];
-
-      setWords((prev) => prev.filter((_, i) => i !== matchedWordIndex));
-
-      setStats((prev) => {
-        const newCombo = prev.combo + 1;
-        const newMaxCombo = Math.max(prev.maxCombo, newCombo);
-        const comboMultiplier = Math.floor(newCombo / 5) + 1;
-        const pointsEarned = matchedWord.points * comboMultiplier;
-
-        const newAccuracy = Math.round(
-          ((prev.wordsTyped + 1) / (totalAttempts + 1)) * 100
-        );
-
-        return {
-          ...prev,
-          score: prev.score + pointsEarned,
-          combo: newCombo,
-          maxCombo: newMaxCombo,
-          wordsTyped: prev.wordsTyped + 1,
-          accuracy: newAccuracy,
-        };
-      });
-
-      if (stats.combo > 0 && stats.combo % 5 === 0) {
-        addToast(`${stats.combo}x Combo! Multiplier increased!`, "success");
-      }
-
-      if (matchedWord.specialEffect && settings.effectsEnabled) {
-        handleSpecialEffect(matchedWord.specialEffect);
-      }
-    } else {
-      setStats((prev) => ({
-        ...prev,
-        combo: 0,
-      }));
-    }
-    setCurrentInput("");
-  };
-
-  const handleSpecialEffect = (effect: SpecialEffect) => {
-    switch (effect) {
-      case "speedUp":
-        addToast("⚡ Speed Boost! Words are falling faster now!", "info");
-        setWords((prev) =>
-          prev.map((word) => ({
-            ...word,
-            speed: word.speed * 1.5,
-          }))
-        );
-        break;
-      case "slowDown":
-        addToast("🐢 Speed Reduction! Words are falling slower now!", "info");
-        setWords((prev) =>
-          prev.map((word) => ({
-            ...word,
-            speed: word.speed * 0.5,
-          }))
-        );
-        break;
-      case "doublePoints":
-        addToast("Double Points! Next 5 words worth double!", "success");
-        break;
-      case "clearScreen":
-        addToast("Clear Screen! All words removed!", "success");
-        setWords([]);
-        break;
-      case "extraLife":
-        addToast("Extra Life! +1 life added!", "success");
-        setStats((prev) => ({
-          ...prev,
-          lives: prev.lives + 1,
-        }));
-        break;
-    }
-  };
-
-  const startGame = () => {
-    setGameActive(true);
-    setGameOver(false);
-    setWords([]);
-    setCurrentInput("");
-    setStats({
-      score: 0,
-      combo: 0,
-      maxCombo: 0,
-      wordsTyped: 0,
-      accuracy: 100,
-      lives: 5,
-    });
-    setTotalAttempts(0);
-
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 100);
-
-    addToast("Game started! Type the falling words!", "info");
-  };
-
-  const showGameOverModal = () => {
-    // Define game reset function
-    const resetGame = () => {
-      setGameActive(false);
-      setWords([]);
-      setCurrentInput("");
-      setStats({
-        score: 0,
-        combo: 0,
-        maxCombo: 0,
-        wordsTyped: 0,
-        accuracy: 100,
-        lives: 5,
-      });
-      setTotalAttempts(0);
-      setGameOver(false);
-    };
-    
-    openModal(
-      <div className="space-y-6 text-center">
-        <h2 className="text-3xl font-bold mb-2">Game Over!</h2>
-
-        <div className="space-y-4 py-4">
-          <div className="text-5xl font-bold">{stats.score}</div>
-          <div className={`text-xl ${colors.textMuted}`}>Final Score</div>
-
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
-              <div className="text-2xl font-bold">{stats.wordsTyped}</div>
-              <div className={`text-sm ${colors.textMuted}`}>Words Typed</div>
-            </div>
-            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
-              <div className="text-2xl font-bold">{stats.maxCombo}x</div>
-              <div className={`text-sm ${colors.textMuted}`}>Max Combo</div>
-            </div>
-            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
-              <div className="text-2xl font-bold">{stats.accuracy}%</div>
-              <div className={`text-sm ${colors.textMuted}`}>Accuracy</div>
-            </div>
-            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
-              <div className="text-2xl font-bold capitalize">
-                {settings.difficulty}
-              </div>
-              <div className={`text-sm ${colors.textMuted}`}>Difficulty</div>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            closeModal();
-            startGame();
-          }}
-          className={`w-full py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-lg cursor-pointer`}
-        >
-          Play Again
-        </button>
-      </div>,
-      resetGame // Pass the reset function as the custom close handler
-    );
-  };
-
-  const showInstructionsModal = () => {
-    openModal(
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold mb-4">How to Play</h2>
-
-        <div className="space-y-4">
-          <p>
-            Words will fall from the top of the screen. Type them correctly
-            before they reach the bottom!
-          </p>
-
-          <div className={`${colors.cardSecondary} p-4 rounded-lg`}>
-            <h3 className="font-bold mb-2">Game Features:</h3>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Type words before they hit the bottom</li>
-              <li>Build combos for multipliers</li>
-              <li>Special effects can help or challenge you</li>
-              <li>Adjust difficulty in settings</li>
-              <li>Track your stats and high scores</li>
-            </ul>
-          </div>
-
-          <div className={`${colors.cardSecondary} p-4 rounded-lg`}>
-            <h3 className="font-bold mb-2">Special Effects:</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-500">
-                  <Zap size={18} />
-                </span>
-                <span>Speed Up</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-purple-500">
-                  <Zap size={18} />
-                </span>
-                <span>Slow Down</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-500">
-                  <Award size={18} />
-                </span>
-                <span>Double Points</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-red-500">
-                  <RefreshCw size={18} />
-                </span>
-                <span>Clear Screen</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-green-500">
-                  <Award size={18} />
-                </span>
-                <span>Extra Life</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={`pt-4 border-t ${colors.border}`}>
-          <button
-            onClick={() => {
-              closeModal();
-              startGame();
-            }}
-            className={`w-full py-2 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium cursor-pointer`}
-          >
-            Start Game
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const exitGame = () => {
-    openModal(
-      <div className="space-y-6 text-center">
-        <h2 className="text-2xl font-bold mb-2">Exit Game?</h2>
-        <p className={`${colors.textMuted}`}>
-          Are you sure you want to exit? Your current progress will be lost.
-        </p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setGameActive(false);
-              setWords([]);
-              setCurrentInput("");
-              setStats({
-                score: 0,
-                combo: 0,
-                maxCombo: 0,
-                wordsTyped: 0,
-                accuracy: 100,
-                lives: 5,
-              });
-              setTotalAttempts(0);
-              closeModal();
-            }}
-            className={`flex-1 py-2.5 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium cursor-pointer`}
-          >
-            Yes, Exit
-          </button>
-          <button
-            onClick={() => {
-              closeModal();
-              if (inputRef.current) {
-                inputRef.current.focus();
-              }
-            }}
-            className={`flex-1 py-2.5 rounded-lg ${colors.buttonBg} ${colors.buttonHover} font-medium cursor-pointer`}
-          >
-            Continue Playing
-          </button>
-        </div>
-      </div>
-    );
-  };
-
+const FloatingElement = ({
+  children,
+  delay = 0,
+  duration = 3,
+  x = 10,
+  y = 10,
+}: FloatingElementProps) => {
   return (
-    <div
-      className={`min-h-screen ${colors.background} ${colors.text} ${montserrat.className}`}
+    <motion.div
+      animate={{
+        y: [0, y, 0],
+        x: [0, x, 0],
+      }}
+      transition={{
+        duration,
+        repeat: Number.POSITIVE_INFINITY,
+        repeatType: "reverse",
+        ease: "easeInOut",
+        delay,
+      }}
     >
-      <header className="container mx-auto px-4 py-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-              WordFall
-            </h1>
-            {gameActive && (
-              <button
-                onClick={exitGame}
-                className={`ml-4 px-3 py-1.5 rounded-lg text-sm ${colors.buttonBg} ${colors.buttonHover} transition-colors cursor-pointer flex items-center gap-1`}
-                title="Exit current game"
-              >
-                <X size={16} />
-                <span className="hidden sm:inline">Exit Game</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className={`text-sm ${colors.textMuted} hidden sm:inline`}>
-                Difficulty:
-              </label>
-              <div className="flex gap-1">
-                {["easy", "medium", "hard"].map((level) => (
-                  <button
-                    key={level}
-                    onClick={() =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        difficulty: level as any,
-                      }))
-                    }
-                    disabled={gameActive}
-                    className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-colors ${
-                      settings.difficulty === level
-                        ? `${colors.primary} text-white`
-                        : gameActive
-                        ? `${colors.buttonBg} opacity-50 cursor-not-allowed`
-                        : `${colors.buttonBg} ${colors.buttonHover} cursor-pointer`
-                    }`}
-                    title={
-                      gameActive ? "Cannot change difficulty during game" : ""
-                    }
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() =>
-                setSettings((prev) => ({
-                  ...prev,
-                  effectsEnabled: !prev.effectsEnabled,
-                }))
-              }
-              disabled={gameActive}
-              className={`p-2 rounded-full transition-colors cursor-pointer ${
-                settings.effectsEnabled ? colors.primary : colors.buttonBg
-              } ${
-                gameActive
-                  ? "opacity-50 cursor-not-allowed"
-                  : settings.effectsEnabled
-                  ? colors.primaryHover
-                  : colors.buttonHover
-              }`}
-              title={
-                gameActive
-                  ? "Cannot toggle effects during game"
-                  : settings.effectsEnabled
-                  ? "Disable Effects"
-                  : "Enable Effects"
-              }
-            >
-              <Zap
-                size={20}
-                className={settings.effectsEnabled ? "text-white" : ""}
-              />
-            </button>
-
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${colors.buttonBg} ${colors.buttonHover} transition-colors cursor-pointer`}
-              title={
-                theme === "light"
-                  ? "Switch to Dark Mode"
-                  : "Switch to Light Mode"
-              }
-            >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-4 sm:py-6">
-        <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
-          <div className="flex items-center gap-6">
-            <div>
-              <div className={`text-sm ${colors.textMuted}`}>Score</div>
-              <div className="text-2xl font-bold">{stats.score}</div>
-            </div>
-
-            <div>
-              <div className={`text-sm ${colors.textMuted}`}>Combo</div>
-              <div className="text-2xl font-bold">{stats.combo}x</div>
-            </div>
-
-            <div>
-              <div className={`text-sm ${colors.textMuted}`}>Lives</div>
-              <div className="flex">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={
-                      i < stats.lives ? colors.heartFilled : colors.heartEmpty
-                    }
-                  >
-                    ❤
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div>
-              <div className={`text-sm ${colors.textMuted}`}>Accuracy</div>
-              <div className="text-xl font-bold">{stats.accuracy}%</div>
-            </div>
-
-            <div>
-              <div className={`text-sm ${colors.textMuted}`}>Words</div>
-              <div className="text-xl font-bold">{stats.wordsTyped}</div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          ref={canvasRef}
-          className={`relative w-full h-[50vh] sm:h-[60vh] rounded-xl overflow-hidden ${colors.card} shadow-xl border ${colors.border}`}
-        >
-          {!gameActive && !gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-              <motion.h2
-                className="text-2xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                Word Fall Challenge
-              </motion.h2>
-
-              <motion.div
-                className="flex flex-col gap-3 sm:gap-4 w-full max-w-xs sm:max-w-md"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <button
-                  onClick={startGame}
-                  className={`w-full py-2.5 sm:py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-base sm:text-lg cursor-pointer`}
-                >
-                  Start Game
-                </button>
-
-                <button
-                  onClick={showInstructionsModal}
-                  className={`w-full py-2.5 sm:py-3 rounded-lg ${colors.buttonBg} ${colors.buttonHover} font-medium text-base sm:text-lg cursor-pointer`}
-                >
-                  How to Play
-                </button>
-              </motion.div>
-            </div>
-          )}
-
-          <AnimatePresence>
-            {words.map((word) => (
-              <motion.div
-                key={word.id}
-                className={`absolute ${word.color} font-medium text-base sm:text-lg`}
-                style={{
-                  left: word.x,
-                  top: word.y,
-                  textShadow: word.specialEffect
-                    ? "0 0 8px currentColor"
-                    : "none",
-                }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-              >
-                {word.text.split("").map((char, index) => (
-                  <span
-                    key={index}
-                    className={
-                      word.matchedChars && index < word.matchedChars
-                        ? "text-white"
-                        : ""
-                    }
-                  >
-                    {char}
-                  </span>
-                ))}
-                {word.specialEffect && (
-                  <span className="absolute -right-4 sm:-right-6 text-base sm:text-lg">
-                    {word.specialEffect === "speedUp" && (
-                      <Zap className="text-blue-500" size={16} />
-                    )}
-                    {word.specialEffect === "slowDown" && (
-                      <Zap className="text-purple-500" size={16} />
-                    )}
-                    {word.specialEffect === "doublePoints" && (
-                      <Award className="text-yellow-500" size={16} />
-                    )}
-                    {word.specialEffect === "clearScreen" && (
-                      <RefreshCw className="text-red-500" size={16} />
-                    )}
-                    {word.specialEffect === "extraLife" && (
-                      <Award className="text-green-500" size={16} />
-                    )}
-                  </span>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        <div className="mt-4 sm:mt-6">
-          <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-4">
-            <input
-              ref={inputRef}
-              type="text"
-              value={currentInput}
-              onChange={handleInputChange}
-              disabled={!gameActive}
-              className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg ${colors.inputBg} border ${colors.border} focus:outline-none focus:ring-2 focus:ring-purple-500 text-base sm:text-lg`}
-              placeholder={
-                gameActive
-                  ? "Type the falling words..."
-                  : "Press Start to begin..."
-              }
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck="false"
-            />
-
-            {gameActive ? (
-              <button
-                type="submit"
-                disabled={!currentInput.trim()}
-                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-colors ${
-                  currentInput.trim()
-                    ? `${colors.primary} ${colors.primaryHover} text-white cursor-pointer`
-                    : `${colors.buttonBg} cursor-not-allowed opacity-50`
-                } font-medium text-base sm:text-lg whitespace-nowrap`}
-              >
-                Submit
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={startGame}
-                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-base sm:text-lg cursor-pointer whitespace-nowrap`}
-              >
-                Start
-              </button>
-            )}
-          </form>
-        </div>
-      </main>
-
-      <footer className="container mx-auto px-4 py-4 sm:py-6 mt-auto">
-        <div className={`text-center text-xs sm:text-sm ${colors.textMuted}`}>
-          <p>
-            Type quickly and accurately to score points. Build combos for
-            multipliers!
-          </p>
-          <p className="mt-2">
-            Watch out for special effect words that can help or challenge you.
-          </p>
-        </div>
-      </footer>
-    </div>
+      {children}
+    </motion.div>
   );
 };
 
-export default function Page() {
+export default function HarryPotterPortal() {
+  const [theme, setTheme] = useState<ThemeType>("hogwarts");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<
+    (typeof mapLocations)[0] | null
+  >(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: mainRef,
+    offset: ["start start", "end end"],
+  });
+
+  const heroScale = useTransform(scrollYProgress, [0, 0.3], [1, 1.1]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "hogwarts" ? "azkaban" : "hogwarts";
+    setTheme(newTheme);
+    showToast(
+      `Switched to ${
+        newTheme === "hogwarts" ? "Day at Hogwarts" : "Night at Azkaban"
+      } theme`,
+      "info"
+    );
+  };
+
+  const showToast = (message: string, type: "success" | "error" | "info") => {
+    setToast({ message, type });
+  };
+
+  const closeToast = () => {
+    setToast(null);
+  };
+
+  const handleLocationClick = (location: (typeof mapLocations)[0]) => {
+    setSelectedLocation(location);
+    setIsMapModalOpen(true);
+  };
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+
+    setEmailError("");
+
+    showToast("Successfully subscribed to the Daily Prophet!", "success");
+    setIsSubscribeModalOpen(false);
+    setEmail("");
+  };
+
+  const currentTheme = themes[theme];
+
+  const themeStyle = {
+    "--color-primary": currentTheme.primary,
+    "--color-secondary": currentTheme.secondary,
+    "--color-accent": currentTheme.accent,
+    "--color-background": currentTheme.background,
+    "--color-text": currentTheme.text,
+    "--color-card-bg": currentTheme.cardBg,
+    "--color-header-bg": currentTheme.headerBg,
+    "--color-map-bg": currentTheme.mapBg,
+  } as React.CSSProperties;
+
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <ModalProvider>
-          <WordFallGame />
-        </ModalProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <div
+      className={`${lora.variable} ${cinzel.variable} font-lora transition-colors duration-500`}
+      style={themeStyle}
+    >
+      <div
+        ref={mainRef}
+        style={{
+          backgroundColor: "var(--color-background)",
+          color: "var(--color-text)",
+        }}
+        className="min-h-screen relative overflow-x-hidden"
+      >
+        <motion.header
+          style={{
+            backgroundColor: "var(--color-header-bg)",
+          }}
+          className="fixed top-0 left-0 right-0 z-40 backdrop-blur-sm"
+        >
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1
+              className={`${cinzel.className} text-2xl md:text-3xl font-bold`}
+            >
+              <span style={{ color: "var(--color-primary)" }}>Magical</span>
+              <span style={{ color: "var(--color-secondary)" }}> Portal</span>
+            </h1>
+            <div className="flex items-center gap-4">
+        <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full transition-colors cursor-pointer"
+                aria-label={
+                  theme === "hogwarts"
+                    ? "Switch to Night at Azkaban"
+                    : "Switch to Day at Hogwarts"
+                }
+              >
+                {theme === "hogwarts" ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
+      </div>
+          </div>
+        </motion.header>
+
+        <motion.section
+          className="h-screen relative flex items-center justify-center overflow-hidden"
+          style={{ scale: heroScale, opacity: heroOpacity }}
+        >
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1618944913480-b67ee16d7b77?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              alt="Hogwarts Castle"
+              style={{
+                objectFit: "cover",
+                width: "100%",
+                height: "100%",
+                position: "absolute",
+              }}
+            />
+          </div>
+
+          <div className="container mx-auto px-4 z-20 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h1
+                className={`${cinzel.className} text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-white drop-shadow-lg`}
+              >
+                Welcome to the <br />
+                <span style={{ color: "var(--color-secondary)" }}>
+                  Wizarding World
+                </span>
+              </h1>
+              <p className="text-xl md:text-2xl text-white max-w-2xl mx-auto mb-8 drop-shadow-md">
+                Discover the magic, explore the mysteries, and embark on an
+                unforgettable journey.
+              </p>
+              <motion.button
+                onClick={() => setIsSubscribeModalOpen(true)}
+                className="px-6 py-3 rounded-lg text-white font-medium cursor-pointer"
+                style={{ backgroundColor: "var(--color-primary)" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Subscribe to the Daily Prophet
+              </motion.button>
+            </motion.div>
+        </div>
+
+          <motion.div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+          >
+            <div className="text-white text-center">
+              <p className="mb-2">Scroll to explore</p>
+              <div className="w-6 h-10 border-2 border-white rounded-full mx-auto flex justify-center">
+                <motion.div
+                  className="w-1 h-2 bg-white rounded-full mt-2"
+                  animate={{ y: [0, 4, 0] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Number.POSITIVE_INFINITY,
+                  }}
+                />
+        </div>
+      </div>
+          </motion.div>
+        </motion.section>
+
+        <section className="py-20 relative">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2
+                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
+                >
+                  The Four{" "}
+                  <span style={{ color: "var(--color-primary)" }}>Houses</span>{" "}
+                  of Hogwarts
+                </h2>
+                <p className="max-w-2xl mx-auto text-lg opacity-80">
+                  Each with their own values, traditions, and illustrious
+                  histories.
+                </p>
+              </motion.div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {houses.map((house, index) => (
+                <motion.div
+                  key={house.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ y: -5 }}
+                  className="rounded-lg overflow-hidden shadow-lg"
+                  style={{ backgroundColor: "var(--color-card-bg)" }}
+                >
+                  <div className="h-48 relative overflow-hidden">
+                    <img
+                      src={house.image || "/placeholder.svg"}
+                      alt={house.name}
+                      style={{
+                        objectFit: "cover",
+                        width: "100%",
+                        height: "100%",
+                        position: "absolute",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        background: `linear-gradient(to bottom, ${house.colors[0]}80, ${house.colors[1]}80)`,
+                      }}
+                    >
+                      <h3
+                        className={`${cinzel.className} text-3xl font-bold text-white drop-shadow-lg`}
+                      >
+                        {house.name}
+                      </h3>
+        </div>
+      </div>
+                  <div className="p-6">
+                    <p className="mb-4">
+                      <strong>Founder:</strong> {house.founder}
+                    </p>
+                    <p className="mb-4">
+                      <strong>Animal:</strong> {house.animal}
+                    </p>
+                    <p>
+                      <strong>Traits:</strong> {house.traits.join(", ")}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 relative">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2
+                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
+                >
+                  The{" "}
+                  <span style={{ color: "var(--color-primary)" }}>
+                    Marauder's
+                  </span>{" "}
+                  Map
+                </h2>
+                <p className="max-w-2xl mx-auto text-lg opacity-80">
+                  "I solemnly swear that I am up to no good."
+                </p>
+              </motion.div>
+          </div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              className="relative w-full max-w-4xl mx-auto rounded-lg overflow-hidden shadow-xl"
+              style={{
+                backgroundColor: "var(--color-map-bg)",
+                padding: "2rem",
+                border: "8px solid #8B4513",
+              }}
+            >
+              <div className="absolute inset-0 opacity-10">
+                <img
+                  src="https://images.pexels.com/photos/235985/pexels-photo-235985.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                  alt="Parchment texture"
+                  style={{
+                    objectFit: "cover",
+                    width: "100%",
+                    height: "100%",
+                    position: "absolute",
+                  }}
+                />
+            </div>
+
+              <div className="relative h-[500px] w-full">
+                <svg 
+                  className="absolute inset-0 w-full h-full z-0" 
+                  style={{ 
+                    stroke: "var(--color-primary)",
+                    strokeWidth: "3px",
+                    strokeDasharray: "6 4",
+                    opacity: 0.9,
+                    fill: "none"
+                  }}
+                >
+                  <motion.path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[1].x)/2 + 10}% ${(mapLocations[0].y + mapLocations[1].y)/2 - 15}%, ${mapLocations[1].x}% ${mapLocations[1].y}%`}
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2, delay: 0.5 }}
+                  />
+                  
+                  <motion.path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[2].x)/2 - 5}% ${(mapLocations[0].y + mapLocations[2].y)/2}%, ${mapLocations[2].x}% ${mapLocations[2].y}%`}
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.8, delay: 0.7 }}
+                  />
+                  
+                  <motion.path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% Q ${(mapLocations[0].x + mapLocations[3].x)/2}% ${(mapLocations[0].y + mapLocations[3].y)/2 + 10}%, ${mapLocations[3].x}% ${mapLocations[3].y}%`}
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, delay: 0.9 }}
+                  />
+                  
+                  <motion.path 
+                    d={`M ${mapLocations[2].x}% ${mapLocations[2].y}% Q ${(mapLocations[2].x + mapLocations[3].x)/2}% ${(mapLocations[2].y + mapLocations[3].y)/2 + 5}%, ${mapLocations[3].x}% ${mapLocations[3].y}%`}
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, delay: 1.1 }}
+                  />
+                  
+                  <motion.line 
+                    x1={`${mapLocations[0].x}%`} 
+                    y1={`${mapLocations[0].y}%`} 
+                    x2={`${mapLocations[1].x}%`} 
+                    y2={`${mapLocations[1].y}%`}
+                    strokeDasharray="4 2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1, delay: 2 }}
+                  />
+                  
+                  <motion.line 
+                    x1={`${mapLocations[0].x}%`} 
+                    y1={`${mapLocations[0].y}%`} 
+                    x2={`${mapLocations[2].x}%`} 
+                    y2={`${mapLocations[2].y}%`}
+                    strokeDasharray="4 2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1, delay: 2.1 }}
+                  />
+                  
+                  <motion.line 
+                    x1={`${mapLocations[0].x}%`} 
+                    y1={`${mapLocations[0].y}%`} 
+                    x2={`${mapLocations[3].x}%`} 
+                    y2={`${mapLocations[3].y}%`}
+                    strokeDasharray="4 2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1, delay: 2.2 }}
+                  />
+                  
+                  <motion.line 
+                    x1={`${mapLocations[2].x}%`} 
+                    y1={`${mapLocations[2].y}%`} 
+                    x2={`${mapLocations[3].x}%`} 
+                    y2={`${mapLocations[3].y}%`}
+                    strokeDasharray="4 2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1, delay: 2.3 }}
+                  />
+                  
+                  {[0.3, 0.6, 0.9].map((pos, i) => (
+                    <motion.path 
+                      key={`footprint-1-${i}`}
+                      d="M-4,0 C-3,1 -1,1 0,0 C1,-1 3,-1 4,0 M-2,-3 C-1,-2 1,-2 2,-3"
+                      transform={`translate(${mapLocations[0].x * (1-pos) + mapLocations[1].x * pos}%, ${mapLocations[0].y * (1-pos) + mapLocations[1].y * pos}%) scale(0.7)`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 1.5 + i*0.2 }}
+                    />
+                  ))}
+                </svg>
+
+                <svg 
+                  className="absolute inset-0 w-full h-full z-5" 
+                  style={{ 
+                    stroke: "#8B4513",
+                    strokeWidth: "2px",
+                    opacity: 1,
+                    fill: "none"
+                  }}
+                >
+                  <path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[1].x}% ${mapLocations[1].y}%`}
+                    strokeDasharray="2 4"
+                  />
+                  <path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[2].x}% ${mapLocations[2].y}%`}
+                    strokeDasharray="2 4"
+                  />
+                  <path 
+                    d={`M ${mapLocations[0].x}% ${mapLocations[0].y}% L ${mapLocations[3].x}% ${mapLocations[3].y}%`}
+                    strokeDasharray="2 4"
+                  />
+                  <path 
+                    d={`M ${mapLocations[2].x}% ${mapLocations[2].y}% L ${mapLocations[3].x}% ${mapLocations[3].y}%`}
+                    strokeDasharray="2 4"
+                  />
+                </svg>
+
+                {mapLocations.map((location) => (
+                  <motion.div
+                    key={location.id}
+                    className="absolute cursor-pointer z-10"
+                    style={{
+                      left: `${location.x}%`,
+                      top: `${location.y}%`,
+                    }}
+                    whileHover={{ scale: 1.2 }}
+                    onClick={() => handleLocationClick(location)}
+                  >
+                    <div className="relative">
+                      <MapPin
+                        size={32}
+                        style={{ color: "var(--color-primary)" }}
+                      />
+                      <motion.div
+                        className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
+                        style={{ backgroundColor: "var(--color-secondary)" }}
+                        animate={{ scale: [1, 1.5, 1] }}
+                        transition={{
+                          duration: 2,
+                          repeat: Number.POSITIVE_INFINITY,
+                        }}
+                      />
+          </div>
+                    <div
+                      className={`${cinzel.className} absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-bold`}
+                    >
+                      {location.name}
+        </div>
+                  </motion.div>
+                ))}
+            </div>
+
+              <div className="text-center mt-4">
+                <p className="italic text-sm opacity-70">"Mischief managed."</p>
+            </div>
+            </motion.div>
+          </div>
+        </section>
+
+        <section className="py-20 relative">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2
+                  className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-4`}
+                >
+                  Magical{" "}
+                  <span style={{ color: "var(--color-primary)" }}>
+                    Features
+                  </span>
+                </h2>
+                <p className="max-w-2xl mx-auto text-lg opacity-80">
+                  Discover the enchanting elements of our wizarding world.
+                </p>
+              </motion.div>
+          </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: <Sparkles size={40} />,
+                  title: "Animated Magic",
+                  description:
+                    "Experience the wonder of magical animations throughout your journey.",
+                },
+                {
+                  icon: <Book size={40} />,
+                  title: "Wizarding Stories",
+                  description:
+                    "Immerse yourself in the rich lore and captivating tales of the wizarding world.",
+                },
+                {
+                  icon: <Wand2 size={40} />,
+                  title: "Interactive Spells",
+                  description:
+                    "Cast spells and see their magical effects come to life before your eyes.",
+                },
+                {
+                  icon: <Feather size={40} />,
+                  title: "Daily Prophet",
+                  description:
+                    "Stay updated with the latest news and events from across the wizarding community.",
+                },
+                {
+                  icon: <MapPin size={40} />,
+                  title: "Magical Locations",
+                  description:
+                    "Explore iconic locations from Hogwarts to Diagon Alley and beyond.",
+                },
+                {
+                  icon: <Sun size={40} />,
+                  title: "Day & Night Themes",
+                  description:
+                    "Experience the magic in daylight at Hogwarts or under the moonlight at Azkaban.",
+                },
+              ].map((feature, index) => (
+                <motion.div
+                  key={`feature-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ y: -5 }}
+                  className="rounded-lg p-6 text-center"
+                  style={{ backgroundColor: "var(--color-card-bg)" }}
+                >
+                  <div
+                    className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full"
+                    style={{ backgroundColor: "var(--color-accent)" }}
+                  >
+                    <div style={{ color: "var(--color-secondary)" }}>
+                      {feature.icon}
+            </div>
+            </div>
+                  <h3 className={`${cinzel.className} text-xl font-bold mb-2`}>
+                    {feature.title}
+                  </h3>
+                  <p className="opacity-80">{feature.description}</p>
+                </motion.div>
+              ))}
+          </div>
+        </div>
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 15 }).map((_, i) => (
+              <motion.div
+                key={`spark-${i}`}
+                className="absolute w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor: "var(--color-secondary)",
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  opacity: 0,
+                }}
+                animate={{
+                  opacity: [0, 0.8, 0],
+                  scale: [0, 1, 0],
+                  y: [0, -20, -40],
+                  x: [0, (Math.random() - 0.5) * 40],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Number.POSITIVE_INFINITY,
+                  delay: i * 0.5,
+                }}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="py-20 relative"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, ${
+              theme === "hogwarts"
+                ? "rgba(245, 243, 232, 0.8)"
+                : "rgba(18, 18, 18, 0.8)"
+            }, ${
+              theme === "hogwarts"
+                ? "rgba(245, 243, 232, 0.8)"
+                : "rgba(18, 18, 18, 0.8)"
+            }), url('https://images.unsplash.com/photo-1654344009714-c582a009af5d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <div className="container mx-auto px-4 text-center">
+              <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              <h2
+                className={`${cinzel.className} text-3xl md:text-4xl font-bold mb-6`}
+              >
+                Ready to Begin Your{" "}
+                <span style={{ color: "var(--color-primary)" }}>Magical</span>{" "}
+                Journey?
+              </h2>
+              <p className="max-w-2xl mx-auto text-lg mb-8 opacity-80">
+                Subscribe to the Daily Prophet and stay updated with the latest
+                news from the wizarding world.
+              </p>
+              <motion.button
+                onClick={() => setIsSubscribeModalOpen(true)}
+                className="px-6 py-3 rounded-lg text-white font-medium cursor-pointer"
+                style={{ backgroundColor: "var(--color-primary)" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Subscribe Now
+              </motion.button>
+              </motion.div>
+            </div>
+        </section>
+
+        <footer
+          className="py-8 border-t"
+          style={{ borderColor: "var(--color-accent)" }}
+        >
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-center items-center text-center">
+              <div className="mb-4 md:mb-0">
+                <h2 className={`${cinzel.className} text-xl font-bold`}>
+                  <span style={{ color: "var(--color-primary)" }}>Magical</span>
+                  <span style={{ color: "var(--color-secondary)" }}>
+                    {" "}
+                    Portal
+                  </span>
+                </h2>
+                <p className="text-sm opacity-70 mt-1">
+                  A fan-made tribute to the wizarding world.
+                </p>
+        </div>
+            </div>
+            <div className="mt-8 text-center text-sm opacity-70">
+              <p>
+                This is a fan-made website. Harry Potter and all associated
+                names are trademarks of Warner Bros. Entertainment Inc.
+              </p>
+              <p className="mt-2">
+                © {new Date().getFullYear()} Magical Portal. All rights
+                reserved.
+              </p>
+            </div>
+          </div>
+        </footer>
+
+        <Modal
+          isOpen={isMapModalOpen}
+          onClose={() => setIsMapModalOpen(false)}
+          title={selectedLocation?.name || ""}
+        >
+          {selectedLocation && (
+            <div>
+              <div className="mb-4 rounded-lg overflow-hidden">
+                <img
+                  src={selectedLocation.image || "/placeholder.svg"}
+                  alt={selectedLocation.name}
+                  width={600}
+                  height={400}
+                  className="w-full h-auto"
+                />
+              </div>
+              <p>{selectedLocation.description}</p>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+          isOpen={isSubscribeModalOpen}
+          onClose={() => setIsSubscribeModalOpen(false)}
+          title="Subscribe to the Daily Prophet"
+        >
+          <form onSubmit={handleSubscribe} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block mb-2 text-sm font-medium">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2"
+                style={{
+                  backgroundColor: "var(--color-card-bg)",
+                  color: "var(--color-text)",
+                  borderColor: emailError ? "red" : "var(--color-accent)",
+                  borderWidth: "1px",
+                }}
+                placeholder="your.email@example.com"
+                required
+              />
+              {emailError && (
+                <p className="mt-1 text-sm text-red-500">{emailError}</p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md text-white font-medium cursor-pointer"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                Subscribe
+              </button>
+        </div>
+          </form>
+        </Modal>
+
+        <AnimatePresence>
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={closeToast}
+            />
+          )}
+        </AnimatePresence>
+        </div>
+    </div>
   );
 }
