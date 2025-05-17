@@ -1,593 +1,871 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Star, Sun, Moon, Filter, Package, MessageSquare, Heart, CheckCircle } from "lucide-react";
+import type React from "react";
 
-type Review = {
-  id: string;
-  rating: number;
-  comment: string;
-  date: Date;
-  name: string;
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  MapPin,
+  Calendar,
+  Info,
+  Send,
+} from "lucide-react";
+import type { JSX } from "react";
+
+type ThemeType = "light" | "dark";
+type ThemeColors = {
+  background: string;
+  text: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  muted: string;
+  card: string;
+  border: string;
+  overlay: string;
 };
 
-const initialReviews: Review[] = [
+const themes: Record<ThemeType, ThemeColors> = {
+  light: {
+    background: "bg-amber-50",
+    text: "text-gray-900",
+    primary: "text-red-700",
+    secondary: "text-amber-800",
+    accent: "text-yellow-600",
+    muted: "text-gray-600",
+    card: "bg-white",
+    border: "border-amber-200",
+    overlay: "bg-black/50",
+  },
+  dark: {
+    background: "bg-gray-900",
+    text: "text-gray-100",
+    primary: "text-red-500",
+    secondary: "text-amber-400",
+    accent: "text-yellow-500",
+    muted: "text-gray-400",
+    card: "bg-gray-800",
+    border: "border-gray-700",
+    overlay: "bg-black/70",
+  },
+};
+
+type Destination = {
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+  location: string;
+};
+
+type CulturalHighlight = {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+};
+
+type TravelTip = {
+  id: number;
+  title: string;
+  description: string;
+  icon: JSX.Element;
+};
+
+type ToastType = "success" | "error" | "info";
+type Toast = {
+  id: string;
+  message: string;
+  type: ToastType;
+};
+
+const destinations: Destination[] = [
   {
-    id: "1",
-    rating: 5,
-    comment: "The noise cancellation on these headphones is incredible! I can't hear any background noise when I'm working or traveling. The battery life is also impressive - I only need to charge them about once a week with daily use.",
-    date: new Date(Date.now() - 86400000 * 2),
-    name: "Alex Johnson"
+    id: 1,
+    name: "The Great Wall",
+    description:
+      "One of the greatest wonders of the world, the Great Wall of China stretches more than 13,000 miles across China's northern border.",
+    image:
+      "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    location: "Northern China",
   },
   {
-    id: "2",
-    rating: 4,
-    comment: "Very comfortable for long listening sessions. The sound quality is excellent for the price point. I'd give 5 stars if the app had more EQ customization options.",
-    date: new Date(Date.now() - 86400000 * 7),
-    name: "Samantha Chen"
+    id: 2,
+    name: "Forbidden City",
+    description:
+      "The imperial palace during the Ming and Qing dynasties, this massive complex features 980 buildings spanning 180 acres.",
+    image:
+      "https://images.unsplash.com/photo-1584646098378-0874589d76b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80",
+    location: "Beijing",
   },
   {
-    id: "3",
-    rating: 5,
-    comment: "These are by far the best headphones I've ever owned! The comfort level is outstanding, and I can wear them all day without any discomfort. Highly recommended!",
-    date: new Date(Date.now() - 86400000 * 14),
-    name: "Michael Garcia"
+    id: 3,
+    name: "Zhangjiajie",
+    description:
+      "Famous for its towering quartzite sandstone pillars, this stunning landscape inspired the floating mountains in Avatar.",
+    image:
+      "https://images.unsplash.com/photo-1537531383496-f4749b8032cf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    location: "Hunan Province",
   },
   {
-    id: "4",
-    rating: 3,
-    comment: "Good sound quality, but I was expecting better noise cancellation at this price point. The ear cushions are very comfortable though.",
-    date: new Date(Date.now() - 86400000 * 30),
-    name: "Taylor Kim"
-  }
+    id: 4,
+    name: "Li River",
+    description:
+      "Cruise along the Li River to witness the breathtaking karst landscape that has inspired Chinese artists for centuries.",
+    image:
+      "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    location: "Guangxi Province",
+  },
+  {
+    id: 5,
+    name: "Terracotta Army",
+    description:
+      "Discovered in 1974, this collection of terracotta sculptures depicts the armies of the first Emperor of China, Qin Shi Huang.",
+    image:
+      "https://images.pexels.com/photos/30584842/pexels-photo-30584842/free-photo-of-terracotta-warriors-in-xi-an-china.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    location: "Xi'an",
+  },
 ];
 
-export default function Home() {
-  const [reviews, setReviews] = useState<Review[]>(initialReviews);
-  const [rating, setRating] = useState<number>(0);
-  const [comment, setComment] = useState<string>("");
-  const [name, setName] = useState<string>("");
-  const [hoverRating, setHoverRating] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<"newest" | "highest">("newest");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [showSubmitPopup, setShowSubmitPopup] = useState<boolean>(false);
+const culturalHighlights: CulturalHighlight[] = [
+  {
+    id: 1,
+    title: "Chinese Calligraphy",
+    description:
+      "An ancient art form dating back thousands of years, Chinese calligraphy combines aesthetics with philosophical expression.",
+    image:
+      "https://images.pexels.com/photos/2599543/pexels-photo-2599543.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: 2,
+    title: "Traditional Opera",
+    description:
+      "Chinese opera combines music, vocal performance, mime, dance, and acrobatics in a spectacular theatrical experience.",
+    image:
+      "https://images.pexels.com/photos/36474/dresden-semper-opera-house-historically-at-night.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: 3,
+    title: "Tea Culture",
+    description:
+      "Tea drinking in China is an art form with rituals and ceremonies that reflect harmony, respect, and gratitude.",
+    image:
+      "https://images.unsplash.com/photo-1576092768241-dec231879fc3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+  },
+];
 
-  const calculateAverageRating = () => {
-    if (reviews.length === 0) return 0;
-    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-    return sum / reviews.length;
-  };
+const createTravelTips = (): TravelTip[] => [
+  {
+    id: 1,
+    title: "Best Time to Visit",
+    description:
+      "Spring (April-May) and Autumn (September-October) offer the most comfortable temperatures and fewer crowds.",
+    icon: <Calendar className="w-8 h-8" />,
+  },
+  {
+    id: 2,
+    title: "Transportation",
+    description:
+      "China has an extensive high-speed rail network that connects major cities, offering a comfortable and efficient way to travel.",
+    icon: <MapPin className="w-8 h-8" />,
+  },
+  {
+    id: 3,
+    title: "Language",
+    description:
+      "While English is spoken in major tourist areas, learning a few basic Mandarin phrases will enhance your experience.",
+    icon: <Info className="w-8 h-8" />,
+  },
+];
 
-  const averageRating = calculateAverageRating();
+export default function Page() {
+  const [theme, setTheme] = useState<ThemeType>("light");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const travelTips = createTravelTips();
+
+  const heroRef = useRef<HTMLDivElement>(null);
+  const destinationsRef = useRef<HTMLDivElement>(null);
+  const culturalRef = useRef<HTMLDivElement>(null);
+  const tipsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    const savedTheme = localStorage.getItem("theme") as ThemeType;
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");
     }
-  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const glowVariants = {
-    initial: {
-      boxShadow: theme === 'dark'
-        ? '0 0 20px rgba(139,92,246,0.2)'
-        : '0 0 20px rgba(124,58,237,0.1)'
-    },
-    animate: {
-      boxShadow: theme === 'dark'
-        ? '0 0 40px rgba(139,92,246,0.4)'
-        : '0 0 40px rgba(124,58,237,0.2)'
+    if (modalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
     }
-  };
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [modalOpen]);
 
   const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
   };
 
-  const handleRatingClick = (value: number) => {
-    setRating(value);
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      ref.current.scrollIntoView({ behavior: "smooth" });
+    }
+    setMobileMenuOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === 0 || !name.trim()) return;
+  const nextSlide = () => {
+    setCurrentSlide((prev) =>
+      prev === destinations.length - 1 ? 0 : prev + 1
+    );
+  };
 
-    const newReview: Review = {
-      id: Date.now().toString(),
-      rating,
-      comment,
-      date: new Date(),
-      name: name.trim()
-    };
+  const prevSlide = () => {
+    setCurrentSlide((prev) =>
+      prev === 0 ? destinations.length - 1 : prev - 1
+    );
+  };
 
-    setReviews([newReview, ...reviews]);
-    setRating(0);
-    setComment("");
-    setName("");
-
-    setShowSubmitPopup(true);
+  const addToast = (message: string, type: ToastType = "success") => {
+    const id = Date.now().toString();
+    setToasts((prev) => {
+      const newToasts = [...prev, { id, message, type }];
+      return newToasts.slice(-3);
+    });
 
     setTimeout(() => {
-      setShowSubmitPopup(false);
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 3000);
   };
 
-  const getSortedReviews = () => {
-    return [...reviews].sort((a, b) => {
-      if (sortBy === "newest") {
-        return b.date.getTime() - a.date.getTime();
-      } else {
-        return b.rating - a.rating;
-      }
-    });
+  const validateEmail = (email: string): boolean => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
   };
 
-  const themeClass = theme === "dark" ? {
-    bg: "bg-slate-950",
-    text: "text-slate-100",
-    subtext: "text-slate-300",
-    cardBg: "bg-slate-900/80 backdrop-blur-md border-slate-800",
-    inputBg: "bg-slate-900 border-slate-700",
-    buttonBg: "bg-purple-600 hover:bg-purple-700",
-    buttonText: "text-white",
-    starFilled: "text-amber-400",
-    starEmpty: "text-slate-600",
-    gradientFrom: "from-purple-900",
-    gradientTo: "to-indigo-900",
-    shadowColor: "shadow-purple-900/30",
-    formBg: "bg-gradient-to-br from-slate-900/90 to-slate-950/90",
-    accent: "text-purple-400",
-    highlight: "bg-purple-500/20",
-    border: "border-slate-800",
-    divider: "border-slate-800"
-  } : {
-    bg: "bg-gradient-to-br from-blue-50 to-indigo-50",
-    text: "text-slate-800",
-    subtext: "text-slate-600",
-    cardBg: "bg-white/70 backdrop-blur-md border-slate-200",
-    inputBg: "bg-white border-slate-200",
-    buttonBg: "bg-blue-600 hover:bg-blue-700",
-    buttonText: "text-white",
-    starFilled: "text-amber-500",
-    starEmpty: "text-slate-300",
-    gradientFrom: "from-blue-500",
-    gradientTo: "to-indigo-500",
-    shadowColor: "shadow-blue-500/30",
-    formBg: "bg-gradient-to-br from-white/95 to-slate-50/95",
-    accent: "text-blue-600",
-    highlight: "bg-blue-50",
-    border: "border-slate-200",
-    divider: "border-slate-200"
+  const handleSubscribe = () => {
+    if (!email) {
+      setEmailError("Email is required");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email");
+      return;
+    }
+
+    setEmailError("");
+    addToast(`Thank you for subscribing with ${email}!`);
+    setEmail("");
+    setModalOpen(false);
   };
+
+  const t = themes[theme];
 
   return (
-    <div className={`${themeClass.bg} ${themeClass.text} transition-colors duration-500 min-h-screen`}>
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {theme === "dark" ? (
-          <>
+    <main
+      className={`font-sans min-h-screen ${t.background} ${t.text} transition-colors duration-300`}
+    >
+      <nav
+        className={`fixed w-full z-50 ${t.card} shadow-md transition-colors duration-300`}
+      >
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <h1
+              className={`text-2xl md:text-3xl font-serif font-bold ${t.primary}`}
+            >
+              <span className={t.secondary}>Explore</span>China 
+            </h1>
+          </div>
 
-            <div className="absolute inset-0 bg-slate-950">
-              <div className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage: "url('https://source.unsplash.com/random?pattern,dark&w=1920&h=1080')",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center"
-                }}></div>
-              <div
-                className="absolute inset-0 opacity-50"
-                style={{
-                  background: "radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 40%), radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.3) 0%, transparent 50%)"
-                }}
-              ></div>
-            </div>
-          </>
-        ) : (
-          <>
+          <div className="hidden md:flex items-center space-x-8">
+            <button
+              onClick={() => scrollToSection(heroRef)}
+              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => scrollToSection(destinationsRef)}
+              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+            >
+              Destinations
+            </button>
+            <button
+              onClick={() => scrollToSection(culturalRef)}
+              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+            >
+              Cultural
+            </button>
+            <button
+              onClick={() => scrollToSection(tipsRef)}
+              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+            >
+              Travel Tips
+            </button>
+            <button
+              onClick={() => setModalOpen(true)}
+              className={`px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer`}
+            >
+              Subscribe
+            </button>
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full ${t.card} ${t.border} border cursor-pointer`}
+              aria-label="Toggle theme"
+            >
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+          </div>
 
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <div className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='0.16'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-                  backgroundSize: "60px 60px"
-                }}
-              ></div>
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  background: "radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 40%), radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%)"
-                }}
-              ></div>
+          <div className="flex items-center space-x-4 md:hidden">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full ${t.card} ${t.border} border cursor-pointer`}
+              aria-label="Toggle theme"
+            >
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="cursor-pointer"
+              aria-label="Open menu"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.3 }}
+            className={`fixed inset-0 z-50 ${t.card} ${t.text} pt-20`}
+          >
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="cursor-pointer p-2"
+                aria-label="Close menu"
+              >
+                <X size={24} />
+              </button>
             </div>
-          </>
+            <div className="flex flex-col items-center space-y-8 p-8">
+              <button
+                onClick={() => scrollToSection(heroRef)}
+                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => scrollToSection(destinationsRef)}
+                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+              >
+                Destinations
+              </button>
+              <button
+                onClick={() => scrollToSection(culturalRef)}
+                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+              >
+                Cultural
+              </button>
+              <button
+                onClick={() => scrollToSection(tipsRef)}
+                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
+              >
+                Travel Tips
+              </button>
+              <button
+                onClick={() => {
+                  setModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                className={`px-6 py-3 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer`}
+              >
+                Subscribe
+              </button>
+            </div>
+          </motion.div>
         )}
+      </AnimatePresence>
+
+      <div ref={heroRef} className="relative h-screen overflow-hidden">
+        <img
+          src="https://images.pexels.com/photos/1531660/pexels-photo-1531660.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+          alt="China landscape with mountains and traditional architecture"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/30"></div>
+
+        <div className="relative h-full flex flex-col justify-center items-center text-center px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl"
+          >
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-white mb-6">
+              Discover the Wonders of{" "}
+              <span className="text-yellow-400">China</span>
+            </h1>
+            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+              Experience thousands of years of history, breathtaking landscapes,
+              and rich cultural heritage in one of the world's most fascinating
+              countries.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => scrollToSection(destinationsRef)}
+              className="px-8 py-3 bg-red-600 text-white rounded-md text-lg font-medium hover:bg-red-700 transition-colors cursor-pointer"
+            >
+              Explore Destinations
+            </motion.button>
+          </motion.div>
+        </div>
       </div>
 
-
-      <button
-        onClick={toggleTheme}
-        className={`fixed top-4 right-4 z-50 p-3 rounded-full ${themeClass.cardBg} ${themeClass.border} shadow-lg transition-all duration-300`}
+      <div
+        ref={destinationsRef}
+        className={`py-20 transition-colors duration-300 ${t.background}`}
       >
-        {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-      </button>
-
-      <div className="min-h-screen w-full flex flex-col md:flex-row">
-        <div className="md:fixed md:top-0 md:left-0 md:bottom-0 md:w-[350px] md:min-w-[350px] md:z-40">
-          <div
-            className={`${themeClass.cardBg} ${themeClass.border} md:border-r md:h-screen`}
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
           >
-            <div className="p-8 pt-20 h-full overflow-y-auto">
-              <div className="max-w-md mx-auto">
-                <div className="flex items-center justify-center">
-                  <div className="relative">
-                    <div className={`absolute -inset-10 ${themeClass.highlight} rounded-full opacity-50 blur-xl`}></div>
-                    <div className={`w-32 h-32 rounded-2xl shadow-lg relative overflow-hidden`}>
-                      <img
-                        src="https://images.unsplash.com/photo-1746645297670-80e76130ceca?q=80&w=1974&auto=format&fit=crop"
-                        alt="Product image"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
-                </div>
+            <h2
+              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
+            >
+              Top Destinations
+            </h2>
+            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
+              From ancient wonders to natural landscapes, China offers a diverse
+              range of unforgettable destinations.
+            </p>
+          </motion.div>
 
-                <div className="text-center mt-8">
-                  <h1 className="text-2xl font-bold mb-2">Ultra Comfort X1</h1>
-                  <div className="flex justify-center items-center mb-2">
-                    <div className="flex mx-auto">
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <Star
-                          key={value}
-                          size={18}
-                          fill={value <= Math.round(averageRating) ? "currentColor" : "none"}
-                          className={value <= Math.round(averageRating) ? themeClass.starFilled : themeClass.starEmpty}
-                        />
-                      ))}
-                    </div>
-                    <span className={`ml-2 ${themeClass.subtext} text-sm`}>({reviews.length})</span>
-                  </div>
-                  <div className={`text-sm ${themeClass.subtext} mt-1`}>
-                    Average Rating: {averageRating.toFixed(1)} / 5.0
-                  </div>
-                </div>
-
-                <div className={`mt-8 p-5 rounded-xl ${themeClass.highlight} ${themeClass.border}`}>
-                  <div className="text-center mb-4">
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${themeClass.accent} border ${themeClass.border}`}>
-                      Premium Wireless Headphones
-                    </span>
-                  </div>
-                  <p className={`text-sm ${themeClass.subtext} text-center mb-6`}>
-                    Experience crystal-clear sound with our advanced Ultra Comfort X1 headphones, featuring 40 hours of battery life and active noise cancellation technology.
-                  </p>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
-                      <div className="flex items-center">
-                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-                        </div>
-                        <div>
-                          <div className="font-semibold">Noise Cancellation</div>
-                          <div className={`text-xs ${themeClass.subtext}`}>Advanced ANC technology</div>
-                        </div>
+          <div className="relative max-w-5xl mx-auto">
+            <div className="overflow-hidden rounded-xl">
+              <div className="relative aspect-[16/9]">
+                {destinations.map((destination, index) => (
+                  <motion.div
+                    key={destination.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: currentSlide === index ? 1 : 0 }}
+                    transition={{ duration: 0.5 }}
+                    className={`absolute inset-0 ${
+                      currentSlide === index ? "block" : "hidden"
+                    }`}
+                  >
+                    <img
+                      src={destination.image || "/placeholder.svg"}
+                      alt={destination.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
+                      <h3 className="text-2xl md:text-4xl font-serif font-bold text-white mb-2">
+                        {destination.name}
+                      </h3>
+                      <div className="flex items-center text-yellow-400 mb-3">
+                        <MapPin size={16} className="mr-2" />
+                        <span>{destination.location}</span>
                       </div>
+                      <p className="text-gray-200 text-sm md:text-base max-w-2xl">
+                        {destination.description}
+                      </p>
                     </div>
-
-                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
-                      <div className="flex items-center">
-                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="18" height="12" rx="2"></rect><path d="M20.4 9H23v6h-2.6"></path></svg>
-                        </div>
-                        <div>
-                          <div className="font-semibold">40Hr Battery</div>
-                          <div className={`text-xs ${themeClass.subtext}`}>Long-lasting performance</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={`p-3 rounded-lg border ${themeClass.border} ${themeClass.cardBg}`}>
-                      <div className="flex items-center">
-                        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${themeClass.gradientFrom} ${themeClass.gradientTo} flex items-center justify-center mr-3`}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17" y1="15" x2="9" y2="15"></line></svg>
-                        </div>
-                        <div>
-                          <div className="font-semibold">Premium Comfort</div>
-                          <div className={`text-xs ${themeClass.subtext}`}>Plush ear cushions</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`mt-8 text-center ${themeClass.subtext} text-sm`}>
-                  <p className="italic">
-                    Thank you for purchasing our premium headphones. Your feedback helps us improve our products.
-                  </p>
-                </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="flex-1 px-4 py-10 md:px-8 md:py-16 overflow-auto md:ml-[350px]">
-          <div className="max-w-3xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.7 }}
+            <button
+              onClick={prevSlide}
+              className="absolute top-1/2 left-4 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer"
+              aria-label="Previous slide"
             >
-              <motion.div
-                className={`${themeClass.cardBg} ${themeClass.border} rounded-3xl shadow-xl overflow-hidden`}
-                initial="initial"
-                animate="animate"
-                variants={glowVariants}
-                transition={{
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  duration: 2,
-                  ease: "easeInOut"
-                }}
-              >
-                <div className="relative">
-                  <div className={`absolute -inset-0 opacity-60 bg-gradient-to-r ${themeClass.gradientFrom} ${themeClass.gradientTo}`} style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 0% 100%)' }}></div>
-                  <div className="relative pt-8 pb-16 px-6 md:px-10">
-                    <div className="flex items-center">
-                      <MessageSquare className="text-white mr-3" size={24} />
-                      <h2 className="text-2xl font-bold text-white drop-shadow-sm">Share Your Experience</h2>
-                    </div>
-                    <p className={`mt-2 max-w-lg ${theme === 'dark' ? 'text-white/80' : 'text-white/90'} font-medium`}>
-                      Your feedback helps us improve our products and assists other customers in making informed decisions.
-                    </p>
-                  </div>
-                </div>
+              <ChevronLeft size={24} />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute top-1/2 right-4 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer"
+              aria-label="Next slide"
+            >
+              <ChevronRight size={24} />
+            </button>
 
-                <div className="p-6 md:p-10 -mt-10">
-                  <form onSubmit={handleSubmit} className="space-y-8 relative">
-                    <div>
-                      <label className={`block mb-4 font-medium text-lg ${themeClass.text}`}>
-                        How would you rate this product?
-                      </label>
-                      <div className="flex items-center justify-center bg-gradient-to-r from-transparent via-gray-200/10 to-transparent py-5 px-3 rounded-xl">
-                        <div className="flex gap-3">
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <motion.button
-                              key={value}
-                              type="button"
-                              whileHover={{ scale: 1.15 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleRatingClick(value)}
-                              onMouseEnter={() => setHoverRating(value)}
-                              onMouseLeave={() => setHoverRating(0)}
-                              className={`flex flex-col items-center focus:outline-none group`}
-                            >
-                              <Star
-                                size={40}
-                                fill={(hoverRating || rating) >= value ? "currentColor" : "none"}
-                                strokeWidth={1.5}
-                                className={(hoverRating || rating) >= value
-                                  ? themeClass.starFilled
-                                  : themeClass.starEmpty
-                                }
-                              />
-                              <span className={`text-xs mt-1 transition-opacity ${(hoverRating || rating) >= value
-                                ? "opacity-100" + " " + themeClass.accent
-                                : "opacity-60" + " " + themeClass.subtext
-                                }`}>
-                                {value === 1 ? 'Poor' : value === 2 ? 'Fair' : value === 3 ? 'Good' : value === 4 ? 'Great' : 'Excellent'}
-                              </span>
-                            </motion.button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="name" className={`block mb-3 font-medium text-lg ${themeClass.text}`}>
-                        Your Name
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="name"
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className={`w-full rounded-xl ${themeClass.inputBg} border ${theme === 'dark' ? 'border-slate-600 focus:border-purple-500 shadow-[0_0_8px_rgba(139,92,246,0.15)]' : 'border-slate-300 focus:border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.1)]'} p-4 focus:ring-1 focus:ring-opacity-50 ${theme === 'dark' ? 'focus:ring-purple-500 focus:shadow-[0_0_15px_rgba(139,92,246,0.25)]' : 'focus:ring-blue-500 focus:shadow-[0_0_15px_rgba(59,130,246,0.2)]'} outline-none transition-all duration-300 text-base ${theme === 'dark' ? 'placeholder:text-slate-400' : 'placeholder:text-slate-600'}`}
-                          placeholder="Enter your name here..."
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="comment" className={`block mb-3 font-medium text-lg ${themeClass.text}`}>
-                        Your Review
-                      </label>
-                      <div className="relative">
-                        <textarea
-                          id="comment"
-                          rows={6}
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          className={`w-full rounded-xl ${themeClass.inputBg} border ${theme === 'dark' ? 'border-slate-600 focus:border-purple-500 shadow-[0_0_8px_rgba(139,92,246,0.15)]' : 'border-slate-300 focus:border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.1)]'} p-4 focus:ring-1 focus:ring-opacity-50 ${theme === 'dark' ? 'focus:ring-purple-500 focus:shadow-[0_0_15px_rgba(139,92,246,0.25)]' : 'focus:ring-blue-500 focus:shadow-[0_0_15px_rgba(59,130,246,0.2)]'} outline-none transition-all duration-300 text-base ${theme === 'dark' ? 'placeholder:text-slate-400' : 'placeholder:text-slate-600'}`}
-                          placeholder="Share your thoughts about this product..."
-                        ></textarea>
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        disabled={rating === 0}
-                        className={`${themeClass.buttonBg} ${themeClass.buttonText} px-8 py-4 rounded-xl font-medium text-base w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
-                      >
-                        <Heart size={18} className="mr-2" />
-                        Submit Your Review
-                      </motion.button>
-                    </div>
-                  </form>
-
-                  <AnimatePresence>
-                    {showSubmitPopup && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 0, scale: 0.7 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.7 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border rounded-xl shadow-xl py-6 px-10 flex items-center min-w-[300px] max-w-[90%]`}
-                        style={{
-                          boxShadow: theme === 'dark'
-                            ? '0 0 30px rgba(139,92,246,0.4)'
-                            : '0 0 30px rgba(59,130,246,0.3)'
-                        }}
-                      >
-                        <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-purple-500' : 'bg-blue-500'} text-white`}>
-                          <CheckCircle size={16} />
-                        </div>
-                        <div className="ml-2">
-                          <h3 className="font-semibold text-lg">Thank you for your feedback!</h3>
-                          <p className={`text-sm ${themeClass.subtext} mt-1`}>Your review has been successfully submitted.</p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {reviews.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.2 }}
-                className="mt-12"
-              >
-                <motion.div
-                  className={`rounded-2xl ${themeClass.cardBg} ${themeClass.border} shadow-lg overflow-hidden`}
-                  initial={{ boxShadow: theme === 'dark' ? '0 0 15px rgba(139,92,246,0.1)' : '0 0 15px rgba(124,58,237,0.05)' }}
-                  animate={{ boxShadow: theme === 'dark' ? '0 0 25px rgba(139,92,246,0.2)' : '0 0 25px rgba(124,58,237,0.1)' }}
-                  transition={{
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                    duration: 3,
-                    ease: "easeInOut",
-                    delay: 1
-                  }}>
-                  <div className="p-6 md:p-8">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl font-bold">Customer Reviews</h2>
-                      <div className="relative">
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setShowFilters(!showFilters)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${themeClass.cardBg} ${themeClass.border}`}
-                        >
-                          <Filter size={16} />
-                          <span className="hidden sm:inline text-sm">Sort By</span>
-                        </motion.button>
-
-                        <AnimatePresence>
-                          {showFilters && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className={`absolute right-0 mt-2 w-48 ${themeClass.cardBg} ${themeClass.border} rounded-lg shadow-lg z-10`}
-                            >
-                              <button
-                                onClick={() => {
-                                  setSortBy("newest");
-                                  setShowFilters(false);
-                                }}
-                                className={`block w-full text-left px-4 py-2 hover:${themeClass.highlight} rounded-t-lg ${sortBy === "newest" ? "font-bold " + themeClass.accent : ""}`}
-                              >
-                                Newest First
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setSortBy("highest");
-                                  setShowFilters(false);
-                                }}
-                                className={`block w-full text-left px-4 py-2 hover:${themeClass.highlight} rounded-b-lg ${sortBy === "highest" ? "font-bold " + themeClass.accent : ""}`}
-                              >
-                                Highest Rated
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <AnimatePresence>
-                        {getSortedReviews().map((review) => (
-                          <motion.div
-                            key={review.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            layout
-                            className={`p-4 rounded-xl ${themeClass.cardBg} ${themeClass.border} hover:shadow-md transition-shadow duration-300`}
-                          >
-                            <div className="flex flex-wrap justify-between items-center mb-3">
-                              <div className="flex mb-2 md:mb-0">
-                                {[1, 2, 3, 4, 5].map((value) => (
-                                  <Star
-                                    key={value}
-                                    size={18}
-                                    fill={review.rating >= value ? "currentColor" : "none"}
-                                    className={review.rating >= value
-                                      ? themeClass.starFilled
-                                      : themeClass.starEmpty
-                                    }
-                                  />
-                                ))}
-                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${themeClass.highlight} ${themeClass.accent}`}>
-                                  {review.rating === 5 ? "Excellent" :
-                                    review.rating === 4 ? "Great" :
-                                      review.rating === 3 ? "Good" :
-                                        review.rating === 2 ? "Fair" : "Poor"}
-                                </span>
-                              </div>
-                              <span className={`text-sm ${themeClass.subtext}`}>
-                                {new Date(review.date).toLocaleDateString(undefined, {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </span>
-                            </div>
-                            <div className={`pt-2 border-t ${themeClass.divider}`}>
-                              <div className="flex items-center mb-2">
-                                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${theme === 'dark' ? 'bg-slate-700' : 'bg-blue-50'} mr-2`}>
-                                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-purple-400' : 'text-blue-600'}`}>
-                                    {review.name.charAt(0).toUpperCase()}
-                                  </span>
-                                </div>
-                                <span className={`font-medium ${themeClass.text}`}>{review.name}</span>
-                              </div>
-                              <p className="mt-2">{review.comment}</p>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
+            <div className="flex justify-center mt-4 space-x-2">
+              {destinations.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-3 h-3 rounded-full cursor-pointer transition-colors ${
+                    currentSlide === index ? "bg-red-600" : "bg-gray-400"
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <div
+        ref={culturalRef}
+        className={`py-20 ${
+          theme === "light" ? "bg-red-50" : "bg-gray-800"
+        } transition-colors duration-300`}
+      >
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2
+              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
+            >
+              Cultural Highlights
+            </h2>
+            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
+              Immerse yourself in China's rich cultural heritage, from ancient
+              traditions to modern expressions.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {culturalHighlights.map((highlight, index) => (
+              <motion.div
+                key={highlight.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`rounded-xl overflow-hidden ${t.card} shadow-lg`}
+              >
+                <div className="relative h-48">
+                  <img
+                    src={highlight.image || "/placeholder.svg"}
+                    alt={highlight.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="p-6">
+                  <h3
+                    className={`text-xl font-serif font-bold mb-3 ${t.primary}`}
+                  >
+                    {highlight.title}
+                  </h3>
+                  <p className={`${t.muted} text-sm`}>
+                    {highlight.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={tipsRef}
+        className={`py-20 ${t.background} transition-colors duration-300`}
+      >
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2
+              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
+            >
+              Travel Tips
+            </h2>
+            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
+              Make the most of your journey with these essential tips for
+              traveling in China.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {travelTips.map((tip, index) => (
+              <motion.div
+                key={tip.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`p-6 rounded-xl ${t.card} ${t.border} border shadow-sm`}
+              >
+                <div className={`${t.secondary} mb-4`}>{tip.icon}</div>
+                <h3 className={`text-xl font-bold mb-3 ${t.text}`}>
+                  {tip.title}
+                </h3>
+                <p className={`${t.muted} text-sm`}>{tip.description}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className={`mt-16 p-8 rounded-xl ${t.card} ${t.border} border shadow-md max-w-3xl mx-auto text-center`}
+          >
+            <h3 className={`text-2xl font-serif font-bold mb-4 ${t.primary}`}>
+              Ready to Explore China?
+            </h3>
+            <p className={`${t.muted} mb-6`}>
+              Subscribe to our newsletter for travel guides, exclusive offers,
+              and insider tips.
+            </p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-6 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors cursor-pointer"
+            >
+              Subscribe Now
+            </button>
+          </motion.div>
+        </div>
+      </div>
+
+      <footer
+        className={`py-12 ${
+          theme === "light"
+            ? "bg-gray-900 text-white"
+            : "bg-gray-950 text-gray-200"
+        }`}
+      >
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-2xl font-serif font-bold text-yellow-400 mb-4">
+                <span className="text-amber-400">Explore</span>
+                <span className="text-red-500">China</span>
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Your gateway to experiencing the wonders of China, from ancient
+                traditions to modern marvels.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-bold mb-4">Quick Links</h4>
+              <ul className="space-y-2">
+                <li>
+                  <button
+                    onClick={() => scrollToSection(heroRef)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Home
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(destinationsRef)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Destinations
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(culturalRef)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cultural Highlights
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(tipsRef)}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Travel Tips
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-bold mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li>
+                  <button
+                    onClick={() =>
+                      addToast("Travel Guide coming soon!", "info")
+                    }
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Travel Guide
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => addToast("FAQ section coming soon!", "info")}
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    FAQs
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() =>
+                      addToast("Blog section coming soon!", "info")
+                    }
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Blog
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-bold mb-4">Contact</h4>
+              <ul className="space-y-2">
+                <li className="text-gray-400">Email: info@explorechina.com</li>
+                <li className="text-gray-400">Phone: +1 (123) 456-7890</li>
+                <li className="text-gray-400">
+                  Address: 123 Tourism St, Beijing, China
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
+            <p>
+              © {new Date().getFullYear()} Explore China. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${t.overlay} backdrop-blur-sm`}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`relative max-w-md w-full rounded-xl ${t.card} p-8 shadow-xl`}
+            >
+              <button
+                onClick={() => setModalOpen(false)}
+                className={`absolute top-4 right-4 ${t.muted} hover:${t.text} transition-colors cursor-pointer`}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="text-center mb-6">
+                <h3
+                  className={`text-2xl font-serif font-bold ${t.primary} mb-2`}
+                >
+                  Subscribe to Our Newsletter
+                </h3>
+                <p className={t.muted}>
+                  Get the latest travel tips, exclusive offers, and destination
+                  guides.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className={`block text-sm font-medium ${t.text} mb-1`}
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError("");
+                    }}
+                    placeholder="your@email.com"
+                    className={`w-full px-4 py-2 rounded-md ${t.border} border bg-transparent focus:outline-none focus:ring-2 focus:ring-red-500`}
+                  />
+                  {emailError && (
+                    <p className="mt-1 text-sm text-red-500">{emailError}</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSubscribe}
+                  className="w-full px-4 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
+                >
+                  Subscribe <Send size={16} className="ml-2" />
+                </button>
+
+                <p className={`text-xs ${t.muted} text-center mt-4`}>
+                  By subscribing, you agree to our Privacy Policy and Terms of
+                  Service.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              className={`px-4 py-3 rounded-md shadow-lg ${
+                toast.type === "success"
+                  ? "bg-green-600"
+                  : toast.type === "error"
+                  ? "bg-red-600"
+                  : "bg-blue-600"
+              } text-white max-w-xs`}
+            >
+              {toast.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </main>
   );
 }
