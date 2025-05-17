@@ -2,870 +2,1215 @@
 
 import type React from "react";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  Sun,
-  Moon,
-  MapPin,
-  Calendar,
-  Info,
-  Send,
-} from "lucide-react";
-import type { JSX } from "react";
+import { Montserrat } from "next/font/google";
+import { Moon, Sun, Zap, Award, RefreshCw, X } from "lucide-react";
+import { createPortal } from "react-dom";
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 type ThemeType = "light" | "dark";
-type ThemeColors = {
-  background: string;
-  text: string;
-  primary: string;
-  secondary: string;
-  accent: string;
-  muted: string;
-  card: string;
-  border: string;
-  overlay: string;
+type ThemeContextType = {
+  theme: ThemeType;
+  toggleTheme: () => void;
 };
 
-const themes: Record<ThemeType, ThemeColors> = {
-  light: {
-    background: "bg-amber-50",
-    text: "text-gray-900",
-    primary: "text-red-700",
-    secondary: "text-amber-800",
-    accent: "text-yellow-600",
-    muted: "text-gray-600",
-    card: "bg-white",
-    border: "border-amber-200",
-    overlay: "bg-black/50",
-  },
-  dark: {
-    background: "bg-gray-900",
-    text: "text-gray-100",
-    primary: "text-red-500",
-    secondary: "text-amber-400",
-    accent: "text-yellow-500",
-    muted: "text-gray-400",
-    card: "bg-gray-800",
-    border: "border-gray-700",
-    overlay: "bg-black/70",
-  },
-};
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "dark",
+  toggleTheme: () => {},
+});
 
-type Destination = {
-  id: number;
-  name: string;
-  description: string;
-  image: string;
-  location: string;
-};
+const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [theme, setTheme] = useState<ThemeType>("dark");
 
-type CulturalHighlight = {
-  id: number;
-  title: string;
-  description: string;
-  image: string;
-};
-
-type TravelTip = {
-  id: number;
-  title: string;
-  description: string;
-  icon: JSX.Element;
-};
-
-type ToastType = "success" | "error" | "info";
-type Toast = {
-  id: string;
-  message: string;
-  type: ToastType;
-};
-
-const destinations: Destination[] = [
-  {
-    id: 1,
-    name: "The Great Wall",
-    description:
-      "One of the greatest wonders of the world, the Great Wall of China stretches more than 13,000 miles across China's northern border.",
-    image:
-      "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-    location: "Northern China",
-  },
-  {
-    id: 2,
-    name: "Forbidden City",
-    description:
-      "The imperial palace during the Ming and Qing dynasties, this massive complex features 980 buildings spanning 180 acres.",
-    image:
-      "https://images.unsplash.com/photo-1584646098378-0874589d76b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80",
-    location: "Beijing",
-  },
-  {
-    id: 3,
-    name: "Zhangjiajie",
-    description:
-      "Famous for its towering quartzite sandstone pillars, this stunning landscape inspired the floating mountains in Avatar.",
-    image:
-      "https://images.unsplash.com/photo-1537531383496-f4749b8032cf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-    location: "Hunan Province",
-  },
-  {
-    id: 4,
-    name: "Li River",
-    description:
-      "Cruise along the Li River to witness the breathtaking karst landscape that has inspired Chinese artists for centuries.",
-    image:
-      "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-    location: "Guangxi Province",
-  },
-  {
-    id: 5,
-    name: "Terracotta Army",
-    description:
-      "Discovered in 1974, this collection of terracotta sculptures depicts the armies of the first Emperor of China, Qin Shi Huang.",
-    image:
-      "https://images.pexels.com/photos/30584842/pexels-photo-30584842/free-photo-of-terracotta-warriors-in-xi-an-china.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    location: "Xi'an",
-  },
-];
-
-const culturalHighlights: CulturalHighlight[] = [
-  {
-    id: 1,
-    title: "Chinese Calligraphy",
-    description:
-      "An ancient art form dating back thousands of years, Chinese calligraphy combines aesthetics with philosophical expression.",
-    image:
-      "https://images.pexels.com/photos/2599543/pexels-photo-2599543.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-  {
-    id: 2,
-    title: "Traditional Opera",
-    description:
-      "Chinese opera combines music, vocal performance, mime, dance, and acrobatics in a spectacular theatrical experience.",
-    image:
-      "https://images.pexels.com/photos/36474/dresden-semper-opera-house-historically-at-night.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  },
-  {
-    id: 3,
-    title: "Tea Culture",
-    description:
-      "Tea drinking in China is an art form with rituals and ceremonies that reflect harmony, respect, and gratitude.",
-    image:
-      "https://images.unsplash.com/photo-1576092768241-dec231879fc3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-  },
-];
-
-const createTravelTips = (): TravelTip[] => [
-  {
-    id: 1,
-    title: "Best Time to Visit",
-    description:
-      "Spring (April-May) and Autumn (September-October) offer the most comfortable temperatures and fewer crowds.",
-    icon: <Calendar className="w-8 h-8" />,
-  },
-  {
-    id: 2,
-    title: "Transportation",
-    description:
-      "China has an extensive high-speed rail network that connects major cities, offering a comfortable and efficient way to travel.",
-    icon: <MapPin className="w-8 h-8" />,
-  },
-  {
-    id: 3,
-    title: "Language",
-    description:
-      "While English is spoken in major tourist areas, learning a few basic Mandarin phrases will enhance your experience.",
-    icon: <Info className="w-8 h-8" />,
-  },
-];
-
-export default function Page() {
-  const [theme, setTheme] = useState<ThemeType>("light");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
-
-  const travelTips = createTravelTips();
-
-  const heroRef = useRef<HTMLDivElement>(null);
-  const destinationsRef = useRef<HTMLDivElement>(null);
-  const culturalRef = useRef<HTMLDivElement>(null);
-  const tipsRef = useRef<HTMLDivElement>(null);
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as ThemeType;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-    }
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
-    if (modalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+const themeColors = {
+  light: {
+    background: "bg-gradient-to-br from-slate-50 to-slate-200",
+    text: "text-slate-800",
+    textMuted: "text-gray-500",
+    textSecondary: "text-gray-600",
+    primary: "bg-purple-600",
+    primaryHover: "hover:bg-purple-700",
+    secondary: "bg-teal-500",
+    secondaryHover: "hover:bg-teal-600",
+    accent: "bg-amber-500",
+    card: "bg-white",
+    cardSecondary: "bg-gray-100",
+    border: "border-slate-200",
+    modalOverlay: "bg-slate-900/50",
+    buttonBg: "bg-gray-200",
+    buttonHover: "hover:bg-gray-300",
+    inputBg: "bg-white",
+    heartFilled: "text-red-500",
+    heartEmpty: "text-gray-300",
+  },
+  dark: {
+    background: "bg-gradient-to-br from-slate-900 to-slate-800",
+    text: "text-slate-100",
+    textMuted: "text-gray-400",
+    textSecondary: "text-gray-500",
+    primary: "bg-violet-600",
+    primaryHover: "hover:bg-violet-700",
+    secondary: "bg-teal-600",
+    secondaryHover: "hover:bg-teal-700",
+    accent: "bg-amber-500",
+    card: "bg-slate-800",
+    cardSecondary: "bg-gray-700",
+    border: "border-slate-700",
+    modalOverlay: "bg-black/70",
+    buttonBg: "bg-gray-700",
+    buttonHover: "hover:bg-gray-600",
+    inputBg: "bg-gray-700",
+    heartFilled: "text-red-500",
+    heartEmpty: "text-gray-600",
+  },
+};
+
+type ToastType = {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
+};
+
+type ToastContextType = {
+  toasts: ToastType[];
+  addToast: (message: string, type: ToastType["type"]) => void;
+  removeToast: (id: string) => void;
+};
+
+const ToastContext = createContext<ToastContextType>({
+  toasts: [],
+  addToast: () => {},
+  removeToast: () => {},
+});
+
+const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const [toasts, setToasts] = useState<ToastType[]>([]);
+  
+  // Deduplicate toasts with the same message and type that arrive within a short time window
+  const toastTimeouts = useRef<Record<string, number>>({});
+
+  const addToast = (message: string, type: ToastType["type"]) => {
+    // Create a unique key for this type of toast
+    const toastKey = `${message}-${type}`;
+    
+    // Check if we already have this toast in progress
+    if (toastTimeouts.current[toastKey]) {
+      return; // Skip adding duplicate toast
+    }
+    
+    const id = Math.random().toString(36).substring(2, 9);
+    
+    setToasts((prev) => {
+      const newToasts = [...prev, { id, message, type }];
+      return newToasts.slice(-2);
+    });
+
+    // Set a timeout to remove this toast
+    const timeoutId = window.setTimeout(() => {
+      removeToast(id);
+      // Clear the tracking for this toast type
+      delete toastTimeouts.current[toastKey];
+    }, 2000);
+    
+    // Track this toast type
+    toastTimeouts.current[toastKey] = timeoutId;
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  // Clear timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(toastTimeouts.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  return (
+    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+      {children}
+      {mounted &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
+            <AnimatePresence>
+              {toasts.map((toast) => (
+                <Toast
+                  key={toast.id}
+                  toast={toast}
+                  onClose={() => removeToast(toast.id)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>,
+          document.body
+        )}
+    </ToastContext.Provider>
+  );
+};
+
+const Toast: React.FC<{ toast: ToastType; onClose: () => void }> = ({
+  toast,
+  onClose,
+}) => {
+  const { theme } = useContext(ThemeContext);
+  const colors = themeColors[theme];
+
+  const bgColor = {
+    success: "bg-green-500/90",
+    error: "bg-red-500/90",
+    info: "bg-blue-500/90",
+  }[toast.type];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20, scale: 0.8 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.8, transition: { duration: 0.2 } }}
+      className={`${bgColor} ${colors.text} rounded-lg shadow-lg px-4 py-2 text-center font-medium text-sm backdrop-blur-sm`}
+    >
+      {toast.message}
+    </motion.div>
+  );
+};
+
+type ModalContextType = {
+  isOpen: boolean;
+  content: React.ReactNode | null;
+  openModal: (content: React.ReactNode, onClose?: () => void) => void;
+  closeModal: () => void;
+};
+
+const ModalContext = createContext<ModalContextType>({
+  isOpen: false,
+  content: null,
+  openModal: () => {},
+  closeModal: () => {},
+});
+
+const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [content, setContent] = useState<React.ReactNode | null>(null);
+  const [customCloseHandler, setCustomCloseHandler] = useState<(() => void) | null>(null);
+
+  const openModal = (content: React.ReactNode, onClose?: () => void) => {
+    setContent(content);
+    setIsOpen(true);
+    setCustomCloseHandler(() => onClose || null);
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeModal = () => {
+    setIsOpen(false);
+    document.body.style.overflow = "auto";
+    
+    // Execute custom close handler if one was provided
+    if (customCloseHandler) {
+      customCloseHandler();
+      setCustomCloseHandler(null);
+    }
+  };
+
+  return (
+    <ModalContext.Provider value={{ isOpen, content, openModal, closeModal }}>
+      {children}
+      {typeof document !== "undefined" &&
+        isOpen &&
+        createPortal(
+          <Modal content={content} onClose={closeModal} />,
+          document.body
+        )}
+    </ModalContext.Provider>
+  );
+};
+
+const Modal: React.FC<{ content: React.ReactNode; onClose: () => void }> = ({
+  content,
+  onClose,
+}) => {
+  const { theme } = useContext(ThemeContext);
+  const colors = themeColors[theme];
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className={`fixed inset-0 z-50 ${colors.modalOverlay} backdrop-blur-sm flex items-center justify-center px-2`}
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          transition={{ type: "spring", damping: 20, stiffness: 300 }}
+          className={`${colors.card} ${colors.text} rounded-xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto relative`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onClose}
+            className={`absolute top-4 right-4 ${colors.textSecondary} ${colors.buttonHover} z-10 cursor-pointer rounded-full`}
+          >
+            <X size={24} />
+          </button>
+          <div className="pt-2">{content}</div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+type Word = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  speed: number;
+  color: string;
+  points: number;
+  specialEffect?: SpecialEffect;
+  matchedChars?: number;
+};
+
+type SpecialEffect =
+  | "speedUp"
+  | "slowDown"
+  | "doublePoints"
+  | "clearScreen"
+  | "extraLife";
+
+type GameStats = {
+  score: number;
+  combo: number;
+  maxCombo: number;
+  wordsTyped: number;
+  accuracy: number;
+  lives: number;
+};
+
+type GameSettings = {
+  difficulty: "easy" | "medium" | "hard";
+  effectsEnabled: boolean;
+};
+
+const wordList = [
+  "code",
+  "react",
+  "next",
+  "typescript",
+  "javascript",
+  "tailwind",
+  "framer",
+  "motion",
+  "animation",
+  "component",
+  "function",
+  "variable",
+  "constant",
+  "array",
+  "object",
+  "promise",
+  "async",
+  "await",
+  "fetch",
+  "render",
+  "state",
+  "effect",
+  "context",
+  "reducer",
+  "hook",
+  "props",
+  "children",
+  "fragment",
+  "portal",
+  "memo",
+  "callback",
+  "ref",
+  "forward",
+  "lazy",
+  "suspense",
+  "error",
+  "boundary",
+  "testing",
+  "deploy",
+  "build",
+  "compile",
+  "bundle",
+  "module",
+  "import",
+  "export",
+  "default",
+  "named",
+  "dynamic",
+  "static",
+  "server",
+  "client",
+  "hydration",
+  "routing",
+  "navigation",
+  "link",
+  "redirect",
+  "params",
+  "query",
+  "middleware",
+  "api",
+  "request",
+  "response",
+  "header",
+  "cookie",
+  "session",
+  "token",
+  "auth",
+  "user",
+  "profile",
+  "dashboard",
+  "layout",
+  "theme",
+  "style",
+  "design",
+  "responsive",
+  "mobile",
+  "desktop",
+  "tablet",
+  "grid",
+  "flex",
+  "container",
+  "box",
+  "shadow",
+  "gradient",
+  "animation",
+  "transition",
+  "transform",
+  "scale",
+  "rotate",
+  "translate",
+  "opacity",
+  "visibility",
+  "z-index",
+  "position",
+  "absolute",
+  "relative",
+  "fixed",
+  "sticky",
+  "overflow",
+  "scroll",
+];
+
+const WordFallGame: React.FC = () => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const { addToast } = useContext(ToastContext);
+  const { openModal, closeModal } = useContext(ModalContext);
+
+  const colors = themeColors[theme];
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [gameActive, setGameActive] = useState(false);
+  const [words, setWords] = useState<Word[]>([]);
+  const [currentInput, setCurrentInput] = useState("");
+  const [stats, setStats] = useState<GameStats>({
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    wordsTyped: 0,
+    accuracy: 100,
+    lives: 5,
+  });
+
+  const [settings, setSettings] = useState<GameSettings>({
+    difficulty: "medium",
+    effectsEnabled: true,
+  });
+
+  const [totalAttempts, setTotalAttempts] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+
+  useEffect(() => {
+    if (!gameActive || gameOver) return;
+
+    const difficultySettings = {
+      easy: { interval: 2000, speed: 0.2, chance: 0.05 },
+      medium: { interval: 1500, speed: 0.5, chance: 0.1 },
+      hard: { interval: 1000, speed: 1, chance: 0.15 },
+    };
+
+    const config = difficultySettings[settings.difficulty];
+
+    // Track words that have already caused life loss
+    const wordsProcessed = new Set<string>();
+
+    const wordInterval = setInterval(() => {
+      if (canvasRef.current) {
+        const canvasWidth = canvasRef.current.clientWidth;
+        const randomWord =
+          wordList[Math.floor(Math.random() * wordList.length)];
+        const randomX = Math.random() * (canvasWidth - 150);
+
+        const colors = [
+          "text-purple-500",
+          "text-teal-500",
+          "text-pink-500",
+          "text-amber-500",
+          "text-blue-500",
+          "text-emerald-500",
+        ];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        const points = randomWord.length * 10;
+
+        let specialEffect: SpecialEffect | undefined = undefined;
+        if (settings.effectsEnabled && Math.random() < config.chance) {
+          const effects: SpecialEffect[] = [
+            "speedUp",
+            "slowDown",
+            "doublePoints",
+            "clearScreen",
+            "extraLife",
+          ];
+          specialEffect = effects[Math.floor(Math.random() * effects.length)];
+        }
+
+        const newWord: Word = {
+          id: Math.random().toString(36).substring(2, 9),
+          text: randomWord,
+          x: randomX,
+          y: 0,
+          speed: config.speed * (0.8 + Math.random() * 0.4),
+          color: randomColor,
+          points,
+          specialEffect,
+        };
+
+        setWords((prev) => [...prev, newWord]);
+      }
+    }, config.interval);
+
+    const moveInterval = setInterval(() => {
+      if (canvasRef.current) {
+        const canvasHeight = canvasRef.current.clientHeight;
+
+        setWords((prev) => {
+          // Handle words that hit the bottom
+          let lifeWasLost = false;
+          let filteredWords = [];
+
+          for (const word of prev) {
+            // Update word position
+            const updatedWord = {
+              ...word,
+              y: word.y + word.speed,
+            };
+
+            // Check if word hit the bottom
+            if (updatedWord.y > canvasHeight - 30) {
+              // Only process this word if we haven't already
+              if (!wordsProcessed.has(word.id)) {
+                wordsProcessed.add(word.id);
+                lifeWasLost = true;
+              }
+            } else {
+              // Keep words that haven't hit the bottom
+              filteredWords.push(updatedWord);
+            }
+          }
+
+          // Update lives outside the loop to ensure it happens only once
+          if (lifeWasLost) {
+            setTimeout(() => {
+              setStats((prevStats) => {
+                const newLives = prevStats.lives - 1;
+                
+                // Only show toast if we actually lost a life
+                if (newLives < prevStats.lives) {
+                  // Ensure this runs after the state update to avoid duplicate toasts
+                  setTimeout(() => {
+                    addToast("❤️ Life lost!", "error");
+                  }, 0);
+                }
+                
+                // Check if game over
+                if (newLives <= 0) {
+                  // End game on next tick to avoid state update during render
+                  setTimeout(() => {
+                    setGameOver(true);
+                    setGameActive(false);
+                    showGameOverModal();
+                  }, 0);
+                }
+                
+                return {
+                  ...prevStats,
+                  lives: Math.max(0, newLives),
+                  combo: 0,
+                };
+              });
+            }, 0);
+          }
+
+          return filteredWords;
+        });
+      }
+    }, 16);
+
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
 
     return () => {
-      document.body.style.overflow = "auto";
+      clearInterval(wordInterval);
+      clearInterval(moveInterval);
     };
-  }, [modalOpen]);
+  }, [gameActive, settings, gameOver]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newInput = e.target.value;
+    setCurrentInput(newInput);
+
+    // Update matched characters for words
+    setWords((prev) =>
+      prev.map((word) => {
+        const matchedChars = word.text
+          .toLowerCase()
+          .split("")
+          .reduce((count, char, index) => {
+            return newInput.toLowerCase()[index] === char ? count + 1 : count;
+          }, 0);
+        return { ...word, matchedChars };
+      })
+    );
   };
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      ref.current.scrollIntoView({ behavior: "smooth" });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentInput.trim()) return;
+
+    setTotalAttempts((prev) => prev + 1);
+
+    const matchedWordIndex = words.findIndex(
+      (word) => word.text.toLowerCase() === currentInput.toLowerCase()
+    );
+
+    if (matchedWordIndex !== -1) {
+      const matchedWord = words[matchedWordIndex];
+
+      setWords((prev) => prev.filter((_, i) => i !== matchedWordIndex));
+
+      setStats((prev) => {
+        const newCombo = prev.combo + 1;
+        const newMaxCombo = Math.max(prev.maxCombo, newCombo);
+        const comboMultiplier = Math.floor(newCombo / 5) + 1;
+        const pointsEarned = matchedWord.points * comboMultiplier;
+
+        const newAccuracy = Math.round(
+          ((prev.wordsTyped + 1) / (totalAttempts + 1)) * 100
+        );
+
+        return {
+          ...prev,
+          score: prev.score + pointsEarned,
+          combo: newCombo,
+          maxCombo: newMaxCombo,
+          wordsTyped: prev.wordsTyped + 1,
+          accuracy: newAccuracy,
+        };
+      });
+
+      if (stats.combo > 0 && stats.combo % 5 === 0) {
+        addToast(`${stats.combo}x Combo! Multiplier increased!`, "success");
+      }
+
+      if (matchedWord.specialEffect && settings.effectsEnabled) {
+        handleSpecialEffect(matchedWord.specialEffect);
+      }
+    } else {
+      setStats((prev) => ({
+        ...prev,
+        combo: 0,
+      }));
     }
-    setMobileMenuOpen(false);
+    setCurrentInput("");
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) =>
-      prev === destinations.length - 1 ? 0 : prev + 1
-    );
+  const handleSpecialEffect = (effect: SpecialEffect) => {
+    switch (effect) {
+      case "speedUp":
+        addToast("⚡ Speed Boost! Words are falling faster now!", "info");
+        setWords((prev) =>
+          prev.map((word) => ({
+            ...word,
+            speed: word.speed * 1.5,
+          }))
+        );
+        break;
+      case "slowDown":
+        addToast("🐢 Speed Reduction! Words are falling slower now!", "info");
+        setWords((prev) =>
+          prev.map((word) => ({
+            ...word,
+            speed: word.speed * 0.5,
+          }))
+        );
+        break;
+      case "doublePoints":
+        addToast("Double Points! Next 5 words worth double!", "success");
+        break;
+      case "clearScreen":
+        addToast("Clear Screen! All words removed!", "success");
+        setWords([]);
+        break;
+      case "extraLife":
+        addToast("Extra Life! +1 life added!", "success");
+        setStats((prev) => ({
+          ...prev,
+          lives: prev.lives + 1,
+        }));
+        break;
+    }
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) =>
-      prev === 0 ? destinations.length - 1 : prev - 1
-    );
-  };
-
-  const addToast = (message: string, type: ToastType = "success") => {
-    const id = Date.now().toString();
-    setToasts((prev) => {
-      const newToasts = [...prev, { id, message, type }];
-      return newToasts.slice(-3);
+  const startGame = () => {
+    setGameActive(true);
+    setGameOver(false);
+    setWords([]);
+    setCurrentInput("");
+    setStats({
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      wordsTyped: 0,
+      accuracy: 100,
+      lives: 5,
     });
+    setTotalAttempts(0);
 
     setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 3000);
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+
+    addToast("Game started! Type the falling words!", "info");
   };
 
-  const validateEmail = (email: string): boolean => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
+  const showGameOverModal = () => {
+    // Define game reset function
+    const resetGame = () => {
+      setGameActive(false);
+      setWords([]);
+      setCurrentInput("");
+      setStats({
+        score: 0,
+        combo: 0,
+        maxCombo: 0,
+        wordsTyped: 0,
+        accuracy: 100,
+        lives: 5,
+      });
+      setTotalAttempts(0);
+      setGameOver(false);
+    };
+    
+    openModal(
+      <div className="space-y-6 text-center">
+        <h2 className="text-3xl font-bold mb-2">Game Over!</h2>
 
-  const handleSubscribe = () => {
-    if (!email) {
-      setEmailError("Email is required");
-      return;
-    }
+        <div className="space-y-4 py-4">
+          <div className="text-5xl font-bold">{stats.score}</div>
+          <div className={`text-xl ${colors.textMuted}`}>Final Score</div>
 
-    if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email");
-      return;
-    }
-
-    setEmailError("");
-    addToast(`Thank you for subscribing with ${email}!`);
-    setEmail("");
-    setModalOpen(false);
-  };
-
-  const t = themes[theme];
-
-  return (
-    <main
-      className={`font-sans min-h-screen ${t.background} ${t.text} transition-colors duration-300`}
-    >
-      <nav
-        className={`fixed w-full z-50 ${t.card} shadow-md transition-colors duration-300`}
-      >
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <h1
-              className={`text-2xl md:text-3xl font-serif font-bold ${t.primary}`}
-            >
-              <span className={t.secondary}>Explore</span>China 
-            </h1>
-          </div>
-
-          <div className="hidden md:flex items-center space-x-8">
-            <button
-              onClick={() => scrollToSection(heroRef)}
-              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-            >
-              Home
-            </button>
-            <button
-              onClick={() => scrollToSection(destinationsRef)}
-              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-            >
-              Destinations
-            </button>
-            <button
-              onClick={() => scrollToSection(culturalRef)}
-              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-            >
-              Cultural
-            </button>
-            <button
-              onClick={() => scrollToSection(tipsRef)}
-              className={`${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-            >
-              Travel Tips
-            </button>
-            <button
-              onClick={() => setModalOpen(true)}
-              className={`px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer`}
-            >
-              Subscribe
-            </button>
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${t.card} ${t.border} border cursor-pointer`}
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-4 md:hidden">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${t.card} ${t.border} border cursor-pointer`}
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="cursor-pointer"
-              aria-label="Open menu"
-            >
-              <Menu size={24} />
-            </button>
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
+              <div className="text-2xl font-bold">{stats.wordsTyped}</div>
+              <div className={`text-sm ${colors.textMuted}`}>Words Typed</div>
+            </div>
+            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
+              <div className="text-2xl font-bold">{stats.maxCombo}x</div>
+              <div className={`text-sm ${colors.textMuted}`}>Max Combo</div>
+            </div>
+            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
+              <div className="text-2xl font-bold">{stats.accuracy}%</div>
+              <div className={`text-sm ${colors.textMuted}`}>Accuracy</div>
+            </div>
+            <div className={`${colors.cardSecondary} p-3 rounded-lg`}>
+              <div className="text-2xl font-bold capitalize">
+                {settings.difficulty}
+              </div>
+              <div className={`text-sm ${colors.textMuted}`}>Difficulty</div>
+            </div>
           </div>
         </div>
-      </nav>
 
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.3 }}
-            className={`fixed inset-0 z-50 ${t.card} ${t.text} pt-20`}
-          >
-            <div className="absolute top-4 right-4">
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="cursor-pointer p-2"
-                aria-label="Close menu"
-              >
-                <X size={24} />
-              </button>
+        <button
+          onClick={() => {
+            closeModal();
+            startGame();
+          }}
+          className={`w-full py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-lg cursor-pointer`}
+        >
+          Play Again
+        </button>
+      </div>,
+      resetGame // Pass the reset function as the custom close handler
+    );
+  };
+
+  const showInstructionsModal = () => {
+    openModal(
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold mb-4">How to Play</h2>
+
+        <div className="space-y-4">
+          <p>
+            Words will fall from the top of the screen. Type them correctly
+            before they reach the bottom!
+          </p>
+
+          <div className={`${colors.cardSecondary} p-4 rounded-lg`}>
+            <h3 className="font-bold mb-2">Game Features:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Type words before they hit the bottom</li>
+              <li>Build combos for multipliers</li>
+              <li>Special effects can help or challenge you</li>
+              <li>Adjust difficulty in settings</li>
+              <li>Track your stats and high scores</li>
+            </ul>
+          </div>
+
+          <div className={`${colors.cardSecondary} p-4 rounded-lg`}>
+            <h3 className="font-bold mb-2">Special Effects:</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-500">
+                  <Zap size={18} />
+                </span>
+                <span>Speed Up</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-purple-500">
+                  <Zap size={18} />
+                </span>
+                <span>Slow Down</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-500">
+                  <Award size={18} />
+                </span>
+                <span>Double Points</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-red-500">
+                  <RefreshCw size={18} />
+                </span>
+                <span>Clear Screen</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-500">
+                  <Award size={18} />
+                </span>
+                <span>Extra Life</span>
+              </div>
             </div>
-            <div className="flex flex-col items-center space-y-8 p-8">
-              <button
-                onClick={() => scrollToSection(heroRef)}
-                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-              >
-                Home
-              </button>
-              <button
-                onClick={() => scrollToSection(destinationsRef)}
-                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-              >
-                Destinations
-              </button>
-              <button
-                onClick={() => scrollToSection(culturalRef)}
-                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-              >
-                Cultural
-              </button>
-              <button
-                onClick={() => scrollToSection(tipsRef)}
-                className={`text-xl ${t.text} hover:${t.primary} transition-colors cursor-pointer`}
-              >
-                Travel Tips
-              </button>
-              <button
-                onClick={() => {
-                  setModalOpen(true);
-                  setMobileMenuOpen(false);
-                }}
-                className={`px-6 py-3 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer`}
-              >
-                Subscribe
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
 
-      <div ref={heroRef} className="relative h-screen overflow-hidden">
-        <img
-          src="https://images.pexels.com/photos/1531660/pexels-photo-1531660.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
-          alt="China landscape with mountains and traditional architecture"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/30"></div>
-
-        <div className="relative h-full flex flex-col justify-center items-center text-center px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-4xl"
+        <div className={`pt-4 border-t ${colors.border}`}>
+          <button
+            onClick={() => {
+              closeModal();
+              startGame();
+            }}
+            className={`w-full py-2 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium cursor-pointer`}
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-white mb-6">
-              Discover the Wonders of{" "}
-              <span className="text-yellow-400">China</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-              Experience thousands of years of history, breathtaking landscapes,
-              and rich cultural heritage in one of the world's most fascinating
-              countries.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => scrollToSection(destinationsRef)}
-              className="px-8 py-3 bg-red-600 text-white rounded-md text-lg font-medium hover:bg-red-700 transition-colors cursor-pointer"
-            >
-              Explore Destinations
-            </motion.button>
-          </motion.div>
+            Start Game
+          </button>
         </div>
       </div>
+    );
+  };
 
-      <div
-        ref={destinationsRef}
-        className={`py-20 transition-colors duration-300 ${t.background}`}
-      >
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+  const exitGame = () => {
+    openModal(
+      <div className="space-y-6 text-center">
+        <h2 className="text-2xl font-bold mb-2">Exit Game?</h2>
+        <p className={`${colors.textMuted}`}>
+          Are you sure you want to exit? Your current progress will be lost.
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setGameActive(false);
+              setWords([]);
+              setCurrentInput("");
+              setStats({
+                score: 0,
+                combo: 0,
+                maxCombo: 0,
+                wordsTyped: 0,
+                accuracy: 100,
+                lives: 5,
+              });
+              setTotalAttempts(0);
+              closeModal();
+            }}
+            className={`flex-1 py-2.5 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium cursor-pointer`}
           >
-            <h2
-              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
-            >
-              Top Destinations
-            </h2>
-            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
-              From ancient wonders to natural landscapes, China offers a diverse
-              range of unforgettable destinations.
-            </p>
-          </motion.div>
+            Yes, Exit
+          </button>
+          <button
+            onClick={() => {
+              closeModal();
+              if (inputRef.current) {
+                inputRef.current.focus();
+              }
+            }}
+            className={`flex-1 py-2.5 rounded-lg ${colors.buttonBg} ${colors.buttonHover} font-medium cursor-pointer`}
+          >
+            Continue Playing
+          </button>
+        </div>
+      </div>
+    );
+  };
 
-          <div className="relative max-w-5xl mx-auto">
-            <div className="overflow-hidden rounded-xl">
-              <div className="relative aspect-[16/9]">
-                {destinations.map((destination, index) => (
-                  <motion.div
-                    key={destination.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: currentSlide === index ? 1 : 0 }}
-                    transition={{ duration: 0.5 }}
-                    className={`absolute inset-0 ${
-                      currentSlide === index ? "block" : "hidden"
+  return (
+    <div
+      className={`min-h-screen ${colors.background} ${colors.text} ${montserrat.className}`}
+    >
+      <header className="container mx-auto px-4 py-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+              WordFall
+            </h1>
+            {gameActive && (
+              <button
+                onClick={exitGame}
+                className={`ml-4 px-3 py-1.5 rounded-lg text-sm ${colors.buttonBg} ${colors.buttonHover} transition-colors cursor-pointer flex items-center gap-1`}
+                title="Exit current game"
+              >
+                <X size={16} />
+                <span className="hidden sm:inline">Exit Game</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className={`text-sm ${colors.textMuted} hidden sm:inline`}>
+                Difficulty:
+              </label>
+              <div className="flex gap-1">
+                {["easy", "medium", "hard"].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        difficulty: level as any,
+                      }))
+                    }
+                    disabled={gameActive}
+                    className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-colors ${
+                      settings.difficulty === level
+                        ? `${colors.primary} text-white`
+                        : gameActive
+                        ? `${colors.buttonBg} opacity-50 cursor-not-allowed`
+                        : `${colors.buttonBg} ${colors.buttonHover} cursor-pointer`
                     }`}
+                    title={
+                      gameActive ? "Cannot change difficulty during game" : ""
+                    }
                   >
-                    <img
-                      src={destination.image || "/placeholder.svg"}
-                      alt={destination.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-                      <h3 className="text-2xl md:text-4xl font-serif font-bold text-white mb-2">
-                        {destination.name}
-                      </h3>
-                      <div className="flex items-center text-yellow-400 mb-3">
-                        <MapPin size={16} className="mr-2" />
-                        <span>{destination.location}</span>
-                      </div>
-                      <p className="text-gray-200 text-sm md:text-base max-w-2xl">
-                        {destination.description}
-                      </p>
-                    </div>
-                  </motion.div>
+                    {level}
+                  </button>
                 ))}
               </div>
             </div>
 
             <button
-              onClick={prevSlide}
-              className="absolute top-1/2 left-4 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer"
-              aria-label="Previous slide"
+              onClick={() =>
+                setSettings((prev) => ({
+                  ...prev,
+                  effectsEnabled: !prev.effectsEnabled,
+                }))
+              }
+              disabled={gameActive}
+              className={`p-2 rounded-full transition-colors cursor-pointer ${
+                settings.effectsEnabled ? colors.primary : colors.buttonBg
+              } ${
+                gameActive
+                  ? "opacity-50 cursor-not-allowed"
+                  : settings.effectsEnabled
+                  ? colors.primaryHover
+                  : colors.buttonHover
+              }`}
+              title={
+                gameActive
+                  ? "Cannot toggle effects during game"
+                  : settings.effectsEnabled
+                  ? "Disable Effects"
+                  : "Enable Effects"
+              }
             >
-              <ChevronLeft size={24} />
+              <Zap
+                size={20}
+                className={settings.effectsEnabled ? "text-white" : ""}
+              />
             </button>
+
             <button
-              onClick={nextSlide}
-              className="absolute top-1/2 right-4 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer"
-              aria-label="Next slide"
+              onClick={toggleTheme}
+              className={`p-2 rounded-full ${colors.buttonBg} ${colors.buttonHover} transition-colors cursor-pointer`}
+              title={
+                theme === "light"
+                  ? "Switch to Dark Mode"
+                  : "Switch to Light Mode"
+              }
             >
-              <ChevronRight size={24} />
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-
-            <div className="flex justify-center mt-4 space-x-2">
-              {destinations.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`w-3 h-3 rounded-full cursor-pointer transition-colors ${
-                    currentSlide === index ? "bg-red-600" : "bg-gray-400"
-                  }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div
-        ref={culturalRef}
-        className={`py-20 ${
-          theme === "light" ? "bg-red-50" : "bg-gray-800"
-        } transition-colors duration-300`}
-      >
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2
-              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
-            >
-              Cultural Highlights
-            </h2>
-            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
-              Immerse yourself in China's rich cultural heritage, from ancient
-              traditions to modern expressions.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {culturalHighlights.map((highlight, index) => (
-              <motion.div
-                key={highlight.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`rounded-xl overflow-hidden ${t.card} shadow-lg`}
-              >
-                <div className="relative h-48">
-                  <img
-                    src={highlight.image || "/placeholder.svg"}
-                    alt={highlight.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3
-                    className={`text-xl font-serif font-bold mb-3 ${t.primary}`}
-                  >
-                    {highlight.title}
-                  </h3>
-                  <p className={`${t.muted} text-sm`}>
-                    {highlight.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={tipsRef}
-        className={`py-20 ${t.background} transition-colors duration-300`}
-      >
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2
-              className={`text-3xl md:text-5xl font-serif font-bold mb-4 ${t.primary}`}
-            >
-              Travel Tips
-            </h2>
-            <p className={`text-lg ${t.muted} max-w-2xl mx-auto`}>
-              Make the most of your journey with these essential tips for
-              traveling in China.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {travelTips.map((tip, index) => (
-              <motion.div
-                key={tip.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`p-6 rounded-xl ${t.card} ${t.border} border shadow-sm`}
-              >
-                <div className={`${t.secondary} mb-4`}>{tip.icon}</div>
-                <h3 className={`text-xl font-bold mb-3 ${t.text}`}>
-                  {tip.title}
-                </h3>
-                <p className={`${t.muted} text-sm`}>{tip.description}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className={`mt-16 p-8 rounded-xl ${t.card} ${t.border} border shadow-md max-w-3xl mx-auto text-center`}
-          >
-            <h3 className={`text-2xl font-serif font-bold mb-4 ${t.primary}`}>
-              Ready to Explore China?
-            </h3>
-            <p className={`${t.muted} mb-6`}>
-              Subscribe to our newsletter for travel guides, exclusive offers,
-              and insider tips.
-            </p>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="px-6 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors cursor-pointer"
-            >
-              Subscribe Now
-            </button>
-          </motion.div>
-        </div>
-      </div>
-
-      <footer
-        className={`py-12 ${
-          theme === "light"
-            ? "bg-gray-900 text-white"
-            : "bg-gray-950 text-gray-200"
-        }`}
-      >
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <main className="container mx-auto px-4 py-4 sm:py-6">
+        <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
+          <div className="flex items-center gap-6">
             <div>
-              <h3 className="text-2xl font-serif font-bold text-yellow-400 mb-4">
-                <span className="text-amber-400">Explore</span>
-                <span className="text-red-500">China</span>
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Your gateway to experiencing the wonders of China, from ancient
-                traditions to modern marvels.
-              </p>
+              <div className={`text-sm ${colors.textMuted}`}>Score</div>
+              <div className="text-2xl font-bold">{stats.score}</div>
             </div>
+
             <div>
-              <h4 className="text-lg font-bold mb-4">Quick Links</h4>
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() => scrollToSection(heroRef)}
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(destinationsRef)}
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Destinations
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(culturalRef)}
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cultural Highlights
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(tipsRef)}
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Travel Tips
-                  </button>
-                </li>
-              </ul>
+              <div className={`text-sm ${colors.textMuted}`}>Combo</div>
+              <div className="text-2xl font-bold">{stats.combo}x</div>
             </div>
+
             <div>
-              <h4 className="text-lg font-bold mb-4">Resources</h4>
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() =>
-                      addToast("Travel Guide coming soon!", "info")
+              <div className={`text-sm ${colors.textMuted}`}>Lives</div>
+              <div className="flex">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={
+                      i < stats.lives ? colors.heartFilled : colors.heartEmpty
                     }
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                   >
-                    Travel Guide
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => addToast("FAQ section coming soon!", "info")}
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    FAQs
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() =>
-                      addToast("Blog section coming soon!", "info")
-                    }
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Blog
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-bold mb-4">Contact</h4>
-              <ul className="space-y-2">
-                <li className="text-gray-400">Email: info@explorechina.com</li>
-                <li className="text-gray-400">Phone: +1 (123) 456-7890</li>
-                <li className="text-gray-400">
-                  Address: 123 Tourism St, Beijing, China
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
-            <p>
-              © {new Date().getFullYear()} Explore China. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-
-      <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${t.overlay} backdrop-blur-sm`}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`relative max-w-md w-full rounded-xl ${t.card} p-8 shadow-xl`}
-            >
-              <button
-                onClick={() => setModalOpen(false)}
-                className={`absolute top-4 right-4 ${t.muted} hover:${t.text} transition-colors cursor-pointer`}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="text-center mb-6">
-                <h3
-                  className={`text-2xl font-serif font-bold ${t.primary} mb-2`}
-                >
-                  Subscribe to Our Newsletter
-                </h3>
-                <p className={t.muted}>
-                  Get the latest travel tips, exclusive offers, and destination
-                  guides.
-                </p>
+                    ❤
+                  </span>
+                ))}
               </div>
+            </div>
+          </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="email"
-                    className={`block text-sm font-medium ${t.text} mb-1`}
-                  >
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (emailError) setEmailError("");
-                    }}
-                    placeholder="your@email.com"
-                    className={`w-full px-4 py-2 rounded-md ${t.border} border bg-transparent focus:outline-none focus:ring-2 focus:ring-red-500`}
-                  />
-                  {emailError && (
-                    <p className="mt-1 text-sm text-red-500">{emailError}</p>
-                  )}
-                </div>
+          <div className="flex items-center gap-4">
+            <div>
+              <div className={`text-sm ${colors.textMuted}`}>Accuracy</div>
+              <div className="text-xl font-bold">{stats.accuracy}%</div>
+            </div>
 
+            <div>
+              <div className={`text-sm ${colors.textMuted}`}>Words</div>
+              <div className="text-xl font-bold">{stats.wordsTyped}</div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          ref={canvasRef}
+          className={`relative w-full h-[50vh] sm:h-[60vh] rounded-xl overflow-hidden ${colors.card} shadow-xl border ${colors.border}`}
+        >
+          {!gameActive && !gameOver && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+              <motion.h2
+                className="text-2xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                Word Fall Challenge
+              </motion.h2>
+
+              <motion.div
+                className="flex flex-col gap-3 sm:gap-4 w-full max-w-xs sm:max-w-md"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
                 <button
-                  onClick={handleSubscribe}
-                  className="w-full px-4 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center justify-center cursor-pointer"
+                  onClick={startGame}
+                  className={`w-full py-2.5 sm:py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-base sm:text-lg cursor-pointer`}
                 >
-                  Subscribe <Send size={16} className="ml-2" />
+                  Start Game
                 </button>
 
-                <p className={`text-xs ${t.muted} text-center mt-4`}>
-                  By subscribing, you agree to our Privacy Policy and Terms of
-                  Service.
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <button
+                  onClick={showInstructionsModal}
+                  className={`w-full py-2.5 sm:py-3 rounded-lg ${colors.buttonBg} ${colors.buttonHover} font-medium text-base sm:text-lg cursor-pointer`}
+                >
+                  How to Play
+                </button>
+              </motion.div>
+            </div>
+          )}
 
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col space-y-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 50 }}
-              className={`px-4 py-3 rounded-md shadow-lg ${
-                toast.type === "success"
-                  ? "bg-green-600"
-                  : toast.type === "error"
-                  ? "bg-red-600"
-                  : "bg-blue-600"
-              } text-white max-w-xs`}
-            >
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </main>
+          <AnimatePresence>
+            {words.map((word) => (
+              <motion.div
+                key={word.id}
+                className={`absolute ${word.color} font-medium text-base sm:text-lg`}
+                style={{
+                  left: word.x,
+                  top: word.y,
+                  textShadow: word.specialEffect
+                    ? "0 0 8px currentColor"
+                    : "none",
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+              >
+                {word.text.split("").map((char, index) => (
+                  <span
+                    key={index}
+                    className={
+                      word.matchedChars && index < word.matchedChars
+                        ? "text-white"
+                        : ""
+                    }
+                  >
+                    {char}
+                  </span>
+                ))}
+                {word.specialEffect && (
+                  <span className="absolute -right-4 sm:-right-6 text-base sm:text-lg">
+                    {word.specialEffect === "speedUp" && (
+                      <Zap className="text-blue-500" size={16} />
+                    )}
+                    {word.specialEffect === "slowDown" && (
+                      <Zap className="text-purple-500" size={16} />
+                    )}
+                    {word.specialEffect === "doublePoints" && (
+                      <Award className="text-yellow-500" size={16} />
+                    )}
+                    {word.specialEffect === "clearScreen" && (
+                      <RefreshCw className="text-red-500" size={16} />
+                    )}
+                    {word.specialEffect === "extraLife" && (
+                      <Award className="text-green-500" size={16} />
+                    )}
+                  </span>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-4 sm:mt-6">
+          <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-4">
+            <input
+              ref={inputRef}
+              type="text"
+              value={currentInput}
+              onChange={handleInputChange}
+              disabled={!gameActive}
+              className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg ${colors.inputBg} border ${colors.border} focus:outline-none focus:ring-2 focus:ring-purple-500 text-base sm:text-lg`}
+              placeholder={
+                gameActive
+                  ? "Type the falling words..."
+                  : "Press Start to begin..."
+              }
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck="false"
+            />
+
+            {gameActive ? (
+              <button
+                type="submit"
+                disabled={!currentInput.trim()}
+                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-colors ${
+                  currentInput.trim()
+                    ? `${colors.primary} ${colors.primaryHover} text-white cursor-pointer`
+                    : `${colors.buttonBg} cursor-not-allowed opacity-50`
+                } font-medium text-base sm:text-lg whitespace-nowrap`}
+              >
+                Submit
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startGame}
+                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg ${colors.primary} ${colors.primaryHover} text-white font-medium text-base sm:text-lg cursor-pointer whitespace-nowrap`}
+              >
+                Start
+              </button>
+            )}
+          </form>
+        </div>
+      </main>
+
+      <footer className="container mx-auto px-4 py-4 sm:py-6 mt-auto">
+        <div className={`text-center text-xs sm:text-sm ${colors.textMuted}`}>
+          <p>
+            Type quickly and accurately to score points. Build combos for
+            multipliers!
+          </p>
+          <p className="mt-2">
+            Watch out for special effect words that can help or challenge you.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default function Page() {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        <ModalProvider>
+          <WordFallGame />
+        </ModalProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
