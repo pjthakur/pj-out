@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PageTurners - Book Review Platform</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts - Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Custom Styles with Neumorphism Design */
+    :root {
+      --bg-color: #f0f4f8;
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --accent: #805ad5;
+      --accent-light: #d6bcfa;
+      --shadow-light: rgba(255, 255, 255, 0.7);
+      --shadow-dark: rgba(0, 0, 0, 0.05);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Roboto", sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .neumorph {
+      box-shadow: 8px 8px 16px var(--shadow-dark),
+        -8px -8px 16px var(--shadow-light);
+      border-radius: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .neumorph-inset {
+      box-shadow: inset 4px 4px 8px var(--shadow-dark),
+        inset -4px -4px 8px var(--shadow-light);
+      border-radius: 20px;
+    }
+
+    .neumorph-btn {
+      box-shadow: 5px 5px 10px var(--shadow-dark),
+        -5px -5px 10px var(--shadow-light);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .neumorph-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 7px 7px 14px var(--shadow-dark),
+        -7px -7px 14px var(--shadow-light);
+    }
+
+    .neumorph-btn:active {
+      transform: translateY(0);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .book-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .book-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 12px 12px 20px var(--shadow-dark),
+        -12px -12px 20px var(--shadow-light);
+    }
+
+    /* Star Rating Component */
+    .star-rating {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      font-size: 2rem;
+      direction: ltr; /* Left to right */
+    }
+
+    .star-rating input {
+      display: none;
+    }
+
+    .star-rating label {
+      cursor: pointer;
+      color: #ddd;
+      transition: color 0.2s;
+      padding: 0 5px;
+    }
+
+    .star-rating input:checked~label,
+    .star-rating label:hover,
+    .star-rating label:hover~label {
+      color: var(--accent);
+      /* Your accent color */
+    }
+
+    /* Read More Toggle */
+    .review-content {
+      max-height: 80px;
+      overflow-y: hidden;
+      transition: max-height 0.5s ease;
+    }
+
+    .review-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .review-content::-webkit-scrollbar-thumb {
+      background-color: var(--accent-light);
+      border-radius: 6px;
+    }
+
+    .review-content::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
+
+    .review-content.expanded {
+      max-height: 180px;
+      /* adjust height as needed */
+      overflow-y: auto;
+    }
+
+    .read-more-btn {
+      transition: all 0.3s ease;
+    }
+
+    /* Navigation Styles */
+    .nav-link {
+      position: relative;
+      padding-bottom: 5px;
+    }
+
+    .nav-link::after {
+      content: "";
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: 0;
+      left: 0;
+      background-color: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .nav-link:hover::after,
+    .nav-link.active::after {
+      width: 100%;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent-light);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    /* Loading Animation */
+    .loading-spinner {
+      animation: spin 1.5s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Fade In Animation */
+    .fade-in {
+      animation: fadeIn 0.5s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Staggered Animation for Grid Items */
+    .stagger-item {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: staggerFadeIn 0.5s ease forwards;
+    }
+
+    @keyframes staggerFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Category Pills */
+    .category-pill {
+      transition: all 0.3s ease;
+    }
+
+    .category-pill:hover,
+    .category-pill.active {
+      background-color: var(--accent);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 3px 3px 6px var(--shadow-dark);
+    }
+
+    /* Book Cover Images */
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .book-cover-container {
+      aspect-ratio: 2 / 3;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    /* Book Card Styles */
+    .book-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .book-card .review-content {
+      flex-grow: 0;
+    }
+
+    .book-card-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .book-card-footer {
+      margin-top: auto;
+    }
+
+    /* Load More Button */
+    .load-more-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .load-more-btn::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 0;
+      background-color: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      transition: height 0.3s ease;
+    }
+
+    .load-more-btn:hover::after {
+      height: 100%;
+    }
+
+    .load-more-btn:active::after {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      #main-nav {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      #main-nav.expanded {
+        max-height: 300px;
+      }
+
+      .book-cover-container {
+        height: 200px;
+      }
+    }
+
+    /* Star Rating for Review Form */
+    .review-star-rating {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      font-size: 1.75rem;
+      direction: ltr; /* Left to right */
+    }
+
+    .review-star-rating input {
+      display: none;
+    }
+
+    .review-star-rating label {
+      cursor: pointer;
+      padding: 0 5px;
+      color: #ddd;
+      transition: color 0.2s;
+    }
+
+    .review-star-rating input:checked~label {
+      color: var(--accent);
+    }
+
+    .review-star-rating label:hover,
+    .review-star-rating label:hover~label {
+      color: var(--accent-light);
+    }
+
+    /* Review Form */
+    .review-form-container {
+      display: none;
+    }
+
+    .review-form-container.visible {
+      display: block;
+    }
+
+    /* Thanks Message Animation */
+    .thanks-message {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.6s ease, opacity 0.6s ease;
+    }
+
+    .thanks-message.visible {
+      max-height: 300px;
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body class="px-4 py-8 md:px-8">
+  <!-- Header Section -->
+  <header class="max-w-6xl mx-auto mb-12">
+    <div class="flex flex-col md:flex-row justify-between items-center">
+      <div class="neumorph p-4 mb-6 md:mb-0 flex items-center">
+        <div class="mr-3 text-purple-600">
+          <i data-lucide="book-open" class="w-8 h-8"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-purple-800">PageTurners</h1>
+      </div>
+
+      <div class="w-full md:w-1/2">
+        <div class="neumorph-inset p-2 flex items-center">
+          <i data-lucide="search" class="w-5 h-5 ml-2 text-gray-500"></i>
+          <input type="text" placeholder="Search for books, authors, or genres..."
+            class="w-full bg-transparent border-none outline-none px-3 py-2" id="search-input" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Categories - scrollable on mobile -->
+    <div class="mt-8 overflow-x-auto pb-2">
+      <div class="flex flex-nowrap space-x-3 min-w-fit" id="category-filters">
+        <button
+          class="category-pill active neumorph-btn px-4 py-2 text-sm font-medium text-purple-800 whitespace-nowrap"
+          data-category="all">
+          All
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="fiction">
+          Fiction
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="non-fiction">
+          Non-Fiction
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="science">
+          Science
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="fantasy">
+          Fantasy
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="biography">
+          Biography
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="mystery">
+          Mystery
+        </button>
+        <button class="category-pill neumorph-btn px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+          data-category="historical">
+          Historical
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Featured Book Section -->
+  <section class="max-w-6xl mx-auto mb-16">
+    <div class="neumorph p-6 md:p-8 fade-in" style="animation-delay: 0.1s">
+      <h2 class="text-2xl font-bold mb-6 text-purple-800">Featured Book</h2>
+
+      <div class="flex flex-col md:flex-row">
+        <div class="md:w-1/3 mb-6 md:mb-0 md:mr-8">
+          <div class="neumorph p-4 h-full flex items-center justify-center">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Stellar Odyssey Book Cover" class="rounded-lg w-full max-w-xs book-cover"
+              data-src="https://images.unsplash.com/photo-1667312939934-60fc3bfa4ec0?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Ym9va3N8ZW58MHx8MHx8fDA%3D"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+        </div>
+
+        <div class="md:w-2/3">
+          <h3 class="text-2xl font-bold mb-2">Stellar Odyssey</h3>
+          <p class="text-lg text-gray-600 mb-2">by Andy Weir</p>
+
+          <div class="flex items-center mb-4">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-5 h-5 text-purple-600"></i>
+              <i data-lucide="star" class="w-5 h-5 text-purple-600"></i>
+              <i data-lucide="star" class="w-5 h-5 text-purple-600"></i>
+              <i data-lucide="star" class="w-5 h-5 text-purple-600"></i>
+              <i data-lucide="star-half" class="w-5 h-5 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-gray-700">4.5/5 (326 reviews)</span>
+          </div>
+
+          <div class="neumorph-inset p-4 mb-6">
+            <div class="review-content expanded">
+              <p class="mb-3">
+                Ryland Grace is the sole survivor on a desperate, last-chance
+                mission—and if he fails, humanity and the Earth itself will
+                perish. Except that right now, he doesn't know that. He can't
+                even remember his own name, let alone the nature of his
+                assignment or how to complete it.
+              </p>
+              <p class="mb-3">
+                All he knows is that he's been asleep for a very, very long
+                time. And he's just been awakened to find himself millions of
+                miles from home, with nothing but two corpses for company.
+              </p>
+              <p class="mb-3">
+                His crewmates dead, his memories fuzzily returning, he
+                realizes that an impossible task now confronts him. Alone on
+                this tiny ship that's been cobbled together by every
+                government and space agency on the planet and hurled into the
+                depths of space, it's up to him to conquer an extinction-level
+                threat to our species.
+              </p>
+              <p>
+                And thanks to an unexpected ally, he just might have a chance.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap">
+            <span class="neumorph-btn px-3 py-1 text-sm text-purple-800 mr-2 mb-2">Science Fiction</span>
+            <span class="neumorph-btn px-3 py-1 text-sm text-purple-800 mr-2 mb-2">Space</span>
+            <span class="neumorph-btn px-3 py-1 text-sm text-purple-800 mr-2 mb-2">Adventure</span>
+          </div>
+
+          <div class="mt-6 flex flex-wrap">
+            <button
+              class="neumorph-btn flex items-center px-5 py-3 bg-purple-100 text-purple-800 font-medium mr-4 mb-3 write-review-btn"
+              data-book="Stellar Odyssey" data-author="Andy Weir"
+              data-cover="https://images.unsplash.com/photo-1667312939934-60fc3bfa4ec0?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Ym9va3N8ZW58MHx8MHx8fDA%3D">
+              <i data-lucide="edit-3" class="w-5 h-5 mr-2"></i>
+              Write Review
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top Reviews Section -->
+  <section class="max-w-6xl mx-auto mb-16">
+    <h2 class="text-2xl font-bold mb-6 text-purple-800">Top Rated Books</h2>
+
+    <div id="books-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <!-- Book Card 1 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.1s" data-categories="fiction,fantasy">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Eternal Pages Book Cover" class="rounded book-cover"
+              data-src="https://plus.unsplash.com/premium_photo-1669652639356-f5cb1a086976?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Eternal Pages</h3>
+          <p class="text-sm text-gray-600 mb-3">by Matt Haig</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star-half" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">4.0/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="1">
+              <p>
+                Between life and death there is a library, and within that
+                library, the shelves go on forever. Every book provides a
+                chance to try another life you could have lived. To see how
+                things would be if you had made other choices.
+              </p>
+              <p>
+                Would you have done anything different, if you had the chance
+                to undo your regrets? A dazzling novel about all the choices
+                that go into a life well lived.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="1">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">Fiction</span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">Fantasy</span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Eternal Pages"
+                data-author="Matt Haig"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1602190253i/52578297.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Card 2 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.2s"
+        data-categories="non-fiction,self-help,psychology">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Micro Patterns Book Cover" class="rounded book-cover"
+              data-src="https://plus.unsplash.com/premium_photo-1677187301660-5e557d9c0724?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Ym9va3N8ZW58MHx8MHx8fDA%3D"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Micro Patterns</h3>
+          <p class="text-sm text-gray-600 mb-3">by James Clear</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star-half" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">4.5/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="2">
+              <p>
+                No matter your goals, Atomic Habits offers a proven framework
+                for improving—every day. James Clear, one of the world's
+                leading experts on habit formation, reveals practical
+                strategies that will teach you exactly how to form good
+                habits, break bad ones, and master the tiny behaviors that
+                lead to remarkable results.
+              </p>
+              <p>
+                If you're having trouble changing your habits, the problem
+                isn't you. The problem is your system. Bad habits repeat
+                themselves again and again not because you don't want to
+                change, but because you have the wrong system for change.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="2">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">Self-Help</span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">Psychology</span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Micro Patterns"
+                data-author="James Clear"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1535115320i/40121378.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Card 3 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.3s" data-categories="fiction,science">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Sentience and Light Book Cover" class="rounded book-cover"
+              data-src="https://images.unsplash.com/photo-1522407183863-c0bf2256188c?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGJvb2tzfGVufDB8fDB8fHww"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Sentience and Light</h3>
+          <p class="text-sm text-gray-600 mb-3">by Kazuo Ishiguro</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">5.0/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="3">
+              <p>
+                From the bestselling author of Never Let Me Go and The Remains
+                of the Day, a stunning new novel that asks, what does it mean
+                to love?
+              </p>
+              <p>
+                Sentience and Light, the first novel by Kazuo Ishiguro since he
+                was awarded the Nobel Prize in Literature, tells the story of
+                Klara, an Artificial Friend with outstanding observational
+                qualities, who, from her place in the store, watches carefully
+                the behavior of those who come in to browse, and of those who
+                pass on the street outside.
+              </p>
+              <p>
+                She remains hopeful that a customer will soon choose her, but
+                when the possibility emerges that her circumstances may change
+                forever, Klara is warned not to invest too much in the
+                promises of humans.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="3">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">Fiction</span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">Sci-Fi</span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Sentience and Light"
+                data-author="Kazuo Ishiguro"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1603206535i/54120408.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Card 4 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.4s"
+        data-categories="non-fiction,biography,memoir">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Self-Taught Journey Book Cover" class="rounded book-cover"
+              data-src="https://images.unsplash.com/photo-1521056787327-165dc2a32836?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fGJvb2tzfGVufDB8fDB8fHww"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Self-Taught Journey</h3>
+          <p class="text-sm text-gray-600 mb-3">by Tara Westover</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star-half" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">4.5/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="4">
+              <p>
+                Born to survivalists in the mountains of Idaho, Tara Westover
+                was seventeen the first time she set foot in a classroom. Her
+                family was so isolated from mainstream society that there was
+                no one to ensure the children received an education, and no
+                one to intervene when one of Tara's older brothers became
+                violent.
+              </p>
+              <p>
+                When another brother got himself into college, Tara decided to
+                try a new kind of life. Her quest for knowledge transformed
+                her, taking her over oceans and across continents, to Harvard
+                and to Cambridge University. Only then would she wonder if
+                she'd traveled too far, if there was still a way home.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="4">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">
+                Memoir
+              </span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">
+                Biography
+              </span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Self-Taught Journey"
+                data-author="Tara Westover"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1506026635i/35133922.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Card 5 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.5s"
+        data-categories="fiction,science,classic">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Desert Ascendant Book Cover" class="rounded book-cover"
+              data-src="https://images.unsplash.com/photo-1705721357357-ab87523248f7?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGJvb2tzfGVufDB8fDB8fHww"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Desert Ascendant</h3>
+          <p class="text-sm text-gray-600 mb-3">by Frank Herbert</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">5.0/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="5">
+              <p>
+                Set on the desert planet Arrakis, Desert Ascendant is the story of the boy
+                Paul Atreides, heir to a noble family tasked with ruling an
+                inhospitable world where the only thing of value is the
+                "spice" melange, a drug capable of extending life and
+                enhancing consciousness.
+              </p>
+              <p>
+                Coveted across the known universe, melange is a prize worth
+                killing for. When House Atreides is betrayed, the destruction
+                of Paul's family will set the boy on a journey toward a
+                destiny greater than he could ever have imagined.
+              </p>
+              <p>
+                And as he evolves into the mysterious man known as Muad'Dib,
+                he will bring to fruition humankind's most ancient and
+                unattainable dream.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="5">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">
+                Sci-Fi
+              </span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">
+                Classic
+              </span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Desert Ascendant"
+                data-author="Frank Herbert"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1555447414i/44767458.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Card 6 -->
+      <div class="book-card neumorph p-6 stagger-item" style="animation-delay: 0.6s"
+        data-categories="fiction,mystery,thriller">
+        <div class="book-card-content">
+          <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+              alt="Unspoken Truth Book Cover" class="rounded book-cover"
+              data-src="https://images.unsplash.com/photo-1535905557558-afc4877a26fc?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Ym9va3N8ZW58MHx8MHx8fDA%3D"
+              onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+          </div>
+          <h3 class="text-xl font-bold mb-1">Unspoken Truth</h3>
+          <p class="text-sm text-gray-600 mb-3">by Alex Michaelides</p>
+
+          <div class="flex items-center mb-3">
+            <div class="star-rating-display flex">
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+              <i data-lucide="star-half" class="w-4 h-4 text-purple-600"></i>
+            </div>
+            <span class="ml-2 text-sm text-gray-700">4.5/5</span>
+          </div>
+
+          <div class="neumorph-inset p-3 mb-4">
+            <div class="review-content" data-index="6">
+              <p>
+                Alicia Berenson's life is seemingly perfect. A famous painter
+                married to an in-demand fashion photographer, she lives in a
+                grand house with big windows overlooking a park in one of
+                London's most desirable areas. One evening her husband Gabriel
+                returns home late from a fashion shoot, and Alicia shoots him
+                five times in the face, and then never speaks another word.
+              </p>
+              <p>
+                Theo Faber is a criminal psychotherapist who has waited a long
+                time for the opportunity to work with Alicia. His
+                determination to get her to talk and unravel the mystery of
+                why she shot her husband takes him down a twisting path into
+                his own motivations.
+              </p>
+            </div>
+            <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm" data-target="6">
+              <span>Read more</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="book-card-footer">
+          <div class="flex justify-between items-center">
+            <div class="flex flex-wrap">
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">
+                Thriller
+              </span>
+              <span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mb-2">
+                Mystery
+              </span>
+            </div>
+            <div>
+              <button class="neumorph-btn p-2 text-purple-800 write-review-btn" data-book="Unspoken Truth"
+                data-author="Alex Michaelides"
+                data-cover="https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1668782119i/40097951.jpg">
+                <i data-lucide="edit-3" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- No empty div here anymore! -->
+    </div>
+
+    <div class="mt-8 flex justify-center">
+      <button id="load-more-btn"
+        class="neumorph-btn load-more-btn flex items-center px-8 py-4 bg-purple-500 text-white font-medium text-lg transition-all duration-300 transform hover:scale-105">
+        <span>Discover More Books</span>
+        <i data-lucide="book-open" class="w-6 h-6 ml-3"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- Newsletter Section -->
+  <section class="max-w-6xl mx-auto mb-16">
+    <div class="neumorph p-3 md:p-8 fade-in" style="animation-delay: 0.7s">
+      <div id="newsletter-container">
+        <div class="flex flex-col md:flex-row items-center">
+          <div class="md:w-2/3 mb-6 md:mb-0 md:pr-8">
+            <h2 class="text-2xl font-bold mb-3 text-purple-800">
+              Join Our Book Club
+            </h2>
+            <p class="text-gray-700 mb-4">
+              Subscribe to our newsletter to receive personalized book
+              recommendations, exclusive author interviews, and special
+              offers.
+            </p>
+
+            <div class="flex flex-col sm:flex-row">
+              <div class="neumorph-inset p-2 flex items-center mb-3 sm:mb-0 sm:mr-4 flex-grow">
+                <i data-lucide="mail" class="w-5 h-5 ml-2 text-gray-500"></i>
+                <input type="email" id="subscribe-email" placeholder="Your email address"
+                  class="w-full bg-transparent border-none outline-none px-3 py-2" />
+              </div>
+              <button id="subscribe-btn" class="neumorph-btn px-5 py-3 bg-purple-600 text-white font-medium">
+                Subscribe
+              </button>
+            </div>
+          </div>
+
+          <div class="md:w-1/3 flex justify-center">
+            <div class="neumorph p-4 h-32 w-32 rounded-full flex items-center justify-center bg-purple-100">
+              <i data-lucide="book-open" class="w-16 h-16 text-purple-800"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thanks Message (Initially Hidden) -->
+        <div id="thanks-message" class="thanks-message mt-6 text-center px-4 sm:px-0">
+          <div class="neumorph bg-purple-100 p-6 sm:p-8 rounded-xl inline-block w-full max-w-md mx-auto">
+            <div class="flex flex-col sm:flex-row items-center justify-center">
+              <i data-lucide="check-circle" class="w-10 h-10 text-green-500 mb-2 sm:mb-0 sm:mr-3"></i>
+              <h3 class="text-xl font-bold text-purple-800">Thank You!</h3>
+            </div>
+            <p class="mt-4 text-gray-700 text-sm sm:text-base ">
+              You've been successfully subscribed to our newsletter.<br />
+              Get ready for some amazing book recommendations!
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Write Review Modal -->
+  <div id="review-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="neumorph bg-white p-8 max-w-md w-full mx-4 overflow-y-auto max-h-[90vh]" style="scrollbar-width: thin; scrollbar-color: var(--accent-light) var(--bg-color);">
+      <style>
+        .neumorph.bg-white::-webkit-scrollbar {
+          width: 8px;
+        }
+        .neumorph.bg-white::-webkit-scrollbar-track {
+          background: var(--bg-color);
+          border-radius: 10px;
+        }
+        .neumorph.bg-white::-webkit-scrollbar-thumb {
+          background: var(--accent-light);
+          border-radius: 10px;
+        }
+        .neumorph.bg-white::-webkit-scrollbar-thumb:hover {
+          background: var(--accent);
+        }
+        textarea.neumorph-inset::-webkit-scrollbar {
+          width: 6px;
+        }
+        textarea.neumorph-inset::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        textarea.neumorph-inset::-webkit-scrollbar-thumb {
+          background: var(--accent-light);
+          border-radius: 6px;
+        }
+      </style>
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-purple-800">Write Your Review</h3>
+        <button id="close-review-modal" class="neumorph-btn p-2">
+          <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
+        </button>
+      </div>
+
+      <div class="mb-6 flex items-center justify-center">
+        <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+          alt="Book Cover" class="rounded mr-4 book-cover" style="width: 100px; height: 150px" id="review-book-cover"
+          onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+        <div>
+          <h4 class="font-bold mb-1" id="review-book-title">Book Title</h4>
+          <p class="text-sm text-gray-600 mb-3" id="review-book-author">
+            by Author Name
+          </p>
+        </div>
+      </div>
+
+      <form id="review-form">
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Your Review Title</label>
+          <input type="text" class="neumorph-inset w-full p-3 bg-transparent outline-none"
+            placeholder="Give your review a title..." required />
+        </div>
+
+        <div class="mb-6">
+          <p class="text-center mb-3">How would you rate this book?</p>
+          <div class="review-star-rating mb-4" id="review-stars">
+            <input type="radio" id="review-star1" name="review-rating" value="1" required />
+            <label for="review-star1" title="1 star">★</label>
+            <input type="radio" id="review-star2" name="review-rating" value="2" />
+            <label for="review-star2" title="2 stars">★</label>
+            <input type="radio" id="review-star3" name="review-rating" value="3" />
+            <label for="review-star3" title="3 stars">★</label>
+            <input type="radio" id="review-star4" name="review-rating" value="4" />
+            <label for="review-star4" title="4 stars">★</label>
+            <input type="radio" id="review-star5" name="review-rating" value="5" />
+            <label for="review-star5" title="5 stars">★</label>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Your Review</label>
+          <textarea id="review-text" class="neumorph-inset w-full p-3 bg-transparent outline-none" rows="6"
+            placeholder="Share your thoughts about this book..." required
+            style="scrollbar-width: thin; scrollbar-color: var(--accent-light) transparent;"></textarea>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Did you purchase this book?</label>
+          <div class="flex space-x-4">
+            <label class="flex items-center">
+              <input type="radio" name="purchased" value="yes" class="mr-2" required />
+              <span>Yes</span>
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="purchased" value="no" class="mr-2" />
+              <span>No</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Would you recommend this book?</label>
+          <div class="flex space-x-4">
+            <label class="flex items-center">
+              <input type="radio" name="recommend" value="yes" class="mr-2" required />
+              <span>Yes</span>
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="recommend" value="no" class="mr-2" />
+              <span>No</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="neumorph-btn w-full py-3 bg-purple-600 text-white font-medium">
+          Submit Review
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Rating Modal (initially hidden) -->
+  <div id="rating-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="neumorph bg-white p-8 max-w-md w-full mx-4 overflow-y-auto max-h-[90vh]" style="scrollbar-width: thin; scrollbar-color: var(--accent-light) var(--bg-color);">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-purple-800">Rate This Book</h3>
+        <button id="close-rating-modal" class="neumorph-btn p-2">
+          <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
+        </button>
+      </div>
+
+      <div class="mb-6 flex items-center justify-center">
+        <img src="https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png"
+          alt="Book Cover" class="rounded mr-4 book-cover" style="width: 100px; height: 150px" data-src=""
+          onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';" />
+        <div>
+          <h4 class="font-bold mb-1 book-title">Stellar Odyssey</h4>
+          <p class="text-sm text-gray-600 mb-3 book-author">by Andy Weir</p>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <p class="text-center mb-3">How would you rate this book?</p>
+        <div class="star-rating mb-4">
+          <input type="radio" id="star1" name="rating" value="1" />
+          <label for="star1" title="1 star">★</label>
+          <input type="radio" id="star2" name="rating" value="2" />
+          <label for="star2" title="2 stars">★</label>
+          <input type="radio" id="star3" name="rating" value="3" />
+          <label for="star3" title="3 stars">★</label>
+          <input type="radio" id="star4" name="rating" value="4" />
+          <label for="star4" title="4 stars">★</label>
+          <input type="radio" id="star5" name="rating" value="5" />
+          <label for="star5" title="5 stars">★</label>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-gray-700 mb-2">Your Review (Optional)</label>
+        <textarea id="user-review" class="neumorph-inset w-full p-3 bg-transparent outline-none" rows="4"
+          placeholder="Write your thoughts about this book..."></textarea>
+      </div>
+
+      <button class="neumorph-btn w-full py-3 bg-purple-600 text-white font-medium">
+        Submit Rating
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="max-w-6xl mx-auto pt-8 pb-16">
+    <div class="neumorph p-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <div class="flex items-center mb-4">
+            <div class="mr-3 text-purple-600">
+              <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-xl font-bold text-purple-800">PageTurners</h3>
+          </div>
+          <p class="text-gray-600 mb-4">
+            Discover your next favorite book with our curated reviews and
+            recommendations.
+          </p>
+          <div class="flex space-x-4">
+            <a href="#" class="neumorph-btn p-2 text-purple-800">
+              <i data-lucide="facebook" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="neumorph-btn p-2 text-purple-800">
+              <i data-lucide="twitter" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="neumorph-btn p-2 text-purple-800">
+              <i data-lucide="instagram" class="w-5 h-5"></i>
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-lg font-bold mb-4 text-purple-800">Quick Links</h4>
+          <ul class="space-y-2">
+            <li>
+              <a href="#" class="text-gray-600 hover:text-purple-800">Home</a>
+            </li>
+            <li>
+              <a href="#" class="text-gray-600 hover:text-purple-800">Browse Books</a>
+            </li>
+            <li>
+              <a href="#" class="text-gray-600 hover:text-purple-800">Top Rated</a>
+            </li>
+            <li>
+              <a href="#" class="text-gray-600 hover:text-purple-800">New Releases</a>
+            </li>
+            <li>
+              <a href="#" class="text-gray-600 hover:text-purple-800">Authors</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-lg font-bold mb-4 text-purple-800">Contact Us</h4>
+          <ul class="space-y-2">
+            <li class="flex items-center text-gray-600">
+              <i data-lucide="mail" class="w-4 h-4 mr-2"></i>
+              <span>info@pageturners.com</span>
+            </li>
+            <li class="flex items-center text-gray-600">
+              <i data-lucide="phone" class="w-4 h-4 mr-2"></i>
+              <span>+1 (555) 123-4567</span>
+            </li>
+            <li class="flex items-center text-gray-600">
+              <i data-lucide="map-pin" class="w-4 h-4 mr-2"></i>
+              <span>123 Book Lane, Reading City</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-gray-200 text-center text-gray-600">
+        <p>&copy; 2025 PageTurners. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Initialize Lucide icons
+      if (window.lucide && typeof lucide.createIcons === "function") {
+        lucide.createIcons();
+      }
+
+      // Load real book cover images
+      document.querySelectorAll("img.book-cover[data-src]").forEach((img) => {
+        const realSrc = img.getAttribute("data-src");
+        if (realSrc) {
+          const newImg = new Image();
+          newImg.onload = function () {
+            img.src = realSrc;
+          };
+          newImg.src = realSrc;
+        }
+      });
+
+      const updateLucideIcon = (icon, name) => {
+        const newIcon = lucide.createIcon(name);
+        if (newIcon && icon.parentElement) icon.replaceWith(newIcon);
+      };
+
+      // Featured book toggle functionality
+      const featuredToggleBtn = document.querySelector(
+        ".featured-book .read-more-btn"
+      );
+      if (featuredToggleBtn) {
+        featuredToggleBtn.addEventListener("click", () => {
+          const content = document.querySelector(
+            ".featured-book .review-content"
+          );
+          content.classList.toggle("expanded");
+          const span = featuredToggleBtn.querySelector("span");
+          const icon = featuredToggleBtn.querySelector("i");
+          const isExpanded = content.classList.contains("expanded");
+          span.textContent = isExpanded ? "Read less" : "Read more";
+          updateLucideIcon(icon, isExpanded ? "chevron-up" : "chevron-down");
+        });
+      }
+
+      // Write Review functionality
+      const reviewModal = document.getElementById("review-modal");
+      const closeReviewModal = document.getElementById("close-review-modal");
+      const reviewBookTitle = document.getElementById("review-book-title");
+      const reviewBookAuthor = document.getElementById("review-book-author");
+      const reviewBookCover = document.getElementById("review-book-cover");
+      const reviewForm = document.getElementById("review-form");
+
+      // Function to lock/unlock body scroll
+      function toggleBodyScroll(lock) {
+        if (lock) {
+          // Save the current scroll position
+          const scrollY = window.scrollY;
+          document.body.style.position = 'fixed';
+          document.body.style.top = `-${scrollY}px`;
+          document.body.style.width = '100%';
+          document.body.style.overflow = 'hidden';
+        } else {
+          // Restore the scroll position
+          const scrollY = document.body.style.top;
+          document.body.style.position = '';
+          document.body.style.top = '';
+          document.body.style.width = '';
+          document.body.style.overflow = '';
+          window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        }
+      }
+
+      // Add event listeners to all "Write Review" buttons
+      document.querySelectorAll(".write-review-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          // Get book info from data attributes
+          const bookTitle = button.getAttribute("data-book");
+          const bookAuthor = button.getAttribute("data-author");
+          const bookCover = button.getAttribute("data-cover");
+
+          // Update the modal with the book info
+          reviewBookTitle.textContent = bookTitle;
+          reviewBookAuthor.textContent = `by ${bookAuthor}`;
+
+          // Load the book cover image
+          if (bookCover) {
+            const img = new Image();
+            img.onload = function () {
+              reviewBookCover.src = bookCover;
+            };
+            img.src = bookCover;
+          }
+
+          // Show the modal and lock body scroll
+          reviewModal.classList.remove("hidden");
+          toggleBodyScroll(true);
+        });
+      });
+
+      // Close the review modal
+      if (closeReviewModal) {
+        closeReviewModal.addEventListener("click", () => {
+          reviewModal.classList.add("hidden");
+          toggleBodyScroll(false); // Unlock body scroll
+        });
+
+        reviewModal.addEventListener("click", (e) => {
+          if (e.target === reviewModal) {
+            reviewModal.classList.add("hidden");
+            toggleBodyScroll(false); // Unlock body scroll
+          }
+        });
+      }
+
+      // Handle form submission
+      if (reviewForm) {
+        reviewForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+
+          // Show success message
+          alert(
+            "Your review has been submitted successfully! Thank you for your feedback."
+          );
+
+          // Close the modal and unlock body scroll
+          reviewModal.classList.add("hidden");
+          toggleBodyScroll(false);
+
+          // Reset the form
+          reviewForm.reset();
+        });
+      }
+
+      // Add event listener to the subscribe button
+      const subscribeBtn = document.getElementById("subscribe-btn");
+      const thanksMessage = document.getElementById("thanks-message");
+      const subscribeEmail = document.getElementById("subscribe-email");
+
+      if (subscribeBtn && thanksMessage) {
+        subscribeBtn.addEventListener("click", () => {
+          const email = subscribeEmail?.value.trim();
+
+          // Email format validation
+          const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+          if (isValidEmail) {
+            thanksMessage.classList.add("visible");
+
+            // Optional: disable inputs
+            subscribeBtn.disabled = true;
+            subscribeBtn.classList.add("opacity-50");
+            subscribeEmail.disabled = true;
+          } else {
+            alert("Please enter a valid email address");
+          }
+        });
+      }
+      // Load more books functionality
+      const loadMoreBtn = document.getElementById("load-more-btn");
+
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener("click", loadMoreBooks);
+      }
+
+      // Book data for additional books
+      const bookData = [
+        {
+          title: "Mind Focus",
+          author: "Cal Newport",
+          image:
+            "https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png",
+          imageSrc:
+            "https://images.unsplash.com/photo-1604866830893-c13cafa515d5?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Ym9va3N8ZW58MHx8MHx8fDA%3D",
+          rating: 4,
+          categories: "non-fiction,self-help",
+          tags: ["Productivity", "Focus"],
+          review:
+            "Mind Focus is an indispensable guide to anyone seeking focused success in a distracted world.",
+        },
+        {
+          title: "The Seeker",
+          author: "Paulo Coelho",
+          image:
+            "https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png",
+          imageSrc:
+            "https://images.unsplash.com/photo-1610116306796-6fea9f4fae38?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Ym9va3N8ZW58MHx8MHx8fDA%3D",
+          rating: 5,
+          categories: "fiction,fantasy,philosophy",
+          tags: ["Fiction", "Philosophy"],
+          review:
+            "A beautiful story about finding your purpose and listening to your heart.",
+        },
+        {
+          title: "Tempest Rise",
+          author: "Kristin Hannah",
+          image:
+            "https://images.unsplash.com/photo-1610116306796-6fea9f4fae38?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Ym9va3N8ZW58MHx8MHx8fDA%3D",
+          imageSrc:
+            "https://images.unsplash.com/photo-1610116306796-6fea9f4fae38?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Ym9va3N8ZW58MHx8MHx8fDA%3D",
+          rating: 4,
+          categories: "fiction,historical",
+          tags: ["Historical", "Fiction"],
+          review:
+            "A powerful American epic about love and heroism and hope, set during the Great Depression.",
+        },
+      ];
+
+      function loadMoreBooks() {
+        const currentCategory = document
+          .querySelector(".category-pill.active")
+          .getAttribute("data-category");
+        const booksGrid = document.getElementById("books-grid");
+
+        bookData.forEach((book, index) => {
+          // Create a new book card element
+          const card = document.createElement("div");
+          card.className = "book-card neumorph p-6 stagger-item fade-in";
+          card.style.animationDelay = `${0.1 * index}s`;
+          card.setAttribute("data-categories", book.categories);
+
+          // Build the card HTML structure
+          card.innerHTML = `
+              <div class="book-card-content">
+                <div class="mb-4 neumorph-inset p-3 flex items-center justify-center book-cover-container">
+                  <img
+                    src="${book.image}"
+                    data-src="${book.imageSrc}"
+                    alt="${book.title} Book Cover"
+                    class="rounded book-cover"
+                    onerror="this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/browser-logos/73.0.0/chrome/chrome_256x256.png';"
+                  />
+                </div>
+                <h3 class="text-xl font-bold mb-1">${book.title}</h3>
+                <p class="text-sm text-gray-600 mb-3">by ${book.author}</p>
+
+                <div class="flex items-center mb-3">
+                  <div class="star-rating-display flex">
+                    ${Array(book.rating)
+              .fill(
+                '<i data-lucide="star" class="w-4 h-4 text-purple-600"></i>'
+              )
+              .join("")}
+                    ${Array(5 - book.rating)
+              .fill(
+                '<i data-lucide="star" class="w-4 h-4 text-gray-300"></i>'
+              )
+              .join("")}
+                  </div>
+                  <span class="ml-2 text-sm text-gray-700">${book.rating
+            }.0/5</span>
+                </div>
+
+                <div class="neumorph-inset p-3 mb-4">
+                  <div class="review-content">
+                    <p>${book.review}</p>
+                  </div>
+                  <button class="read-more-btn mt-2 text-purple-800 flex items-center text-sm">
+                    <span>Read more</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="book-card-footer">
+                <div class="flex justify-between items-center">
+                  <div class="flex flex-wrap">
+                    ${book.tags
+              .map(
+                (tag) =>
+                  `<span class="neumorph-btn px-2 py-1 text-xs text-purple-800 mr-2 mb-2">${tag}</span>`
+              )
+              .join("")}
+                  </div>
+                  <div>
+                    <button 
+                      class="neumorph-btn p-2 text-purple-800 write-review-btn"
+                      data-book="${book.title}" 
+                      data-author="${book.author}"
+                      data-cover="${book.imageSrc}"
+                    >
+                      <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+          // Add the card directly to the books grid container
+          booksGrid.appendChild(card);
+
+          // If we're filtering by category and not showing "all", hide cards that don't match
+          if (currentCategory !== "all") {
+            if (!book.categories.includes(currentCategory)) {
+              card.style.display = "none";
+            }
+          }
+
+          // Load real book cover
+          const img = card.querySelector("img.book-cover");
+          const realSrc = img.getAttribute("data-src");
+          if (realSrc) {
+            const newImg = new Image();
+            newImg.onload = function () {
+              img.src = realSrc;
+            };
+            newImg.src = realSrc;
+          }
+        });
+
+        // Re-initialize Lucide icons for the new cards
+        lucide.createIcons();
+
+        // Set up read more buttons in new cards
+        document.querySelectorAll(".read-more-btn").forEach((btn) => {
+          if (!btn.hasEventListener) {
+            btn.hasEventListener = true;
+            btn.addEventListener("click", () => {
+              const content = btn
+                .closest(".neumorph-inset")
+                .querySelector(".review-content");
+              content.classList.toggle("expanded");
+              const span = btn.querySelector("span");
+              const icon = btn.querySelector("i");
+              const isExpanded = content.classList.contains("expanded");
+              span.textContent = isExpanded ? "Read less" : "Read more";
+              updateLucideIcon(
+                icon,
+                isExpanded ? "chevron-up" : "chevron-down"
+              );
+            });
+          }
+        });
+
+        // Add write review functionality to new cards
+        document.querySelectorAll(".write-review-btn").forEach((button) => {
+          if (!button.hasEventListener) {
+            button.hasEventListener = true;
+            button.addEventListener("click", () => {
+              const bookTitle = button.getAttribute("data-book");
+              const bookAuthor = button.getAttribute("data-author");
+              const bookCover = button.getAttribute("data-cover");
+
+              reviewBookTitle.textContent = bookTitle;
+              reviewBookAuthor.textContent = `by ${bookAuthor}`;
+
+              if (bookCover) {
+                const img = new Image();
+                img.onload = function () {
+                  reviewBookCover.src = bookCover;
+                };
+                img.src = bookCover;
+              }
+
+              reviewModal.classList.remove("hidden");
+            });
+          }
+        });
+
+        // Transform the load more button
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.classList.remove("bg-purple-500");
+        loadMoreBtn.classList.add("bg-gray-400");
+        loadMoreBtn.querySelector("span").textContent = "All Books Loaded";
+        loadMoreBtn.querySelector("i").setAttribute("data-lucide", "check");
+        lucide.createIcons();
+      }
+
+      // Category Filtering Functionality
+      const categoryButtons = document.querySelectorAll(".category-pill");
+      const bookCards = document.querySelectorAll(".book-card");
+
+      categoryButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          // Update active button styling
+          categoryButtons.forEach((btn) => {
+            btn.classList.remove("active");
+            btn.classList.add("text-gray-700");
+            btn.classList.remove("text-purple-800");
+          });
+
+          button.classList.add("active");
+          button.classList.add("text-purple-800");
+          button.classList.remove("text-gray-700");
+
+          const category = button.getAttribute("data-category");
+
+          // Filter books based on category
+          bookCards.forEach((card) => {
+            if (category === "all") {
+              card.style.display = "block";
+            } else {
+              const categories = card.getAttribute("data-categories");
+              if (categories && categories.includes(category)) {
+                card.style.display = "block";
+              } else {
+                card.style.display = "none";
+              }
+            }
+          });
+        });
+      });
+
+      // Search bar functionality
+      const searchInput = document.getElementById("search-input");
+      if (searchInput) {
+        searchInput.addEventListener("focus", () => {
+          searchInput.parentElement.style.boxShadow =
+            "inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light)";
+        });
+
+        searchInput.addEventListener("blur", () => {
+          searchInput.parentElement.style.boxShadow =
+            "inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)";
+        });
+
+        // Search functionality
+        searchInput.addEventListener("input", () => {
+          const query = searchInput.value.toLowerCase();
+          const cards = document.querySelectorAll(".book-card");
+          const featuredSection = document.querySelector("section.max-w-6xl.mx-auto.mb-16:first-of-type");
+
+          // Show/hide featured section based on search query
+          if (query.trim() !== '') {
+            featuredSection.style.display = "none";
+          } else {
+            featuredSection.style.display = "block";
+          }
+
+          cards.forEach((card) => {
+            const title =
+              card.querySelector("h3")?.textContent?.toLowerCase() || "";
+            const author =
+              card.querySelector("p")?.textContent?.toLowerCase() || "";
+            const combined = `${title} ${author}`;
+
+            if (combined.includes(query)) {
+              card.style.display = "";
+            } else {
+              card.style.display = "none";
+            }
+          });
+        });
+      }
+
+      // Read more toggles for existing cards
+      document
+        .querySelectorAll(".read-more-btn[data-target]")
+        .forEach((btn) => {
+          if (!btn.hasEventListener) {
+            btn.hasEventListener = true;
+            btn.addEventListener("click", () => {
+              const index = btn.getAttribute("data-target");
+              const content = document.querySelector(
+                `.review-content[data-index="${index}"]`
+              );
+              content.classList.toggle("expanded");
+              const span = btn.querySelector("span");
+              const icon = btn.querySelector("i");
+              const isExpanded = content.classList.contains("expanded");
+              span.textContent = isExpanded ? "Read less" : "Read more";
+              updateLucideIcon(
+                icon,
+                isExpanded ? "chevron-up" : "chevron-down"
+              );
+            });
+          }
+        });
+
+      // Rating modal functionality
+      const modal = document.getElementById("rating-modal");
+      const closeModal = document.getElementById("close-rating-modal");
+
+      if (closeModal && modal) {
+        closeModal.addEventListener("click", () => {
+          modal.classList.add("hidden");
+          toggleBodyScroll(false); // Unlock body scroll
+        });
+
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            modal.classList.add("hidden");
+            toggleBodyScroll(false); // Unlock body scroll
+          }
+        });
+      }
+      
+      // Add open functionality for the rating modal if needed
+      document.querySelectorAll(".rate-book-btn").forEach((button) => {
+        if (button) {
+          button.addEventListener("click", () => {
+            modal.classList.remove("hidden");
+            toggleBodyScroll(true); // Lock body scroll
+          });
+        }
+      });
+
+      // Rating stars functionality
+      document.querySelectorAll(".star-rating input").forEach((input) => {
+        input.addEventListener("change", () => {
+          console.log(`Rating submitted: ${input.value} stars`);
+        });
+      });
+
+      // Enhanced star rating interaction
+      function setupStarRating(container) {
+        const stars = container.querySelectorAll('input[type="radio"]');
+        const labels = container.querySelectorAll('label');
+        
+        // Clear previous event listeners if any
+        stars.forEach(star => {
+          star.removeEventListener('click', star.starHandler);
+        });
+        
+        // When clicking on a star, highlight it and all stars before it
+        stars.forEach(star => {
+          star.starHandler = function() {
+            const starValue = parseInt(this.value);
+            
+            // Update all stars based on the selected value
+            labels.forEach((label, index) => {
+              if (index < starValue) {
+                label.style.color = 'var(--accent)';
+              } else {
+                label.style.color = '#ddd';
+              }
+            });
+          };
+          
+          star.addEventListener('click', star.starHandler);
+        });
+        
+        // Handle hover effects
+        labels.forEach((label, index) => {
+          // On hover, temporarily highlight this star and all stars before it
+          label.addEventListener('mouseenter', () => {
+            labels.forEach((l, i) => {
+              if (i <= index) {
+                l.style.color = 'var(--accent)';
+              } else {
+                l.style.color = '#ddd';
+              }
+            });
+          });
+          
+          // On mouse leave, restore the actual selected state
+          label.addEventListener('mouseleave', () => {
+            const selectedValue = parseInt(
+              container.querySelector('input:checked')?.value || 0
+            );
+            
+            labels.forEach((l, i) => {
+              if (i < selectedValue) {
+                l.style.color = 'var(--accent)';
+              } else {
+                l.style.color = '#ddd';
+              }
+            });
+          });
+          
+          // On click, update the selected state
+          label.addEventListener('click', () => {
+            stars[index].checked = true;
+            stars[index].dispatchEvent(new Event('click'));
+          });
+        });
+      }
+
+      // Setup both star rating containers
+      const starRatings = document.querySelectorAll('.star-rating, .review-star-rating');
+      starRatings.forEach(setupStarRating);
+    });
+  </script>
+</body>
+
+</html>
