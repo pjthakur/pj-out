@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Academic Progress Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#D6BCFA', 
+                            DEFAULT: '#9F7AEA', 
+                            dark: '#6B46C1', 
+                        },
+                        secondary: {
+                            light: '#B2F5EA', 
+                            DEFAULT: '#4FD1C5', 
+                            dark: '#319795', 
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        .glass:hover {
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+            transition: all 0.5s ease;
+            @media (min-width: 768px) {
+                height: 250px;
+            }
+        }
+        
+        .chart-container:hover {
+            transform: scale(1.02);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(159, 122, 234, 0.5);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(159, 122, 234, 0.8);
+        }
+
+        body {
+            background: linear-gradient(135deg, #D6BCFA 0%, #B2F5EA 100%);
+            min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+        
+        .dark body {
+            background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-alert {
+            animation: pulse 3s infinite;
+        }
+        
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4FD1C5;
+        }
+        
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4FD1C5;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: #9F7AEA;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px 0 rgba(31, 38, 135, 0.2);
+        }
+        
+        /* Modern card effects */
+        .card-hover:hover .card-icon {
+            transform: translateY(-5px);
+            color: #9F7AEA;
+        }
+        
+        .card-icon {
+            transition: all 0.3s ease;
+        }
+        
+        /* Progress bar */
+        .progress-bar {
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 6px 0;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #9F7AEA 0%, #4FD1C5 100%);
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+            transition: width 1s ease;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        .grid {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .glass {
+            animation: fadeIn 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+        
+        /* Add distinct colors to each subject's progress bar */
+        .progress-math {
+            background: linear-gradient(90deg, #9F7AEA 0%, #805AD5 100%);
+        }
+        
+        .progress-science {
+            background: linear-gradient(90deg, #4FD1C5 0%, #319795 100%);
+        }
+        
+        .progress-history {
+            background: linear-gradient(90deg, #F687B3 0%, #D53F8C 100%);
+        }
+        
+    </style>
+</head>
+<body class="font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300 overflow-x-hidden">
+    
+    <div class="container mx-auto px-2 sm:px-4 py-8 pb-20 md:pb-8 max-w-sm sm:max-w-xl md:max-w-3xl lg:max-w-5xl">
+        <header class="mb-6">
+            <div class="hidden md:flex justify-between items-center glass rounded-xl p-3 mb-5 card-hover" style="background-color: #f0f0f0;">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-primary-light dark:bg-primary-dark rounded-full flex items-center justify-center text-primary-dark dark:text-white mr-3">
+                        <i class="fas fa-user-graduate text-lg"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-primary-dark dark:text-primary-light">Academic Progress Tracker</h1>
+                </div>
+                <div class="flex items-center space-x-6 pr-3">
+                    <a href="#" class="text-primary-dark dark:text-primary-light hover:text-primary hover:underline flex items-center">
+                        <i class="fas fa-home mr-2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#subjects-section" class="text-primary-dark dark:text-primary-light hover:text-primary hover:underline flex items-center" id="stats-link">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        <span>Statistics</span>
+                    </a>
+                    <a href="#tasks-section" class="text-primary-dark dark:text-primary-light hover:text-primary hover:underline flex items-center" id="notifications-link">
+                        <i class="fas fa-bell mr-2"></i>
+                        <span>Notifications</span>
+                    </a>
+                    <a href="#" class="text-primary-dark dark:text-primary-light hover:text-primary hover:underline flex items-center" id="profile-link">
+                        <i class="fas fa-user mr-2"></i>
+                        <span>Profile</span>
+                    </a>
+                </div>
+            </div>
+            <div class="flex flex-col md:hidden justify-center items-center glass rounded-xl p-2 mb-5 card-hover" style="background-color: #f0f0f0;">
+                <div class="flex flex-col items-center mb-4">
+                    <div class="w-12 h-12 bg-primary-light dark:bg-primary-dark rounded-full flex items-center justify-center text-primary-dark dark:text-white mb-2">
+                        <i class="fas fa-user-graduate text-xl"></i>
+                    </div>
+                    <div class="text-center">
+                        <h1 class="text-3xl font-bold text-primary-dark dark:text-primary-light">Academic Progress</h1>
+                        <p class="text-gray-600 dark:text-gray-400">Welcome back, <span class="font-semibold">User</span>!</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="glass rounded-xl p-4 col-span-1 md:col-span-2 lg:col-span-3 card-hover " style="background-color: #f0f0f0;">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                    <h2 class="text-xl mb-2 sm:mb-0 font-semibold text-primary-dark dark:text-primary-light flex items-center justify-center w-full sm:w-auto text-center">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        Overall Progress
+                    </h2>
+                    <div class="flex items-center glass rounded-lg p-2 mb-2 mx-auto sm:mx-0">
+                        <span class="text-sm mr-2 text-gray-600 dark:text-gray-300">Term:</span>
+                        <select id="termSelector" class="glass text-sm p-1.5 pl-3 pr-8 rounded-full bg-white/30 dark:bg-gray-800/30 appearance-none relative">
+                            <option value="spring2025">Spring 2025</option>
+                            <option value="fall2024">Fall 2024</option>
+                            <option value="summer2024">Summer 2024</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-col md:flex-row items-center justify-center space-y-6 md:space-y-0 md:space-x-6">
+                    <div class="w-48 h-48 relative mx-auto md:mx-0">
+                        <canvas id="overallGPA"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span class="text-3xl font-bold text-primary-dark dark:text-primary-light">3.7</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">Current GPA</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="glass p-4 rounded-lg text-center card-hover shadow-lg shadow-purple-400/30 bg-gradient-to-br from-white to-purple-200/20 dark:from-gray-800 dark:to-purple-700/30 border border-purple-200/50 dark:border-purple-700/50">
+                            <div class="text-2xl font-bold text-purple-700 dark:text-purple-300 group">
+                                <i class="fas fa-user-check text-xl mb-2 text-purple-500 dark:text-purple-400 card-icon"></i>
+                                <span>87%</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                                Attendance
+                            </div>
+                        </div>
+                        <div class="glass p-4 rounded-lg text-center card-hover shadow-lg shadow-blue-400/30 bg-gradient-to-br from-white to-blue-200/20 dark:from-gray-800 dark:to-blue-700/30 border border-blue-200/50 dark:border-blue-700/50">
+                            <div class="text-2xl font-bold text-blue-700 dark:text-blue-300 group">
+                                <i class="fas fa-tasks text-xl mb-2 text-blue-500 dark:text-blue-400 card-icon"></i>
+                                <span>92%</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                                Assignments
+                            </div>
+                        </div>
+                        <div class="glass p-4 rounded-lg text-center card-hover shadow-lg shadow-red-400/30 bg-gradient-to-br from-white to-red-200/20 dark:from-gray-800 dark:to-red-700/30 border border-red-200/50 dark:border-red-700/50">
+                            <div class="text-2xl font-bold text-red-700 dark:text-red-300 group">
+                                <i class="fas fa-exclamation-circle text-xl mb-2 text-red-500 dark:text-red-400 card-icon"></i>
+                                <span>4</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                                Missing Tasks
+                            </div>
+                        </div>
+                        <div class="glass p-4 rounded-lg text-center card-hover shadow-lg shadow-green-400/30 bg-gradient-to-br from-white to-green-200/20 dark:from-gray-800 dark:to-green-700/30 border border-green-200/50 dark:border-green-700/50">
+                            <div class="text-2xl font-bold text-green-700 dark:text-green-300 group">
+                                <i class="fas fa-file-alt text-xl mb-2 text-green-500 dark:text-green-400 card-icon"></i>
+                                <span>85%</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                                Exam Average
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="subjects-section" class="glass rounded-xl p-4 card-hover h-full flex flex-col w-full" style="background-color: #f0f0f0;">
+                <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3 flex-shrink-0">
+                    <i class="fas fa-square-root-alt mr-2"></i>
+                    Mathematics
+                </h2>
+                <div class="chart-container mb-4 max-w-full h-full">
+                    <canvas id="mathChart"></canvas>
+                </div>
+                <div class="flex justify-between items-center mt-auto pt-2">
+                    <div class="mr-2">
+                        <span class="block text-lg font-bold text-secondary-dark dark:text-secondary-light">A-</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Current Grade</span>
+                    </div>
+                    <div class="w-20 sm:w-28 md:w-32 lg:w-40 flex-shrink-0 mx-2">
+                        <span class="text-xs text-gray-600 dark:text-gray-400 flex justify-between">
+                            <span>Progress</span>
+                            <span>92%</span>
+                        </span>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill progress-math" style="width: 92%"></div>
+                        </div>
+                    </div>
+                   
+                </div>
+                 <div class="pulse-alert glass p-1.5 rounded-lg text-xs text-primary-dark dark:text-primary-light flex items-center flex-shrink-0 ml-2 whitespace-nowrap mt-2">
+                        <i class="fas fa-calendar-day mr-1"></i>
+                        <span class="font-bold mr-1">Quiz</span> tmrw
+                    </div>
+            </div>
+            
+            <div class="glass rounded-xl p-4 card-hover h-full flex flex-col" style="background-color: #f0f0f0;">
+                <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3 flex-shrink-0">
+                    <i class="fas fa-flask mr-2"></i>
+                    Science
+                </h2>
+                <div class="chart-container mb-4 max-w-full h-full">
+                    <canvas id="scienceChart"></canvas>
+                </div>
+                <div class="flex justify-between items-center mt-auto pt-2">
+                    <div class="mr-2">
+                        <span class="block text-lg font-bold text-secondary-dark dark:text-secondary-light">B+</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Current Grade</span>
+                    </div>
+                    <div class="w-20 sm:w-28 md:w-32 lg:w-40 flex-shrink-0 mx-2">
+                        <span class="text-xs text-gray-600 dark:text-gray-400 flex justify-between">
+                            <span>Progress</span>
+                            <span>78%</span>
+                        </span>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill progress-science" style="width: 78%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                    <div class="mt-2 glass p-1.5 rounded-lg text-xs text-primary-dark dark:text-primary-light flex items-center flex-shrink-0 ml-2 whitespace-nowrap">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        <span class="font-bold mr-1">Lab</span> in 3d
+                    </div>
+            </div>
+            
+            <div class="glass rounded-xl p-4 card-hover h-full flex flex-col" style="background-color: #f0f0f0;">
+                <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3 flex-shrink-0">
+                    <i class="fas fa-landmark mr-2"></i>
+                    History
+                </h2>
+                <div class="chart-container mb-4 max-w-full h-full">
+                    <canvas id="historyChart"></canvas>
+                </div>
+                <div class="flex justify-between items-center mt-auto pt-2">
+                    <div class="mr-2">
+                        <span class="block text-lg font-bold text-secondary-dark dark:text-secondary-light">A</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Current Grade</span>
+                    </div>
+                    <div class="w-20 sm:w-28 md:w-32 lg:w-40 flex-shrink-0 mx-2">
+                        <span class="text-xs text-gray-600 dark:text-gray-400 flex justify-between">
+                            <span>Progress</span>
+                            <span>95%</span>
+                        </span>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill progress-history" style="width: 95%"></div>
+                        </div>
+                    </div>
+                </div>
+                    <div class="mt-2 glass p-1.5 rounded-lg text-xs text-primary-dark dark:text-primary-light flex items-center flex-shrink-0 ml-2 whitespace-nowrap">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        <span class="font-bold mr-1">Essay</span> in 5d
+                    </div>
+            </div>
+            
+            <div id="tasks-section" class="glass rounded-xl p-4 col-span-1 md:col-span-2 lg:col-span-2 card-hover " style="background-color: #f0f0f0;">
+                <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3">
+                    <i class="fas fa-clipboard-list mr-2"></i>
+                    Upcoming Tasks
+                </h2>
+                <ul class="space-y-3 w-full overflow-hidden">
+                    <li class="flex flex-wrap items-center justify-between p-3 glass rounded-lg hover:bg-primary-light/20 transition-colors">
+                        <div class="flex items-start">
+                            <div class="w-2 h-10 bg-primary-dark dark:bg-primary rounded-full mr-3"></div>
+                            <div>
+                                <span class="block font-medium">Math Quiz: Calculus</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Tomorrow, 10:00 AM
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-primary-light text-primary-dark dark:bg-primary-dark dark:text-primary-light rounded-full text-sm flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>High
+                            </span>
+                        </div>
+                    </li>
+                    <li class="flex flex-wrap items-center justify-between p-3 glass rounded-lg hover:bg-secondary-light/20 transition-colors">
+                        <div class="flex items-start">
+                            <div class="w-2 h-10 bg-secondary-dark dark:bg-secondary rounded-full mr-3"></div>
+                            <div>
+                                <span class="block font-medium">Science Lab Report</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Friday, 11:59 PM
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-secondary-light text-secondary-dark dark:bg-secondary-dark dark:text-secondary-light rounded-full text-sm flex items-center">
+                                <i class="fas fa-minus mr-1"></i>Medium
+                            </span>
+                        </div>
+                    </li>
+                    <li class="flex flex-wrap items-center justify-between p-3 glass rounded-lg hover:bg-primary-light/20 transition-colors">
+                        <div class="flex items-start">
+                            <div class="w-2 h-10 bg-primary-dark dark:bg-primary rounded-full mr-3"></div>
+                            <div>
+                                <span class="block font-medium">History Essay Draft</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Next Monday, 11:59 PM
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-primary-light text-primary-dark dark:bg-primary-dark dark:text-primary-light rounded-full text-sm flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>High
+                            </span>
+                        </div>
+                    </li>
+                    <li class="flex flex-wrap items-center justify-between p-3 glass rounded-lg hover:bg-secondary-light/20 transition-colors">
+                        <div class="flex items-start">
+                            <div class="w-2 h-10 bg-secondary-dark dark:bg-secondary rounded-full mr-3"></div>
+                            <div>
+                                <span class="block font-medium">English Presentation</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Next Monday, 12:59 PM
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-secondary-light text-secondary-dark dark:bg-secondary-dark dark:text-secondary-light rounded-full text-sm flex items-center">
+                                <i class="fas fa-minus mr-1"></i>Low
+                            </span>
+                        </div>
+                    </li>
+                    <li class="flex flex-wrap items-center justify-between p-3 glass rounded-lg hover:bg-primary-light/20 transition-colors">
+                        <div class="flex items-start">
+                            <div class="w-2 h-10 bg-primary-dark dark:bg-primary rounded-full mr-3"></div>
+                            <div>
+                                <span class="block font-medium">Physics Assignment</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Next Friday, 11:59 PM
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="px-3 py-1 bg-primary-light text-primary-dark dark:bg-primary-dark dark:text-primary-light rounded-full text-sm flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i>High
+                            </span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            
+
+            <div class="glass rounded-xl p-4 card-hover h-full flex flex-col" style="background-color: #f0f0f0;">
+                <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3 flex-shrink-0">
+                    <i class="fas fa-comment-alt mr-2"></i>
+                    Recent Feedback
+                </h2>
+                <div class="space-y-4 max-w-full overflow-hidden">
+                    <div class="p-3 glass rounded-lg hover:bg-primary-light/20 transition-colors overflow-hidden">
+                        <div class="flex flex-wrap justify-between items-start mb-2">
+                            <span class="font-medium flex items-center">
+                                <i class="fas fa-calculator text-primary-dark dark:text-primary-light mr-2"></i>
+                                Math Homework #12
+                            </span>
+                            <span class="text-secondary-dark dark:text-secondary-light font-bold">92%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Excellent work on the complex problems. Remember to show all your steps for maximum points.</p>
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            Ms. Johnson • 2 days ago
+                        </div>
+                    </div>
+                    <div class="p-3 glass rounded-lg hover:bg-secondary-light/20 transition-colors overflow-hidden">
+                        <div class="flex flex-wrap justify-between items-start mb-2">
+                            <span class="font-medium flex items-center">
+                                <i class="fas fa-flask text-secondary-dark dark:text-secondary-light mr-2"></i>
+                                Science Quiz #4
+                            </span>
+                            <span class="text-secondary-dark dark:text-secondary-light font-bold">85%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Good understanding of concepts, but work on precision in your answers.</p>
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            Dr. Martinez • 3 days ago
+                        </div>
+                    </div>
+                    <div class="p-3 glass rounded-lg hover:bg-primary-light/20 transition-colors overflow-hidden">
+                        <div class="flex flex-wrap justify-between items-start mb-2">
+                            <span class="font-medium flex items-center">
+                                <i class="fas fa-landmark text-primary-dark dark:text-primary-light mr-2"></i>
+                                History Presentation
+                            </span>
+                            <span class="text-secondary-dark dark:text-secondary-light font-bold">A</span>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Outstanding research and presentation skills. Very engaging!</p>
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            Prof. Williams • 5 days ago
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="glass rounded-xl p-4 mt-6 card-hover" style="background-color: #f0f0f0;">
+            <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3">
+                <i class="fas fa-calendar-check mr-2"></i>
+                Monthly Attendance
+            </h2>
+            <div class="h-64 md:h-80 w-full overflow-hidden">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4">
+                <div class="glass p-3 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full bg-primary-DEFAULT mr-2"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Present</span>
+                    </div>
+                    <span class="font-bold text-primary-dark dark:text-primary-light">92%</span>
+                </div>
+                <div class="glass p-3 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full bg-pink-400 mr-2"></div>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Absent</span>
+                    </div>
+                    <span class="font-bold text-pink-500 dark:text-pink-400">8%</span>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="glass rounded-xl p-4 mt-6 card-hover" style="background-color: #f0f0f0;">
+            <h2 class="text-xl font-semibold text-primary-dark dark:text-primary-light flex items-center mb-3">
+                <i class="fas fa-link mr-2"></i>
+                Quick Links
+            </h2>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <a href="#" class="glass p-4 rounded-lg flex flex-col items-center justify-center text-center hover:bg-primary-light/20 dark:hover:bg-primary-dark/30 transition-colors">
+                    <i class="fas fa-graduation-cap text-xl text-primary-dark dark:text-primary-light mb-2"></i>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Courses</span>
+                </a>
+                <a href="#" class="glass p-4 rounded-lg flex flex-col items-center justify-center text-center hover:bg-secondary-light/20 dark:hover:bg-secondary-dark/30 transition-colors">
+                    <i class="fas fa-book text-xl text-secondary-dark dark:text-secondary-light mb-2"></i>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Materials</span>
+                </a>
+                <a href="#" class="glass p-4 rounded-lg flex flex-col items-center justify-center text-center hover:bg-primary-light/20 dark:hover:bg-primary-dark/30 transition-colors">
+                    <i class="fas fa-calendar-alt text-xl text-primary-dark dark:text-primary-light mb-2"></i>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Schedule</span>
+                </a>
+                <a href="#" class="glass p-4 rounded-lg flex flex-col items-center justify-center text-center hover:bg-secondary-light/20 dark:hover:bg-secondary-dark/30 transition-colors">
+                    <i class="fas fa-envelope text-xl text-secondary-dark dark:text-secondary-light mb-2"></i>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Messages</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+   
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function getRandomData(length, min, max) {
+            return Array.from({ length }, () => Math.floor(Math.random() * (max - min + 1) + min));
+        }
+        
+        let overallGPAChart, mathChart, scienceChart, historyChart, attendanceChart;
+        
+        const termsData = {
+            spring2025: {
+                gpa: 3.7,
+                mathGrades: [85, 82, 88, 90, 86, 92],
+                scienceGrades: [78, 80, 82, 85, 87, 88],
+                historyGrades: [90, 92, 94, 91, 93, 95],
+                attendance: {
+                    present: [18, 19, 20, 17, 18],
+                    absent: [2, 1, 0, 3, 2]
+                }
+            },
+            fall2024: {
+                gpa: 3.5,
+                mathGrades: [75, 78, 82, 86, 88, 90],
+                scienceGrades: [70, 72, 75, 80, 82, 85],
+                historyGrades: [88, 90, 89, 92, 90, 91],
+                attendance: {
+                    present: [17, 18, 19, 18, 16],
+                    absent: [3, 2, 1, 2, 4]
+                }
+            },
+            summer2024: {
+                gpa: 3.3,
+                mathGrades: [70, 75, 80, 85, 82, 80],
+                scienceGrades: [65, 70, 75, 78, 80, 82],
+                historyGrades: [85, 88, 87, 86, 89, 88],
+                attendance: {
+                    present: [15, 16, 18, 17, 15],
+                    absent: [5, 4, 2, 3, 5]
+                }
+            }
+        };
+        
+        function updateChartsForTerm(termKey) {
+            const termData = termsData[termKey];
+            document.querySelector('.absolute .text-3xl').textContent = termData.gpa.toFixed(1);
+            overallGPAChart.data.datasets[0].data = [termData.gpa, (4.0 - termData.gpa).toFixed(1)];
+            overallGPAChart.update();
+            
+            mathChart.data.datasets[0].data = termData.mathGrades;
+            mathChart.update();
+            
+            scienceChart.data.datasets[0].data = termData.scienceGrades;
+            scienceChart.update();
+            
+            historyChart.data.datasets[0].data = termData.historyGrades;
+            historyChart.update();
+            
+            attendanceChart.data.datasets[0].data = termData.attendance.present;
+            attendanceChart.data.datasets[1].data = termData.attendance.absent;
+            attendanceChart.update();
+            
+            const attendanceAvg = Math.round(termData.attendance.present.reduce((sum, val) => sum + val, 0) / 
+                                  (termData.attendance.present.reduce((sum, val) => sum + val, 0) + 
+                                   termData.attendance.absent.reduce((sum, val) => sum + val, 0)) * 100);
+            
+            const mathAvg = Math.round(termData.mathGrades.reduce((sum, val) => sum + val, 0) / termData.mathGrades.length);
+            
+            document.querySelectorAll('.flex-1.grid .text-2xl')[0].textContent = attendanceAvg + '%';
+            document.querySelectorAll('.flex-1.grid .text-2xl')[3].textContent = mathAvg + '%';
+            
+            const mathGradeElement = document.querySelector('.glass:nth-child(4) .text-lg');
+            const scienceGradeElement = document.querySelector('.glass:nth-child(5) .text-lg');
+            const historyGradeElement = document.querySelector('.glass:nth-child(6) .text-lg');
+            
+            // Check if elements exist before setting their textContent
+            if (mathGradeElement) {
+                mathGradeElement.textContent = getLetterGrade(termData.mathGrades[termData.mathGrades.length - 1]);
+            }
+            if (scienceGradeElement) {
+                scienceGradeElement.textContent = getLetterGrade(termData.scienceGrades[termData.scienceGrades.length - 1]);
+            }
+            if (historyGradeElement) {
+                historyGradeElement.textContent = getLetterGrade(termData.historyGrades[termData.historyGrades.length - 1]);
+            }
+        }
+        
+        function getLetterGrade(score) {
+            if (score >= 93) return 'A';
+            if (score >= 90) return 'A-';
+            if (score >= 87) return 'B+';
+            if (score >= 83) return 'B';
+            if (score >= 80) return 'B-';
+            if (score >= 77) return 'C+';
+            if (score >= 73) return 'C';
+            if (score >= 70) return 'C-';
+            if (score >= 67) return 'D+';
+            if (score >= 63) return 'D';
+            if (score >= 60) return 'D-';
+            return 'F';
+        }
+       
+        function updateChartsColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            const colors = {
+                light: {
+                    primary: '#9F7AEA',
+                    graphColor: '#6B46C1',
+                    secondary: '#4FD1C5',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    text: '#1A202C'
+                },
+                dark: {
+                    primary: '#B794F4',
+                    secondary: '#81E6D9',
+                    background: 'rgba(26, 32, 44, 0.4)',
+                    text: '#E2E8F0'
+                }
+            };
+            
+            const currentColors = isDark ? colors.dark : colors.light;
+            
+            const updateChartColors = (chart, primaryColor, secondaryColor) => {
+                if (!chart) return;
+                
+                if (chart.config.type === 'doughnut') {
+                    chart.data.datasets[0].backgroundColor[0] = primaryColor;
+                } else if (chart.config.type === 'line') {
+                    chart.data.datasets[0].borderColor = primaryColor;
+                    chart.data.datasets[0].backgroundColor = `${primaryColor}20`;
+                } else if (chart.config.type === 'bar') {
+                    chart.data.datasets[0].backgroundColor = primaryColor;
+                }
+                
+                chart.update();
+            };
+            
+            updateChartColors(overallGPAChart, currentColors.graphColor);
+            updateChartColors(mathChart, currentColors.primary);
+            updateChartColors(scienceChart, currentColors.secondary);
+            updateChartColors(historyChart, currentColors.primary);
+            updateChartColors(attendanceChart, currentColors.primary);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+           
+            
+            const gpaCtx = document.getElementById('overallGPA').getContext('2d');
+            overallGPAChart = new Chart(gpaCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [3.7, 0.3],
+                        backgroundColor: [
+                            '#9F7AEA', 
+                            '#E2E8F0'  
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '80%',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    }
+                }
+            });
+            
+            const mathCtx = document.getElementById('mathChart').getContext('2d');
+            mathChart = new Chart(mathCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'Math Performance',
+                        data: [85, 82, 88, 90, 86, 92],
+                        fill: true,
+                        backgroundColor: 'rgba(159, 122, 234, 0.2)',
+                        borderColor: '#9F7AEA',
+                        tension: 0.4,
+                        pointBackgroundColor: '#9F7AEA',
+                        pointBorderColor: '#FFF',
+                        pointHoverBackgroundColor: '#FFF',
+                        pointHoverBorderColor: '#9F7AEA'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 60,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            const scienceCtx = document.getElementById('scienceChart').getContext('2d');
+            scienceChart = new Chart(scienceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'Science Performance',
+                        data: [78, 80, 82, 85, 87, 88],
+                        fill: true,
+                        backgroundColor: 'rgba(79, 209, 197, 0.2)',
+                        borderColor: '#4FD1C5',
+                        tension: 0.4,
+                        pointBackgroundColor: '#4FD1C5',
+                        pointBorderColor: '#FFF',
+                        pointHoverBackgroundColor: '#FFF',
+                        pointHoverBorderColor: '#4FD1C5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 60,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            const historyCtx = document.getElementById('historyChart').getContext('2d');
+            historyChart = new Chart(historyCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'History Performance',
+                        data: [90, 92, 94, 91, 93, 95],
+                        fill: true,
+                        backgroundColor: 'rgba(159, 122, 234, 0.2)',
+                        borderColor: '#9F7AEA',
+                        tension: 0.4,
+                        pointBackgroundColor: '#9F7AEA',
+                        pointBorderColor: '#FFF',
+                        pointHoverBackgroundColor: '#FFF',
+                        pointHoverBorderColor: '#9F7AEA'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 60,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
+            attendanceChart = new Chart(attendanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['January', 'February', 'March', 'April', 'May'],
+                    datasets: [{
+                        label: 'Present',
+                        data: [18, 19, 20, 17, 18],
+                        backgroundColor: '#9F7AEA',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Absent',
+                        data: [2, 1, 0, 3, 2],
+                        backgroundColor: '#F687B3',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            max: 25,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            const termSelector = document.getElementById('termSelector');
+            termSelector.addEventListener('change', function() {
+                updateChartsForTerm(this.value);
+            });
+            
+            updateChartsColors();
+        });
+
+        // Scroll to top functionality
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.classList.add('opacity-100');
+            } else {
+                scrollToTopBtn.classList.remove('opacity-100');
+            }
+        });
+        
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Function to create and show toast notifications
+        function showToast(message, duration = 3000) {
+            // Remove existing toast if any
+            const existingToast = document.getElementById('toast-notification');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.id = 'toast-notification';
+            toast.className = 'fixed bottom-24 md:bottom-4 left-1/2 transform -translate-x-1/2 bg-primary-dark dark:bg-primary text-white px-4 py-2 rounded-lg shadow-lg z-50 opacity-0 transition-opacity duration-300 flex items-center';
+            
+            // Add icon and message
+            toast.innerHTML = `<i class="fas fa-info-circle mr-2"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+            
+            // Fade in
+            setTimeout(() => {
+                toast.style.opacity = '1';
+            }, 10);
+            
+            // Fade out after duration
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300);
+            }, duration);
+        }
+        
+        // Add navigation functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Desktop navigation links
+            const statsLink = document.getElementById('stats-link');
+            if (statsLink) {
+                statsLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = document.getElementById('subjects-section');
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            }
+            
+            const notificationsLink = document.getElementById('notifications-link');
+            if (notificationsLink) {
+                notificationsLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = document.getElementById('tasks-section');
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            }
+            
+            const profileLink = document.getElementById('profile-link');
+            if (profileLink) {
+                profileLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showToast('Not authorized');
+                });
+            }
+            
+            // Mobile navigation links
+            const mobileStatsLink = document.getElementById('mobile-stats-link');
+            if (mobileStatsLink) {
+                mobileStatsLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = document.getElementById('subjects-section');
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            }
+            
+            const mobileNotificationsLink = document.getElementById('mobile-notifications-link');
+            if (mobileNotificationsLink) {
+                mobileNotificationsLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = document.getElementById('tasks-section');
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            }
+            
+            const mobileProfileLink = document.getElementById('mobile-profile-link');
+            if (mobileProfileLink) {
+                mobileProfileLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showToast('Not authorized');
+                });
+            }
+        });
+    </script>
+
+    <!-- Bottom Navigation Bar for Mobile -->
+    <nav class="fixed md:hidden bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-filter backdrop-blur-lg shadow-lg py-3 z-50 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex justify-around">
+            <a href="#" class="flex flex-col items-center text-primary-dark dark:text-primary-light py-1">
+                <i class="fas fa-home text-2xl card-icon"></i>
+                <span class="text-xs">Home</span>
+            </a>
+            <a href="#subjects-section" id="mobile-stats-link" class="flex flex-col items-center text-primary-dark dark:text-primary-light py-1">
+                <i class="fas fa-chart-bar text-2xl card-icon"></i>
+                <span class="text-xs">Stats</span>
+            </a>
+            <a href="#tasks-section" id="mobile-notifications-link" class="flex flex-col items-center text-primary-dark dark:text-primary-light py-1">
+                <i class="fas fa-bell text-2xl card-icon"></i>
+                <span class="text-xs">Alerts</span>
+            </a>
+            <a href="#" id="mobile-profile-link" class="flex flex-col items-center text-primary-dark dark:text-primary-light py-1">
+                <i class="fas fa-user text-2xl card-icon"></i>
+                <span class="text-xs">Profile</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Scroll to top button -->
+    <button id="scrollToTop" class="fixed bottom-20 right-4 md:bottom-4 md:right-4 bg-primary-light/80 dark:bg-primary-dark text-primary-dark dark:text-white px-4 py-2.5 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-50 hover:bg-primary hover:text-white border border-gray-300 dark:border-gray-600">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+</body>
+</html> 
