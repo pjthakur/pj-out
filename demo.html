@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Project Management Dashboard</title>
+    <!-- Use Tailwind CSS directly from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        rose: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            300: '#fda4af',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            800: '#9f1239',
+                            900: '#881337',
+                            950: '#4c0519',
+                        },
+                        amber: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            300: '#fcd34d',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
+                            950: '#451a03',
+                        },
+                    },
+                }
+            },
+            safelist: [
+                // General
+                'scale-95', 'scale-100', 'opacity-0', 'opacity-100',
+                // Backgrounds
+                'bg-gray-50', 'bg-gray-100', 'bg-gray-200', 'bg-gray-800', 'bg-gray-900',
+                'bg-rose-100', 'bg-rose-200', 'bg-rose-900',
+                // Text colors
+                'text-gray-200', 'text-gray-300', 'text-gray-400', 'text-gray-600', 'text-gray-700', 'text-gray-800',
+                'text-rose-300', 'text-rose-600',
+                // Borders
+                'border-gray-100', 'border-gray-200', 'border-gray-600', 'border-gray-700',
+                // Gradients
+                'from-rose-400', 'from-rose-500', 'to-amber-300', 'to-amber-400',
+                'from-green-400', 'from-green-500', 'to-green-200', 'to-green-300',
+                'from-yellow-400', 'from-yellow-500', 'to-yellow-200', 'to-yellow-300',
+                'from-red-400', 'from-red-500', 'to-red-200', 'to-red-300',
+                // Spacing
+                'space-y-5', 'gap-1', 'gap-2', 'gap-3', 'gap-5',
+                // Transforms
+                'transform', 'translate-y-[-2px]', 'translate-y-[-5px]',
+                // Animations
+                'transition-all', 'duration-300', 'animate-fade-in',
+                // Display
+                'hidden', 'block', 'flex', 'inline-block',
+                // Other
+                'glass', 'glass-card', 'glass-button', 'glass-light-gradient',
+                'dark-bg-gray-600', 'dark-bg-gray-700', 'dark-bg-gray-800', 'dark-text-white',
+                'dark-border-gray-600', 'dark-border-gray-700'
+            ],
+            plugins: [
+                function ({ addComponents }) {
+                    addComponents({
+                        '.glass': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
+                        },
+                        '.glass-card': {
+                            backgroundColor: 'rgba(31, 41, 55, 0.25)',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                            boxShadow: '0 4px 16px 0 rgba(0, 0, 0, 0.15)',
+                            transition: 'all 0.3s ease'
+                        },
+                        '.glass-button': {
+                            backgroundColor: 'rgba(31, 41, 55, 0.3)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: '0 4px 16px 0 rgba(31, 38, 135, 0.07)',
+                            transition: 'all 0.3s ease'
+                        },
+                        '.glass-light-gradient': {
+                            background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.25), rgba(17, 24, 39, 0.15))'
+                        }
+                    })
+                }
+            ]
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        /* Custom dark mode styles */
+        body {
+            background-color: #111827;
+            /* bg-gray-900 */
+            color: #e5e7eb;
+            /* text-gray-200 */
+        }
+
+        .bg-gray-800 {
+            background-color: #1f2937;
+            /* bg-gray-800 */
+        }
+
+        .bg-gray-700 {
+            background-color: #374151;
+            /* bg-gray-700 */
+        }
+
+        .bg-gray-700-50 {
+            background-color: rgba(55, 65, 81, 0.5);
+            /* bg-gray-700/50 */
+        }
+
+        .border-gray-700 {
+            border-color: #374151;
+            /* border-gray-700 */
+        }
+
+        .border-gray-600 {
+            border-color: #4b5563;
+            /* border-gray-600 */
+        }
+
+        .text-white {
+            color: #ffffff;
+            /* text-white */
+        }
+
+        .text-gray-400 {
+            color: #9ca3af;
+            /* text-gray-400 */
+        }
+
+        .text-gray-300 {
+            color: #d1d5db;
+            /* text-gray-300 */
+        }
+
+        .text-gray-200 {
+            color: #e5e7eb;
+            /* text-gray-200 */
+        }
+
+        .shadow-gray-900-30 {
+            box-shadow: 0 1px 3px 0 rgba(17, 24, 39, 0.3);
+            /* shadow-gray-900/30 */
+        }
+
+        .from-rose-500 {
+            --tw-gradient-from: #f43f5e;
+            /* from-rose-500 */
+        }
+
+        .to-amber-400 {
+            --tw-gradient-to: #fbbf24;
+            /* to-amber-400 */
+        }
+
+        /* Progress bar colors */
+        .progress-green {
+            background: linear-gradient(to right, #34d399, #a7f3d0);
+            /* from-green-400 to-green-200 */
+        }
+
+        .progress-yellow {
+            background: linear-gradient(to right, #fbbf24, #fde68a);
+            /* from-yellow-400 to-yellow-200 */
+        }
+
+        .progress-red {
+            background: linear-gradient(to right, #f87171, #fecaca);
+            /* from-red-400 to-red-200 */
+        }
+
+        .status-rose {
+            background-color: rgba(225, 29, 72, 0.3);
+            /* bg-rose-900/30 */
+            color: #fda4af;
+            /* text-rose-300 */
+        }
+
+        /* Date/time picker custom styling */
+        input[type="datetime-local"] {
+            color-scheme: dark;
+            color: white;
+            background-color: rgba(31, 41, 55, 0.5);
+            border-color: rgba(75, 85, 99, 0.5);
+        }
+
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.7;
+            cursor: pointer;
+        }
+
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        /* Calendar popup background fix */
+        ::-webkit-calendar-picker-indicator {
+            background-color: rgba(31, 41, 55, 0.8);
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        /* Animation styles */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInFromLeft {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+            transform: scale(1.05);
+        }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+
+        @keyframes growProgressBar {
+            0% {
+                width: 0%;
+            }
+
+            100% {
+                width: var(--progress-width, 0%);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .animate-slide-up {
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        .animate-slide-left {
+            animation: slideInFromLeft 0.5s ease-out;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .animate-shimmer {
+            background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite linear;
+        }
+
+        .animate-grow-progress {
+            animation: growProgressBar 1s ease-out forwards;
+        }
+
+        /* Drag and drop styling */
+        .sortable-ghost {
+            opacity: 0.3 !important;
+            background-color: #374151 !important;
+            /* bg-gray-700 */
+            border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .sortable-chosen {
+            opacity: 0.9 !important;
+        }
+
+        .sortable-drag {
+            opacity: 0.9 !important;
+            background-color: rgba(31, 41, 55, 0.8) !important;
+            /* bg-gray-800 with opacity */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .sortable-container-highlight {
+            background-color: rgba(55, 65, 81, 0.3) !important;
+            /* bg-gray-700 with low opacity */
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Background pattern for glassmorphism effect */
+        .bg-pattern {
+            background-image:
+                radial-gradient(circle at 25% 25%, rgba(245, 58, 58, 0.07) 0%, transparent 25%),
+                radial-gradient(circle at 75% 75%, rgba(79, 70, 229, 0.07) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.05) 0%, transparent 35%);
+            background-attachment: fixed;
+        }
+
+        /* Hover effects for cards */
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Prevent scrolling when modal is open */
+        .overflow-hidden {
+            overflow: hidden;
+            padding-right: 8px;
+            /* Compensate for scrollbar width to prevent layout shift */
+        }
+
+        .is-dragging .glass-card:not(.dragging):not(.sortable-ghost):not(.sortable-drag) {
+            opacity: 0.6;
+            transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* Toast notifications */
+        .toast-visible {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #toast {
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55),
+                opacity 0.3s ease-in-out;
+            transform: translateY(20px);
+            opacity: 0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+        }
+
+        #toast.animate-slide-up {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-success {
+            background-color: rgba(16, 185, 129, 0.8) !important;
+            /* green-600 */
+            border-left: 4px solid rgb(16, 185, 129) !important;
+        }
+
+        .toast-error {
+            background-color: rgba(239, 68, 68, 0.8) !important;
+            /* red-500 */
+            border-left: 4px solid rgb(239, 68, 68) !important;
+        }
+
+        .toast-warning {
+            background-color: rgba(245, 158, 11, 0.8) !important;
+            /* amber-500 */
+            border-left: 4px solid rgb(245, 158, 11) !important;
+        }
+
+        .toast-info {
+            background-color: rgba(59, 130, 246, 0.8) !important;
+            /* blue-500 */
+            border-left: 4px solid rgb(59, 130, 246) !important;
+        }
+
+        /* Simple, clean styles for dragging */
+        .sortable-ghost {
+            opacity: 0.3 !important;
+            background-color: #374151 !important;
+            /* bg-gray-700 */
+            border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .sortable-chosen {
+            opacity: 0.9 !important;
+        }
+
+        .sortable-drag {
+            opacity: 0.9 !important;
+            background-color: rgba(31, 41, 55, 0.8) !important;
+            /* bg-gray-800 with opacity */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .sortable-container-highlight {
+            background-color: rgba(55, 65, 81, 0.3) !important;
+            /* bg-gray-700 with low opacity */
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        /* Like button styles */
+        .like-button {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+        
+        .like-button:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .like-button.liked {
+            color: #f43f5e;
+        }
+        
+        .like-button.liked i {
+            transform: scale(1.2) rotate(10deg);
+        }
+        
+        /* Mobile responsiveness enhancements */
+        @media (max-width: 767px) {
+            body {
+                padding: 0.75rem;
+            }
+
+            .glass-card {
+                padding: 0.75rem;
+            }
+
+            /* Touch feedback for cards */
+            .active-touch {
+                transform: scale(0.98);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+            }
+
+            /* Improve header layout on mobile */
+            .mobile-stack {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            /* Adjust Kanban board for mobile - horizontal scrolling with snap points */
+            .kanban-board {
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                padding: 0.5rem;
+                margin-left: -0.5rem;
+                margin-right: -0.5rem;
+                width: calc(100% + 1rem);
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+            }
+            
+            .kanban-board::-webkit-scrollbar {
+                height: 6px;
+            }
+            
+            .kanban-board::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .kanban-board::-webkit-scrollbar-thumb {
+                background-color: rgba(75, 85, 99, 0.5);
+                border-radius: 20px;
+            }
+
+            /* Adjust column width on mobile */
+            .kanban-board section {
+                width: 85%;
+                scroll-snap-align: start;
+                margin-right: 1rem;
+            }
+
+            /* Make sure form controls have enough tap area */
+            input,
+            select,
+            textarea,
+            button {
+                font-size: 16px;
+                /* Prevent iOS zoom */
+                min-height: 44px;
+            }
+
+            /* Adjust modal on mobile */
+            #modalContent {
+                width: 95%;
+                margin: 0.5rem auto;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            /* Column headers for mobile */
+            .kanban-column h2 {
+                font-size: 1rem;
+            }
+
+            /* Add visual affordance for draggable items */
+            .glass-card::after {
+                content: '';
+                position: absolute;
+                right: 0.5rem;
+                top: 0.5rem;
+                width: 0.5rem;
+                height: 0.5rem;
+                background-image: radial-gradient(circle, rgba(255, 255, 255, 0.7) 1px, transparent 1px);
+                background-size: 3px 3px;
+                opacity: 0.5;
+            }
+
+            /* Improved scroll indicators */
+            .scroll-indicators {
+                display: flex;
+                justify-content: center;
+                gap: 0.5rem;
+                margin-top: 1rem;
+            }
+            
+            .scroll-indicator {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: rgba(75, 85, 99, 0.5);
+                transition: all 0.2s ease;
+            }
+            
+            .scroll-indicator.active {
+                background-color: rgba(244, 63, 94, 0.8);
+                width: 20px;
+                border-radius: 4px;
+            }
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-gray-300 p-4 max-w-full overflow-x-hidden font-[Inter] bg-pattern">
+    <div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-amber-400 z-50 hidden animate-shimmer"
+        id="loading"></div>
+
+    <header class="mb-6">
+        <div class="flex flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <div
+                    class="w-10 h-10 rounded-lg bg-gradient-to-r from-rose-500 to-amber-400 flex items-center justify-center">
+                    <i class="fas fa-project-diagram text-white text-xl"></i>
+            </div>
+                <div>
+                    <h1 class="text-xl md:text-3xl font-bold text-white">Design Team Board</h1>
+                    <p class="text-gray-400 text-sm hidden sm:block">Manage your design tasks and projects</p>
+                    </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="hidden md:flex">
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800 -mr-2">
+                        JD</div>
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800 -mr-2">
+                        TK</div>
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800 -mr-2">
+                        LR</div>
+                    <div
+                        class="w-8 h-8 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                        +3</div>
+                </div>
+
+                    </div>
+                </div>
+                
+            <!-- Description shown only on mobile -->
+            <p class="text-gray-400 text-sm mt-1 sm:hidden">Manage your design tasks and projects</p>
+                
+        <!-- Navigation Tabs -->
+        <div class="flex flex-col sm:flex-row border-b border-gray-700 mt-6 gap-3 sm:gap-0">
+            <div class="flex space-x-1 overflow-x-auto pb-1 no-scrollbar">
+                <button
+                    class="px-3 sm:px-4 py-2 text-white border-b-2 border-gradient-to-r from-rose-500 to-amber-400 flex items-center min-h-[44px]">
+                    <i class="fas fa-columns mr-1 sm:mr-2 text-rose-400"></i>
+                    <span>Board</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex flex-col mb-8">
+        <!-- Analytics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 animate-slide-up">
+            <!-- Team Involvement Card -->
+            <div class="glass rounded-xl p-5 shadow-lg transition-all duration-300" style="animation-delay: 0.1s;">
+                <div class="flex justify-start items-center mb-6">
+                    <h2 class="text-lg font-semibold text-white flex items-center">
+                        <i class="fas fa-users text-rose-400 mr-2"></i>Team Involvement
+                    </h2>
+                </div>
+                
+                <!-- Team Chart -->
+                <div class="flex flex-col sm:flex-row gap-10 items-center justify-center mb-8">
+                    <!-- Donut Chart -->
+                    <div class="relative w-36 h-36 sm:w-40 sm:h-40">
+                        <svg viewBox="0 0 36 36" class="w-full h-full">
+                            <!-- Background Circle -->
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#374151" stroke-width="3.8"></circle>
+                            
+                            <!-- Segments -->
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f43f5e" stroke-width="3.8" stroke-dasharray="30 100" stroke-dashoffset="25" stroke-linecap="round"></circle>
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f59e0b" stroke-width="3.8" stroke-dasharray="25 100" stroke-dashoffset="55" stroke-linecap="round"></circle>
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" stroke-width="3.8" stroke-dasharray="20 100" stroke-dashoffset="80" stroke-linecap="round"></circle>
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" stroke-width="3.8" stroke-dasharray="15 100" stroke-dashoffset="100" stroke-linecap="round"></circle>
+                            
+                            <!-- Inner Circle -->
+                            <circle cx="18" cy="18" r="12" fill="#1f2937"></circle>
+                            <text x="18" y="18" text-anchor="middle" dy=".3em" class="fill-white" style="font-size: 3px;">Tasks</text>
+                        </svg>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 inline-block rounded-full bg-rose-500"></span>
+                            <span class="text-gray-300 text-sm">Design (30%)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 inline-block rounded-full bg-amber-500"></span>
+                            <span class="text-gray-300 text-sm">Development (25%)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 inline-block rounded-full bg-green-500"></span>
+                            <span class="text-gray-300 text-sm">Research (20%)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 inline-block rounded-full bg-blue-500"></span>
+                            <span class="text-gray-300 text-sm">Planning (15%)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Team Members Stats -->
+                <div class="mt-6 pt-4 border-t border-gray-700">
+                    <div class="grid grid-cols-4 gap-3">
+                        <div class="bg-gray-800 bg-opacity-80 rounded-lg p-3 flex flex-col items-center">
+                            <div class="text-rose-400 text-xl font-bold mb-1">JD</div>
+                            <div class="text-xs text-gray-400">9 Tasks</div>
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-80 rounded-lg p-3 flex flex-col items-center">
+                            <div class="text-amber-400 text-xl font-bold mb-1">TK</div>
+                            <div class="text-xs text-gray-400">7 Tasks</div>
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-80 rounded-lg p-3 flex flex-col items-center">
+                            <div class="text-green-400 text-xl font-bold mb-1">LR</div>
+                            <div class="text-xs text-gray-400">5 Tasks</div>
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-80 rounded-lg p-3 flex flex-col items-center">
+                            <div class="text-blue-400 text-xl font-bold mb-1">SM</div>
+                            <div class="text-xs text-gray-400">4 Tasks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Deadlines Card -->
+            <div class="glass rounded-xl p-5 shadow-lg transition-all duration-300" style="animation-delay: 0.2s;">
+                <div class="flex justify-start items-center mb-6">
+                    <h2 class="text-lg font-semibold text-white flex items-center">
+                        <i class="fas fa-clock text-amber-400 mr-2"></i>Project Deadlines
+                    </h2>
+                </div>
+                
+                <!-- Progress Bars -->
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300 text-sm">UI Design Phase</span>
+                            <span class="text-gray-300 text-sm font-medium">85%</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="progress-green h-full rounded-full animate-grow-progress" style="--progress-width: 85%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                            <span class="text-gray-400 text-xs">Started May 3</span>
+                            <span class="text-gray-400 text-xs">Due May 20</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300 text-sm">Development Sprint</span>
+                            <span class="text-gray-300 text-sm font-medium">45%</span>
+                        </div>
+                        <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="progress-yellow h-full rounded-full animate-grow-progress" style="--progress-width: 45%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                            <span class="text-gray-400 text-xs">Started May 10</span>
+                            <span class="text-gray-400 text-xs">Due June 5</span>
+                        </div>
+                    </div>
+                    
+                   
+                </div>
+                
+                <!-- Overall Progress -->
+                <div class="mt-6 pt-4 border-t border-gray-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-white text-sm font-medium">Overall Project Progress</span>
+                        <span class="text-amber-400 text-sm font-medium">58%</span>
+                    </div>
+                    <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                        <div class="bg-gradient-to-r from-rose-500 to-amber-400 h-full rounded-full animate-grow-progress" style="--progress-width: 58%"></div>
+                    </div>
+                    <div class="flex justify-between mt-3">
+                        <div class="text-left">
+                            <div class="text-xs text-gray-400">Start Date</div>
+                            <div class="text-sm text-white">May 1, 2023</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-400">Deadline</div>
+                            <div class="text-sm text-white">June 30, 2023</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kanban board -->
+        <div class="flex flex-row gap-5 overflow-x-auto pb-6 min-h-[65vh] kanban-board snap-x snap-mandatory">
+            <!-- To Do Column -->
+            <section
+                class="glass rounded-xl p-4 shadow-lg transition-all duration-300 animate-slide-up min-w-[280px] md:min-w-0 md:w-full flex-shrink-0 md:flex-shrink snap-start"
+                style="animation-delay: 0.1s;">
+                <div class="flex justify-start items-center mb-4">
+                    <h2 class="text-lg font-semibold text-white flex items-center"><span
+                            class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>TODO <span
+                            class="text-sm ml-2 text-gray-400">2</span></h2>
+                </div>
+                <div class="flex flex-col gap-4 min-h-[100px]" id="projects">
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.1s;" draggable="true" data-id="1">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">UX Adjustments</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            It just needs to adapt the UI from what you did before
+                        </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span
+                                class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">Research</span>
+                        </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs -mr-2 border-2 border-gray-800">
+                                    JD</div>
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    TK</div>
+                            </div>
+                            <div>
+                                <div class="flex items-center text-gray-400 text-xs like-button" data-likes="2">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>2</span>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.2s;" draggable="true" data-id="2">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Moodboards</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Create initial moodboards for client review
+                    </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">UI
+                                Design</span>
+                    </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    SM</div>
+                </div>
+                                                        <div>
+                                <div class="flex items-center text-gray-400 text-xs like-button" data-likes="2">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </section>
+        
+            <!-- In Work Column -->
+            <section
+                class="glass rounded-xl p-4 shadow-lg transition-all duration-300 animate-slide-up min-w-[280px] md:min-w-0 md:w-full flex-shrink-0 md:flex-shrink snap-start"
+                style="animation-delay: 0.2s;">
+                <div class="flex justify-start items-center mb-4">
+                    <h2 class="text-lg font-semibold text-white flex items-center"><span
+                            class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>IN WORK <span
+                            class="text-sm ml-2 text-gray-400">3</span></h2>
+                </div>
+                <div class="flex flex-col gap-4 min-h-[100px]" id="deadlines">
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.1s;" draggable="true" data-id="3">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Slack Integration</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Add a feature to connect to the user account with Slack account
+                        </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span
+                                class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">Development</span>
+                        </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    KP</div>
+                            </div>
+                            <div>
+                                <div class="flex items-center text-gray-400 text-xs like-button" data-likes="3">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>3</span>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.2s;" draggable="true" data-id="4">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Copywriting of the app</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Composing words to provide people with decision-making clarity when interacting with a
+                            product
+                        </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">UX
+                                Writing</span>
+                        </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    JD</div>
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    LR</div>
+                            </div>
+                            <div>
+                                <div class="flex items-center text-gray-400 text-xs like-button" data-likes="1">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>1</span>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.3s;" draggable="true" data-id="5">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Implement Apps</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Complete implementation of third-party app integrations
+                    </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span
+                                class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">Development</span>
+                </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    TK</div>
+            </div>
+                            <div class="flex items-center">
+                                <div class="text-xs text-gray-400">
+                                    <i class="fas fa-paperclip mr-1"></i>
+                                    <span>2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </section>
+        
+            <!-- QA Column -->
+            <section
+                class="glass rounded-xl p-4 shadow-lg transition-all duration-300 animate-slide-up min-w-[280px] md:min-w-0 md:w-full flex-shrink-0 md:flex-shrink snap-start"
+                style="animation-delay: 0.3s;">
+                <div class="flex justify-start items-center mb-4">
+                    <h2 class="text-lg font-semibold text-white flex items-center"><span
+                            class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>QA <span
+                            class="text-sm ml-2 text-gray-400">1</span></h2>
+                </div>
+                <div class="flex flex-col gap-4 min-h-[100px]" id="team-tasks-qa">
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.1s;" draggable="true" data-id="6">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Dashboard Design</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Design the main dashboard layout and components
+                    </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">UI
+                                Design</span>
+                </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    LR</div>
+                    </div>
+                                                        <div>
+                                <div class="flex items-center text-gray-400 text-xs like-button" data-likes="2">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Completed Column -->
+            <section
+                class="glass rounded-xl p-4 shadow-lg transition-all duration-300 animate-slide-up min-w-[280px] md:min-w-0 md:w-full flex-shrink-0 md:flex-shrink snap-start"
+                style="animation-delay: 0.4s;">
+                <div class="flex justify-start items-center mb-4">
+                    <h2 class="text-lg font-semibold text-white flex items-center"><span
+                            class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>COMPLETED <span
+                            class="text-sm ml-2 text-gray-400">2</span></h2>
+                </div>
+                <div class="flex flex-col gap-4 min-h-[100px]" id="team-tasks-completed">
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.1s;" draggable="true" data-id="7">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Presentation</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+                            Help businesses to clarify define their mixed-in-commerce digital strategy by creating a
+                            high-level plan
+                        </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span
+                                class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">Planning</span>
+                        </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    SM</div>
+                            </div>
+                            <div>
+                                <div class="flex items-center text-gray-400 text-xs">
+                                    <i class="far fa-check-circle mr-1 text-green-400"></i>
+                                    <span>Done</span>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                
+
+
+                    <div class="glass-card rounded-lg p-3 sm:p-4 cursor-grab relative touch-none transition-all duration-300 hover:shadow-md animate-slide-up"
+                        style="animation-delay: 0.1s;" draggable="true" data-id="7">
+                        <div class="font-semibold mb-2 text-sm sm:text-base">Brainstorming</div>
+                        <div class="text-gray-400 text-xs sm:text-sm mb-3">
+
+                            Initial brainstorming session for new project ideas
+                    </div>
+                        <div class="flex flex-wrap gap-1 mb-2">
+                            <span
+                                class="inline-block text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">Research</span>
+                </div>
+                        <div class="flex justify-between mt-3 items-center">
+                            <div class="flex">
+                                <div
+                                    class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 text-white flex items-center justify-center text-xs border-2 border-gray-800">
+                                    SM</div>
+            </div>
+                            <div>
+                                <div class="flex items-center text-gray-400 text-xs">
+                                    <i class="far fa-check-circle mr-1 text-green-400"></i>
+                                    <span>Done</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </section>
+        </div>
+
+        <!-- Scroll Indicators (visible on mobile only) -->
+        <div class="scroll-indicators md:hidden mt-4">
+            <div class="scroll-indicator active" data-index="0"></div>
+            <div class="scroll-indicator" data-index="1"></div>
+            <div class="scroll-indicator" data-index="2"></div>
+            <div class="scroll-indicator" data-index="3"></div>
+        </div>
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="glass rounded-xl p-5 mt-6 shadow-lg transition-all duration-300 animate-slide-up text-center text-sm"
+        style="animation-delay: 0.4s;">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-left">
+                <h3 class="text-white text-base font-semibold mb-3"><i
+                        class="fas fa-chart-line text-rose-400 mr-2"></i>Dashboard Features</h3>
+                <ul class="text-gray-400 space-y-2 text-xs">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Drag-and-drop task management</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Project progress tracking</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Deadline management</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Team workload visualization</li>
+                </ul>
+            </div>
+            <div class="text-left">
+                <h3 class="text-white text-base font-semibold mb-3"><i
+                        class="fas fa-code text-amber-400 mr-2"></i>Technical Stack</h3>
+                <ul class="text-gray-400 space-y-2 text-xs">
+                    <li><i class="fas fa-html5 mr-2"></i>HTML5 & CSS3</li>
+                    <li><i class="fab fa-js mr-2"></i>Vanilla JavaScript</li>
+                    <li><i class="fab fa-css3-alt mr-2"></i>Tailwind CSS</li>
+                    <li><i class="fas fa-box mr-2"></i>SortableJS</li>
+                </ul>
+            </div>
+            <div class="text-left">
+                <h3 class="text-white text-base font-semibold mb-3"><i
+                        class="fas fa-paint-brush text-green-400 mr-2"></i>Design Elements</h3>
+                <ul class="text-gray-400 space-y-2 text-xs">
+                    <li><i class="fas fa-palette mr-2"></i>Glassmorphism UI</li>
+                    <li><i class="fas fa-moon mr-2"></i>Dark mode optimized</li>
+                    <li><i class="fas fa-magic mr-2"></i>Smooth animations</li>
+                    <li><i class="fas fa-mobile-alt mr-2"></i>Fully responsive design</li>
+                </ul>
+            </div>
+        </div>
+        <div class="mt-6 pt-5 border-t border-gray-700 text-gray-400 text-xs">
+            <p>Project Management Dashboard &copy; 2023 | A modern web application for efficient team collaboration</p>
+        </div>
+    </footer>
+    
+    <!-- Modal for adding new items -->
+    <div class="fixed inset-0 bg-gray-900 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300 overflow-y-auto py-4 sm:py-8"
+        id="modal">
+        <div class="glass rounded-xl p-4 sm:p-5 mx-3 w-full max-w-3xl shadow-xl transform transition-all duration-300 scale-95 opacity-0 animate-float my-4 sm:my-8"
+            id="modalContent">
+            <div class="flex justify-between items-center mb-4 sm:mb-5">
+                <h3 class="text-lg sm:text-xl font-semibold text-white" id="modalTitle"><i
+                        class="fas fa-plus-circle mr-2 text-rose-400"></i>Add New Task</h3>
+                <button type="button"
+                    class="text-gray-400 hover:text-gray-200 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    id="closeModalBtn">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                </div>
+                
+            <form id="addItemForm" class="space-y-4 sm:space-y-5">
+                <div>
+                    <label for="itemTitle" class="block mb-2 text-gray-400 font-medium text-sm sm:text-base"><i
+                            class="fas fa-heading mr-1"></i> Title</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-file-alt text-gray-500"></i>
+                        </div>
+                        <input type="text" id="itemTitle"
+                            class="w-full pl-10 pr-4 py-3 border rounded-lg text-base focus:ring-2 focus:ring-rose-400 focus:outline-none transition-colors border-gray-700 bg-gray-800 text-white glass-card min-h-[44px]"
+                            placeholder="Enter title..." </div>
+                </div>
+                
+                    <div>
+                        <label for="itemDescription" class="block mb-2 text-gray-400 font-medium"><i
+                                class="fas fa-align-left mr-1"></i> Description</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-0 pl-3 flex items-start pointer-events-none">
+                                <i class="fas fa-quote-left text-gray-500"></i>
+                            </div>
+                            <textarea id="itemDescription" rows="3"
+                                class="w-full pl-10 pr-4 py-3 border rounded-lg text-base focus:ring-2 focus:ring-rose-400 focus:outline-none transition-colors border-gray-700 bg-gray-800 text-white glass-card"
+                                placeholder="Enter description..."></textarea>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="itemStatus" class="block mb-2 text-gray-400 font-medium"><i
+                                class="fas fa-chart-pie mr-1"></i> Status</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-flag text-gray-500"></i>
+                            </div>
+                            <select id="itemStatus"
+                                class="w-full pl-10 pr-10 py-3 border rounded-lg text-base focus:ring-2 focus:ring-rose-400 focus:outline-none transition-colors border-gray-700 bg-gray-800 text-white glass-card appearance-none">
+                                <option value="todo">Todo</option>
+                                <option value="in-work">In Progress</option>
+                                <option value="qa">QA</option>
+                                <option value="completed">Completed</option>
+                    </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-500"></i>
+                            </div>
+                        </div>
+                </div>
+                
+                    <div>
+                        <label for="itemTags" class="block mb-2 text-gray-400 font-medium"><i
+                                class="fas fa-tags mr-1"></i> Tags</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-tag text-gray-500"></i>
+                            </div>
+                            <select id="itemTags"
+                                class="w-full pl-10 pr-10 py-3 border rounded-lg text-base focus:ring-2 focus:ring-rose-400 focus:outline-none transition-colors border-gray-700 bg-gray-800 text-white glass-card appearance-none">
+                                <option value="design">UI Design</option>
+                                <option value="development">Development</option>
+                                <option value="research">Research</option>
+                                <option value="planning">Planning</option>
+                                <option value="ux-writing">UX Writing</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-500"></i>
+                            </div>
+                        </div>
+                </div>
+                
+                    <div id="deadlineFieldGroup">
+                        <label for="itemDeadline" class="block mb-2 text-gray-400 font-medium"><i
+                                class="fas fa-calendar-alt mr-1"></i> Deadline</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-clock text-gray-500"></i>
+                            </div>
+                            <input type="datetime-local" id="itemDeadline"
+                                class="w-full pl-10 pr-4 py-3 border rounded-lg text-base focus:ring-2 focus:ring-rose-400 focus:outline-none transition-colors border-gray-700 bg-gray-800 text-white glass-card">
+                        </div>
+                </div>
+                
+                    <div class="flex justify-end gap-3 mt-6 pt-3 border-t border-gray-700">
+                        <button type="button"
+                            class="glass-button bg-gray-700 text-gray-200 border-none rounded-lg py-3 px-5 cursor-pointer hover:bg-gray-600 transition-colors flex items-center"
+                            id="cancelBtn">
+                            <i class="fas fa-times mr-2"></i> Cancel
+                        </button>
+                        <button type="submit"
+                            class="glass-button bg-gradient-to-r from-rose-500 to-amber-400 text-white border-none rounded-lg py-3 px-5 cursor-pointer hover:shadow-md transition-all flex items-center">
+                            <i class="fas fa-save mr-2"></i> Save
+                        </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Toast notification -->
+    <div class="fixed bottom-6 right-6 text-white py-3 px-5 rounded-xl shadow-lg hidden z-50 glass" id="toast"
+        style="min-width: 280px; backdrop-filter: blur(10px);">
+        <i class="fas fa-check-circle text-green-500 mr-2 animate-pulse"></i>Item added successfully!
+    </div>
+    
+    <!-- SortableJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <script>
+        // Function to update count displays - GLOBAL SCOPE
+        function updateCountDisplays() {
+            const todoContainer = document.getElementById('projects');
+            const inWorkContainer = document.getElementById('deadlines');
+            const qaContainer = document.getElementById('team-tasks-qa');
+            const completedContainer = document.getElementById('team-tasks-completed');
+
+            const todoCountEl = document.querySelector('section:nth-child(1) h2 .text-gray-400');
+            const inWorkCountEl = document.querySelector('section:nth-child(2) h2 .text-gray-400');
+            const qaCountEl = document.querySelector('section:nth-child(3) h2 .text-gray-400');
+            const completedCountEl = document.querySelector('section:nth-child(4) h2 .text-gray-400');
+
+            if (todoContainer && todoCountEl) {
+                const todoCount = todoContainer.querySelectorAll('.glass-card').length;
+                todoCountEl.textContent = todoCount;
+            }
+            
+            if (inWorkContainer && inWorkCountEl) {
+                const inWorkCount = inWorkContainer.querySelectorAll('.glass-card').length;
+                inWorkCountEl.textContent = inWorkCount;
+            }
+            
+            if (qaContainer && qaCountEl) {
+                const qaCount = qaContainer.querySelectorAll('.glass-card').length;
+                qaCountEl.textContent = qaCount;
+            }
+            
+            if (completedContainer && completedCountEl) {
+                const completedCount = completedContainer.querySelectorAll('.glass-card').length;
+                completedCountEl.textContent = completedCount;
+            }
+            
+            console.log("Updated counts for all columns");
+        }
+    </script>
+    
+    <script>
+        // Initialize app when DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("DOM fully loaded - Initializing dark mode dashboard");
+
+            // Debug elements
+            const debugInfo = document.getElementById('debugInfo');
+            const lastActionElement = document.getElementById('lastAction');
+
+            // Debug functions
+            function updateDebugInfo(action) {
+                if (lastActionElement) {
+                    lastActionElement.textContent = action;
+                }
+                console.log(`Debug: ${action}`);
+            }
+            
+            // Function to show toast notifications
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                
+                // Set toast content
+                if (type === 'warning') {
+                    toast.innerHTML = '<i class="fas fa-exclamation-triangle text-amber-500 mr-2 animate-pulse"></i>' + message;
+                    toast.classList.add('toast-warning');
+                } else if (type === 'error') {
+                    toast.innerHTML = '<i class="fas fa-exclamation-circle text-red-500 mr-2 animate-pulse"></i>' + message;
+                    toast.classList.add('toast-error');
+                } else {
+                    toast.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2 animate-pulse"></i>' + message;
+                    toast.classList.add('toast-success');
+                }
+                
+                // Show the toast
+                toast.classList.remove('hidden');
+                toast.classList.add('animate-slide-up');
+                
+                // Hide after 3 seconds
+                setTimeout(function() {
+                    toast.classList.remove('animate-slide-up');
+                    setTimeout(function() {
+                        toast.classList.add('hidden');
+                        // Remove the added classes
+                        toast.classList.remove('toast-success', 'toast-warning', 'toast-error');
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Try to initialize Sortable if it exists
+            if (typeof Sortable !== 'undefined') {
+                try {
+                    initSortable();
+                    console.log('SortableJS initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing Sortable:', error);
+                }
+            } else {
+                console.warn('SortableJS not available - drag and drop disabled');
+            }
+            
+            // Function to initialize Sortable
+            function initSortable() {
+                // Base configuration for Sortable
+                const baseOptions = {
+                    animation: 150,
+                    easing: "ease-out",
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag',
+                    delay: 50,
+                    delayOnTouchOnly: true
+                };
+                
+                // Common event handlers
+                const commonHandlers = {
+                    onStart: function(evt) {
+                        document.body.classList.add('is-dragging');
+                    },
+                    onEnd: function(evt) {
+                        document.body.classList.remove('is-dragging');
+                        
+                        // Visual feedback when moved between containers
+                        if (evt.from !== evt.to) {
+                            evt.to.classList.add('sortable-container-highlight');
+                            setTimeout(() => {
+                                evt.to.classList.remove('sortable-container-highlight');
+                            }, 500);
+                            
+                            // Change the status indicator to "Done" if moved to Completed column
+                            if (evt.to.id === 'team-tasks-completed') {
+                                const cardElement = evt.item;
+                                const statusDiv = cardElement.querySelector('.flex.justify-between.mt-3.items-center > div:last-child > div');
+                                
+                                if (statusDiv) {
+                                    // Replace any existing content with the "Done" indicator
+                                    statusDiv.innerHTML = '<i class="far fa-check-circle mr-1 text-green-400"></i><span>Done</span>';
+                                    statusDiv.classList.add('text-gray-400', 'text-xs');
+                                }
+                            }
+                            
+                            updateCountDisplays();
+                        }
+                    }
+                };
+                
+                // Column options
+                const columnOptions = {
+                    ...baseOptions,
+                    ...commonHandlers,
+                    group: 'tasks',
+                    animation: 150
+                };
+                
+                // Create sortable instances for all columns
+                const projects = document.getElementById('projects');
+                const deadlines = document.getElementById('deadlines');
+                const teamTasks = document.getElementById('team-tasks-qa');
+                const teamTasksCompleted = document.getElementById('team-tasks-completed');
+                
+                if (projects) new Sortable(projects, columnOptions);
+                if (deadlines) new Sortable(deadlines, columnOptions);
+                if (teamTasks) new Sortable(teamTasks, columnOptions);
+                if (teamTasksCompleted) new Sortable(teamTasksCompleted, columnOptions);
+                
+                // Set initial counts
+                updateCountDisplays();
+            }
+                    
+            // Enable triple-click to show debug info
+            document.addEventListener('click', function (e) {
+                if (e.detail === 3) { // Triple click
+                    if (debugInfo) {
+                        debugInfo.classList.toggle('hidden');
+                        updateDebugInfo('Debug info toggled');
+                    }
+                }
+            });
+
+            // Close modal when clicking outside
+            const modal = document.getElementById('modal');
+            if (modal) {
+                window.onclick = function (event) {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                };
+            }
+
+            // Set up UI handlers directly instead of calling a separate function
+            // Event listeners for removed buttons have been removed
+            
+            // Add event listener for Cancel button
+            const cancelBtn = document.getElementById('cancelBtn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    console.log('Cancel button clicked');
+                    if (typeof closeModal === 'function') {
+                        closeModal();
+                    }
+                });
+            }
+            
+            // Add event listener for Close button
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', function() {
+                    console.log('Close button clicked');
+                    if (typeof closeModal === 'function') {
+                        closeModal();
+                    }
+                });
+            }
+            
+            // Set initial counts
+            updateCountDisplays();
+            
+            // Add like button functionality
+            document.addEventListener('click', function(event) {
+                // Check if the clicked element or its parent has the like-button class
+                const likeButton = event.target.closest('.like-button');
+                
+                if (likeButton) {
+                    // Toggle liked state
+                    likeButton.classList.toggle('liked');
+                    
+                    // Get the count element
+                    const countElement = likeButton.querySelector('span');
+                    const thumbsUpIcon = likeButton.querySelector('i');
+                    
+                    // Get current likes from data attribute
+                    let likes = parseInt(likeButton.getAttribute('data-likes'), 10);
+                    
+                    // Increase or decrease likes based on liked state
+                    if (likeButton.classList.contains('liked')) {
+                        likes++;
+                        // Change to solid thumbs up icon
+                        thumbsUpIcon.classList.remove('far');
+                        thumbsUpIcon.classList.add('fas');
+                        thumbsUpIcon.classList.add('text-rose-400');
+                    } else {
+                        likes--;
+                        // Change back to regular thumbs up icon
+                        thumbsUpIcon.classList.remove('fas');
+                        thumbsUpIcon.classList.remove('text-rose-400');
+                        thumbsUpIcon.classList.add('far');
+                    }
+                    
+                    // Update data attribute and displayed count
+                    likeButton.setAttribute('data-likes', likes);
+                    countElement.textContent = likes;
+                    
+                    // Add a subtle animation
+                    likeButton.classList.add('animate-pulse');
+                    setTimeout(() => {
+                        likeButton.classList.remove('animate-pulse');
+                    }, 500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
