@@ -1,2217 +1,748 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Search,
-  Menu,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Building2,
-  Users,
-  Briefcase,
-  TrendingUp,
-  Globe,
-  Phone,
-  Mail,
-  ArrowRight,
-  Play,
-  CheckCircle,
-  Star,
-  Award,
-  Shield,
-  Zap,
-  User,
-  LogOut,
-  Settings,
-  Calendar,
-  BarChart3,
-  FileText,
-  Heart,
-  MessageSquare,
-  Clock,
-  Filter,
-  SortDesc,
-  Eye,
-  Download,
-  Share2,
-  Bookmark,
-  ThumbsUp,
-  MapPin,
-  Link,
-  ExternalLink,
-  ChevronRight,
-  Plus,
-  Minus,
-  Info,
-  HelpCircle,
-  BookOpen,
-  Video,
-  PieChart,
-  Target,
-  Layers,
-  Database,
-  Code,
-  Lock,
-  Cloud,
-  Smartphone,
-  Monitor,
-  Headphones,
-  AlertCircle,
-  BarChart,
-} from "lucide-react";
 
-interface NavigationItem {
-  label: string;
-  href: string;
-  children?: NavigationItem[];
-  icon?: React.ReactNode;
-  ref?: React.RefObject<HTMLElement>;
-}
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiSun, FiMoon, FiSearch, FiX, FiChevronRight, FiArrowLeft } from "react-icons/fi";
 
-interface SearchResult {
-  id: string;
+interface BlogPost {
+  id: number;
   title: string;
-  category: string;
-  url: string;
-  description: string;
-  image: string;
-  tags: string[];
   date: string;
-  views: number;
-  rating: number;
+  preview: string;
+  content: string;
+  tags: string[];
+  imageUrl: string;
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: string;
-  company: string;
-}
 
-interface FAQ {
-  question: string;
-  answer: string;
-}
+const blogPosts: BlogPost[] = [
+  {
+    id: 1,
+    title: "Getting Started with Next.js and TypeScript",
+    date: "May 15, 2023",
+    preview: "Learn how to set up a new project with Next.js and TypeScript for modern web development.",
+    content: `
+      Next.js is a React framework that enables server-side rendering and static site generation, making it perfect for building high-performance web applications.
+      
+      When combined with TypeScript, you get the benefits of static typing, which can help catch errors during development and improve code quality.
+      
+      To get started, you can use the create-next-app command with the --typescript flag to set up a new project. This will create a new directory with all the necessary files and configurations.
+      
+      Next.js also provides features like file-based routing, API routes, and built-in CSS support, making it a great choice for both small and large projects.
+    `,
+    tags: ["Next.js", "TypeScript", "Web Development"],
+    imageUrl: "https://images.unsplash.com/photo-1593720213428-28a5b9e94613?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 2,
+    title: "Building Responsive UIs with Tailwind CSS",
+    date: "June 2, 2023",
+    preview: "Discover how to create beautiful, responsive user interfaces using utility-first CSS with Tailwind.",
+    content: `
+      Tailwind CSS is a utility-first CSS framework that allows you to build custom designs without leaving your HTML. Unlike traditional CSS frameworks like Bootstrap, Tailwind doesn't provide pre-designed components.
+      
+      Instead, it gives you low-level utility classes that you can combine to create unique designs. This approach gives you more flexibility and control over your styling.
+      
+      Tailwind is also highly customizable. You can configure colors, spacing, breakpoints, and more through a configuration file. This makes it easy to maintain a consistent design system across your project.
+      
+      The framework also includes a responsive design system, making it simple to create layouts that work well on different screen sizes.
+    `,
+    tags: ["CSS", "Tailwind", "Responsive Design"],
+    imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 3,
+    title: "Animation Techniques with Framer Motion",
+    date: "July 10, 2023",
+    preview: "Explore how to add delightful animations to your React applications using Framer Motion.",
+    content: `
+      Framer Motion is a production-ready motion library for React that makes it easy to create animations for your web applications.
+      
+      With Framer Motion, you can animate any React component with a simple declarative syntax. The library provides components like motion.div that accept props for defining animations.
+      
+      Some of the key features include keyframes, variants for orchestrating complex animations, and gesture recognition for drag, hover, and tap interactions.
+      
+      Framer Motion also handles animation accessibility concerns automatically, such as respecting the user's preference for reduced motion.
+      
+      By using Framer Motion, you can create smooth, professional-looking animations without having to write complex CSS keyframes or JavaScript animation code.
+    `,
+    tags: ["React", "Animation", "Framer Motion"],
+    imageUrl: "https://images.unsplash.com/photo-1550439062-609e1531270e?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 4,
+    title: "State Management in Modern React Applications",
+    date: "August 5, 2023",
+    preview: "Compare different state management approaches in React and learn when to use each one.",
+    content: `
+      As React applications grow in complexity, managing state becomes increasingly challenging. Fortunately, there are several approaches and libraries available to help.
+      
+      For local component state, React's useState and useReducer hooks are often sufficient. They're simple to use and don't require additional dependencies.
+      
+      For sharing state between components, you can use React's Context API. This is built into React and works well for moderate-sized applications with infrequent updates.
+      
+      For larger applications with complex state requirements, external libraries like Redux, Zustand, or Jotai might be more appropriate. Each has its own strengths and trade-offs.
+      
+      The key is to choose the right tool for your specific needs. Overengineering state management can lead to unnecessary complexity, while underengineering can result in prop drilling and maintenance challenges.
+    `,
+    tags: ["React", "State Management", "JavaScript"],
+    imageUrl: "https://images.unsplash.com/photo-1555099962-4199c345e5dd?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 5,
+    title: "Optimizing Performance in Next.js Applications",
+    date: "September 12, 2023",
+    preview: "Learn techniques to improve the speed and user experience of your Next.js websites.",
+    content: `
+      Performance optimization is crucial for providing a good user experience. Next.js includes several features to help you build fast web applications.
+      
+      Image optimization is handled through the Next.js Image component, which automatically optimizes images and serves them in modern formats like WebP.
+      
+      Next.js also provides automatic code splitting, which means that only the JavaScript needed for the current page is loaded. This reduces the initial bundle size and improves page load times.
+      
+      For data fetching, Next.js offers static generation and server-side rendering. Static generation pre-renders pages at build time, while server-side rendering generates pages on each request.
+      
+      You can also use incremental static regeneration to update static pages after they've been built, combining the benefits of static generation and server-side rendering.
+      
+      Finally, Next.js includes built-in support for performance analytics through the Next.js Analytics feature, allowing you to track and improve Core Web Vitals.
+    `,
+    tags: ["Next.js", "Performance", "Optimization"],
+    imageUrl: "https://images.unsplash.com/photo-1605379399642-870262d3d051?q=80&w=2081&auto=format&fit=crop"
+  },
+  {
+    id: 6,
+    title: "Creating Custom React Hooks for Reusable Logic",
+    date: "October 8, 2023",
+    preview: "Learn how to extract and reuse stateful logic across multiple components using custom React hooks.",
+    content: `
+      Custom hooks are one of the most powerful features in React, allowing you to extract component logic into reusable functions.
+      
+      A custom hook is a JavaScript function whose name starts with "use" and that may call other hooks. This naming convention is important as it allows React to check for violations of hook rules.
+      
+      Custom hooks are perfect for sharing stateful logic between components without changing their structure. For example, you could create a useForm hook to handle form validation, submission, and error states.
+      
+      When creating custom hooks, focus on making them generic enough to be reusable but specific enough to be useful. A good custom hook solves a clear problem and has a well-defined responsibility.
+      
+      Remember that custom hooks can call other hooks, including built-in hooks like useState and useEffect, as well as other custom hooks. This composition allows for powerful patterns.
+      
+      By leveraging custom hooks, you can significantly reduce code duplication in your application and make your components cleaner and more focused on rendering.
+    `,
+    tags: ["React", "Custom Hooks", "JavaScript"],
+    imageUrl: "https://images.unsplash.com/photo-1587620962725-abab7fe55159?q=80&w=2031&auto=format&fit=crop"
+  },
+  {
+    id: 7,
+    title: "Implementing Authentication in Next.js Applications",
+    date: "November 15, 2023",
+    preview: "A comprehensive guide to adding secure authentication to your Next.js projects.",
+    content: `
+      Authentication is a critical aspect of most web applications. In Next.js, there are several approaches to implementing authentication.
+      
+      Next-Auth (now Auth.js) is a popular solution that provides built-in support for many authentication providers like Google, Facebook, and GitHub. It also supports email/password authentication and JWT sessions.
+      
+      For applications requiring more customization, you can implement your own authentication system using JWT (JSON Web Tokens) or session cookies. Next.js API routes make it straightforward to create authentication endpoints.
+      
+      When implementing authentication, it's important to consider both client-side and server-side protection. Client-side protection prevents unauthorized users from accessing certain pages, while server-side protection secures your API routes and data.
+      
+      For server-side rendering (SSR) in Next.js, you can use getServerSideProps to check authentication status and redirect unauthenticated users. For static pages, you can use client-side redirection based on the authentication state.
+      
+      Remember to follow security best practices like using HTTPS, implementing proper password hashing, and protecting against common vulnerabilities such as CSRF (Cross-Site Request Forgery) and XSS (Cross-Site Scripting).
+    `,
+    tags: ["Next.js", "Authentication", "Security"],
+    imageUrl: "https://images.unsplash.com/photo-1566837945700-30057527ade0?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 8,
+    title: "Building a Headless CMS with Next.js",
+    date: "December 5, 2023",
+    preview: "How to create a flexible content management system using Next.js and a headless CMS platform.",
+    content: `
+      A headless CMS separates the content management from the presentation layer, giving developers the freedom to build front-ends with their preferred technologies.
+      
+      Next.js is an excellent framework for building the front-end of a headless CMS due to its hybrid rendering capabilities. You can use static generation for content that doesn't change frequently and server-side rendering for dynamic content.
+      
+      There are many headless CMS platforms available, including Contentful, Sanity, Strapi, and Prismic. Each has its own features, pricing model, and developer experience.
+      
+      When connecting your Next.js application to a headless CMS, you'll typically use their API to fetch content. Many CMS providers offer JavaScript SDKs that simplify this process.
+      
+      For optimal performance, consider implementing incremental static regeneration (ISR) to update your content without rebuilding the entire site. This provides a good balance between the benefits of static generation and the freshness of content.
+      
+      Content preview can be implemented by creating special routes in your Next.js application that fetch draft content from your CMS. This allows content editors to preview their changes before publishing.
+      
+      With this approach, you get the flexibility and developer experience of a modern JavaScript framework while providing content editors with a familiar and user-friendly interface for managing content.
+    `,
+    tags: ["Next.js", "CMS", "Content Management"],
+    imageUrl: "https://images.unsplash.com/photo-1561736778-92e52a7769ef?q=80&w=2070&auto=format&fit=crop"
+  },
+  {
+    id: 9,
+    title: "Mastering CSS Grid for Modern Layouts",
+    date: "January 10, 2024",
+    preview: "An in-depth look at how CSS Grid can transform your approach to web layout design.",
+    content: `
+      CSS Grid Layout is a two-dimensional layout system that has revolutionized how we create web layouts. Unlike flexbox, which is primarily designed for one-dimensional layouts, Grid excels at creating complex two-dimensional layouts.
+      
+      The basic concept of Grid involves defining a container as a grid with rows and columns, then placing items within the grid. The power of Grid comes from its ability to control both rows and columns simultaneously.
+      
+      One of the most powerful features of Grid is the ability to create template areas. This allows you to name areas of your grid and place items in those areas, making your CSS more readable and your layouts more maintainable.
+      
+      Grid also provides powerful alignment capabilities. You can align items both horizontally and vertically within their grid cells, as well as align the entire grid within its container.
+      
+      Responsive design with Grid is straightforward using features like minmax(), auto-fill, and auto-fit. These allow you to create flexible grids that adapt to different screen sizes without media queries.
+      
+      For complex layouts, you can nest grids within grid items, creating highly sophisticated layouts that would be difficult or impossible with other CSS layout techniques.
+      
+      With browser support for CSS Grid now at over 95%, it's an essential tool for modern web development that every front-end developer should master.
+    `,
+    tags: ["CSS", "Grid Layout", "Web Design"],
+    imageUrl: "https://images.unsplash.com/photo-1547658719-da2b51169166?q=80&w=2064&auto=format&fit=crop"
+  }
+];
 
-const NavigationProject: React.FC = () => {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginForm, setLoginForm] = useState({
-    email: "demo@techcorp.com",
-    password: "demo123",
-  });
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [loginError, setLoginError] = useState("");
-
-  // Navigation state
-  const [isScrolledUp, setIsScrolledUp] = useState(false);
-  const [showFullNav, setShowFullNav] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
+export default function Home() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(blogPosts);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
-  const [searchFilter, setSearchFilter] = useState("all");
-  const [searchSort, setSearchSort] = useState("relevance");
-  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState("");
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
-    null
-  );
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [showDemoBooked, setShowDemoBooked] = useState(false);
 
-  const homeRef = useRef<HTMLElement>(null!);
-  const leadersRef = useRef<HTMLElement>(null!);
-  const portfolioRef = useRef<HTMLElement>(null!);
-  const faqRef = useRef<HTMLElement>(null!);
-
-  const subscribeRef = useRef<HTMLElement>(null!);
-  const expertiseRef = useRef<HTMLElement>(null!);
-  const clientsRef = useRef<HTMLElement>(null!);
-  const businessRef = useRef<HTMLElement>(null!);
-  const lastScrollY = useRef(0);
-  const searchInputRef = useRef<HTMLInputElement>(null!);
-  const searchResultsRef = useRef<HTMLDivElement>(null!);
-
-  // Demo credentials
-  const demoUser: User = {
-    id: "1",
-    name: "John Anderson",
-    email: "john.anderson@techcorp.com",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-    role: "Manager",
-    company: "TechCorp ",
-  };
-
-  // Navigation structure
-  const navigationItems: NavigationItem[] = [
-    { label: "Home", href: "#home", ref: homeRef },
-    { label: "Leaders", href: "#leaders", ref: leadersRef },
-    { label: "Portfolio", href: "#portfolio", ref: portfolioRef },
-    { label: "FAQ", href: "#faq", ref: faqRef },
-    {
-      label: "Others",
-      href: "#",
-      children: [
-        {
-          label: "Subscribe",
-          href: "#",
-          icon: <TrendingUp className="w-4 h-4" />,
-          ref: subscribeRef,
-        },
-        {
-          label: "Our Expertise",
-          href: "#",
-          icon: <BarChart className="w-4 h-4" />,
-          ref: expertiseRef,
-        },
-        {
-          label: "Clients",
-          href: "#",
-          icon: <Zap className="w-4 h-4" />,
-          ref: clientsRef,
-        },
-        {
-          label: "Business",
-          href: "#",
-          icon: <Phone className="w-4 h-4" />,
-          ref: businessRef,
-        },
-      ],
-    },
-  ];
-
-  const scrollToSection = (sectionRef: React.RefObject<HTMLElement>) => {
-    sectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
-  // Enhanced search results
-  const searchResults: SearchResult[] = [
-    {
-      id: "1",
-      title: "Digital Transformation Strategy Guide 2025",
-      category: "Solutions",
-      url: "/solutions/digital",
-      description:
-        "Comprehensive guide to implementing digital transformation in enterprise environments with proven methodologies.",
-      image:
-        "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["Digital", "Strategy", "Enterprise", "Transformation"],
-      date: "2025-01-15",
-      views: 15420,
-      rating: 4.8,
-    },
-    {
-      id: "2",
-      title: "Cloud Migration Best Practices",
-      category: "Products",
-      url: "/products/cloud",
-      description:
-        "Learn how to migrate your infrastructure to the cloud efficiently with minimal downtime and maximum security.",
-      image:
-        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["Cloud", "Migration", "Infrastructure", "Security"],
-      date: "2025-01-10",
-      views: 8930,
-      rating: 4.9,
-    },
-    {
-      id: "3",
-      title: "AI-Powered Analytics Platform",
-      category: "Products",
-      url: "/products/analytics",
-      description:
-        "Revolutionary analytics platform that leverages artificial intelligence to provide actionable business insights.",
-      image:
-        "https://images.unsplash.com/photo-1518709268805-4e9042af2176?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["AI", "Analytics", "Business Intelligence", "Machine Learning"],
-      date: "2025-01-12",
-      views: 12650,
-      rating: 4.7,
-    },
-    {
-      id: "4",
-      title: "Financial Services Security Framework",
-      category: "Industries",
-      url: "/industries/financial",
-      description:
-        "Comprehensive security framework designed specifically for financial institutions and regulatory compliance.",
-      image:
-        "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["Finance", "Security", "Compliance", "Banking"],
-      date: "2025-01-08",
-      views: 6780,
-      rating: 4.6,
-    },
-    {
-      id: "5",
-      title: "API Management Excellence",
-      category: "Products",
-      url: "/products/api",
-      description:
-        "Complete API lifecycle management solution with advanced monitoring, security, and developer tools.",
-      image:
-        "https://images.unsplash.com/photo-1555949963-ff9fe51c870a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["API", "Development", "Integration", "Monitoring"],
-      date: "2025-01-05",
-      views: 9340,
-      rating: 4.8,
-    },
-    {
-      id: "6",
-      title: "Enterprise Mobile Solutions",
-      category: "Products",
-      url: "/products/mobile",
-      description:
-        "Secure, scalable mobile applications designed for enterprise environments with advanced features.",
-      image:
-        "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      tags: ["Mobile", "Enterprise", "Security", "Apps"],
-      date: "2025-01-03",
-      views: 7890,
-      rating: 4.5,
-    },
-  ];
-
-  const recentSearches = searchResults.slice(0, 3);
-  const popularCategories = [
-    "Enterprise Solutions",
-    "Cloud Services",
-    "Digital Transformation",
-    "API Management",
-    "Security & Compliance",
-    "Analytics",
-  ];
-
-  // FAQ Data
-  const faqs: FAQ[] = [
-    {
-      question: "How do I get started with TechCorp's solutions?",
-      answer:
-        "Getting started is easy! Simply schedule a consultation with our experts, and we'll assess your needs and create a customized implementation plan. Our onboarding process typically takes 2-4 weeks depending on the complexity of your requirements.",
-    },
-    {
-      question: "What security measures do you have in place?",
-      answer:
-        "We implement enterprise-grade security including end-to-end encryption, multi-factor authentication, regular security audits, and compliance with SOC 2, ISO 27001, and GDPR standards. All data is stored in secure, geographically distributed data centers.",
-    },
-    {
-      question: "Do you offer 24/7 support?",
-      answer:
-        "Yes, we provide 24/7 support for all enterprise clients with guaranteed response times. Our support team includes technical experts, solution architects, and dedicated account managers to ensure your success.",
-    },
-    {
-      question: "Can your solutions integrate with existing systems?",
-      answer:
-        "Absolutely! Our platform is designed with integration in mind. We support REST APIs, webhooks, and pre-built connectors for popular enterprise software including Salesforce, SAP, Oracle, and Microsoft products.",
-    },
-    {
-      question: "What is your pricing model?",
-      answer:
-        "We offer flexible pricing based on your specific needs, including subscription-based models, usage-based pricing, and enterprise licensing. Contact our sales team for a customized quote based on your requirements.",
-    },
-  ];
-
-  // Notification function
-  const showNotificationMessage = (message: string) => {
-    setNotificationMessage(message);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 4000);
-  };
-
-  // Authentication functions
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-
-    if (
-      loginForm.email === "demo@techcorp.com" &&
-      loginForm.password === "demo123"
-    ) {
-      setIsAuthenticated(true);
-      setUser(demoUser);
-      setShowLoginModal(false);
-      setLoginForm({ email: "", password: "" });
-      showNotificationMessage("Successfully logged in! Welcome back.");
-    } else {
-      setLoginError(
-        "Invalid credentials. Please use demo@techcorp.com / demo123"
-      );
+  
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('blog-theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      setTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
     }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    setShowProfileDropdown(false);
-    showNotificationMessage("Successfully logged out.");
-  };
-
-  // Handle view details
-  const handleViewDetails = (result: SearchResult) => {
-    setSelectedResult(result);
-    setShowDetailsModal(true);
-  };
-
-  const handleCloseDetailsModal = () => {
-    setShowDetailsModal(false);
-    setSelectedResult(null);
-  };
-
-  // Newsletter subscription
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newsletterEmail) {
-      setShowSuccessMessage(true);
-      setNewsletterEmail("");
-    }
-  };
-
-  // Demo booking for logged-in users
-  const handleDemoBooking = () => {
-    if (isAuthenticated && user) {
-      // Book demo for authenticated user
-      setShowDemoBooked(true);
-      showNotificationMessage(`Demo scheduled successfully for ${user.name}! Our team will contact you within 24 hours.`);
-      setTimeout(() => setShowDemoBooked(false), 3000);
-    } else {
-      // Show login modal for non-authenticated users
-      setShowLoginModal(true);
-    }
-  };
-
-  // Navigation click handler
-  const handleNavClick = (item: NavigationItem) => {
-    if (item.ref) {
-      scrollToSection(item.ref);
-      setMobileMenuOpen(false);
-      setActiveDropdown(null);
-    } else if (item.children) {
-      handleDropdownToggle(item.label);
-    }
-  };
-
-  // Scroll detection with throttling - Mobile optimized
-  const handleScroll = useCallback(() => {
-    const currentScrollY = window.scrollY;
-    const direction = currentScrollY > lastScrollY.current ? "down" : "up";
-
-    setScrollDirection(direction);
-    
-    // Mobile-friendly scroll thresholds
-    const threshold = window.innerWidth < 768 ? 30 : 50; // Lower threshold for mobile
-    
-    // Show expanded header when scrolling up or when near top
-    setIsScrolledUp(currentScrollY > threshold && direction === "up");
-    setShowFullNav((currentScrollY > threshold && direction === "up") || currentScrollY < threshold);
-
-    lastScrollY.current = currentScrollY;
   }, []);
 
+  
   useEffect(() => {
-    let ticking = false;
+    localStorage.setItem('blog-theme', theme);
+    document.body.style.backgroundColor = theme === 'dark' ? '#121212' : '#ffffff';
+    document.body.style.color = theme === 'dark' ? '#f8f8f8' : '#121212';
+  }, [theme]);
 
-    const throttledHandleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
+  
+  useEffect(() => {
+    if (selectedPost) {
+      
+      const scrollY = window.scrollY;
+      
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflowY = 'hidden';
+      
+      return () => {
+        
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+        
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [selectedPost]);
 
-    // Add both scroll and touch events for better mobile support
-    window.addEventListener("scroll", throttledHandleScroll, { passive: true });
-    window.addEventListener("touchmove", throttledHandleScroll, { passive: true });
-    
-    return () => {
-      window.removeEventListener("scroll", throttledHandleScroll);
-      window.removeEventListener("touchmove", throttledHandleScroll);
-    };
-  }, [handleScroll]);
+  
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPosts(blogPosts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = blogPosts.filter(
+        post =>
+          post.title.toLowerCase().includes(query) ||
+          post.preview.toLowerCase().includes(query) ||
+          post.tags.some(tag => tag.toLowerCase().includes(query))
+      );
+      setFilteredPosts(filtered);
+    }
+  }, [searchQuery]);
 
-  // Search functionality
-  const handleSearchOpen = () => {
-    setSearchOpen(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+  
+  const toggleTheme = () => {
+    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setSearchOpen(false);
-      setShowSearchResults(true);
-      // Scroll to search results section
+  
+  const bgClass = theme === 'dark' ? 'bg-[#121212]' : 'bg-white';
+  const textClass = theme === 'dark' ? 'text-[#f8f8f8]' : 'text-[#121212]';
+  const cardBgClass = theme === 'dark' ? 'bg-[#1e1e1e]' : 'bg-[#f9f9f9]';
+  const borderClass = theme === 'dark' ? 'border-[#333]' : 'border-[#eaeaea]';
+  const hoverClass = theme === 'dark' ? 'hover:bg-[#252525]' : 'hover:bg-[#f1f1f1]';
+  const modalBgClass = theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white';
+
+  
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      
       setTimeout(() => {
-        searchResultsRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
+        
+        const sectionPosition = section.getBoundingClientRect().top;
+        
+        const offsetPosition = sectionPosition + window.pageYOffset - 20; 
+        
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
         });
       }, 100);
     }
   };
 
-  const handleSearchClose = () => {
-    setSearchOpen(false);
-    setSearchQuery("");
-  };
-
-  // Touch-friendly dropdown handlers
-  const handleDropdownToggle = (label: string) => {
-    setActiveDropdown(activeDropdown === label ? null : label);
-  };
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setActiveDropdown(null);
-      setShowProfileDropdown(false);
-    };
-
-    if (activeDropdown || showProfileDropdown) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [activeDropdown, showProfileDropdown]);
-
-  // Prevent body scroll when modals are open
-  useEffect(() => {
-    if (searchOpen || mobileMenuOpen || showLoginModal || showDetailsModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [searchOpen, mobileMenuOpen, showLoginModal, showDetailsModal]);
-
-  // Filter and sort search results
-  const filteredResults = searchResults
-    .filter((result) => {
-      const matchesQuery =
-        result.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        result.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        result.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      const matchesFilter =
-        searchFilter === "all" ||
-        result.category.toLowerCase() === searchFilter.toLowerCase();
-      return matchesQuery && matchesFilter;
-    })
-    .sort((a, b) => {
-      switch (searchSort) {
-        case "date":
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        case "views":
-          return b.views - a.views;
-        case "rating":
-          return b.rating - a.rating;
-        default:
-          return 0;
-      }
-    });
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Notification */}
-      <div
-        className={`fixed top-4 right-4 z-50 transition-all duration-300 ${
-          showNotification
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-2 pointer-events-none"
-        }`}
+    <div className={`min-h-screen w-full ${bgClass} ${textClass} transition-colors duration-300`}>
+      <motion.header 
+        className={`sticky top-0 z-50 ${bgClass} border-b ${borderClass} backdrop-blur-md bg-opacity-80`}
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 100 }}
       >
-        <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
-          <CheckCircle className="w-5 h-5" />
-          <span>{notificationMessage}</span>
-        </div>
-      </div>
-
-      {/* Navigation Header */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
-          isScrolledUp || showFullNav
-            ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-gray-200"
-            : "bg-white shadow-sm"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className={`flex items-center justify-between transition-all duration-500 ${
-              showFullNav ? "h-16 sm:h-20" : "h-12 sm:h-14"
-            }`}
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <motion.div 
+            className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 text-transparent bg-clip-text"
+            whileHover={{ scale: 1.05 }}
           >
-            {/* Logo */}
-            <div
-              className="flex items-center space-x-2 cursor-pointer transition-all duration-300"
-              onClick={() => scrollToSection(homeRef)}
-            >
-              <div className={`bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center transition-all duration-300 ${
-                showFullNav ? "w-10 h-10" : "w-8 h-8"
-              }`}>
-                <Building2 className={`text-white transition-all duration-300 ${
-                  showFullNav ? "w-6 h-6" : "w-5 h-5"
-                }`} />
-              </div>
-              <span className={`font-bold text-gray-900 transition-all duration-300 ${
-                showFullNav ? "text-xl opacity-100" : "text-lg opacity-80"
-              }`}>TechCorp</span>
-            </div>
-
-            {/* Navigation - Desktop only when expanded, mobile uses mobile menu */}
-            <nav
-              className={`hidden lg:flex items-center space-x-1 transition-all duration-500 ${
-                showFullNav
-                  ? "opacity-100 scale-100 translate-x-0"
-                  : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
-              }`}
-            >
-              {navigationItems.map((item) => (
-                <div key={item.label} className="relative group">
-                  <button
-                    className="px-4 py-2 text-gray-700 hover:text-blue-600 cursor-pointer font-medium transition-colors duration-200 flex items-center space-x-1"
-                    onClick={() => handleNavClick(item)}
-                  >
-                    <span>{item.label}</span>
-                    {item.children && <ChevronDown className="w-4 h-4" />}
-                  </button>
-
-                  {/* Desktop Dropdown */}
-                  {item.children && (
-                    <div
-                      className={`absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 transition-all duration-300 ${
-                        activeDropdown === item.label
-                          ? "opacity-100 visible translate-y-0"
-                          : "opacity-0 invisible -translate-y-2"
-                      }`}
-                    >
-                      <div className="py-2">
-                        {item.children.map((child) => (
-                          <button
-                            key={child.label}
-                            onClick={() => handleNavClick(child)}
-                            className="flex items-center space-x-3 cursor-pointer px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors duration-200 w-full text-left"
-                          >
-                            {child.icon}
-                            <span>{child.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+            My Personal Blog
+          </motion.div>
+          
+          <div className="flex items-center space-x-6">
+            <nav className="hidden md:flex space-x-6">
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('home'); }} className="hover:text-blue-500 transition-colors">Home</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('about'); }} className="hover:text-blue-500 transition-colors">About</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('contact'); }} className="hover:text-blue-500 transition-colors">Contact</a>
             </nav>
-
-            {/* Actions - Mobile optimized spacing and sizing */}
-            <div className={`flex items-center transition-all duration-500 ${
-              showFullNav ? "space-x-3 opacity-100" : "space-x-2 opacity-60"
-            }`}>
-              {/* Search Button - Always visible, mobile optimized */}
-              <button
-                onClick={handleSearchOpen}
-                className={`text-gray-600 cursor-pointer hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-all duration-200 ${
-                  showFullNav ? "p-2" : "p-1.5"
-                } min-w-[44px] min-h-[44px] flex items-center justify-center sm:min-w-0 sm:min-h-0`}
-              >
-                <Search className={`transition-all duration-300 ${
-                  showFullNav ? "w-5 h-5" : "w-4 h-4"
-                }`} />
-              </button>
-
-              {/* User Profile or Login - Mobile responsive */}
-              {isAuthenticated && user ? (
-                <div className={`relative transition-all duration-300 ${
-                  showFullNav ? "opacity-100" : "opacity-60 sm:opacity-100"
-                }`}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowProfileDropdown(!showProfileDropdown);
-                    }}
-                    className={`flex items-center cursor-pointer space-x-2 hover:bg-gray-100 rounded-lg transition-all duration-200 ${
-                      showFullNav ? "p-2" : "p-1.5"
-                    } min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0`}
-                  >
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className={`rounded-full object-cover transition-all duration-300 ${
-                        showFullNav ? "w-8 h-8" : "w-6 h-6"
-                      }`}
-                    />
-                    {showFullNav && (
-                      <>
-                        <span className="hidden sm:block text-sm font-medium text-gray-700">
-                          {user.name.split(" ")[0]}
-                        </span>
-                        <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
-                      </>
-                    )}
-                  </button>
-
-                  {/* Profile Dropdown - Mobile optimized positioning */}
-                  <div
-                    className={`absolute top-full right-0 mt-2 w-64 sm:w-72 bg-white rounded-lg shadow-xl border border-gray-200 transition-all duration-300 ${
-                      showProfileDropdown
-                        ? "opacity-100 visible translate-y-0"
-                        : "opacity-0 invisible -translate-y-2"
-                    }`}
-                  >
-                    <div className="p-4 border-b border-gray-200">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {user.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {user.role}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {user.company}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-gray-200   ">
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-3 px-4 py-3 cursor-pointer text-red-600 hover:bg-red-50 transition-colors duration-200 w-full text-left"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className={`items-center space-x-2 border border-gray-300 text-gray-700 cursor-pointer rounded-lg font-medium hover:bg-gray-50 transition-all duration-200 ${
-                    showFullNav 
-                      ? "hidden sm:flex px-4 py-2" 
-                      : "hidden"
-                  }`}
-                >
-                  <User className="w-4 h-4" />
-                  <span>Sign In</span>
-                </button>
-              )}
-
-              {/* Mobile Menu Button - Always visible on mobile */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className={`lg:hidden text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-all duration-200 ${
-                  showFullNav ? "p-2" : "p-1.5"
-                } min-w-[44px] min-h-[44px] flex items-center justify-center`}
-              >
-                {mobileMenuOpen ? (
-                  <X className={`transition-all duration-300 ${showFullNav ? "w-6 h-6" : "w-5 h-5"}`} />
-                ) : (
-                  <Menu className={`transition-all duration-300 ${showFullNav ? "w-6 h-6" : "w-5 h-5"}`} />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Menu */}
-      <div
-        className={`lg:hidden fixed inset-0 z-40 transition-all duration-300 ${
-          mobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      >
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-        <div
-          className={`absolute top-0 right-0 w-80 max-w-sm h-full bg-white shadow-xl transition-transform duration-300 ${
-            mobileMenuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="h-screen overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-lg font-bold text-gray-900">
-                    TechCorp
-                  </span>
-                </div>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-gray-600 hover:text-blue-600 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Mobile User Profile */}
-              {isAuthenticated && user ? (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {user.name}
-                      </div>
-                      <div className="text-sm text-gray-500">{user.role}</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setShowLoginModal(true);
-                    }}
-                    className="w-full flex items-center justify-center space-x-2 border border-gray-300 text-gray-700 cursor-pointer px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <nav className="p-6 space-y-2 overflow-y-auto">
-              {navigationItems.map((item) => (
-                <div key={item.label}>
-                  <button
-                    className="w-full flex items-center justify-between p-3 text-gray-700 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors duration-200"
-                    onClick={() => handleNavClick(item)}
-                  >
-                    <span className="font-medium">{item.label}</span>
-                    {item.children &&
-                      (activeDropdown === item.label ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      ))}
-                  </button>
-
-                  {/* Mobile Dropdown */}
-                  {item.children && (
-                    <div
-                      className={`ml-4 space-y-1 transition-all duration-300 overflow-hidden ${
-                        activeDropdown === item.label
-                          ? "max-h-96 opacity-100"
-                          : "max-h-0 opacity-0"
-                      }`}
-                    >
-                      {item.children.map((child) => (
-                        <button
-                          key={child.label}
-                          onClick={() => {
-                            setMobileMenuOpen(false);
-                            handleNavClick(child);
-                          }}
-                          className="flex items-center space-x-3 p-3 text-gray-600 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-colors duration-200 w-full text-left"
-                        >
-                          {child.icon}
-                          <span>{child.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Mobile Auth Actions */}
-              {isAuthenticated ? (
-                <div className="pt-6 mt-6 border-t border-gray-200 space-y-2">
-                  <button
-                    onClick={() => showNotificationMessage("Opening dashboard")}
-                    className="flex items-center space-x-3 p-3 text-gray-700 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors duration-200 w-full text-left"
-                  >
-                    <Calendar className="w-4 h-4" />
-                    <span>Dashboard</span>
-                  </button>
-                  <button
-                    onClick={() => showNotificationMessage("Opening settings")}
-                    className="flex items-center space-x-3 p-3 text-gray-700 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors duration-200 w-full text-left"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Settings</span>
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-3 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 w-full text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="pt-6 mt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleDemoBooking();
-                    }}
-                    className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
-                  >
-                    <span>{isAuthenticated ? "Schedule Demo" : "Get Started"}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </nav>
-          </div>
-        </div>
-      </div>
-
-      {/* Login Modal */}
-      <div
-        className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-          showLoginModal ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      >
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowLoginModal(false)}
-        />
-        <div
-          className={`relative w-full max-w-full sm:max-w-lg max-h-[90vh] sm:max-h-[90vh] bg-white rounded-2xl shadow-2xl  overflow-y-auto transition-all duration-300 ${
-            showLoginModal
-              ? "scale-100 translate-y-0"
-              : "scale-95 translate-y-4"
-          }`}
-        >
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome back
-              </h2>
-              <p className="text-gray-600">
-                Sign in to access your TechCorp account
-              </p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, email: e.target.value })
-                  }
-                  placeholder="demo@techcorp.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm({ ...loginForm, password: e.target.value })
-                  }
-                  placeholder="demo123"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-              </div>
-
-              {loginError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  <span className="text-sm text-red-800">{loginError}</span>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">
-                  Demo Credentials
-                </h4>
-                <p className="text-sm text-blue-800">
-                  <strong>Email:</strong> demo@techcorp.com
-                  <br />
-                  <strong>Password:</strong> demo123
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105"
-              >
-                Sign In
-              </button>
-            </form>
-
-            <button
-              onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+            
+            <motion.button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full ${theme === 'dark' ? 'bg-blue-500' : 'bg-yellow-400'} text-white md:order-last`}
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1 }}
             >
-              <X className="w-5 h-5" />
+              {theme === 'dark' ? <FiMoon size={20} /> : <FiSun size={20} />}
+            </motion.button>
+            
+            <button 
+              className="md:hidden focus:outline-none"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle mobile menu"
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
-      </div>
+        
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div 
+              className={`md:hidden ${cardBgClass} border-b ${borderClass}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="container mx-auto px-4 py-3">
+                <nav className="flex flex-col space-y-3">
+                  <a 
+                    href="#home" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setMobileMenuOpen(false);
+                      scrollToSection('home');
+                    }} 
+                    className="hover:text-blue-500 transition-colors py-2 px-4 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    Home
+                  </a>
+                  <a 
+                    href="#about" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setMobileMenuOpen(false);
+                      scrollToSection('about');
+                    }} 
+                    className="hover:text-blue-500 transition-colors py-2 px-4 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    About
+                  </a>
+                  <a 
+                    href="#contact" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setMobileMenuOpen(false);
+                      scrollToSection('contact');
+                    }} 
+                    className="hover:text-blue-500 transition-colors py-2 px-4 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    Contact
+                  </a>
+                </nav>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.header>
 
-      {/* Search Overlay */}
-      <div
-        className={`fixed inset-0 z-50 transition-all duration-300 ${
-          searchOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      >
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={handleSearchClose}
-        />
-        <div
-          className={`absolute top-20 left-1/2 transform -translate-x-1/2 w-[95%] sm:w-full sm:max-w-2xl bg-white mx-auto rounded-2xl shadow-2xl transition-all duration-300 ${
-            searchOpen ? "translate-y-0 scale-100" : "-translate-y-4 scale-95"
-          }`}
-        >
-          {/* Search Input */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="p-6 border-b border-gray-200"
+      <main className="container mx-auto px-4 pt-4 md:pt-8 pb-4">
+        <section id="home" className="mb-8 md:mb-16 mt-4 md:mt-8">
+          <motion.div 
+            className="relative overflow-hidden rounded-2xl h-[300px] md:h-[400px] lg:h-[500px] shadow-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
           >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search resources..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors duration-200"
-              />
-              <button
-                type="button"
-                onClick={handleSearchClose}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </form>
-
-          {/* Search Content */}
-          <div className="p-6 max-h-96 overflow-y-auto">
-            {searchQuery ? (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                  Search Results
-                </h3>
-                <div className="space-y-2">
-                  {filteredResults.slice(0, 3).map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setShowSearchResults(true);
-                        setTimeout(() => {
-                          searchResultsRef.current?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
-                        }, 100);
-                      }}
-                      className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200 w-full text-left"
-                    >
-                      <Search className="w-4 h-4 text-gray-400" />
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {item.title}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {item.category}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                  {filteredResults.length > 3 && (
-                    <button
-                      onClick={handleSearchSubmit}
-                      className="w-full text-center py-2 text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      View all {filteredResults.length} results
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Recent Searches */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                    Recent Searches
-                  </h3>
-                  <div className="space-y-2">
-                    {recentSearches.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          setSearchQuery(item.title);
-                          setSearchOpen(false);
-                          setShowSearchResults(true);
-                          setTimeout(() => {
-                            searchResultsRef.current?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "start",
-                            });
-                          }, 100);
-                        }}
-                        className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200 w-full text-left"
-                      >
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {item.title}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {item.category}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Popular Categories */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                    Popular Categories
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {popularCategories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => {
-                          setSearchQuery(category);
-                          handleSearchSubmit(new Event("submit") as any);
-                        }}
-                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer rounded-lg text-sm font-medium transition-colors duration-200"
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="pt-16">
-        {/* Hero Section - Home */}
-        <section
-          ref={homeRef}
-          id="home"
-          className="relative overflow-hidden bg-gradient-to-r from-blue-900 via-blue-800 to-purple-900"
-        >
-          <div className="absolute inset-0">
-            <img
-              src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=2072&q=80"
-              alt="Technology background"
-              className="w-full h-full object-cover opacity-20"
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/70 to-purple-600/70 z-10"></div>
+            <img 
+              src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=2070&auto=format&fit=crop" 
+              alt="Blog Hero" 
+              className="absolute inset-0 w-full h-full object-cover"
             />
-          </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-            <div className="text-center">
-              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-white mb-6">
-                Transform Your Business with
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-                  Advanced Technology
-                </span>
-              </h1>
-              <p className="text-lg sm:text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-                Leading Fortune 500 companies trust our enterprise solutions to
-                drive innovation, enhance productivity, and accelerate digital
-                transformation.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => scrollToSection(leadersRef)}
-                  className="flex items-center cursor-pointer justify-center space-x-2 bg-white text-blue-900 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-200 hover:scale-105"
-                >
-                  <span>Start Your Journey</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
+            <div className="absolute inset-0 z-20 flex flex-col justify-center px-4 md:px-6 lg:px-12">
+              <motion.h1 
+                className="text-2xl md:text-3xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 md:mb-4"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+              >
+                Welcome to My Blog
+              </motion.h1>
+              <motion.p 
+                className="text-base md:text-lg lg:text-xl text-white/90 max-w-2xl"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.8 }}
+              >
+                Explore articles about web development, programming, and modern UI design trends.
+              </motion.p>
             </div>
-          </div>
+          </motion.div>
         </section>
 
-        {/* Search Results Section */}
-        {showSearchResults && (
-          <section
-            ref={searchResultsRef}
-            className="py-16 sm:py-20 bg-gray-100"
-          >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Search Results Header */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    Search Results
-                  </h2>
-                  <button
-                    onClick={() => setShowSearchResults(false)}
-                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-                  >
-                    <X className="w-5 h-5" />
-                    <span>Close</span>
-                  </button>
-                </div>
-                <div className="text-sm text-gray-500 mb-6">
-                  {filteredResults.length} results for "{searchQuery}"
-                </div>
-
-                {/* Search Filters */}
-                <div className="flex flex-row gap-2 sm:gap-4">
-                  <div className="flex items-center space-x-1 sm:space-x-2 flex-1">
-                    <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <select
-                      value={searchFilter}
-                      onChange={(e) => setSearchFilter(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full min-w-0"
-                    >
-                      <option value="all">All Categories</option>
-                      <option value="solutions">Solutions</option>
-                      <option value="products">Products</option>
-                      <option value="industries">Industries</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center space-x-1 sm:space-x-2 flex-1">
-                    <SortDesc className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <select
-                      value={searchSort}
-                      onChange={(e) => setSearchSort(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full min-w-0"
-                    >
-                      <option value="relevance">Most Relevant</option>
-                      <option value="date">Newest First</option>
-                      <option value="views">Most Viewed</option>
-                      <option value="rating">Highest Rated</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search Results Grid */}
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredResults.map((result) => (
-                  <div
-                    key={result.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
-                  >
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={result.image}
-                        alt={result.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute top-3 left-3">
-                        <span className="bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-medium">
-                          {result.category}
-                        </span>
-                      </div>
-                      <div className="absolute top-3 right-3 flex items-center space-x-1 bg-black/50 text-white px-2 py-1 rounded-lg text-xs">
-                        <Star className="w-3 h-3 fill-current" />
-                        <span>{result.rating}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">
-                        {result.title}
-                      </h3>
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                        {result.description}
-                      </p>
-
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {result.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-4 h-4" />
-                          <span>{result.views.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {new Date(result.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleViewDetails(result)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {filteredResults.length === 0 && (
-                <div className="text-center py-12">
-                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No results found
-                  </h3>
-                  <p className="text-gray-500">
-                    Try adjusting your search terms or filters
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Leaders Section */}
-        <section
-          ref={leadersRef}
-          id="leaders"
-          className="py-16 sm:py-20 bg-white"
+        <motion.div 
+          className={`relative mb-6 md:mb-8 ${cardBgClass} rounded-xl p-2 shadow-md`}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Trusted by Industry Leaders
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-                Our comprehensive platform delivers enterprise-grade solutions
-                that scale with your business needs.
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {[
-                {
-                  icon: <Shield className="w-8 h-8 text-blue-600" />,
-                  title: "Enterprise Security",
-                  description:
-                    "Bank-level security with end-to-end encryption and compliance certifications.",
-                  image:
-                    "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-                },
-                {
-                  icon: <Zap className="w-8 h-8 text-blue-600" />,
-                  title: "Lightning Performance",
-                  description:
-                    "Ultra-fast processing with 99.9% uptime and global CDN distribution.",
-                  image:
-                    "https://images.unsplash.com/photo-1584931423298-c576fda54bd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-                },
-                {
-                  icon: <Award className="w-8 h-8 text-blue-600" />,
-                  title: "Award-Winning Support",
-                  description:
-                    "24/7 dedicated support team with industry-leading response times.",
-                  image:
-                    "https://images.unsplash.com/photo-1553484771-047a44eee27a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-                },
-              ].map((feature, index) => (
-                <div
-                  key={index}
-                  className="group bg-gray-50 rounded-2xl p-6 sm:p-8 hover:bg-white hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="relative overflow-hidden rounded-xl mb-6">
-                    <img
-                      src={feature.image}
-                      alt={feature.title}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-600 mb-4">{feature.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Portfolio Section */}
-        <section
-          ref={portfolioRef}
-          id="portfolio"
-          className="py-16 sm:py-20 bg-gray-50"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Comprehensive Solutions Portfolio
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
-                From cloud migration to AI implementation, we provide end-to-end
-                solutions tailored to your industry needs.
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-              <div>
-                <img
-                  src="https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                  alt="Digital solutions"
-                  className="w-full rounded-2xl shadow-lg"
-                />
-              </div>
-              <div className="space-y-6 sm:space-y-8">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
-                    Digital Transformation Excellence
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    We help organizations modernize their technology stack,
-                    streamline operations, and create new digital revenue
-                    streams through innovative solutions.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  {[
-                    {
-                      icon: <Globe className="w-5 h-5" />,
-                      title: "Cloud Migration & Optimization",
-                      desc: "Seamless transition to cloud infrastructure",
-                    },
-                    {
-                      icon: <BarChart3 className="w-5 h-5" />,
-                      title: "Data Analytics & BI",
-                      desc: "Transform data into actionable insights",
-                    },
-                    {
-                      icon: <Zap className="w-5 h-5" />,
-                      title: "Process Automation",
-                      desc: "Streamline operations with AI-powered automation",
-                    },
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
-                        {item.icon}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">
-                          {item.title}
-                        </h4>
-                        <p className="text-gray-600 text-sm">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => scrollToSection(expertiseRef)}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105"
-                >
-                  <span>Explore Solutions</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Details Modal */}
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-            showDetailsModal ? "opacity-100 visible" : "opacity-0 invisible"
-          }`}
-        >
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={handleCloseDetailsModal}
-          />
-          <div
-            className={`relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
-              showDetailsModal
-                ? "scale-100 translate-y-0"
-                : "scale-95 translate-y-4"
-            }`}
-          >
-            {selectedResult && (
-              <>
-                {/* Modal Header */}
-                <div className="relative">
-                  <img
-                    src={selectedResult.image}
-                    alt={selectedResult.title}
-                    className="w-full h-48 sm:h-56 lg:h-80 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  
-                  {/* Close button - top right */}
-                  <button
-                    onClick={handleCloseDetailsModal}
-                    className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors duration-200 z-10"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  
-                  {/* Bottom content area - tags and rating */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-                    {/* Category and Rating row */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg">
-                        {selectedResult.category}
-                      </span>
-                      <div className="flex items-center space-x-1 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm shadow-lg">
-                        <Star className="w-4 h-4 fill-current text-yellow-400" />
-                        <span className="font-medium">{selectedResult.rating}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Title */}
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white leading-tight">
-                      {selectedResult.title}
-                    </h2>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-6 sm:p-8 max-h-96 overflow-y-auto">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="space-y-6 lg:col-span-2">
-                      {/* Description */}
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          Overview
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                          {selectedResult.description}
-                        </p>
-                        <p className="text-gray-600 leading-relaxed mt-4">
-                          Our comprehensive approach ensures seamless
-                          integration with your existing systems while providing
-                          scalable solutions that grow with your business. With
-                          industry-leading security standards and 24/7 support,
-                          you can trust our platform to deliver exceptional
-                          results.
-                        </p>
-                      </div>
-
-                      {/* Key Features */}
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          Key Features
-                        </h3>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          {[
-                            {
-                              icon: <Shield className="w-5 h-5" />,
-                              title: "Enterprise Security",
-                              desc: "Bank-level encryption",
-                            },
-                            {
-                              icon: <Zap className="w-5 h-5" />,
-                              title: "High Performance",
-                              desc: "99.9% uptime guarantee",
-                            },
-                            {
-                              icon: <Users className="w-5 h-5" />,
-                              title: "24/7 Support",
-                              desc: "Expert assistance",
-                            },
-                            {
-                              icon: <Globe className="w-5 h-5" />,
-                              title: "Global Scale",
-                              desc: "Worldwide deployment",
-                            },
-                          ].map((feature, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                            >
-                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
-                                {feature.icon}
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-gray-900">
-                                  {feature.title}
-                                </h4>
-                                <p className="text-sm text-gray-600">
-                                  {feature.desc}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tags */}
-                      <div className="pb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          Related Topics
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedResult.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className="space-y-6">
-                      {/* Stats */}
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                          Statistics
-                        </h3>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Eye className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">
-                                Views
-                              </span>
-                            </div>
-                            <span className="font-semibold text-gray-900">
-                              {selectedResult.views.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Star className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">
-                                Rating
-                              </span>
-                            </div>
-                            <span className="font-semibold text-gray-900">
-                              {selectedResult.rating}/5.0
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">
-                                Published
-                              </span>
-                            </div>
-                            <span className="font-semibold text-gray-900">
-                              {new Date(
-                                selectedResult.date
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Contact Info */}
-                      <div className="bg-blue-50 rounded-xl p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                          Need Help?
-                        </h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <Phone className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                Call Sales
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                +1 (555) 123-4567
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <Mail className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                Email Support
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                support@techcorp.com
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <MessageSquare className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                Live Chat
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Available 24/7
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
+          <div className="flex items-center">
+            <FiSearch className="ml-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search posts by title, content or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full p-2 pl-3 outline-none ${cardBgClass} ${textClass}`}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mr-3 text-gray-400 hover:text-gray-600"
+              >
+                <FiX size={20} />
+              </button>
             )}
           </div>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 auto-rows-fr">
+          <AnimatePresence>
+            {filteredPosts.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="col-span-full text-center py-16"
+              >
+                <p className="text-xl">No posts found matching "{searchQuery}"</p>
+              </motion.div>
+            ) : (
+              filteredPosts.map((post) => (
+                <motion.article
+                  key={post.id}
+                  className={`${cardBgClass} rounded-xl overflow-hidden shadow-lg border ${borderClass} ${hoverClass} transition-all duration-300 cursor-pointer flex flex-col`}
+                  whileHover={{ y: -5, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  onClick={() => setSelectedPost(post)}
+                >
+                  <div className="h-48 overflow-hidden">
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                    />
+                  </div>
+                  <div className="p-6 flex flex-col flex-grow">
+                    <p className="text-sm text-blue-500 mb-2">{post.date}</p>
+                    <h2 className="text-xl font-bold mb-3 min-h-[3.5rem] leading-tight">{post.title}</h2>
+                    <p className={`mb-4 flex-grow text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {post.preview}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-auto">
+                      {post.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            theme === 'dark' ? 'bg-[#2a2a2a] text-blue-400' : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`px-6 py-3 flex justify-end border-t ${borderClass}`}>
+                    <span className="text-sm flex items-center text-blue-500 font-medium">
+                      Read More <FiChevronRight className="ml-1" />
+                    </span>
+                  </div>
+                </motion.article>
+              ))
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* FAQ Section */}
-        <section ref={faqRef} id="faq" className="py-16 sm:py-20 bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600">
-                Get answers to common questions about our platform and services.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {faqs.map((faq, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() =>
-                      setExpandedFAQ(expandedFAQ === index ? null : index)
-                    }
-                    className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <span className="font-medium text-gray-900">
-                      {faq.question}
-                    </span>
-                    {expandedFAQ === index ? (
-                      <Minus className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <Plus className="w-5 h-5 text-gray-500" />
-                    )}
-                  </button>
-                  <div
-                    className={`px-6 overflow-hidden transition-all duration-300 ${
-                      expandedFAQ === index ? "max-h-96 pb-4" : "max-h-0"
-                    }`}
-                  >
-                    <p className="text-gray-600">{faq.answer}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center mt-8">
-              <button
-                onClick={() =>
-                  showNotificationMessage("Opening support center")
-                }
-                className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
-              >
-                <HelpCircle className="w-5 h-5" />
-                <span>Have more questions? Contact Support</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Newsletter Section */}
-        <section className="py-16 sm:py-20 bg-blue-600" ref={subscribeRef}>
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="mb-8">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
-                Stay Updated with TechCorp
-              </h2>
-              <p className="text-lg sm:text-xl text-blue-100">
-                Get the latest insights, product updates, and industry trends
-                delivered to your inbox.
-              </p>
-            </div>
-
-            <div className="max-w-md mx-auto">
-              <form onSubmit={handleNewsletterSubmit}>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="email"
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    placeholder="Enter your email address"
-                    className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 bg-white focus:ring-white focus:outline-none"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className={`bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 hover:scale-105 ${
-                      showSuccessMessage ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    Subscribe
-                  </button>
-                </div>
-              </form>
-
-              {/* Success message */}
-              {showSuccessMessage && (
-                <div className="mt-4 p-4 bg-green-400 text-white rounded-lg flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5" />
-                    Successfully subscribed to the newsletter!
-                  </span>
-                  <button
-                    onClick={() => setShowSuccessMessage(false)}
-                    className="text-white font-bold"
-                  >
-                    &times;
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <p className="text-sm text-blue-200 mt-4">
-              No spam, unsubscribe at any time. Read our{" "}
-              <button
-                onClick={() =>
-                  showNotificationMessage("Opening privacy policy")
-                }
-                className="underline hover:text-white"
-              >
-                Privacy Policy
-              </button>
-            </p>
-          </div>
-        </section>
-
-        {/* Industry Focus */}
-        <section className="py-16 sm:py-20 bg-white" ref={expertiseRef}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Industry-Specific Expertise
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-                Deep domain knowledge across key industries, delivering
-                solutions that understand your unique challenges.
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                {
-                  icon: <Briefcase className="w-8 h-8" />,
-                  title: "Financial Services",
-                  description:
-                    "Regulatory compliance, risk management, and digital banking solutions.",
-                  image:
-                    "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  stats: "500+ Banks",
-                },
-                {
-                  icon: <CheckCircle className="w-8 h-8" />,
-                  title: "Healthcare",
-                  description:
-                    "HIPAA-compliant solutions for patient care and operational efficiency.",
-                  image:
-                    "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  stats: "200+ Hospitals",
-                },
-                {
-                  icon: <Building2 className="w-8 h-8" />,
-                  title: "Manufacturing",
-                  description:
-                    "IoT integration, supply chain optimization, and predictive maintenance.",
-                  image:
-                    "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  stats: "300+ Factories",
-                },
-                {
-                  icon: <TrendingUp className="w-8 h-8" />,
-                  title: "Retail",
-                  description:
-                    "Omnichannel experiences, inventory management, and customer analytics.",
-                  image:
-                    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  stats: "150+ Retailers",
-                },
-              ].map((industry, index) => (
-                <div
-                  key={index}
-                  className="group bg-gray-50 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="relative overflow-hidden">
-                    <img
-                      src={industry.image}
-                      alt={industry.title}
-                      className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-medium text-gray-700">
-                      {industry.stats}
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="text-blue-600 mb-3">{industry.icon}</div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {industry.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-4">
-                      {industry.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-16 sm:py-20 bg-gray-900" ref={clientsRef}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
-                What Our Clients Say
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto">
-                Hear from industry leaders who've transformed their businesses
-                with our solutions.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {[
-                {
-                  quote:
-                    "TechCorp's digital transformation strategy helped us increase efficiency by 40% while reducing operational costs significantly.",
-                  author: "Sarah Johnson",
-                  role: "CTO, Global Finance Corp",
-                  avatar:
-                    "https://images.unsplash.com/photo-1494790108755-2616b612b47c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  company: "Fortune 100 Financial Services",
-                },
-                {
-                  quote:
-                    "The AI-powered analytics platform provided insights we never thought possible. It's revolutionized our decision-making process.",
-                  author: "Michael Chen",
-                  role: "VP of Operations, MedTech Solutions",
-                  avatar:
-                    "https://images.unsplash.com/photo-1494790108755-2616b612b47c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  company: "Leading Healthcare Provider",
-                },
-                {
-                  quote:
-                    "Their cloud migration expertise made our transition seamless. Zero downtime and improved performance across all systems.",
-                  author: "Emily Rodriguez",
-                  role: "IT Director, RetailMax",
-                  avatar:
-                    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-                  company: "International Retail Chain",
-                },
-              ].map((testimonial, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-800 rounded-2xl p-6 sm:p-8 hover:bg-gray-750 transition-all duration-300"
-                >
-                  <div className="flex items-center mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-4 h-4 text-yellow-400 fill-current"
-                      />
-                    ))}
-                  </div>
-                  <blockquote className="text-gray-300 mb-6">
-                    "{testimonial.quote}"
-                  </blockquote>
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.author}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="font-semibold text-white">
-                        {testimonial.author}
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        {testimonial.role}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {testimonial.company}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Statistics Section */}
-        <section className="py-16 sm:py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {[
-                {
-                  number: "500+",
-                  label: "Enterprise Clients",
-                  sublabel: "Fortune 500 Companies",
-                },
-                {
-                  number: "99.9%",
-                  label: "Uptime Guarantee",
-                  sublabel: "SLA Commitment",
-                },
-                {
-                  number: "50M+",
-                  label: "Transactions Daily",
-                  sublabel: "Processed Securely",
-                },
-                {
-                  number: "24/7",
-                  label: "Expert Support",
-                  sublabel: "Global Coverage",
-                },
-              ].map((stat, index) => (
-                <div key={index} className="text-center">
-                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-                    {stat.number}
-                  </div>
-                  <div className="text-blue-100 font-medium">{stat.label}</div>
-                  <div className="text-blue-200 text-sm">{stat.sublabel}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-16 sm:py-20 bg-white" ref={businessRef}>
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
-              Ready to Transform Your Business?
-            </h2>
-            <p className="text-lg sm:text-xl text-gray-600 mb-8">
-              {isAuthenticated && user 
-                ? `Hi ${user.name.split(' ')[0]}! Ready to take the next step with your digital transformation journey?`
-                : "Join thousands of companies that trust our platform for their digital transformation journey."
-              }
-            </p>
+        <section id="about" className="mt-12 md:mt-24 py-8 md:py-16 border-t border-b">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className={`max-w-4xl mx-auto ${textClass}`}
+          >
+            <h2 className="text-3xl font-bold mb-6 md:mb-10 bg-gradient-to-r from-blue-500 to-purple-600 text-transparent bg-clip-text">About Me</h2>
             
-            {/* Status indicator for logged-in users */}
-            {isAuthenticated && user && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 max-w-md mx-auto">
-                <div className="flex items-center justify-center space-x-2 text-green-800">
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Logged in as {user.name}</span>
+            <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-center">
+              <div className="w-full md:w-1/3">
+                <div className="rounded-full overflow-hidden aspect-square shadow-lg border-4 border-blue-500">
+                  <img
+                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=2070&auto=format&fit=crop"
+                    alt="Author profile"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
-            )}
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={handleDemoBooking}
-                className={`bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 flex items-center justify-center space-x-2 ${
-                  showDemoBooked ? "bg-green-600 hover:bg-green-700" : ""
-                }`}
-              >
-                {showDemoBooked ? (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Demo Scheduled!</span>
-                  </>
-                ) : isAuthenticated ? (
-                  <>
-                    <Calendar className="w-5 h-5" />
-                    <span>Schedule Demo</span>
-                  </>
-                ) : (
-                  <span>Schedule Demo</span>
-                )}
-              </button>
+              
+              <div className="w-full md:w-2/3">
+                <h3 className="text-xl font-bold mb-4">Hi, I'm Alex</h3>
+                <p className="mb-4">I'm a passionate web developer and designer with over 5 years of experience creating modern, responsive websites and applications.</p>
+                <p className="mb-4">My journey in web development started when I was in college, tinkering with HTML and CSS to create simple websites. Today, I specialize in React, Next.js, and modern front-end technologies.</p>
+                <p className="mb-4">This blog is where I share my experiences, insights, and tutorials on web development, design patterns, and best practices that I've learned along the way.</p>
+                
+                <div className="mt-6">
+                  <h4 className="font-bold mb-3">My Skills</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Node.js', 'UI/UX Design', 'Framer Motion'].map((skill, index) => (
+                      <span 
+                        key={index}
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          theme === 'dark' ? 'bg-[#2a2a2a] text-blue-400' : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </motion.div>
+        </section>
+        
+        <section id="contact" className="py-6 md:py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="max-w-6xl mx-auto"
+          >
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-blue-500 to-purple-600 text-transparent bg-clip-text">Get In Touch</h2>
+              <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto`}>
+                Feel free to reach out with any questions, collaboration opportunities, or just to say hello. I'd love to hear from you!
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className={`p-6 md:p-8 rounded-xl ${cardBgClass} border ${borderClass}`}
+              >
+                <h3 className="text-xl font-semibold mb-6">Contact Information</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} flex items-center justify-center mr-4`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
+                      <p className="font-medium">hello@example.com</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} flex items-center justify-center mr-4`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
+                      <p className="font-medium">+1 (555) 123-4567</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} flex items-center justify-center mr-4`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
+                      <p className="font-medium">San Francisco, CA</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className={`p-6 md:p-8 rounded-xl ${cardBgClass} border ${borderClass}`}
+              >
+                <h3 className="text-xl font-semibold mb-6">Office Hours</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                    <span className="font-medium">Monday - Friday</span>
+                    <span className="text-blue-500 font-medium">9:00 AM - 6:00 PM</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                    <span className="font-medium">Saturday</span>
+                    <span className="text-blue-500 font-medium">10:00 AM - 4:00 PM</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3">
+                    <span className="font-medium">Sunday</span>
+                    <span className="text-red-500 font-medium">Closed</span>
+                  </div>
+                </div>
+
+                <div className={`mt-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200'} border`}>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    <span className="font-medium">Note:</span> Response time during business hours is typically within 2 hours.
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 sm:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1">
-              <div className="flex items-center space-x-2 mb-6">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">TechCorp</span>
+      <AnimatePresence>
+        {selectedPost && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedPost(null)}
+          >
+            <motion.div
+              className="absolute inset-0 bg-white/20 dark:bg-black/40 backdrop-blur-md"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            ></motion.div>
+            
+            <motion.div
+              className={`${modalBgClass}/90 backdrop-blur-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl z-10 relative border border-white/20 dark:border-gray-700/50`}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative">
+                <img
+                  src={selectedPost.imageUrl}
+                  alt={selectedPost.title}
+                  className="w-full h-64 md:h-80 object-cover"
+                />
+                <button
+                  onClick={() => setSelectedPost(null)}
+                  className={`absolute top-4 right-4 p-2 rounded-full ${
+                    theme === 'dark' ? 'bg-black/60' : 'bg-white/80'
+                  } hover:bg-blue-500 hover:text-white transition-colors backdrop-blur-sm z-20 border border-white/30`}
+                  aria-label="Close modal"
+                >
+                  <FiX size={20} />
+                </button>
               </div>
-              <p className="text-gray-400 mb-6">
-                Empowering businesses with cutting-edge technology solutions and
-                unparalleled support.
-              </p>
-              <div className="flex space-x-4">
-                <button
-                  onClick={() =>
-                    showNotificationMessage("Opening email client")
-                  }
-                  className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center justify-center transition-colors duration-200"
-                >
-                  <Mail className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => showNotificationMessage("Calling support")}
-                  className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center justify-center transition-colors duration-200"
-                >
-                  <Phone className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => showNotificationMessage("Opening location")}
-                  className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center justify-center transition-colors duration-200"
-                >
-                  <MapPin className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {[
-              {
-                title: "Solutions",
-                links: [
-                  "Enterprise Solutions",
-                  "Digital Transformation",
-                  "Cloud Services",
-                  "Security & Compliance",
-                  "AI & Machine Learning",
-                ],
-              },
-              {
-                title: "Products",
-                links: [
-                  "Platform Overview",
-                  "Analytics Suite",
-                  "API Management",
-                  "Mobile Solutions",
-                  "Integration Tools",
-                ],
-              },
-              {
-                title: "Company",
-                links: [
-                  "About Us",
-                  "Careers",
-                  "News & Events",
-                  "Contact",
-                  "Support",
-                ],
-              },
-            ].map((column, index) => (
-              <div key={index}>
-                <h3 className="font-semibold mb-4">{column.title}</h3>
-                <ul className="space-y-2">
-                  {column.links.map((link) => (
-                    <li key={link}>
-                      <button
-                        onClick={() =>
-                          showNotificationMessage(`Navigating to ${link}`)
-                        }
-                        className="text-gray-400 hover:text-white transition-colors duration-200 text-sm text-left"
-                      >
-                        {link}
-                      </button>
-                    </li>
+              
+              <div className="p-4 md:p-6 lg:p-8">
+                <p className="text-sm text-blue-500 mb-2">{selectedPost.date}</p>
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-4">{selectedPost.title}</h1>
+                
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {selectedPost.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        theme === 'dark' ? 'bg-white/10 text-blue-400 border border-white/20' : 'bg-blue-100/80 text-blue-700 border border-blue-200/50'
+                      } backdrop-blur-sm`}
+                    >
+                      {tag}
+                    </span>
                   ))}
-                </ul>
+                </div>
+                
+                <div className={`prose max-w-none ${theme === 'dark' ? 'prose-invert' : ''}`}>
+                  {selectedPost.content.split('\n').map((paragraph, idx) => {
+                    const trimmedParagraph = paragraph.trim();
+                    if (!trimmedParagraph) return null;
+                    return (
+                      <p key={idx} className="mb-4">{trimmedParagraph}</p>
+                    );
+                  })}
+                </div>
               </div>
-            ))}
-          </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
-              &copy; 2025 TechCorp. All rights reserved.
+      <footer className={`pb-4 ${borderClass}`}>
+        <div className="container mx-auto px-4">
+          
+          
+          <div className="text-center">
+            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+              © {new Date().getFullYear()} My Personal Blog. All rights reserved.
             </p>
-            <div className="flex space-x-6 mt-4 sm:mt-0">
-              <button
-                onClick={() =>
-                  showNotificationMessage("Opening privacy policy")
-                }
-                className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-              >
-                Privacy Policy
-              </button>
-              <button
-                onClick={() =>
-                  showNotificationMessage("Opening terms of service")
-                }
-                className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-              >
-                Terms of Service
-              </button>
-              <button
-                onClick={() => showNotificationMessage("Opening cookie policy")}
-                className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-              >
-                Cookie Policy
-              </button>
-            </div>
           </div>
         </div>
       </footer>
     </div>
   );
-};
-
-export default NavigationProject;
+}
