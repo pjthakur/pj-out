@@ -1,1344 +1,1382 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { useEffect, useState, ReactNode, Fragment } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    FiSun, FiMoon, FiUpload, FiMusic, FiDownload,
-    FiShare2, FiCopy, FiTwitter, FiInstagram, FiFacebook
-} from 'react-icons/fi';
-import { HiPlay, HiPause, HiOutlineVolumeUp, HiOutlineVolumeOff } from 'react-icons/hi';
-import { RiTiktokLine } from 'react-icons/ri';
-import { MdUndo, MdRedo } from 'react-icons/md';
-import { toast, Toaster } from 'sonner';
+  FaSun, FaMoon, FaWallet, FaChartLine, FaPlusCircle, FaDollarSign,
+  FaPiggyBank, FaUtensils, FaCar, FaGamepad, FaShoppingBag, FaHome,
+  FaMedkit, FaPlus, FaEdit, FaTrash, FaList, FaCalendarAlt, FaTimes,
+  FaExclamationTriangle, FaCheck,
+  FaChevronDown
+} from "react-icons/fa";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import toast, { Toaster } from 'react-hot-toast';
 
-export default function PodcastClips() {
-    // Theme state
-    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+interface Expense {
+  id: number;
+  amount: number;
+  category: string;
+  description: string;
+  date: Date;
+}
 
-    // Audio file states
-    const [audioFile, setAudioFile] = useState<File | null>(null);
-    const [audioSrc, setAudioSrc] = useState<string>('');
-    const [fileName, setFileName] = useState<string>('');
-    const [isFileUploaded, setIsFileUploaded] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
+interface CategoryInfo {
+  icon: ReactNode;
+  color: string;
+  lightColor: string;
+  darkColor: string;
+  fillColor: string;
+}
 
-    // Audio player states
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isMuted, setIsMuted] = useState(false);
-    const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [volume, setVolume] = useState(0.8);
+interface Categories {
+  [key: string]: CategoryInfo;
+}
 
-    // Clipping states
-    const [clipStart, setClipStart] = useState(0);
-    const [clipEnd, setClipEnd] = useState(60);
-    const [isProcessingClip, setIsProcessingClip] = useState(false);
-    const [captions, setCaptions] = useState<string>("Select a part of the audio to see transcription");
-    const [clipHistory, setClipHistory] = useState<{ start: number, end: number }[]>([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
-    const [isClipCreated, setIsClipCreated] = useState(false);
-    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+interface CategoryTotals {
+  [key: string]: number;
+}
 
-    // Touch gesture states
-    const [touchStartX, setTouchStartX] = useState(0);
-    const [isSwiping, setIsSwiping] = useState(false);
+interface ChartData {
+  name: string;
+  value: number;
+  color: string;
+}
 
-    // Refs
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const wrapperRef = useRef<HTMLDivElement>(null);
+interface DailyTotal {
+  date: string;
+  formattedDate: string;
+  total: number;
+  breakdown: { [key: string]: number };
+}
 
-    // Format time from seconds to MM:SS
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
+export default function Home() {
+  const [theme, setTheme] = useState("light");
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pie' | 'bar'>('pie');
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<number | null>(null);
 
-    // Load theme from localStorage on initial render
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'light' || savedTheme === 'dark') {
-            setTheme(savedTheme);
-        }
-    }, []);
+  
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: 1, amount: 12.50, category: "food", description: "Lunch", date: new Date(Date.now() - 86400000 * 0) }, 
+    { id: 2, amount: 25.00, category: "transport", description: "Uber", date: new Date(Date.now() - 86400000 * 1) }, 
+    { id: 3, amount: 18.75, category: "fun", description: "Movie tickets", date: new Date(Date.now() - 86400000 * 2) }, 
+    { id: 4, amount: 32.99, category: "shopping", description: "T-shirt", date: new Date(Date.now() - 86400000 * 3) }, 
+    { id: 5, amount: 8.50, category: "food", description: "Coffee", date: new Date(Date.now() - 86400000 * 4) }, 
+    { id: 6, amount: 45.00, category: "healthcare", description: "Medicine", date: new Date(Date.now() - 86400000 * 5) }, 
+    { id: 7, amount: 15.20, category: "transport", description: "Gas", date: new Date(Date.now() - 86400000 * 6) }, 
+  ]);
 
-    // Save theme to localStorage when it changes
-    useEffect(() => {
-        localStorage.setItem('theme', theme);
-    }, [theme]);
+  const [newExpense, setNewExpense] = useState({ amount: "", category: "food", description: "" });
+  const [formErrors, setFormErrors] = useState({ amount: "", description: "" });
+  const [formSuccess, setFormSuccess] = useState("");
 
-    // Toggle theme and provide haptic feedback
-    const toggleTheme = () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
+  
+  const categories: Categories = {
+    food: {
+      icon: <FaUtensils />,
+      color: "from-orange-400 to-red-500",
+      lightColor: "bg-orange-100",
+      darkColor: "bg-orange-900",
+      fillColor: "#f97316"
+    },
+    transport: {
+      icon: <FaCar />,
+      color: "from-blue-400 to-indigo-600",
+      lightColor: "bg-blue-100",
+      darkColor: "bg-blue-900",
+      fillColor: "#3b82f6"
+    },
+    fun: {
+      icon: <FaGamepad />,
+      color: "from-fuchsia-400 to-purple-600",
+      lightColor: "bg-fuchsia-100",
+      darkColor: "bg-fuchsia-900",
+      fillColor: "#d946ef"
+    },
+    shopping: {
+      icon: <FaShoppingBag />,
+      color: "from-emerald-400 to-green-600",
+      lightColor: "bg-emerald-100",
+      darkColor: "bg-emerald-900",
+      fillColor: "#10b981"
+    },
+    home: {
+      icon: <FaHome />,
+      color: "from-amber-400 to-yellow-600",
+      lightColor: "bg-amber-100",
+      darkColor: "bg-amber-900",
+      fillColor: "#f59e0b"
+    },
+    healthcare: {
+      icon: <FaMedkit />,
+      color: "from-rose-400 to-pink-600",
+      lightColor: "bg-rose-100",
+      darkColor: "bg-rose-900",
+      fillColor: "#f43f5e"
+    },
+  };
 
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(50);
-        }
-    };
+  
+  const todayTotal = expenses
+    .filter(exp => {
+      const today = new Date();
+      const expDate = new Date(exp.date);
+      return expDate.setHours(0, 0, 0, 0) === today.setHours(0, 0, 0, 0);
+    })
+    .reduce((sum, exp) => sum + exp.amount, 0);
 
-    // Handle file input change
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+  
+  const todayExpenses = expenses.filter(exp => {
+    const today = new Date();
+    const expDate = new Date(exp.date);
+    return expDate.setHours(0, 0, 0, 0) === today.setHours(0, 0, 0, 0);
+  });
 
-        const file = files[0];
-        if (!file.type.includes('audio')) {
-            alert('Please upload an audio file');
-            return;
-        }
+  
+  const todayCategoryTotals: CategoryTotals = todayExpenses.reduce((acc: CategoryTotals, exp) => {
+    if (!acc[exp.category]) acc[exp.category] = 0;
+    acc[exp.category] += exp.amount;
+    return acc;
+  }, {});
 
-        handleUploadedFile(file);
-    };
+  
+  const categoryTotals: CategoryTotals = expenses.reduce((acc: CategoryTotals, exp) => {
+    if (!acc[exp.category]) acc[exp.category] = 0;
+    acc[exp.category] += exp.amount;
+    return acc;
+  }, {});
 
-    // Process uploaded file
-    const handleUploadedFile = (file: File) => {
-        // Clean up previous URL if exists
-        if (audioSrc) {
-            URL.revokeObjectURL(audioSrc);
-        }
+  const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-        // Create a new object URL
-        const url = URL.createObjectURL(file);
+  
+  const chartData: ChartData[] = Object.entries(todayCategoryTotals).map(([category, amount]) => ({
+    name: category.charAt(0).toUpperCase() + category.slice(1),
+    value: amount,
+    color: categories[category].fillColor
+  }));
 
-        // Update state
-        setAudioFile(file);
-        setAudioSrc(url);
-        setFileName(file.name);
-        setIsFileUploaded(true);
-        setIsPlaying(false);
-        setCurrentTime(0);
-        setClipStart(0);
-        setIsClipCreated(false);
+  
+  const getDailyTotals = (): DailyTotal[] => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        // Add initial state to history
-        setClipHistory([{ start: 0, end: Math.min(60, duration || 60) }]);
-        setHistoryIndex(0);
+    
+    const last7Days: DailyTotal[] = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      return {
+        date: date.toISOString().split('T')[0],
+        formattedDate: i === 0 ? 'Today' :
+          i === 1 ? 'Yesterday' :
+            date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        total: 0,
+        breakdown: {}
+      };
+    });
 
-        // Haptic feedback for successful upload
-        if (navigator.vibrate) {
-            navigator.vibrate([30, 30, 60]);
-        }
-    };
+    
+    expenses.forEach(expense => {
+      const expDate = new Date(expense.date);
+      expDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((today.getTime() - expDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Handle drag and drop events
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
+      if (diffDays >= 0 && diffDays < 7) {
+        last7Days[diffDays].total += expense.amount;
 
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-
-        const files = e.dataTransfer.files;
-        if (files && files.length > 0) {
-            handleUploadedFile(files[0]);
-        }
-    };
-
-    // Trigger file input click
-    const triggerFileInput = () => {
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
-        }
-    };
-
-    // Load audio and metadata
-    useEffect(() => {
-        if (audioRef.current && audioSrc) {
-            audioRef.current.src = audioSrc;
-            audioRef.current.load();
-        }
-    }, [audioSrc]);
-
-    // Audio event handlers
-    const handleMetadataLoaded = () => {
-        if (!audioRef.current) return;
-
-        const audioDuration = audioRef.current.duration;
-        setDuration(audioDuration);
-        setClipEnd(Math.min(60, audioDuration));
-
-        // Redraw waveform
-        drawWaveform();
-    };
-
-    const handleTimeUpdate = () => {
-        if (!audioRef.current) return;
-        const time = audioRef.current.currentTime;
-        const audioIsPlaying = !audioRef.current.paused;
         
-        console.log('Time update - Current time:', time, 'Audio paused:', audioRef.current.paused, 'Audio ended:', audioRef.current.ended);
+        if (!last7Days[diffDays].breakdown[expense.category]) {
+          last7Days[diffDays].breakdown[expense.category] = 0;
+        }
+        last7Days[diffDays].breakdown[expense.category] += expense.amount;
+      }
+    });
+
+    return last7Days;
+  };
+
+  const dailyTotals = getDailyTotals();
+
+  
+  const last7DaysTotal = dailyTotals.reduce((sum, day) => sum + day.total, 0);
+  const averageDailySpend = last7DaysTotal / 7;
+
+  
+  const maxCategory = Object.entries(todayCategoryTotals).reduce(
+    (max, [category, amount]) =>
+      amount > max.amount ? { category, amount } : max,
+    { category: '', amount: 0 }
+  );
+
+  const minCategory = Object.entries(todayCategoryTotals).reduce(
+    (min, [category, amount]) =>
+      (min.amount === 0 || amount < min.amount) ? { category, amount } : min,
+    { category: '', amount: 0 }
+  );
+
+  const openAddModal = () => {
+    setNewExpense({ amount: "", category: "food", description: "" });
+    setIsAddModalOpen(true);
+  };
+
+  const openEditModal = (expense: Expense) => {
+    setEditingExpense(expense);
+    setIsEditModalOpen(true);
+  };
+
+  const openDeleteModal = (id: number) => {
+    setExpenseToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeAllModals = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setIsDeleteModalOpen(false);
+    setEditingExpense(null);
+    setExpenseToDelete(null);
+  };
+
+  const validateForm = () => {
+    let valid = true;
+    const errors = { amount: "", description: "" };
+
+    
+    setFormSuccess("");
+
+    
+    if (!newExpense.amount) {
+      errors.amount = "Amount is required";
+      valid = false;
+    } else if (isNaN(parseFloat(newExpense.amount)) || parseFloat(newExpense.amount) <= 0) {
+      errors.amount = "Please enter a valid amount greater than zero";
+      valid = false;
+    }
+
+    
+    if (!newExpense.description.trim()) {
+      errors.description = "Description is required";
+      valid = false;
+    } else if (newExpense.description.trim().length < 3) {
+      errors.description = "Description must be at least 3 characters";
+      valid = false;
+    }
+
+    setFormErrors(errors);
+    return valid;
+  };
+
+  const addExpense = () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    const expense: Expense = {
+      id: Date.now(),
+      amount: parseFloat(newExpense.amount),
+      category: newExpense.category,
+      description: newExpense.description,
+      date: new Date()
+    };
+
+    setExpenses([expense, ...expenses]);
+
+    
+    setFormSuccess("Expense added successfully!");
+    setNewExpense({ amount: "", category: "food", description: "" });
+
+    
+    setTimeout(() => {
+      closeAllModals();
+      toast.success("Expense added successfully");
+    }, 1500);
+  };
+
+  const updateExpense = () => {
+    if (!editingExpense || !editingExpense.amount || !editingExpense.description) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setExpenses(expenses.map(exp =>
+      exp.id === editingExpense.id ? editingExpense : exp
+    ));
+    closeAllModals();
+    toast.success("Expense updated successfully");
+  };
+
+  const deleteExpense = (id: number) => {
+    if (id) {
+      setExpenses(expenses.filter(exp => exp.id !== id));
+      closeAllModals();
+      toast.success("Expense deleted successfully");
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    document.body.className = savedTheme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900";
+  }, []);
+
+  
+  useEffect(() => {
+    const isAnyModalOpen = isAddModalOpen || isEditModalOpen || isDeleteModalOpen;
+
+    if (isAnyModalOpen) {
+      
+      const scrollY = window.scrollY;
+
+      
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflowY = 'scroll';
+    } else {
+      
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+
+    return () => {
+      
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflowY = '';
+    };
+  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.body.className = newTheme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900";
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={`p-3 rounded-lg shadow-md ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'}`}>
+          <p className="font-medium">{payload[0].name}</p>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+            Amount: ${payload[0].value.toFixed(2)}
+          </p>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+            {todayTotal > 0 ? ((payload[0].value / todayTotal) * 100).toFixed(1) : 0}% of today's total
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (!mounted) return null;
+
+  return (
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
         
-        // Stop playback if we've reached the clip end
-        if (time >= clipEnd && isPlaying) {
-            console.log('Reached clip end, stopping playback');
-            audioRef.current.pause();
-            // Reset to clip start for next play
-            audioRef.current.currentTime = clipStart;
-            setIsPlaying(false);
-            return;
+        .montserrat-font {
+          font-family: 'Montserrat', sans-serif;
         }
-        
-        setCurrentTime(time);
-
-        // Update captions based on current time
-        setCaptions(generateCaptions(time));
-
-        // Redraw current position
-        drawWaveform();
-    };
-
-    // Play/pause toggle
-    const togglePlayPause = async () => {
-        if (!audioRef.current || !audioSrc) {
-            console.log('Cannot play - no audio ref or source');
-            return;
-        }
-
-        console.log('Toggle play/pause - Current state:', isPlaying, 'Audio paused:', audioRef.current.paused);
-
-        try {
-            if (isPlaying) {
-                audioRef.current.pause();
-                console.log('Audio paused');
-                setIsPlaying(false);
-            } else {
-                // Check if audio is ready to play
-                if (audioRef.current.readyState >= 2) {
-                    console.log('Starting audio playback from position:', clipStart);
-                    
-                    // Set the audio to start from the clip start position
-                    audioRef.current.currentTime = clipStart;
-                    
-                    await audioRef.current.play();
-                    console.log('Audio play started successfully from:', clipStart);
-                    setIsPlaying(true);
-                } else {
-                    console.log('Audio not ready, readyState:', audioRef.current.readyState);
-                    toast.error('Audio not ready', {
-                        description: 'Please wait for the audio to load completely.',
-                        duration: 3000,
-                    });
-                }
-            }
-
-            // Haptic feedback
-            if (navigator.vibrate) {
-                navigator.vibrate(25);
-            }
-        } catch (error) {
-            console.error('Audio play failed:', error);
-            setIsPlaying(false);
-            
-            // Show user-friendly error message
-            toast.error('Audio playback failed', {
-                description: 'Please try again or check your browser settings.',
-                duration: 3000,
-            });
-        }
-    };
-
-    // Toggle mute
-    const toggleMute = () => {
-        if (!audioRef.current) return;
-
-        audioRef.current.muted = !isMuted;
-        setIsMuted(!isMuted);
-    };
-
-    // Handle volume change
-    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newVolume = parseFloat(e.target.value);
-        setVolume(newVolume);
-
-        if (audioRef.current) {
-            audioRef.current.volume = newVolume;
-        }
-    };
-
-    // Handle clip start change
-    const handleClipStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newStart = parseFloat(e.target.value);
-        if (newStart < clipEnd - 1) {
-            setClipStart(newStart);
-            
-            // If audio is currently playing and is before the new start, seek to new start
-            if (audioRef.current && isPlaying && audioRef.current.currentTime < newStart) {
-                audioRef.current.currentTime = newStart;
-                console.log('Adjusted playback position to new clip start:', newStart);
-            }
-            
-            drawWaveform();
-        }
-    };
-
-    // Handle clip end change
-    const handleClipEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newEnd = parseFloat(e.target.value);
-        if (newEnd > clipStart + 1 && newEnd - clipStart <= 60) {
-            setClipEnd(newEnd);
-            
-            // If audio is currently playing and is past the new end, pause and reset
-            if (audioRef.current && isPlaying && audioRef.current.currentTime > newEnd) {
-                audioRef.current.pause();
-                audioRef.current.currentTime = clipStart;
-                setIsPlaying(false);
-                console.log('Stopped playback due to clip end change');
-            }
-            
-            drawWaveform();
-        }
-    };
-
-    // Create clip and open share modal
-    const createAndShareClip = () => {
-        if (!audioRef.current || !audioSrc) return;
-
-        setIsProcessingClip(true);
-
-        // Add to history
-        const newHistory = [...clipHistory.slice(0, historyIndex + 1), { start: clipStart, end: clipEnd }];
-        setClipHistory(newHistory);
-        setHistoryIndex(historyIndex + 1);
-
-        // Simulate processing
-        setTimeout(() => {
-            setIsProcessingClip(false);
-            setIsClipCreated(true);
-            
-            // Open share modal after processing
-            openShareModal();
-
-            // Haptic feedback - stronger for completion
-            if (navigator.vibrate) {
-                navigator.vibrate([50, 50, 100]);
-            }
-        }, 1000);
-    };
-
-    // Open share modal
-    const openShareModal = () => {
-        setIsShareModalOpen(true);
-        
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(30);
-        }
-    };
-
-    // Close share modal
-    const closeShareModal = () => {
-        setIsShareModalOpen(false);
-    };
-
-    // Handle escape key to close modal
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isShareModalOpen) {
-                closeShareModal();
-            }
-        };
-
-        document.addEventListener('keydown', handleEscape);
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isShareModalOpen]);
-
-    // Prevent body scroll when modal is open
-    useEffect(() => {
-        if (isShareModalOpen) {
-            // Store original body style
-            const originalStyle = window.getComputedStyle(document.body).overflow;
-            
-            // Prevent scrolling
-            document.body.style.overflow = 'hidden';
-            document.body.style.paddingRight = '0px'; // Prevent layout shift
-            
-            // Cleanup function to restore scroll
-            return () => {
-                document.body.style.overflow = originalStyle;
-                document.body.style.paddingRight = '';
-            };
-        }
-    }, [isShareModalOpen]);
-
-    // Undo clip
-    const handleUndo = () => {
-        if (historyIndex <= 0) return;
-
-        const prevClip = clipHistory[historyIndex - 1];
-        setClipStart(prevClip.start);
-        setClipEnd(prevClip.end);
-        setHistoryIndex(historyIndex - 1);
-
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(30);
-        }
-    };
-
-    // Redo clip
-    const handleRedo = () => {
-        if (historyIndex >= clipHistory.length - 1) return;
-
-        const nextClip = clipHistory[historyIndex + 1];
-        setClipStart(nextClip.start);
-        setClipEnd(nextClip.end);
-        setHistoryIndex(historyIndex + 1);
-
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(30);
-        }
-    };
-
-    // Handle touch gestures for swipe
-    const handleTouchStart = (e: React.TouchEvent) => {
-        setTouchStartX(e.touches[0].clientX);
-        setIsSwiping(true);
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isSwiping) return;
-
-        const touchX = e.touches[0].clientX;
-        const diffX = touchX - touchStartX;
-
-        // Threshold for swipe action
-        if (Math.abs(diffX) > 70) {
-            if (diffX > 0) {
-                // Swipe right - redo
-                handleRedo();
-            } else {
-                // Swipe left - undo
-                handleUndo();
-            }
-            setIsSwiping(false);
-        }
-    };
-
-    const handleTouchEnd = () => {
-        setIsSwiping(false);
-    };
-
-    // Share clip to a social platform
-    const shareClip = (platform: string) => {
-        if (!audioSrc) return;
-
-        // In a real app, this would generate a shareable link
-        const message = `Check out this podcast clip from ${formatTime(clipStart)} to ${formatTime(clipEnd)} on ${platform}!`;
-
-        // Use toast instead of alert
-        toast.success(`Sharing to ${platform}`, {
-            description: message,
+      `}</style>
+      
+      <div className={`min-h-screen montserrat-font ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
+        {/* Toaster notification component */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: '',
             duration: 3000,
-            icon: platform === 'Twitter' ? <FiTwitter /> :
-                platform === 'Instagram' ? <FiInstagram /> :
-                    platform === 'Facebook' ? <FiFacebook /> :
-                        platform === 'TikTok' ? <RiTiktokLine /> :
-                            platform === 'Copy' ? <FiCopy /> : <FiDownload />,
-        });
+            style: {
+              background: theme === "dark" ? '#374151' : '#fff',
+              color: theme === "dark" ? '#fff' : '#374151',
+              boxShadow: theme === "dark" ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10B981',
+                secondary: 'white',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: 'white',
+              },
+            },
+          }}
+        />
 
-        // Close modal after sharing
-        if (isShareModalOpen) {
-            setTimeout(() => {
-                closeShareModal();
-            }, 500);
-        }
+        <header className={`sticky top-0 z-50 ${theme === "dark"
+          ? "bg-gray-800/80 backdrop-blur-lg border-b border-gray-700/50"
+          : "bg-white/80 backdrop-blur-lg border-b border-gray-200/50"
+          } shadow-xl`}>
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold flex items-center">
+              <FaWallet className={`mr-2 ${theme === "dark"
+                ? "text-teal-400 drop-shadow-[0_0_6px_rgba(20,184,166,0.5)]"
+                : "text-teal-500 drop-shadow-[0_0_6px_rgba(20,184,166,0.5)]"
+                }`} />
+              <span className={`bg-clip-text text-transparent ${theme === "dark"
+                ? "bg-gradient-to-r from-teal-400 via-emerald-500 to-cyan-600 drop-shadow-[0_0_2px_rgba(20,184,166,0.5)]"
+                : "bg-gradient-to-r from-teal-500 via-cyan-500 to-sky-600 drop-shadow-[0_0_2px_rgba(20,184,166,0.5)]"
+                }`}>
+                Daily Expense
+              </span>
+            </h1>
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full cursor-pointer ${theme === "dark"
+                ? "bg-gray-700 text-teal-300 shadow-inner shadow-gray-900/50 ring-1 ring-gray-600"
+                : "bg-cyan-50 text-teal-700 shadow-inner shadow-gray-100 ring-1 ring-teal-200"
+                } transition-all duration-300 hover:shadow-lg hover:shadow-${theme === "dark" ? "teal-700/20" : "teal-200/50"}`}
+            >
+              {theme === "dark" ? <FaSun size={20} /> : <FaMoon size={20} />}
+            </button>
+          </div>
+        </header>
 
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(40);
-        }
-    };
+        <div className={`container mx-auto px-4 py-8 ${theme === "dark"
+          ? "bg-gradient-to-b from-gray-900 via-gray-850 to-gray-800"
+          : "bg-gradient-to-b from-gray-50 via-gray-25 to-white"
+          }`}>
 
-    // Generate simulated captions
-    const generateCaptions = (time: number) => {
-        if (duration === 0) return "Upload an audio file to see transcription";
+          {/* 4 cards grid at the top */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Today's Spending Card */}
+            <div className={`rounded-3xl overflow-hidden ${theme === "dark"
+              ? "bg-gray-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-gray-700/50"
+              : "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100"
+              } transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)] hover:translate-y-[-4px] hover:scale-[1.02]`}>
+              <div className={`p-6 relative h-full ${theme === "dark"
+                ? "bg-gradient-to-br from-teal-800/60 via-emerald-900/40 to-cyan-800/60 backdrop-blur-sm"
+                : "bg-gradient-to-br from-teal-50 via-cyan-50/80 to-sky-50/90 backdrop-blur-sm"
+                }`}>
+                <div className="relative z-10">
+                  <h2 className="text-base font-bold mb-2 flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${theme === "dark"
+                      ? "bg-teal-800/90 text-teal-300"
+                      : "bg-teal-100 text-teal-500"}`}>
+                      <FaDollarSign className="text-lg" />
+                    </div>
+                    Today's Spending
+                  </h2>
+                  <div className="flex items-end gap-2">
+                    <div className={`text-3xl font-bold ${theme === "dark"
+                      ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+                      : "text-gray-900 drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]"
+                      }`}>${todayTotal.toFixed(2)}</div>
 
-        const captions = [
-            "Welcome to this podcast where we explore interesting topics.",
-            "Our guest today has amazing insights to share with us.",
-            "Let's dive deeper into the subject of audio processing.",
-            "Creating clips from podcasts is a great way to share highlights.",
-            "The web platform offers powerful capabilities for audio manipulation.",
-            "Modern browsers can process audio without sending data to servers.",
-            "Privacy is important when handling media files online.",
-            "React and TypeScript provide a robust foundation for web apps.",
-            "User experience is enhanced with haptic feedback on mobile devices.",
-            "Thank you for using our podcast clips creator!",
-        ];
-
-        // Select caption based on current time
-        const position = Math.floor((time / duration) * captions.length);
-        return captions[Math.min(position, captions.length - 1)];
-    };
-
-    // Generate waveform visualization on canvas
-    const drawWaveform = useCallback(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const width = canvas.width;
-        const height = canvas.height;
-
-        // Clear canvas
-        ctx.clearRect(0, 0, width, height);
-
-        // Draw background
-        const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-        if (theme === 'light') {
-            bgGradient.addColorStop(0, '#f0f9ff');
-            bgGradient.addColorStop(1, '#e0f2fe');
-        } else {
-            bgGradient.addColorStop(0, '#0c4a6e');
-            bgGradient.addColorStop(1, '#082f49');
-        }
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(0, 0, width, height);
-
-        // Draw "bars"
-        const barWidth = 2;
-        const gap = 3;
-        const totalBars = Math.floor(width / (barWidth + gap));
-
-        // Create bar gradient
-        const barGradient = ctx.createLinearGradient(0, height / 2 - 40, 0, height / 2 + 40);
-        if (theme === 'light') {
-            barGradient.addColorStop(0, '#4f46e5');  // More saturated indigo
-            barGradient.addColorStop(1, '#3b82f6');  // More saturated blue
-        } else {
-            barGradient.addColorStop(0, '#818cf8');  // Lighter indigo
-            barGradient.addColorStop(1, '#60a5fa');  // Lighter blue
-        }
-        ctx.fillStyle = barGradient;
-
-        for (let i = 0; i < totalBars; i++) {
-            // Use a seeded random for consistency
-            const seed = i * 1.3;
-            const randomHeight = (Math.sin(seed) * 0.5 + 0.5) * height * 0.7;
-            const barHeight = randomHeight + (height * 0.1);
-            const x = i * (barWidth + gap) + gap / 2;
-            const y = (height - barHeight) / 2;
-            ctx.fillRect(x, y, barWidth, barHeight);
-        }
-
-        // Draw selected area with gradient
-        const selectionGradient = ctx.createLinearGradient(0, 0, 0, height);
-        if (theme === 'light') {
-            selectionGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-            selectionGradient.addColorStop(1, 'rgba(37, 99, 235, 0.3)');
-        } else {
-            selectionGradient.addColorStop(0, 'rgba(96, 165, 250, 0.3)');
-            selectionGradient.addColorStop(1, 'rgba(59, 130, 246, 0.3)');
-        }
-
-        const startX = (clipStart / duration) * width;
-        const endX = (clipEnd / duration) * width;
-
-        ctx.fillStyle = selectionGradient;
-        ctx.fillRect(startX, 0, endX - startX, height);
-
-        // Draw start and end handles with improved visibility
-        // Start handle indicator
-        const handleWidth = 8;
-
-        // Draw handle gradients
-        const startHandleGradient = ctx.createLinearGradient(0, 0, 0, height);
-        if (theme === 'light') {
-            startHandleGradient.addColorStop(0, '#4338ca'); // Indigo
-            startHandleGradient.addColorStop(1, '#3730a3');
-        } else {
-            startHandleGradient.addColorStop(0, '#6366f1');
-            startHandleGradient.addColorStop(1, '#4f46e5');
-        }
-
-        const endHandleGradient = ctx.createLinearGradient(0, 0, 0, height);
-        if (theme === 'light') {
-            endHandleGradient.addColorStop(0, '#7c3aed'); // Purple
-            endHandleGradient.addColorStop(1, '#6d28d9');
-        } else {
-            endHandleGradient.addColorStop(0, '#8b5cf6');
-            endHandleGradient.addColorStop(1, '#7c3aed');
-        }
-
-        // Start handle - thicker with a grip indicator
-        ctx.fillStyle = startHandleGradient;
-        ctx.fillRect(startX - handleWidth / 2, 0, handleWidth, height);
-
-        // Add grip lines to start handle
-        ctx.fillStyle = theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)';
-        ctx.fillRect(startX - handleWidth / 2 + 2, height / 4, handleWidth - 4, 2);
-        ctx.fillRect(startX - handleWidth / 2 + 2, height / 2, handleWidth - 4, 2);
-        ctx.fillRect(startX - handleWidth / 2 + 2, height * 3 / 4, handleWidth - 4, 2);
-
-        // Add arrow indicator for dragging
-        ctx.beginPath();
-        ctx.moveTo(startX - 10, height / 2);
-        ctx.lineTo(startX - 4, height / 2 - 6);
-        ctx.lineTo(startX - 4, height / 2 + 6);
-        ctx.closePath();
-        ctx.fillStyle = theme === 'light' ? 'rgba(79, 70, 229, 0.8)' : 'rgba(139, 92, 246, 0.8)';
-        ctx.fill();
-
-        // End handle - thicker with a grip indicator
-        ctx.fillStyle = endHandleGradient;
-        ctx.fillRect(endX - handleWidth / 2, 0, handleWidth, height);
-
-        // Add grip lines to end handle
-        ctx.fillStyle = theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)';
-        ctx.fillRect(endX - handleWidth / 2 + 2, height / 4, handleWidth - 4, 2);
-        ctx.fillRect(endX - handleWidth / 2 + 2, height / 2, handleWidth - 4, 2);
-        ctx.fillRect(endX - handleWidth / 2 + 2, height * 3 / 4, handleWidth - 4, 2);
-
-        // Add arrow indicator for dragging
-        ctx.beginPath();
-        ctx.moveTo(endX + 10, height / 2);
-        ctx.lineTo(endX + 4, height / 2 - 6);
-        ctx.lineTo(endX + 4, height / 2 + 6);
-        ctx.closePath();
-        ctx.fillStyle = theme === 'light' ? 'rgba(124, 58, 237, 0.8)' : 'rgba(167, 139, 250, 0.8)';
-        ctx.fill();
-
-        // Draw current position
-        const posX = (currentTime / duration) * width;
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(posX - 1, 0, 2, height);
-
-    }, [theme, clipStart, clipEnd, currentTime, duration]);
-
-    // Call drawWaveform when the relevant states change
-    useEffect(() => {
-        drawWaveform();
-    }, [drawWaveform]);
-
-    // Calculate clip duration
-    const clipDuration = clipEnd - clipStart;
-
-    // Theme-specific styles
-    const bgColor = theme === 'light' ? 'bg-gray-50' : 'bg-slate-950';
-    const textColor = theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-    const cardBg = theme === 'light' ? 'bg-white' : 'bg-slate-900';
-    const buttonBg = theme === 'light'
-        ? 'bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800'
-        : 'bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700';
-    const secondaryBg = theme === 'light' ? 'bg-gray-100' : 'bg-slate-800';
-    const borderColor = theme === 'light' ? 'border-gray-200' : 'border-slate-700';
-    const accent = theme === 'light' ? 'text-indigo-600' : 'text-indigo-400';
-    const peachAccent = theme === 'light' ? 'from-peach-400 to-peach-500' : 'from-peach-500 to-peach-600';
-    const blueAccent = theme === 'light' ? 'from-indigo-600 to-blue-600' : 'from-blue-600 to-indigo-700';
-    const softShadow = 'shadow-[0_8px_30px_rgb(0,0,0,0.12)]';
-    const cardShadow = 'shadow-[0_4px_12px_rgba(0,0,0,0.05)]';
-
-    // Track colors for sliders
-    const startTrackColor = theme === 'light' ? '#4f46e5' : '#6366f1';
-    const endTrackColor = theme === 'light' ? '#7c3aed' : '#8b5cf6';
-    const trackBgLight = theme === 'light' ? '#e2e8f0' : '#1e293b';
-
-    // Text colors
-    const labelColor = theme === 'light' ? 'text-gray-800' : 'text-gray-300';
-    const subtleTextColor = theme === 'light' ? 'text-gray-700' : 'text-gray-300';
-    const timeDisplayColor = theme === 'light' ? 'text-gray-800' : 'text-gray-200';
-    const secondaryTextColor = theme === 'light' ? 'text-gray-600' : 'text-gray-400';
-
-    // Gradient text
-    const headingGradient = theme === 'light'
-        ? 'bg-gradient-to-r from-indigo-700 to-blue-600'
-        : 'bg-gradient-to-r from-indigo-400 to-blue-300';
-    const subHeadingGradient = theme === 'light'
-        ? 'bg-gradient-to-r from-indigo-600 to-blue-500'
-        : 'bg-gradient-to-r from-indigo-400 to-blue-300';
-
-    return (
-        <div
-            className={`min-h-screen ${bgColor} ${textColor} transition-colors duration-300`}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            ref={wrapperRef}
-        >
-            {/* Toaster component for notifications */}
-            <Toaster position="top-center" theme={theme} richColors />
-
-            {/* Audio element (hidden) */}
-            <audio
-                ref={audioRef}
-                onLoadedMetadata={handleMetadataLoaded}
-                onTimeUpdate={handleTimeUpdate}
-                onEnded={() => setIsPlaying(false)}
-                className="hidden"
-            />
-
-            {/* File input (hidden) */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="audio/*"
-                className="hidden"
-            />
-
-            {/* Parallax Background */}
-            <div className="fixed inset-0 -z-10 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${theme === 'light' ? 'from-indigo-50/80 via-white/50 to-blue-50/80' : 'from-slate-950 via-slate-900/70 to-blue-950/60'} opacity-90`}></div>
-
-                {/* Decorative elements with parallax effect */}
-                <motion.div
-                    className={`absolute top-[5%] left-[8%] w-64 h-64 rounded-full bg-gradient-to-r ${blueAccent} opacity-${theme === 'light' ? '10' : '15'} blur-3xl`}
-                    animate={{
-                        x: [0, 10, 0, -10, 0],
-                        y: [0, -10, 0, 10, 0],
-                    }}
-                    transition={{
-                        repeat: Infinity,
-                        duration: 20,
-                        ease: "easeInOut"
-                    }}
-                />
-
-                <motion.div
-                    className={`absolute bottom-[15%] right-[5%] w-80 h-80 rounded-full bg-gradient-to-r ${peachAccent} opacity-${theme === 'light' ? '10' : '15'} blur-3xl`}
-                    animate={{
-                        x: [0, -15, 0, 15, 0],
-                        y: [0, 10, 0, -10, 0],
-                    }}
-                    transition={{
-                        repeat: Infinity,
-                        duration: 25,
-                        ease: "easeInOut",
-                        delay: 1
-                    }}
-                />
-
-                <motion.div
-                    className={`absolute top-[40%] right-[25%] w-48 h-48 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 opacity-${theme === 'light' ? '10' : '5'} blur-2xl`}
-                    animate={{
-                        x: [0, 10, 0, -10, 0],
-                        y: [0, 5, 0, -5, 0],
-                    }}
-                    transition={{
-                        repeat: Infinity,
-                        duration: 15,
-                        ease: "easeInOut",
-                        delay: 0.5
-                    }}
-                />
+                  </div>
+                  <div className={`text-xs pb-1 ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}>Today</div>
+                </div>
+                {/* Decorative orb */}
+                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-30 ${theme === "dark"
+                  ? "bg-teal-500/70"
+                  : "bg-cyan-400/60"
+                  }`}></div>
+              </div>
             </div>
 
-            {/* Header */}
-            <header className={`sticky top-0 z-10 ${cardBg} ${cardShadow} backdrop-blur-sm bg-opacity-90 py-4 px-6 flex justify-between items-center`}>
-                <h1 className={`text-xl font-bold bg-clip-text text-transparent ${headingGradient}`}>
-                    Podcast Clips
-                </h1>
-                <button
-                    onClick={toggleTheme}
-                    className={`p-2 rounded-full ${secondaryBg} ${softShadow} hover:scale-105 transition-all active:scale-95`}
-                    aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-                >
-                    {theme === 'light' ? <FiMoon className={accent} size={20} /> : <FiSun className={accent} size={20} />}
-                </button>
-            </header>
-
-            <main className={`max-w-md mx-auto py-6 px-4 flex flex-col gap-5 ${isFileUploaded ? 'pb-6' : 'pb-6'}`}>
-                {/* File Upload Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className={`${cardBg} rounded-2xl ${cardShadow} p-4 overflow-hidden`}
-                >
-                    {isFileUploaded ? (
-                        <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-full bg-gradient-to-r ${blueAccent} text-white`}>
-                                <FiMusic size={24} />
-                            </div>
-                            <div className="flex-1 truncate">
-                                <h3 className="font-medium">{fileName}</h3>
-                                <p className={`text-xs ${secondaryTextColor}`}>
-                                    {formatTime(duration)} • MP3
-                                </p>
-                            </div>
-                            <button
-                                onClick={triggerFileInput}
-                                className={`p-2 rounded-lg ${secondaryBg} transition-all hover:scale-105 active:scale-95`}
-                            >
-                                Change
-                            </button>
-                        </div>
-                    ) : (
-                        <div
-                            className={`border-2 border-dashed ${isDragging ? 'border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10' : borderColor} rounded-xl p-6 text-center transition-colors duration-200`}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            onClick={triggerFileInput}
-                        >
-                            <div className="flex flex-col items-center justify-center gap-2">
-                                <div className={`p-3 rounded-full bg-gradient-to-r ${blueAccent} text-white ${softShadow}`}>
-                                    <FiUpload size={24} />
-                                </div>
-                                <h3 className={`font-medium ${labelColor}`}>Upload your podcast</h3>
-                                <p className={`text-sm ${secondaryTextColor} max-w-xs`}>
-                                    Drag and drop your MP3 file here, or tap to browse
-                                </p>
-                                <div className="mt-2">
-                                    <button
-                                        className={`py-2 px-4 rounded-lg ${buttonBg} text-white ${softShadow} transition-all hover:scale-105 active:scale-95`}
-                                    >
-                                        Choose File
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </motion.div>
-
-                {/* Waveform and clip selection - Only shown if file is uploaded */}
-                {isFileUploaded && (
-                    <AnimatePresence>
-                        <motion.div
-                            key="waveform-section"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`${cardBg} rounded-2xl ${cardShadow} p-5`}
-                        >
-                            <div className="flex justify-between items-center mb-3">
-                                <h2 className={`text-lg font-semibold bg-clip-text text-transparent ${subHeadingGradient}`}>Select Clip <span className={`text-sm font-normal ${secondaryTextColor}`}>(max 60s)</span></h2>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handleUndo}
-                                        disabled={historyIndex <= 0}
-                                        className={`p-1.5 rounded-lg ${secondaryBg} ${historyIndex <= 0 ? 'opacity-50' : 'transition-all hover:scale-105 active:scale-95'}`}
-                                        aria-label="Undo"
-                                    >
-                                        <MdUndo size={18} className={labelColor} />
-                                    </button>
-                                    <button
-                                        onClick={handleRedo}
-                                        disabled={historyIndex >= clipHistory.length - 1}
-                                        className={`p-1.5 rounded-lg ${secondaryBg} ${historyIndex >= clipHistory.length - 1 ? 'opacity-50' : 'transition-all hover:scale-105 active:scale-95'}`}
-                                        aria-label="Redo"
-                                    >
-                                        <MdRedo size={18} className={labelColor} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Waveform visualization */}
-                            <div className="relative mb-3 rounded-xl overflow-hidden ${softShadow}">
-                                <canvas
-                                    ref={canvasRef}
-                                    width={500}
-                                    height={120}
-                                    className="w-full h-28 touch-none"
-                                />
-                                <div className="absolute top-0 left-0 w-full flex justify-between px-1.5 mt-1 pointer-events-none">
-                                    <span className="inline-flex items-center justify-center h-5 px-1.5 rounded-full bg-indigo-600 text-white text-xs shadow-lg">
-                                        Start
-                                    </span>
-                                    <span className="inline-flex items-center justify-center h-5 px-1.5 rounded-full bg-purple-600 text-white text-xs shadow-lg">
-                                        End
-                                    </span>
-                                </div>
-                                <div className="absolute bottom-1 w-full text-center text-xs text-white font-medium bg-black/30 py-0.5 rounded-full mx-auto pointer-events-none" style={{ width: '180px', left: 'calc(50% - 90px)' }}>
-                                    Drag handles to adjust clip
-                                </div>
-                            </div>
-
-                            {/* Time display */}
-                            <div className="flex justify-between text-sm mb-2">
-                                <div className={`font-mono font-medium ${timeDisplayColor}`}>{formatTime(clipStart)}</div>
-                                <div className={`font-medium bg-clip-text text-transparent ${subHeadingGradient} font-mono`}>{formatTime(clipDuration)} / 60s</div>
-                                <div className={`font-mono font-medium ${timeDisplayColor}`}>{formatTime(clipEnd)}</div>
-                            </div>
-
-                            {/* Range sliders */}
-                            <div className="flex gap-4 mb-8">
-                                <div className="flex-1">
-                                    <label className={`text-xs font-medium ${labelColor} block mb-2`}>
-                                        Clip Start Time
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="range"
-                                            min={0}
-                                            max={Math.max(0, duration - 1)}
-                                            step={0.5}
-                                            value={clipStart}
-                                            onChange={handleClipStartChange}
-                                            className="w-full h-8 appearance-none cursor-pointer bg-gray-200 dark:bg-slate-700 rounded-lg range-input range-indigo"
-                                            style={{
-                                                backgroundImage: `linear-gradient(to right, ${startTrackColor} 0%, ${startTrackColor} ${(clipStart / Math.max(duration, 1)) * 100}%, ${trackBgLight} ${(clipStart / Math.max(duration, 1)) * 100}%)`
-                                            }}
-                                        />
-                                        <div className="flex justify-between mt-2">
-                                            <span className={`text-xs font-medium ${subtleTextColor}`}>
-                                                0:00
-                                            </span>
-                                            <span className={`text-xs font-medium ${subtleTextColor}`}>
-                                                {formatTime(duration)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex-1">
-                                    <label className={`text-xs font-medium ${labelColor} block mb-2`}>
-                                        Clip End Time
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="range"
-                                            min={1}
-                                            max={duration}
-                                            step={0.5}
-                                            value={clipEnd}
-                                            onChange={handleClipEndChange}
-                                            className="w-full h-8 appearance-none cursor-pointer bg-gray-200 dark:bg-slate-700 rounded-lg range-input range-purple"
-                                            style={{
-                                                backgroundImage: `linear-gradient(to right, ${trackBgLight} 0%, ${trackBgLight} ${(clipEnd / Math.max(duration, 1)) * 100}%, ${endTrackColor} ${(clipEnd / Math.max(duration, 1)) * 100}%)`
-                                            }}
-                                        />
-                                        <div className="flex justify-between mt-2">
-                                            <span className={`text-xs font-medium ${subtleTextColor}`}>
-                                                0:00
-                                            </span>
-                                            <span className={`text-xs font-medium ${subtleTextColor}`}>
-                                                {formatTime(duration)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between px-1 mb-1">
-                                <div className="py-1 px-2 rounded-md flex items-center">
-                                    <span className="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-1"></span>
-                                    <p className={`text-xs ${subtleTextColor}`}>
-                                        Selected: <span className="font-semibold">{formatTime(clipDuration)}</span>
-                                    </p>
-                                </div>
-                                <div className=" py-1 px-2 rounded-md">
-                                    <p className={`text-xs ${subtleTextColor}`}>
-                                        Swipe <span className="font-semibold">←</span> undo, <span className="font-semibold">→</span> redo
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Export clip button */}
-                            <button
-                                onClick={createAndShareClip}
-                                disabled={isProcessingClip || clipDuration > 60}
-                                className={`w-full py-3 px-4 rounded-xl mt-4 ${isProcessingClip || clipDuration > 60
-                                    ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-500'
-                                    : `${buttonBg} text-white ${softShadow} transition-all hover:scale-[1.02] active:scale-[0.98]`
-                                    } flex items-center justify-center gap-2`}
-                            >
-                                {isProcessingClip ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        Processing...
-                                    </>
-                                ) : clipDuration > 60 ? (
-                                    'Clip too long (max 60s)'
-                                ) : (
-                                    <>
-                                        <FiDownload size={18} />
-                                        Export Clip
-                                    </>
-                                )}
-                            </button>
-                        </motion.div>
-
-                        {/* Caption preview */}
-                        <motion.div
-                            key="caption-section"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.4, delay: 0.2 }}
-                            className={`${cardBg} rounded-2xl ${cardShadow} p-5`}
-                        >
-                            <h2 className={`text-lg font-semibold bg-clip-text text-transparent ${subHeadingGradient} mb-3`}>Transcript Preview</h2>
-                            <div className={`p-4 rounded-xl ${secondaryBg} min-h-16 flex items-center ${labelColor} text-sm italic ${softShadow} backdrop-blur-sm`}>
-                                {captions}
-                            </div>
-                        </motion.div>
-
-                        {/* Share Modal */}
-                        <AnimatePresence>
-                            {isShareModalOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-                                    onClick={closeShareModal}
-                                >
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
-                                        transition={{ duration: 0.3, ease: "easeOut" }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`w-full max-w-md ${cardBg} rounded-2xl shadow-2xl overflow-hidden`}
-                                    >
-                                        {/* Modal Header */}
-                                        <div className={`p-5 border-b ${borderColor} flex items-center justify-between`}>
-                                            <h2 className={`text-lg font-semibold bg-clip-text text-transparent ${subHeadingGradient}`}>
-                                                Share Your Clip
-                                            </h2>
-                                            <button
-                                                onClick={closeShareModal}
-                                                className={`p-2 rounded-lg ${secondaryBg} transition-all hover:scale-105 active:scale-95`}
-                                            >
-                                                <svg className={`w-5 h-5 ${labelColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        {/* Modal Content */}
-                                        <div className="p-5">
-                                            {/* Clip info */}
-                                            <div className={`p-3 rounded-xl ${secondaryBg} mb-5 flex items-center justify-between`}>
-                                                <div>
-                                                    <p className={`text-sm font-medium ${labelColor}`}>Selected Clip</p>
-                                                    <p className={`text-xs ${secondaryTextColor}`}>
-                                                        {formatTime(clipStart)} - {formatTime(clipEnd)} • {formatTime(clipDuration)}
-                                                    </p>
-                                                </div>
-                                                <div className={`px-3 py-1 rounded-full ${buttonBg} text-white text-xs font-medium`}>
-                                                    Ready to share
-                                                </div>
-                                            </div>
-
-                                            {/* Social icons */}
-                                            <div className="grid grid-cols-4 gap-3 mb-5">
-                                                <button
-                                                    onClick={() => shareClip('Twitter')}
-                                                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 transition-all hover:scale-105 active:scale-95"
-                                                >
-                                                    <FiTwitter size={24} className="text-blue-500" />
-                                                    <span className={`text-xs ${labelColor} font-medium`}>Twitter</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => shareClip('Instagram')}
-                                                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-peach-50 to-pink-50 dark:from-peach-900/20 dark:to-pink-900/20 transition-all hover:scale-105 active:scale-95"
-                                                >
-                                                    <FiInstagram size={24} className="text-pink-500" />
-                                                    <span className={`text-xs ${labelColor} font-medium`}>Instagram</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => shareClip('Facebook')}
-                                                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 transition-all hover:scale-105 active:scale-95"
-                                                >
-                                                    <FiFacebook size={24} className="text-blue-600" />
-                                                    <span className={`text-xs ${labelColor} font-medium`}>Facebook</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => shareClip('TikTok')}
-                                                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 transition-all hover:scale-105 active:scale-95"
-                                                >
-                                                    <RiTiktokLine size={24} className={textColor} />
-                                                    <span className={`text-xs ${labelColor} font-medium`}>TikTok</span>
-                                                </button>
-                                            </div>
-
-                                            {/* Copy and download */}
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <button
-                                                    onClick={() => shareClip('Copy')}
-                                                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl ${secondaryBg} ${softShadow} transition-all hover:scale-[1.02] active:scale-[0.98]`}
-                                                >
-                                                    <FiCopy size={18} className={labelColor} />
-                                                    <span className={labelColor}>Copy Link</span>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => shareClip('Download')}
-                                                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl ${buttonBg} text-white ${softShadow} transition-all hover:scale-[1.02] active:scale-[0.98]`}
-                                                >
-                                                    <FiDownload size={18} />
-                                                    <span>Download</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </AnimatePresence>
-                )}
-
-                {/* Instructions for when no file is uploaded */}
-                {!isFileUploaded && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                        className={`${cardBg} rounded-2xl ${cardShadow} p-6 text-center`}
-                    >
-                        <div className="mx-auto mb-4 flex flex-col items-center">
-                            <div className={`inline-flex p-4 mb-4 rounded-full bg-gradient-to-br ${blueAccent} text-white ${softShadow}`}>
-                                <FiMusic size={30} />
-                            </div>
-                            <h2 className={`text-xl font-semibold mb-3 bg-clip-text text-transparent ${headingGradient}`}>Create & Share Podcast Clips</h2>
-                            <p className={`${secondaryTextColor} mb-6 max-w-xs mx-auto`}>
-                                Upload your favorite podcast and create short 60-second clips to share with your friends.
-                            </p>
-
-                            <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${blueAccent} flex items-center justify-center text-white font-semibold ${softShadow}`}>
-                                        1
-                                    </div>
-                                    <p className={`text-xs ${subtleTextColor}`}>Upload podcast</p>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-semibold ${softShadow}`}>
-                                        2
-                                    </div>
-                                    <p className={`text-xs ${subtleTextColor}`}>Select clip</p>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${blueAccent} flex items-center justify-center text-white font-semibold ${softShadow}`}>
-                                        3
-                                    </div>
-                                    <p className={`text-xs ${subtleTextColor}`}>Share it</p>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </main>
-
-            {/* Floating Player Controls - Only show when audio is uploaded */}
-            {isFileUploaded && (
-                <motion.div
-                    initial={{ opacity: 0, y: 100 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 100 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="fixed bottom-4 left-4 right-4 z-50"
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchMove={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className={`max-w-md mx-auto ${cardBg} rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-sm bg-opacity-95 border border-opacity-20`} 
-                         style={{borderColor: theme === 'light' ? '#e2e8f0' : '#334155'}}>
-                        
-                        {/* Main player controls */}
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex flex-col items-center">
-                                <button
-                                    onClick={togglePlayPause}
-                                    className={`p-3 rounded-full bg-gradient-to-r ${blueAccent} text-white shadow-lg transition-all hover:scale-105 active:scale-95`}
-                                >
-                                    {isPlaying ? <HiPause size={20} /> : <HiPlay size={20} />}
-                                </button>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={toggleMute}
-                                    className={`p-2 rounded-lg ${isMuted ? accent : subtleTextColor} hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
-                                >
-                                    {isMuted ? <HiOutlineVolumeOff size={18} /> : <HiOutlineVolumeUp size={18} />}
-                                </button>
-                                <div className="flex items-center">
-                                    <input
-                                        type="range"
-                                        min={0}
-                                        max={1}
-                                        step={0.05}
-                                        value={volume}
-                                        onChange={handleVolumeChange}
-                                        onTouchStart={(e) => e.stopPropagation()}
-                                        onTouchMove={(e) => e.stopPropagation()}
-                                        onTouchEnd={(e) => e.stopPropagation()}
-                                        className="w-16 h-2 appearance-none cursor-pointer bg-gray-200 dark:bg-gray-700 rounded-lg range-input range-volume"
-                                        style={{
-                                            backgroundImage: `linear-gradient(to right, ${theme === 'light' ? '#4f46e5' : '#6366f1'} 0%, ${theme === 'light' ? '#4f46e5' : '#6366f1'} ${volume * 100}%, ${theme === 'light' ? '#e2e8f0' : '#1e293b'} ${volume * 100}%)`
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className={`text-sm font-medium font-mono ${timeDisplayColor} min-w-[45px] text-right`}>
-                                {formatTime(currentTime)}
-                            </div>
-                        </div>
-
-                        {/* Clip info bar */}
-                        <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1">
-                                <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full"></span>
-                                <span className={subtleTextColor}>
-                                    Clip: {formatTime(clipStart)} - {formatTime(clipEnd)}
-                                </span>
-                            </div>
-                            <span className={`${subtleTextColor} font-mono`}>
-                                {formatTime(clipDuration)} / 60s
-                            </span>
-                        </div>
+            {/* Maximum Spent Category Card */}
+            <div className={`rounded-3xl overflow-hidden ${theme === "dark"
+              ? "bg-gray-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-gray-700/50"
+              : "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100"
+              } transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)] hover:translate-y-[-4px] hover:scale-[1.02]`}>
+              <div className={`p-6 relative overflow-hidden h-full ${theme === "dark"
+                ? "bg-gradient-to-br from-gray-800/80 via-gray-800/60 to-gray-800/80 backdrop-blur-sm"
+                : "bg-gradient-to-br from-gray-50/90 via-white/90 to-gray-50/90 backdrop-blur-sm"
+                }`}>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-sm`}
+                      style={{
+                        backgroundColor: maxCategory.category ? categories[maxCategory.category].fillColor : '#6b7280',
+                        boxShadow: `0 0 12px ${maxCategory.category ? categories[maxCategory.category].fillColor + '60' : '#6b728060'}`
+                      }}>
+                      {maxCategory.category ? categories[maxCategory.category].icon : <FaChartLine />}
                     </div>
-                </motion.div>
-            )}
+                    <h2 className="text-base font-bold">
+                      Highest Spent
+                    </h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                      ${maxCategory.amount.toFixed(2)}
+                    </span>
+                    <span className="text-xs capitalize text-gray-500">
+                      {maxCategory.category || 'None'}
+                    </span>
+                  </div>
+                </div>
+                {/* Decorative orb */}
+                <div className={`absolute -bottom-4 -right-4 w-32 h-32 rounded-full blur-3xl opacity-25`}
+                  style={{ backgroundColor: maxCategory.category ? categories[maxCategory.category].fillColor : '#6b7280' }}></div>
+              </div>
+            </div>
 
-            <footer className={`px-4 text-center text-sm text-gray-500 dark:text-gray-400 ${isFileUploaded ? 'pb-35' : 'pb-8'}`}>
-                <p>Create and share podcast moments that matter</p>
-            </footer>
+            {/* Minimum Spent Category Card */}
+            <div className={`rounded-3xl overflow-hidden ${theme === "dark"
+              ? "bg-gray-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-gray-700/50"
+              : "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100"
+              } transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)] hover:translate-y-[-4px] hover:scale-[1.02]`}>
+              <div className={`p-6 relative overflow-hidden h-full ${theme === "dark"
+                ? "bg-gradient-to-br from-gray-800/80 via-gray-800/60 to-gray-800/80 backdrop-blur-sm"
+                : "bg-gradient-to-br from-gray-50/90 via-white/90 to-gray-50/90 backdrop-blur-sm"
+                }`}>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-sm`}
+                      style={{
+                        backgroundColor: minCategory.category ? categories[minCategory.category].fillColor : '#6b7280',
+                        boxShadow: `0 0 12px ${minCategory.category ? categories[minCategory.category].fillColor + '60' : '#6b728060'}`
+                      }}>
+                      {minCategory.category ? categories[minCategory.category].icon : <FaPiggyBank />}
+                    </div>
+                    <h2 className="text-base font-bold">
+                      Lowest Spent
+                    </h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                      ${minCategory.amount.toFixed(2)}
+                    </span>
+                    <span className="text-xs capitalize text-gray-500">
+                      {minCategory.category || 'None'}
+                    </span>
+                  </div>
+                </div>
+                {/* Decorative orb */}
+                <div className={`absolute -bottom-4 -right-4 w-32 h-32 rounded-full blur-3xl opacity-25`}
+                  style={{ backgroundColor: minCategory.category ? categories[minCategory.category].fillColor : '#6b7280' }}></div>
+              </div>
+            </div>
 
-            <style jsx global>{`
-                /* Global styles for custom range inputs */
-                .range-input {
-                    -webkit-appearance: none;
-                    appearance: none;
-                    background: transparent;
-                    cursor: pointer;
-                }
-                
-                /* Track styles - WebKit */
-                .range-input::-webkit-slider-runnable-track {
-                    height: 8px;
-                    border-radius: 4px;
-                    background: transparent;
-                }
-                
-                /* Track styles - Firefox */
-                .range-input::-moz-range-track {
-                    height: 8px;
-                    border-radius: 4px;
-                    background: transparent;
-                    border: none;
-                }
-                
-                /* Thumb styles for WebKit/Blink */
-                .range-input::-webkit-slider-thumb {
-                    -webkit-appearance: none;
-                    appearance: none;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    border: 3px solid white;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-                    margin-top: -6px; /* Centers thumb on track */
-                }
-                
-                /* Thumb styles for Firefox */
-                .range-input::-moz-range-thumb {
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    border: 3px solid white;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-                    background: transparent;
-                }
-                
-                /* Remove default Firefox styles */
-                .range-input::-moz-range-progress {
-                    background: transparent;
-                }
-                
-                .range-input::-moz-range-track {
-                    background: transparent;
-                }
-                
-                /* Active thumb state */
-                .range-input:active::-webkit-slider-thumb {
-                    transform: scale(1.1);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                }
-                
-                .range-input:active::-moz-range-thumb {
-                    transform: scale(1.1);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                }
-                
-                /* Hover state */
-                .range-input:hover::-webkit-slider-thumb {
-                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
-                }
-                
-                .range-input:hover::-moz-range-thumb {
-                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
-                }
-                
-                .range-input:focus {
-                    outline: none;
-                }
-                
-                /* Color variants for indigo (start slider) */
-                .range-indigo::-webkit-slider-thumb {
-                    background: #4338ca;
-                }
-                
-                .range-indigo::-moz-range-thumb {
-                    background: #4338ca;
-                }
-                
-                /* Color variants for purple (end slider) */
-                .range-purple::-webkit-slider-thumb {
-                    background: #7c3aed;
-                }
-                
-                .range-purple::-moz-range-thumb {
-                    background: #7c3aed;
-                }
-                
-                /* Color variants for volume slider */
-                .range-volume::-webkit-slider-thumb {
-                    background: #4f46e5;
-                    width: 14px;
-                    height: 14px;
-                    margin-top: -5px;
-                    border: 2px solid white;
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-                }
-                
-                .range-volume::-moz-range-thumb {
-                    background: #4f46e5;
-                    width: 14px;
-                    height: 14px;
-                    border: 2px solid white;
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-                }
+            <div className={`rounded-3xl overflow-hidden ${theme === "dark"
+              ? "bg-gray-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-gray-700/50"
+              : "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100"
+              } transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)] hover:translate-y-[-4px] hover:scale-[1.02]`}>
+              <div className={`p-6 relative overflow-hidden h-full ${theme === "dark"
+                ? "bg-gradient-to-br from-gray-800/80 via-gray-800/60 to-gray-800/80 backdrop-blur-sm"
+                : "bg-gradient-to-br from-gray-50/90 via-white/90 to-gray-50/90 backdrop-blur-sm"
+                }`}>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-sm`}
+                      style={{
+                        backgroundColor: theme === "dark" ? "#3b82f6" : "#60a5fa",
+                        boxShadow: theme === "dark" ? "0 0 12px rgba(59, 130, 246, 0.6)" : "0 0 12px rgba(96, 165, 250, 0.6)"
+                      }}>
+                      <FaCalendarAlt />
+                    </div>
+                    <h2 className="text-base font-bold">
+                      7-Day Average
+                    </h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                      ${averageDailySpend.toFixed(2)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      per day
+                    </span>
+                  </div>
+                </div>
+                {/* Decorative orb */}
+                <div className={`absolute -bottom-4 -right-4 w-32 h-32 rounded-full blur-3xl opacity-25 ${theme === "dark" ? "bg-blue-500" : "bg-blue-400"}`}></div>
+              </div>
+            </div>
+          </div>
 
-                /* Volume slider track for smaller size */
-                .range-volume::-webkit-slider-runnable-track {
-                    height: 4px;
-                    border-radius: 2px;
-                }
-                
-                .range-volume::-moz-range-track {
-                    height: 4px;
-                    border-radius: 2px;
-                }
-            `}</style>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <div className={`rounded-3xl p-7 ${theme === "dark"
+              ? "bg-gray-800/90 backdrop-blur-sm border border-gray-700/50"
+              : "bg-white/90 backdrop-blur-sm border border-gray-100"
+              } shadow-[0_10px_40px_rgba(0,0,0,0.15)] col-span-1 relative overflow-hidden transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:translate-y-[-4px]`}>
+
+              {/* Decorative elements */}
+              <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-10 ${theme === "dark"
+                ? "bg-teal-500"
+                : "bg-cyan-400"
+                }`}></div>
+
+              <div className="relative z-10">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <FaPlusCircle className={`${theme === "dark"
+                    ? "text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                    : "text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                    }`} />
+                  <span className={theme === "dark"
+                    ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-400"
+                    : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-sky-500"
+                  }>Add New Expense</span>
+                </h2>
+                <p className={`text-sm mb-5 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                  Track your daily expenses by adding them to your dashboard.
+                </p>
+                <motion.button
+                  onClick={openAddModal}
+                  whileHover={{
+                    scale: 1.03,
+                    boxShadow: theme === "dark"
+                      ? "0 0 20px rgba(20, 184, 166, 0.5)"
+                      : "0 0 20px rgba(20, 184, 166, 0.5)"
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`w-full py-3.5 rounded-xl cursor-pointer ${theme === "dark"
+                    ? "bg-gradient-to-r from-teal-500 via-emerald-600 to-cyan-600 ring-1 ring-teal-700/50"
+                    : "bg-gradient-to-r from-teal-500 via-cyan-500 to-sky-600 ring-1 ring-teal-300/50"
+                    } text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2`}
+                >
+                  <FaPlus className="drop-shadow-md" />
+                  <span className="drop-shadow-md">Add Expense</span>
+                </motion.button>
+              </div>
+
+
+              <div className="mt-4">
+                <h3 className={`text-sm font-medium mb-3 ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}>Today's Total: ${todayTotal.toFixed(2)}</h3>
+                <div className="space-y-3">
+                  {Object.entries(todayCategoryTotals).length > 0 ? (
+                    Object.entries(todayCategoryTotals).map(([category, amount]) => {
+                      const percentage = (amount / todayTotal) * 100;
+                      const catInfo = categories[category];
+
+                      return (
+                        <div key={category} className="flex flex-col">
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="flex items-center">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs`} style={{ backgroundColor: catInfo.fillColor }}>
+                                {catInfo.icon}
+                              </div>
+                              <span className="ml-2 capitalize">{category}</span>
+                            </div>
+                            <div className="font-medium">${amount.toFixed(2)}</div>
+                          </div>
+                          <div className={`w-full h-2 rounded-full ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${percentage}%`,
+                                backgroundColor: catInfo.fillColor
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className={`text-center py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                      <p className="text-sm">No expenses recorded for today.</p>
+                      <p className="text-xs mt-1">Add an expense to see the breakdown!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={`rounded-3xl p-7 ${theme === "dark"
+              ? "bg-gray-800/90 backdrop-blur-sm border border-gray-700/50"
+              : "bg-white/90 backdrop-blur-sm border border-gray-100"
+              } shadow-[0_10px_40px_rgba(0,0,0,0.15)] col-span-1 md:col-span-2 relative overflow-hidden transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:translate-y-[-4px]`}>
+
+              {/* Decorative elements */}
+              <div className={`absolute bottom-0 left-0 w-64 h-64 rounded-full blur-3xl opacity-10 ${theme === "dark"
+                ? "bg-cyan-500"
+                : "bg-sky-400"
+                }`}></div>
+
+              <div className="relative z-10">
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <FaChartLine className={`${theme === "dark"
+                      ? "text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                      : "text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                      }`} />
+                    <span className={theme === "dark"
+                      ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-400"
+                      : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-sky-500"
+                    }>Expense Breakdown</span>
+                  </h2>
+                  <div className={`flex overflow-hidden rounded-xl border ${theme === "dark"
+                    ? "border-gray-700 shadow-inner shadow-black/20"
+                    : "border-gray-200 shadow-inner shadow-gray-200/50"
+                    }`}>
+                    <button
+                      onClick={() => setActiveTab('pie')}
+                      className={`sm:px-8 px-4 py-1.5 text-sm font-medium cursor-pointer transition-all duration-300 ${activeTab === 'pie'
+                        ? (theme === 'dark'
+                          ? 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-[0_0_10px_rgba(20,184,166,0.3)]'
+                          : 'bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-[0_0_10px_rgba(20,184,166,0.3)]')
+                        : (theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+                        }`}
+                    >
+                      Pie
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('bar')}
+                      className={`px-8 pl-4 sm:pl-8  py-1.5  text-sm font-medium cursor-pointer transition-all duration-300 ${activeTab === 'bar'
+                        ? (theme === 'dark'
+                          ? 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-[0_0_10px_rgba(20,184,166,0.3)]'
+                          : 'bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-[0_0_10px_rgba(20,184,166,0.3)]')
+                        : (theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+                        }`}
+                    >
+                      Bar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-[300px] mt-4">
+                {chartData.length > 0 ? (
+                  activeTab === 'pie' ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ left: 30, right: 30, top: 10, bottom: 10 }}>
+                        <Pie
+                          data={chartData}
+                          cx={"50%"}
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={95}
+                          innerRadius={60}
+                          dataKey="value"
+                          animationDuration={1500}
+                          animationBegin={200}
+                          paddingAngle={4}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              stroke={theme === 'dark' ? '#374151' : '#f3f4f6'}
+                              strokeWidth={3}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend
+                          formatter={(value) => <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{value}</span>}
+                          layout={"horizontal"}
+                          align={"center"}
+                          verticalAlign={"bottom"}
+                          wrapperStyle={{ paddingTop: 20 }}
+                          iconSize={10}
+                          iconType="circle"
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: theme === 'dark' ? '#9ca3af' : '#4b5563' }}
+                        />
+                        <YAxis
+                          tick={{ fill: theme === 'dark' ? '#9ca3af' : '#4b5563' }}
+                          tickFormatter={(value) => `$${value}`}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]} animationDuration={1500} animationBegin={200}>
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              style={{
+                                filter: `drop-shadow(0 0 8px ${entry.color}50)`,
+                              }}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>No expense data to display</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className={`rounded-3xl p-7 ${theme === "dark"
+            ? "bg-gray-800/90 backdrop-blur-sm border border-gray-700/50"
+            : "bg-white/90 backdrop-blur-sm border border-gray-100"
+            } shadow-[0_10px_40px_rgba(0,0,0,0.15)] mb-10 relative overflow-hidden transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:translate-y-[-4px]`}>
+
+            {/* Decorative elements */}
+            <div className={`absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl opacity-10 ${theme === "dark"
+              ? "bg-emerald-500"
+              : "bg-emerald-400"
+              }`}></div>
+
+            <div className="relative z-10">
+              <h2 className="text-xl font-bold mb-5 flex items-center gap-2">
+                <FaEdit className={`${theme === "dark"
+                  ? "text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                  : "text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                  }`} />
+                <span className={theme === "dark"
+                  ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-emerald-400"
+                  : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-emerald-500"
+                }>Manage Expenses</span>
+              </h2>
+
+              <div className="overflow-x-auto rounded-xl">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className={`${theme === "dark"
+                      ? "border-b border-gray-700 bg-gradient-to-r from-gray-800/90 to-gray-700/80"
+                      : "border-b border-gray-200 bg-gradient-to-r from-gray-50/90 to-blue-50/80"
+                      }`}>
+                      <th className="py-4 px-3 text-left text-sm font-semibold">Description</th>
+                      <th className="py-4 px-3 text-left text-sm font-semibold">Category</th>
+                      <th className="py-4 px-3 text-left text-sm font-semibold">Date</th>
+                      <th className="py-4 px-3 text-right text-sm font-semibold">Amount</th>
+                      <th className="py-4 px-3 text-center text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`${theme === "dark"
+                    ? "divide-y divide-gray-700"
+                    : "divide-y divide-gray-200"
+                    }`}>
+                    {expenses.slice(0, 5).map(expense => (
+                      <tr key={expense.id} className={`transition-colors hover:${theme === "dark"
+                        ? "bg-gray-700/30 backdrop-blur-sm"
+                        : "bg-blue-50/30 backdrop-blur-sm"
+                        }`}>
+                        <td className="py-4 px-3 text-sm">{expense.description}</td>
+                        <td className="py-4 px-3 text-sm">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1.5 shadow-sm ${theme === "dark"
+                            ? `bg-${categories[expense.category].fillColor}30 text-${categories[expense.category].fillColor}`
+                            : `bg-${categories[expense.category].fillColor}20 text-${categories[expense.category].fillColor}`
+                            }`} style={{
+                              boxShadow: theme === "dark"
+                                ? `0 0 12px ${categories[expense.category].fillColor}30`
+                                : `0 0 8px ${categories[expense.category].fillColor}25`
+                            }}>
+                            <span className="w-3 h-3">{categories[expense.category].icon}</span>
+                            <span className="capitalize">{expense.category}</span>
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 text-sm">{new Date(expense.date).toLocaleDateString()}</td>
+                        <td className="py-4 px-3 text-sm font-medium text-right">${expense.amount.toFixed(2)}</td>
+                        <td className="py-4 px-3 text-sm">
+                          <div className="flex justify-center gap-3">
+                            <button
+                              onClick={() => openEditModal(expense)}
+                              className={`p-2 rounded-full cursor-pointer transition-all ${theme === "dark"
+                                ? "hover:bg-gray-700 hover:text-teal-400"
+                                : "hover:bg-gray-100 hover:text-teal-500"
+                                }`}
+                            >
+                              <FaEdit className={theme === "dark" ? "text-gray-300" : "text-gray-600"} />
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(expense.id)}
+                              className={`p-2 rounded-full cursor-pointer transition-all ${theme === "dark"
+                                ? "hover:bg-gray-700 text-cyan-400 hover:text-cyan-300"
+                                : "hover:bg-gray-100 text-sky-600 hover:text-sky-700"
+                                }`}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* 7-day Expense Summary */}
+          <div className={`rounded-3xl ${theme === "dark"
+            ? "bg-gray-800/90 backdrop-blur-sm border border-gray-700/50"
+            : "bg-white/90 backdrop-blur-sm border border-gray-100"
+            } shadow-[0_10px_40px_rgba(0,0,0,0.15)] overflow-hidden relative transition-all duration-300 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:translate-y-[-4px]`}>
+
+            {/* Decorative elements */}
+            <div className={`absolute bottom-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10 ${theme === "dark"
+              ? "bg-teal-500"
+              : "bg-sky-400"
+              }`}></div>
+
+            <div className="p-7 relative z-10">
+              <h2 className="text-xl font-bold flex items-center gap-2 mb-5">
+                <FaCalendarAlt className={`${theme === "dark"
+                  ? "text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                  : "text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                  }`} />
+                <span className={theme === "dark"
+                  ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-400"
+                  : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-sky-500"
+                }>Last 7 Days Expenses</span>
+              </h2>
+
+              <div className="overflow-x-auto rounded-xl">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className={`${theme === "dark"
+                      ? "border-b border-gray-700 bg-gradient-to-r from-gray-800/90 to-gray-700/80"
+                      : "border-b border-gray-200 bg-gradient-to-r from-gray-50/90 to-blue-50/80"
+                      }`}>
+                      <th className="py-4 px-3 text-left text-sm font-semibold">Date</th>
+                      <th className="py-4 px-3 text-right text-sm font-semibold">Total</th>
+                      <th className="py-4 px-3 text-left text-sm font-semibold">Breakdown</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`${theme === "dark"
+                    ? "divide-y divide-gray-700"
+                    : "divide-y divide-gray-200"
+                    }`}>
+                    {dailyTotals.map((day) => (
+                      <tr key={day.date} className={`transition-colors hover:${theme === "dark"
+                        ? "bg-gray-700/30 backdrop-blur-sm"
+                        : "bg-blue-50/30 backdrop-blur-sm"
+                        }`}>
+                        <td className="py-4 px-3 text-sm font-medium">{day.formattedDate}</td>
+                        <td className="py-4 px-3 text-sm text-right font-medium">
+                          <span className={`${day.total > 0
+                            ? (theme === "dark" ? "text-white" : "text-gray-900")
+                            : "text-gray-500"
+                            }`}>
+                            ${day.total.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 text-sm">
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(day.breakdown).map(([category, amount]) => {
+                              const catInfo = categories[category];
+                              return (
+                                <div
+                                  key={category}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm"
+                                  style={{
+                                    backgroundColor: theme === "dark"
+                                      ? `${catInfo.fillColor}30`
+                                      : `${catInfo.fillColor}20`,
+                                    color: theme === "dark" ? "#fff" : catInfo.fillColor,
+                                    boxShadow: theme === "dark"
+                                      ? `0 0 15px ${catInfo.fillColor}30`
+                                      : `0 0 12px ${catInfo.fillColor}25`
+                                  }}
+                                >
+                                  <span className="w-3 h-3">{catInfo.icon}</span>
+                                  <span className="capitalize">{category}</span>
+                                  <span className="font-medium">${amount.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className={`${theme === "dark"
+                      ? "border-t border-gray-700 bg-gradient-to-r from-gray-800/90 to-gray-700/80"
+                      : "border-t border-gray-200 bg-gradient-to-r from-gray-50/90 to-blue-50/80"
+                      }`}>
+                      <td className="py-4 px-3 text-sm font-semibold">Total</td>
+                      <td className="py-4 px-3 text-sm text-right font-semibold">
+                        <span className={`${theme === "dark"
+                          ? "text-white text-opacity-90"
+                          : "text-gray-900"
+                          }`}>
+                          ${dailyTotals.reduce((sum, day) => sum + day.total, 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+
+        <footer className={`mt-10 py-8 ${theme === "dark"
+          ? "bg-gradient-to-b from-gray-800/90 to-gray-900 border-t border-gray-700/30"
+          : "bg-gradient-to-b from-gray-50 to-gray-100 border-t border-gray-200/50"
+          }`}>
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="flex items-center mb-6 md:mb-0">
+                <FaWallet className={`mr-2 ${theme === "dark"
+                  ? "text-teal-400 drop-shadow-[0_0_6px_rgba(20,184,166,0.5)]"
+                  : "text-teal-500 drop-shadow-[0_0_6px_rgba(20,184,166,0.5)]"
+                  }`} />
+                <span className={`font-bold text-lg ${theme === "dark"
+                  ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-500"
+                  : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-sky-500"
+                  }`}>
+                  Daily Expense
+                </span>
+              </div>
+              <p className={`${theme === "dark"
+                ? "text-gray-400 drop-shadow-sm"
+                : "text-gray-600 drop-shadow-sm"
+                }`}>
+                Daily Expense Tracker © {new Date().getFullYear()}
+              </p>
+            </div>
+          </div>
+        </footer>
+
+        {/* Modal components */}
+        <AnimatePresence>
+          {/* Add Expense Modal */}
+          {isAddModalOpen && (
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 backdrop-blur-sm bg-black/20"
+                onClick={closeAllModals}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className={`relative rounded-2xl ${theme === "dark"
+                  ? "bg-gray-800/90 backdrop-blur-sm border border-gray-700/50"
+                  : "bg-white/90 backdrop-blur-sm border border-gray-100"
+                  } p-7 shadow-[0_10px_50px_rgba(0,0,0,0.5)] max-w-md w-full mx-4 overflow-hidden`}
+              >
+                {/* Decorative orb */}
+                <div className={`absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-30 ${theme === "dark"
+                  ? "bg-teal-600"
+                  : "bg-teal-400"
+                  }`}></div>
+
+                <div className="relative z-10">
+                  <div className="flex justify-between items-center mb-5">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <FaPlusCircle className={`${theme === "dark"
+                        ? "text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                        : "text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]"
+                        }`} />
+                      <span className={`${theme === "dark"
+                        ? "bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-500"
+                        : "bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-sky-500"
+                        }`}>Add New Expense</span>
+                    </h2>
+                    <button
+                      onClick={closeAllModals}
+                      className={`p-2 rounded-full cursor-pointer ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {/* Display success message */}
+                  <AnimatePresence>
+                    {formSuccess && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className={`p-3 rounded-lg flex items-center gap-2 ${theme === "dark"
+                          ? "bg-teal-900/50 text-teal-300 border border-teal-700"
+                          : "bg-teal-50 text-teal-800 border border-teal-200"
+                          }`}
+                      >
+                        <FaCheck className="text-teal-500" />
+                        <span>{formSuccess}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div>
+                    <label className={`block mb-2 text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Amount</label>
+                    <div className="relative">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+                        <FaDollarSign className={theme === "dark" ? "text-gray-400" : "text-gray-500"} />
+                      </div>
+                      <input
+                        type="number"
+                        value={newExpense.amount}
+                        onChange={(e) => {
+                          setNewExpense({ ...newExpense, amount: e.target.value });
+                          if (formErrors.amount) {
+                            setFormErrors({ ...formErrors, amount: "" });
+                          }
+                        }}
+                        className={`w-full py-2.5 px-10 rounded-xl shadow-sm ${formErrors.amount
+                          ? (theme === "dark" ? "border-red-500" : "border-red-500")
+                          : (theme === "dark" ? "border-gray-600" : "border-gray-300")
+                          } ${theme === "dark"
+                            ? "bg-gray-700/70 shadow-inner shadow-black/10 text-white"
+                            : "bg-white"
+                          } border focus:outline-none focus:ring-2 ${theme === "dark"
+                            ? "focus:ring-teal-500 focus:border-teal-500"
+                            : "focus:ring-amber-400 focus:border-amber-400"
+                          } transition-all duration-200`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {formErrors.amount && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, y: -5 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mt-1.5 text-sm text-red-500 flex items-center gap-1"
+                        >
+                          <FaExclamationTriangle className="text-red-500" size={12} />
+                          {formErrors.amount}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <div>
+                    <label className={`block mb-2 text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Category</label>
+                    <div className="relative">
+                      <select
+                        value={newExpense.category}
+                        onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                        className={`w-full py-2.5 px-3.5 rounded-xl shadow-sm appearance-none ${theme === "dark"
+                          ? "bg-gray-700/70 border-gray-600 shadow-inner shadow-black/10 text-white"
+                          : "bg-white border-gray-300 shadow-sm"
+                          } border focus:outline-none focus:ring-2 ${theme === "dark"
+                            ? "focus:ring-teal-500 focus:border-teal-500"
+                            : "focus:ring-amber-400 focus:border-amber-400"
+                          } transition-all duration-200`}
+                      >
+                        {Object.keys(categories).map(cat => (
+                          <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                        <FaChevronDown className={`h-4 w-4 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block mb-2 text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Description</label>
+                    <input
+                      type="text"
+                      value={newExpense.description}
+                      onChange={(e) => {
+                        setNewExpense({ ...newExpense, description: e.target.value });
+                        if (formErrors.description) {
+                          setFormErrors({ ...formErrors, description: "" });
+                        }
+                      }}
+                      className={`w-full py-2.5 px-3.5 rounded-xl shadow-sm ${formErrors.description
+                        ? (theme === "dark" ? "border-red-500" : "border-red-500")
+                        : (theme === "dark" ? "border-gray-600" : "border-gray-300")
+                        } ${theme === "dark"
+                          ? "bg-gray-700/70 shadow-inner shadow-black/10 text-white"
+                          : "bg-white"
+                        } border focus:outline-none focus:ring-2 ${theme === "dark"
+                          ? "focus:ring-teal-500 focus:border-teal-500"
+                          : "focus:ring-amber-400 focus:border-amber-400"
+                        } transition-all duration-200`}
+                      placeholder="What did you spend on?"
+                    />
+                    <AnimatePresence>
+                      {formErrors.description && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, y: -5 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mt-1.5 text-sm text-red-500 flex items-center gap-1"
+                        >
+                          <FaExclamationTriangle className="text-red-500" size={12} />
+                          {formErrors.description}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <motion.button
+                    onClick={addExpense}
+                    whileHover={{
+                      scale: 1.03,
+                      boxShadow: theme === "dark"
+                        ? "0 0 20px rgba(20, 184, 166, 0.5)"
+                        : "0 0 20px rgba(20, 184, 166, 0.5)"
+                    }}
+                    whileTap={{ scale: 0.97 }}
+                    className={`w-full py-3.5 rounded-xl cursor-pointer ${theme === "dark"
+                      ? "bg-gradient-to-r from-teal-500 via-emerald-600 to-cyan-600 ring-1 ring-teal-700/50"
+                      : "bg-gradient-to-r from-teal-500 via-cyan-500 to-sky-600 ring-1 ring-teal-300/50"
+                      } text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2`}
+                  >
+                    <FaPlus className="drop-shadow-md" />
+                    <span className="drop-shadow-md">Add Expense</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Edit Expense Modal */}
+          {isEditModalOpen && editingExpense && (
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 backdrop-blur-sm bg-black/20"
+                onClick={closeAllModals}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className={`relative rounded-xl ${theme === "dark" ? "bg-gray-800" : "bg-white"} p-6 shadow-2xl max-w-md w-full mx-4`}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${theme === "dark"
+                      ? "bg-teal-800/90 text-teal-300"
+                      : "bg-blue-100 text-blue-600"}`}>
+                      <FaEdit />
+                    </div>
+                    Edit Expense
+                  </h2>
+                  <button
+                    onClick={closeAllModals}
+                    className={`p-2 rounded-full cursor-pointer ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block mb-1 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Amount</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                        <FaDollarSign className={theme === "dark" ? "text-gray-500" : "text-gray-400"} />
+                      </div>
+                      <input
+                        type="number"
+                        value={editingExpense.amount}
+                        onChange={(e) => setEditingExpense({ ...editingExpense, amount: parseFloat(e.target.value) })}
+                        className={`w-full py-2 px-9 rounded-lg ${theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300"} border focus:outline-none focus:ring-2 ${theme === "dark" ? "focus:ring-purple-500" : "focus:ring-blue-500"}`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block mb-1 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Category</label>
+                    <select
+                      value={editingExpense.category}
+                      onChange={(e) => setEditingExpense({ ...editingExpense, category: e.target.value })}
+                      className={`w-full py-2 px-3 rounded-lg ${theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300"} border focus:outline-none focus:ring-2 ${theme === "dark" ? "focus:ring-purple-500" : "focus:ring-blue-500"}`}
+                    >
+                      {Object.keys(categories).map(cat => (
+                        <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block mb-1 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Description</label>
+                    <input
+                      type="text"
+                      value={editingExpense.description}
+                      onChange={(e) => setEditingExpense({ ...editingExpense, description: e.target.value })}
+                      className={`w-full py-2 px-3 rounded-lg ${theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300"} border focus:outline-none focus:ring-2 ${theme === "dark" ? "focus:ring-purple-500" : "focus:ring-blue-500"}`}
+                      placeholder="What did you spend on?"
+                    />
+                  </div>
+                  <motion.button
+                    onClick={updateExpense}
+                    whileHover={{
+                      scale: 1.02,
+                      boxShadow: theme === "dark"
+                        ? "0 0 20px rgba(20, 184, 166, 0.5)"
+                        : "0 0 20px rgba(20, 184, 166, 0.5)"
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full py-3 rounded-lg cursor-pointer ${theme === "dark" ? "bg-gradient-to-r from-teal-500 to-cyan-600" : "bg-gradient-to-r from-teal-500 via-cyan-500 to-sky-600"} text-white font-medium shadow-md hover:shadow-lg transition-shadow flex items-center justify-center gap-2`}
+                  >
+                    <FaEdit /> Update Expense
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {isDeleteModalOpen && expenseToDelete && (
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 backdrop-blur-sm bg-black/20"
+                onClick={closeAllModals}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className={`relative rounded-xl ${theme === "dark" ? "bg-gray-800" : "bg-white"} p-6 shadow-2xl max-w-md w-full mx-4 flex flex-col items-center text-center`}
+              >
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${theme === "dark" ? "bg-red-900/30" : "bg-red-100"}`}>
+                  <FaExclamationTriangle className="text-red-500 text-2xl" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Confirm Deletion</h2>
+                <p className={`mb-6 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+                  Are you sure you want to delete this expense? This action cannot be undone.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <motion.button
+                    onClick={closeAllModals}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex-1 py-3 rounded-lg cursor-pointer ${theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300"} font-medium`}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    onClick={() => deleteExpense(expenseToDelete)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 py-3 rounded-lg cursor-pointer bg-red-500 hover:bg-red-600 text-white font-medium"
+                  >
+                    Delete
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
+  );
 }
