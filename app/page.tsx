@@ -1,1621 +1,2353 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  FiSun, FiMoon, FiBell, FiBarChart2,
-  FiClock, FiStar, FiSettings, FiRefreshCw,
-  FiChevronUp, FiChevronDown, FiActivity,
-  FiAlertCircle
-} from "react-icons/fi";
-import {
-  GiSoccerBall, GiBasket, GiTennisBall,
-  GiBaseballBat, GiHockey
-} from "react-icons/gi";
+  Search,
+  Bell,
+  User,
+  ChevronDown,
+  MessageSquare,
+  Heart,
+  Share2,
+  Reply,
+  Award,
+  Filter,
+  Settings,
+  Menu,
+  X,
+  Hash,
+  ThumbsUp,
+  Send,
+  Clock,
+  Bookmark,
+  Home,
+  Compass,
+  LogOut,
+  UserCircle,
+  HelpCircle,
+  Star,
+  Briefcase,
+  Shield,
+  Calendar,
+  Inbox,
+  BarChart2,
+  Users,
+  Edit,
+  Trash,
+  Flag,
+  ExternalLink,
+  Building2,
+  Lightbulb,
+  Wrench,
+  TrendingUp,
+} from "lucide-react";
 
-// Types for our data
-type Sport = 'soccer' | 'basketball' | 'tennis' | 'baseball' | 'hockey';
-
-type Team = {
+// TypeScript interfaces
+interface UserType {
   id: string;
   name: string;
-  logo: string;
-  score: number;
-  isFav: boolean; // Track if this team is a favorite
-  showAlert: boolean; // Flag to show alert for this team
-  lastAlertShownAt: number; // Timestamp of last alert
-};
+  avatar: string;
+  role: string;
+  isOnline: boolean;
+}
 
-type Player = {
+interface ThreadType {
   id: string;
-  name: string;
-  team: string;
-  stats: string;
-};
+  title: string;
+  content: string;
+  createdAt: string;
+  author: UserType;
+  tags: string[];
+  likes: number;
+  isLiked: boolean;
+  isBookmarked: boolean;
+  replies: ReplyType[];
+  category: string;
+  views: number;
+  isPinned?: boolean;
+  isFeatured?: boolean;
+}
 
-type LiveMatch = {
+interface ReplyType {
   id: string;
-  sport: Sport;
-  homeTeam: Team;
-  awayTeam: Team;
-  time: string;
-  timeSeconds?: number; // Add countdown in seconds
-  status: 'upcoming' | 'live' | 'finished';
-  period: string;
-  commentary: string[];
-};
+  content: string;
+  createdAt: string;
+  author: UserType;
+  likes: number;
+  isLiked: boolean;
+  replies: ReplyType[];
+}
 
-type TickerUpdate = {
-  id: string;
-  text: string;
-  time: string;
-  type: 'score' | 'event' | 'news';
-};
-
-type Alert = {
-  id: string;
-  teamId: string;
-  message: string;
-  read: boolean;
-  timestamp: number; // Add timestamp to ensure uniqueness
-};
-
-type AlertData = {
-  teamId: string;
-  teamName: string;
-  newScore: number;
-  message: string;
-} | null;
-
-// Mock Data
-const mockSports: Sport[] = ['soccer', 'basketball', 'tennis', 'baseball', 'hockey'];
-
-// Team logos - more reliable image sources
-const teamLogos = {
-  barcelona: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzA1MjM4OCIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2EwMDAzMyIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNSIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QkFSQ0E8L3RleHQ+PC9zdmc+',
-  realMadrid: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzAwNjZiMyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TUFEUklEPC90ZXh0Pjwvc3ZnPg==',
-  lakers: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzU1MmQ4ZiIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZkYjkyNyIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TEFLRVJTPC90ZXh0Pjwvc3ZnPg==',
-  warriors: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzFkNDI4YSIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZmYzUyZCIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+V0FSUklPUlM8L3RleHQ+PC9zdmc+',
-  djokovic: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2QyMTAzNCIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZmZiIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIyNSIgZmlsbD0iIzE4NDFhMSIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1JCPC90ZXh0Pjwvc3ZnPg==',
-  nadal: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2YxYzkwMCIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZmMDAwMCIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1BBSU48L3RleHQ+PC9zdmc+',
-  yankees: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjMTgzMzVhIiBzdHJva2Utd2lkdGg9IjMiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzE4MzM1YSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tlk8L3RleHQ+PC9zdmc+',
-  redSox: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2JkMmIzMSIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UkVEIFNPWDwvdGV4dD48L3N2Zz4=',
-  bruins: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzAwMDAwMCIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZkYjUxNSIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzAwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QlJVSU5TPC90ZXh0Pjwvc3ZnPg==',
-  mapleLeafs: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzIzNTc4NyIgLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzNSIgZmlsbD0iI2ZmZmZmZiIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzIzNTc4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VE9ST05UTzwvdGV4dD48L3N2Zz4='
-};
-
-const mockLiveMatches: LiveMatch[] = [
+// Mock data
+const mockUsers: UserType[] = [
   {
-    id: '1',
-    sport: 'soccer',
-    homeTeam: { id: 't1', name: 'Barcelona', logo: teamLogos.barcelona, score: 2, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    awayTeam: { id: 't2', name: 'Real Madrid', logo: teamLogos.realMadrid, score: 1, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    time: '75:00',
-    timeSeconds: 15 * 60, // 15 minutes left in the game
-    status: 'live',
-    period: '2nd Half',
-    commentary: [
-      'Messi with a brilliant run!',
-      'Goal! Barcelona scores again!',
-      'Yellow card for Ramos after a hard tackle'
-    ]
+    id: "1",
+    name: "Alex Morgan",
+    avatar: "https://randomuser.me/api/portraits/men/20.jpg",
+    role: "Product Manager",
+    isOnline: true,
   },
   {
-    id: '2',
-    sport: 'basketball',
-    homeTeam: { id: 't3', name: 'Lakers', logo: teamLogos.lakers, score: 87, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    awayTeam: { id: 't4', name: 'Warriors', logo: teamLogos.warriors, score: 92, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    time: '3rd',
-    timeSeconds: 10 * 60, // 10 minutes left
-    status: 'live',
-    period: 'Q3 - 4:35',
-    commentary: [
-      'Curry with a deep three!',
-      'James with the dunk!',
-      'Warriors on a 10-0 run'
-    ]
+    id: "2",
+    name: "Jamie Chen",
+    avatar: "https://randomuser.me/api/portraits/women/21.jpg",
+    role: "Developer",
+    isOnline: true,
   },
   {
-    id: '3',
-    sport: 'tennis',
-    homeTeam: { id: 't5', name: 'Djokovic', logo: teamLogos.djokovic, score: 2, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    awayTeam: { id: 't6', name: 'Nadal', logo: teamLogos.nadal, score: 1, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    time: '3rd Set',
-    timeSeconds: 20 * 60, // 20 minutes left
-    status: 'live',
-    period: '3-2 (40-15)',
-    commentary: [
-      'Ace by Djokovic!',
-      'Great backhand down the line by Nadal',
-      'Break point for Djokovic'
-    ]
+    id: "3",
+    name: "Taylor Swift",
+    avatar: "https://randomuser.me/api/portraits/women/22.jpg",
+    role: "Designer",
+    isOnline: false,
   },
   {
-    id: '4',
-    sport: 'baseball',
-    homeTeam: { id: 't7', name: 'Yankees', logo: teamLogos.yankees, score: 5, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    awayTeam: { id: 't8', name: 'Red Sox', logo: teamLogos.redSox, score: 3, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    time: '7th Inning',
-    timeSeconds: 25 * 60, // 25 minutes left
-    status: 'live',
-    period: 'Bottom 7th',
-    commentary: [
-      'Home run by Judge!',
-      'Strikeout by Cole',
-      'Yankees looking strong in the 7th'
-    ]
+    id: "4",
+    name: "Morgan Freeman",
+    avatar: "https://randomuser.me/api/portraits/men/23.jpg",
+    role: "Marketing",
+    isOnline: true,
   },
   {
-    id: '5',
-    sport: 'hockey',
-    homeTeam: { id: 't9', name: 'Bruins', logo: teamLogos.bruins, score: 2, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    awayTeam: { id: 't10', name: 'Maple Leafs', logo: teamLogos.mapleLeafs, score: 2, isFav: false, showAlert: false, lastAlertShownAt: 0 },
-    time: '2nd Period',
-    timeSeconds: 12 * 60, // 12 minutes left
-    status: 'live',
-    period: '15:23 remaining',
-    commentary: [
-      'Great save by the goalie!',
-      'Power play coming up for the Bruins',
-      'Tied game in the second period'
-    ]
+    id: "5",
+    name: "Casey Jordan",
+    avatar: "https://randomuser.me/api/portraits/men/24.jpg",
+    role: "CEO",
+    isOnline: false,
+  },
+  {
+    id: "6",
+    name: "Robin Patel",
+    avatar: "https://randomuser.me/api/portraits/women/25.jpg",
+    role: "Senior Engineer",
+    isOnline: true,
+  },
+  {
+    id: "7",
+    name: "Jordan Smith",
+    avatar: "https://randomuser.me/api/portraits/men/26.jpg",
+    role: "Product Designer",
+    isOnline: false,
+  },
+  {
+    id: "8",
+    name: "Avery Wilson",
+    avatar: "https://randomuser.me/api/portraits/women/27.jpg",
+    role: "Customer Success",
+    isOnline: true,
+  },
+  {
+    id: "9",
+    name: "Dylan Kim",
+    avatar: "https://randomuser.me/api/portraits/men/28.jpg",
+    role: "Data Analyst",
+    isOnline: true,
+  },
+  {
+    id: "10",
+    name: "Riley Thompson",
+    avatar: "https://randomuser.me/api/portraits/women/29.jpg",
+    role: "UX Researcher",
+    isOnline: false,
+  },
+  {
+    id: "11",
+    name: "Chris Evans",
+    avatar: "https://randomuser.me/api/portraits/men/30.jpg",
+    role: "CTO",
+    isOnline: true,
+  },
+  {
+    id: "12",
+    name: "Natalie Woods",
+    avatar: "https://randomuser.me/api/portraits/women/31.jpg",
+    role: "HR Manager",
+    isOnline: false,
+  },
+  {
+    id: "13",
+    name: "Ethan Brown",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    role: "DevOps Engineer",
+    isOnline: true,
+  },
+  {
+    id: "14",
+    name: "Sophia Davis",
+    avatar: "https://randomuser.me/api/portraits/women/33.jpg",
+    role: "QA Lead",
+    isOnline: true,
+  },
+  {
+    id: "15",
+    name: "Leo Martinez",
+    avatar: "https://randomuser.me/api/portraits/men/34.jpg",
+    role: "Scrum Master",
+    isOnline: false,
+  },
+  {
+    id: "16",
+    name: "Isabella Nguyen",
+    avatar: "https://randomuser.me/api/portraits/women/35.jpg",
+    role: "Support Engineer",
+    isOnline: true,
   },
 ];
 
-const mockTickerUpdates: TickerUpdate[] = [
-  { id: 'u1', text: 'GOAL! Barcelona 2-1 Real Madrid', time: '2m ago', type: 'score' },
-  { id: 'u2', text: 'Warriors on a 10-0 run against Lakers', time: '4m ago', type: 'event' },
-  { id: 'u3', text: 'Djokovic breaks Nadal in the 3rd set', time: '5m ago', type: 'score' },
-  { id: 'u4', text: 'Home run by Judge puts Yankees up 5-3', time: '8m ago', type: 'score' },
-  { id: 'u5', text: 'Breaking: Star player traded to championship contender', time: '15m ago', type: 'news' },
-  { id: 'u6', text: 'GOAL! Man City 3-0 Arsenal', time: '18m ago', type: 'score' },
-  { id: 'u7', text: 'Celtics defeat Bucks in overtime thriller', time: '45m ago', type: 'score' },
-  { id: 'u8', text: 'NFL announces new playoff format for next season', time: '1h ago', type: 'news' },
-];
-
-const mockPlayers: Player[] = [
-  { id: 'p1', name: 'Lionel Messi', team: 'Barcelona', stats: '1 goal, 1 assist' },
-  { id: 'p2', name: 'Stephen Curry', team: 'Warriors', stats: '28 pts, 6 rebounds, 8 assists' },
-  { id: 'p3', name: 'Novak Djokovic', team: 'Serbia', stats: '12 aces, 85% first serves' },
-  { id: 'p4', name: 'Aaron Judge', team: 'Yankees', stats: '2-3, HR, 3 RBIs' },
-  { id: 'p5', name: 'Brad Marchand', team: 'Bruins', stats: '1 goal, 5 shots' },
-];
-
-export default function Home() {
-  // States
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>(mockLiveMatches);
-  const [tickerUpdates, setTickerUpdates] = useState<TickerUpdate[]>(mockTickerUpdates);
-  const [selectedSport, setSelectedSport] = useState<Sport | 'all'>('all');
-  const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [alertTeam, setAlertTeam] = useState<Team | null>(null);
-  const [showAlertsDropdown, setShowAlertsDropdown] = useState<boolean>(false);
-  const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const scoreUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const alertsDropdownRef = useRef<HTMLDivElement | null>(null);
-
-  // Initialize theme from localStorage when component mounts
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("sports-dashboard-theme");
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-    }
-
-    // Load favorites
-    const savedFavorites = localStorage.getItem("sports-dashboard-favorites");
-    if (savedFavorites) {
-      const favIds = JSON.parse(savedFavorites);
-      setFavoriteTeams(favIds);
-
-      // Mark teams as favorites in the live matches
-      setLiveMatches(prev => {
-        return prev.map(match => {
-          return {
-            ...match,
-            homeTeam: {
-              ...match.homeTeam,
-              isFav: favIds.includes(match.homeTeam.id)
+const generateMockThreads = (): ThreadType[] => {
+  return [
+    {
+      id: "1",
+      title: "Quarterly sales performance review",
+      content: `I wanted to start a discussion about our Q2 sales numbers. Overall I think we're performing well, but there are some areas where we could improve our approach. What does everyone think?`,
+      createdAt: "2025-05-17T10:30:00Z",
+      author: mockUsers[4],
+      tags: ["sales", "quarterly-review", "strategy"],
+      likes: 24,
+      isLiked: true,
+      isBookmarked: true,
+      category: "Reports",
+      views: 156,
+      isPinned: true,
+      replies: [
+        {
+          id: "1-1",
+          content:
+            "Great point, @Casey. I think our East Coast team really outperformed expectations. We should look into what tactics they used that worked so well.",
+          createdAt: "2025-05-17T11:15:00Z",
+          author: mockUsers[0],
+          likes: 12,
+          isLiked: false,
+          replies: [
+            {
+              id: "1-1-1",
+              content:
+                "I agree with @Alex. The East Coast team implemented that new outreach strategy we discussed in January. It seems to be paying off.",
+              createdAt: "2025-05-17T12:20:00Z",
+              author: mockUsers[3],
+              likes: 8,
+              isLiked: true,
+              replies: [],
             },
-            awayTeam: {
-              ...match.awayTeam,
-              isFav: favIds.includes(match.awayTeam.id)
-            }
-          };
-        });
-      });
-    }
-  }, []);
+          ],
+        },
+        {
+          id: "1-2",
+          content: `I've prepared a more detailed breakdown of the numbers by region. We should focus on improving our West Coast performance next quarter.`,
+          createdAt: "2025-05-17T14:05:00Z",
+          author: mockUsers[1],
+          likes: 15,
+          isLiked: false,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: "2",
+      title: "New product feature discussion",
+      content: `The development team has been working on some exciting new features for our main product. I'd like to get everyone's thoughts on the priority order for rollout.`,
+      createdAt: "2025-05-16T09:45:00Z",
+      author: mockUsers[1],
+      tags: ["product", "development", "features"],
+      likes: 18,
+      isLiked: false,
+      isBookmarked: false,
+      category: "Ideas",
+      views: 84,
+      isFeatured: true,
+      replies: [
+        {
+          id: "2-1",
+          content:
+            "I think we should prioritize the analytics dashboard first. Our enterprise customers have been requesting this feature for months now.",
+          createdAt: "2025-05-16T10:30:00Z",
+          author: mockUsers[0],
+          likes: 7,
+          isLiked: false,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: "3",
+      title: "Marketing campaign for summer launch",
+      content: `We need to start planning our marketing strategy for the summer product launch. I'm thinking we should focus heavily on social media this time. Thoughts?`,
+      createdAt: "2025-05-15T15:20:00Z",
+      author: mockUsers[3],
+      tags: ["marketing", "product-launch", "social-media"],
+      likes: 10,
+      isLiked: false,
+      isBookmarked: false,
+      category: "General",
+      views: 67,
+      replies: [],
+    },
+    {
+      id: "4",
+      title: "UI redesign feedback needed",
+      content: `I've uploaded the latest mockups for our UI redesign. I'd appreciate everyone's feedback, especially regarding the new navigation structure.`,
+      createdAt: "2025-05-14T11:00:00Z",
+      author: mockUsers[2],
+      tags: ["design"],
+      likes: 15,
+      isLiked: true,
+      isBookmarked: true,
+      category: "Technical",
+      views: 122,
+      replies: [
+        {
+          id: "4-1",
+          content:
+            "The new design looks amazing, @Taylor! I especially like the improved accessibility features. Could we make the contrast a bit stronger in the sidebar?",
+          createdAt: "2025-05-14T13:45:00Z",
+          author: mockUsers[0],
+          likes: 6,
+          isLiked: true,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: "5",
+      title: "Improving team collaboration workflows",
+      content: `Our cross-department collaboration could be more efficient. I've been researching some methodologies that might help us streamline communication and reduce redundant meetings.`,
+      createdAt: "2025-05-13T08:15:00Z",
+      author: mockUsers[5],
+      tags: ["collaboration", "productivity", "workflow"],
+      likes: 32,
+      isLiked: false,
+      isBookmarked: false,
+      category: "Ideas",
+      views: 215,
+      isFeatured: true,
+      replies: [
+        {
+          id: "5-1",
+          content:
+            "I completely agree with this! Our current meeting structure takes up way too much time that could be better spent on actual work.",
+          createdAt: "2025-05-13T09:20:00Z",
+          author: mockUsers[6],
+          likes: 18,
+          isLiked: true,
+          replies: [],
+        },
+        {
+          id: "5-2",
+          content:
+            "Have you looked into the async communication model that Gitlab uses? It might be a good fit for our remote team members.",
+          createdAt: "2025-05-13T10:45:00Z",
+          author: mockUsers[7],
+          likes: 14,
+          isLiked: false,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: "6",
+      title: "Customer feedback from recent user testing",
+      content: `We just completed our latest round of user testing. There are some consistent pain points that came up around the onboarding process that we should address.`,
+      createdAt: "2025-05-12T14:30:00Z",
+      author: mockUsers[7],
+      tags: ["user-testing", "feedback", "onboarding"],
+      likes: 22,
+      isLiked: false,
+      isBookmarked: true,
+      category: "Technical",
+      views: 187,
+      replies: [],
+    },
+    {
+      id: "7",
+      title: "Monthly revenue targets and forecasting",
+      content: `Looking at our current pipeline, I think we need to adjust our Q3 forecasts. Let's discuss the numbers and make sure we're aligned on the targets.`,
+      createdAt: "2025-05-11T11:25:00Z",
+      author: mockUsers[4],
+      tags: ["revenue"],
+      likes: 8,
+      isLiked: false,
+      isBookmarked: false,
+      category: "Reports",
+      views: 94,
+      replies: [],
+    },
+    {
+      id: "8",
+      title: "Accessibility improvements for our platform",
+      content: `We need to make our platform more accessible to comply with WCAG 2.1 AA standards. I've created a list of high-priority items we should address first.`,
+      createdAt: "2025-05-10T09:10:00Z",
+      author: mockUsers[2],
+      tags: ["accessibility", "WCAG", "user-experience"],
+      likes: 27,
+      isLiked: true,
+      isBookmarked: false,
+      category: "Technical",
+      views: 131,
+      replies: [],
+    },
+  ];
+};
 
-  // Set up automatic score updates
+// Utility functions
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  const options: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+  };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = "numeric";
+  }
+  return date.toLocaleDateString("en-US", options);
+};
+
+// Component for the threaded discussion forum
+const ThreadedDiscussionForum: React.FC = () => {
+  // State
+  const [threads, setThreads] = useState<ThreadType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [currentUser] = useState<UserType>(mockUsers[0]);
+  const [isCreatingThread, setIsCreatingThread] = useState<boolean>(false);
+  const [newThreadTitle, setNewThreadTitle] = useState<string>("");
+  const [newThreadContent, setNewThreadContent] = useState<string>("");
+  const [newThreadTags, setNewThreadTags] = useState<string>("");
+  const [newThreadCategory, setNewThreadCategory] = useState<string>("General");
+  const [userSuggestions, setUserSuggestions] = useState<UserType[]>([]);
+  const [showUserSuggestions, setShowUserSuggestions] =
+    useState<boolean>(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    threadId: string;
+    replyId?: string;
+  } | null>(null);
+  const [newReplyContent, setNewReplyContent] = useState<string>("");
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(
+    new Set()
+  );
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
+    new Set()
+  );
+  const [activeNavTab, setActiveNavTab] = useState<string>("Discussions");
+  const [showProfileDropdown, setShowProfileDropdown] =
+    useState<boolean>(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
+  const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
+  const [sortMethod, setSortMethod] = useState<string>("latest");
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [notifications, setNotifications] = useState<
+    { id: string; text: string; isRead: boolean }[]
+  >([
+    {
+      id: "n1",
+      text: '@Casey mentioned you in "Quarterly sales performance review"',
+      isRead: false,
+    },
+    {
+      id: "n2",
+      text: '@Jamie replied to your thread "New product feature discussion"',
+      isRead: true,
+    },
+    {
+      id: "n3",
+      text: "Your discussion was featured in the weekly digest",
+      isRead: false,
+    },
+    {
+      id: "n4",
+      text: '@Taylor tagged you in "UI redesign feedback needed"',
+      isRead: true,
+    },
+  ]);
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [showCategoriesOnMobile, setShowCategoriesOnMobile] =
+    useState<boolean>(false);
+  const [bookmarkedOnly, setBookmarkedOnly] = useState<boolean>(false);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+  }>({ show: false, message: "" });
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const newReplyInputRef = useRef<HTMLTextAreaElement>(null);
+  const threadInputRef = useRef<HTMLTextAreaElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const notificationsButtonRef = useRef<HTMLButtonElement>(null);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Load threads on component mount
   useEffect(() => {
-    // Start automatic score updates every 15 seconds
-    scoreUpdateIntervalRef.current = setInterval(() => {
-      updateRandomScore();
-    }, 5000);
-
-    // Clean up interval on unmount
-    return () => {
-      if (scoreUpdateIntervalRef.current) {
-        clearInterval(scoreUpdateIntervalRef.current);
-      }
+    // Simulate API call
+    const loadThreads = async () => {
+      setLoading(true);
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      setThreads(generateMockThreads());
+      setLoading(false);
     };
+
+    loadThreads();
   }, []);
 
-  // Timer update effect - update match times every second
-  useEffect(() => {
-    const timerInterval = setInterval(() => {
-      setLiveMatches(prevMatches => {
-        return prevMatches.map(match => {
-          // Only update live matches with timeSeconds property
-          if (match.status === 'live' && match.timeSeconds !== undefined) {
-            // Decrement time by 1 second
-            const newTimeSeconds = Math.max(0, match.timeSeconds - 1);
-
-            // Calculate minutes and seconds for display
-            const minutes = Math.floor(newTimeSeconds / 60);
-            const seconds = newTimeSeconds % 60;
-
-            // Format the time string (e.g., "14:59")
-            const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-            // If we reach 0, mark the match as finished
-            const newStatus = newTimeSeconds === 0 ? 'finished' : 'live';
-
-            return {
-              ...match,
-              timeSeconds: newTimeSeconds,
-              time: timeString,
-              status: newStatus
-            };
-          }
-          return match;
-        });
-      });
-    }, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, []);
-
-  // Handle clicking outside alerts dropdown to close it
+  // Handle clicks outside dropdowns to close them
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (alertsDropdownRef.current && !alertsDropdownRef.current.contains(event.target as Node)) {
-        setShowAlertsDropdown(false);
+      // Close profile dropdown if clicked outside
+      if (
+        profileDropdownRef.current &&
+        profileButtonRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node) &&
+        !profileButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowProfileDropdown(false);
+      }
+
+      // Close notifications dropdown if clicked outside
+      if (
+        notificationsRef.current &&
+        notificationsButtonRef.current &&
+        !notificationsRef.current.contains(event.target as Node) &&
+        !notificationsButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+
+      // Close filter dropdown if clicked outside
+      if (
+        filterDropdownRef.current &&
+        filterButtonRef.current &&
+        !filterDropdownRef.current.contains(event.target as Node) &&
+        !filterButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowFilterDropdown(false);
+      }
+
+      // Close sort dropdown if clicked outside
+      if (
+        sortDropdownRef.current &&
+        sortButtonRef.current &&
+        !sortDropdownRef.current.contains(event.target as Node) &&
+        !sortButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowSortDropdown(false);
       }
     };
 
-    if (showAlertsDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showAlertsDropdown]);
+  }, []);
 
-  // Update localStorage when theme changes
+  // Prevent background scrolling when modal is open
   useEffect(() => {
-    localStorage.setItem("sports-dashboard-theme", theme);
-
-    // Apply theme to body
-    if (theme === "dark") {
-      document.body.classList.add("bg-gray-900", "text-white");
-      document.body.classList.remove("bg-gray-50", "text-gray-900");
+    if (isCreatingThread) {
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.classList.add("bg-gray-50", "text-gray-900");
-      document.body.classList.remove("bg-gray-900", "text-white");
+      document.body.style.overflow = 'unset';
     }
-  }, [theme]);
 
-  // Save favorites
+    // Cleanup function to restore scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isCreatingThread]);
+
+  // Handle @ mentions
   useEffect(() => {
-    localStorage.setItem("sports-dashboard-favorites", JSON.stringify(favoriteTeams));
+    if (replyingTo) {
+      const content = newReplyContent;
+      const lastAtSymbolIndex = content.lastIndexOf("@");
 
-    // Update isFav property on all teams
-    setLiveMatches(prev => {
-      return prev.map(match => {
-        return {
-          ...match,
-          homeTeam: {
-            ...match.homeTeam,
-            isFav: favoriteTeams.includes(match.homeTeam.id)
-          },
-          awayTeam: {
-            ...match.awayTeam,
-            isFav: favoriteTeams.includes(match.awayTeam.id)
+      if (lastAtSymbolIndex !== -1 && content.length > lastAtSymbolIndex) {
+        const query = content.substring(lastAtSymbolIndex + 1).toLowerCase();
+        if (query) {
+          const filteredUsers = mockUsers.filter((user) =>
+            user.name.toLowerCase().includes(query)
+          );
+          setUserSuggestions(filteredUsers);
+          setShowUserSuggestions(filteredUsers.length > 0);
+        } else {
+          setUserSuggestions(mockUsers);
+          setShowUserSuggestions(true);
+        }
+      } else {
+        setShowUserSuggestions(false);
+      }
+    }
+  }, [newReplyContent, replyingTo]);
+
+  // Filter and sort threads based on selected options
+  const filteredThreads = useMemo(() => {
+    return threads
+      .filter((thread) => {
+        // Apply search filter
+        const matchesSearch =
+          searchQuery === "" ||
+          thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          thread.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          thread.author.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // Apply tag filter
+        const matchesTags =
+          selectedTags.length === 0 ||
+          selectedTags.every((tag) => thread.tags.includes(tag));
+
+        // Apply category filter
+        const matchesCategory =
+          selectedCategory === "All" || thread.category === selectedCategory;
+
+        // Apply bookmarked filter
+        const matchesBookmarked = !bookmarkedOnly || thread.isBookmarked;
+
+        return (
+          matchesSearch && matchesTags && matchesCategory && matchesBookmarked
+        );
+      })
+      .sort((a, b) => {
+        // Apply sort method
+        switch (sortMethod) {
+          case "latest":
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          case "oldest":
+            return (
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+          case "most-liked":
+            return b.likes - a.likes;
+          case "most-viewed":
+            return b.views - a.views;
+          case "most-replies":
+            return b.replies.length - a.replies.length;
+          default:
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+        }
+      });
+  }, [
+    threads,
+    searchQuery,
+    selectedTags,
+    selectedCategory,
+    bookmarkedOnly,
+    sortMethod,
+  ]);
+
+  // Get all unique tags from threads
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    threads.forEach((thread) => {
+      thread.tags.forEach((tag) => tagsSet.add(tag));
+    });
+    return Array.from(tagsSet);
+  }, [threads]);
+
+  // Get categories with counts
+  const categories = useMemo(() => {
+    const counts = {
+      All: threads.length,
+      General: 0,
+      Ideas: 0,
+      Technical: 0,
+      Reports: 0,
+    };
+
+    threads.forEach((thread) => {
+      if (counts[thread.category as keyof typeof counts] !== undefined) {
+        counts[thread.category as keyof typeof counts]++;
+      }
+    });
+
+    return counts;
+  }, [threads]);
+
+  // Get bookmarked count
+  const bookmarkedCount = useMemo(() => {
+    return threads.filter((thread) => thread.isBookmarked).length;
+  }, [threads]);
+
+  // Toggle thread expansion
+  const toggleThreadExpansion = (threadId: string) => {
+    setExpandedThreads((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(threadId)) {
+        newSet.delete(threadId);
+      } else {
+        newSet.add(threadId);
+      }
+      return newSet;
+    });
+  };
+
+  // Toggle reply expansion
+  const toggleReplyExpansion = (replyId: string) => {
+    setExpandedReplies((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(replyId)) {
+        newSet.delete(replyId);
+      } else {
+        newSet.add(replyId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle like thread/reply
+  const handleLike = (threadId: string, replyId?: string) => {
+    setThreads((prev) =>
+      prev.map((thread) => {
+        if (thread.id === threadId) {
+          if (!replyId) {
+            // Like the thread itself
+            return {
+              ...thread,
+              likes: thread.isLiked ? thread.likes - 1 : thread.likes + 1,
+              isLiked: !thread.isLiked,
+            };
+          } else {
+            // Like a reply within the thread
+            return {
+              ...thread,
+              replies: updateRepliesWithLike(thread.replies, replyId),
+            };
           }
+        }
+        return thread;
+      })
+    );
+  };
+
+  // Helper function to update nested replies with like
+  const updateRepliesWithLike = (
+    replies: ReplyType[],
+    targetReplyId: string
+  ): ReplyType[] => {
+    return replies.map((reply) => {
+      if (reply.id === targetReplyId) {
+        return {
+          ...reply,
+          likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
+          isLiked: !reply.isLiked,
+        };
+      } else if (reply.replies.length > 0) {
+        return {
+          ...reply,
+          replies: updateRepliesWithLike(reply.replies, targetReplyId),
+        };
+      }
+      return reply;
+    });
+  };
+
+  // Handle bookmark
+  const handleBookmark = (threadId: string) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId
+          ? { ...thread, isBookmarked: !thread.isBookmarked }
+          : thread
+      )
+    );
+  };
+
+  // Start replying to a thread or reply
+  const startReply = (threadId: string, replyId?: string) => {
+    setReplyingTo({ threadId, replyId });
+    setNewReplyContent("");
+
+    // Focus the reply input after it's rendered
+    setTimeout(() => {
+      if (newReplyInputRef.current) {
+        newReplyInputRef.current.focus();
+      }
+    }, 0);
+  };
+
+  // Cancel reply
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setNewReplyContent("");
+    setShowUserSuggestions(false);
+  };
+
+  // Add user mention to reply
+  const addUserMention = (user: UserType) => {
+    const content = newReplyContent;
+    const lastAtSymbolIndex = content.lastIndexOf("@");
+
+    if (lastAtSymbolIndex !== -1) {
+      // Find the end of the current word being typed after @
+      const textAfterAt = content.substring(lastAtSymbolIndex + 1);
+      const spaceIndex = textAfterAt.indexOf(" ");
+      const endIndex = spaceIndex === -1 ? content.length : lastAtSymbolIndex + 1 + spaceIndex;
+      
+      const newContent =
+        content.substring(0, lastAtSymbolIndex) +
+        `@${user.name} ` +
+        content.substring(endIndex);
+
+      setNewReplyContent(newContent);
+    } else {
+      setNewReplyContent(content + `@${user.name} `);
+    }
+
+    setShowUserSuggestions(false);
+
+    if (newReplyInputRef.current) {
+      newReplyInputRef.current.focus();
+    }
+  };
+
+  // Submit reply
+  const submitReply = () => {
+    if (!replyingTo || !newReplyContent.trim()) return;
+
+    const { threadId, replyId } = replyingTo;
+    const newReply: ReplyType = {
+      id: `reply-${Date.now()}`,
+      content: newReplyContent,
+      createdAt: new Date().toISOString(),
+      author: currentUser,
+      likes: 0,
+      isLiked: false,
+      replies: [],
+    };
+
+    setThreads((prev) =>
+      prev.map((thread) => {
+        if (thread.id === threadId) {
+          if (!replyId) {
+            // Reply to the thread itself
+            return {
+              ...thread,
+              replies: [...thread.replies, newReply],
+            };
+          } else {
+            // Reply to a reply
+            return {
+              ...thread,
+              replies: addReplyToNestedReplies(
+                thread.replies,
+                replyId,
+                newReply
+              ),
+            };
+          }
+        }
+        return thread;
+      })
+    );
+
+    // Expand the thread if it wasn't already
+    setExpandedThreads((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(threadId);
+      return newSet;
+    });
+
+    // If replying to a reply, expand that reply too
+    if (replyId) {
+      setExpandedReplies((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(replyId);
+        return newSet;
+      });
+    }
+
+    cancelReply();
+  };
+
+  // Helper function to add reply to nested replies
+  const addReplyToNestedReplies = (
+    replies: ReplyType[],
+    targetReplyId: string,
+    newReply: ReplyType
+  ): ReplyType[] => {
+    return replies.map((reply) => {
+      if (reply.id === targetReplyId) {
+        return {
+          ...reply,
+          replies: [...reply.replies, newReply],
+        };
+      } else if (reply.replies.length > 0) {
+        return {
+          ...reply,
+          replies: addReplyToNestedReplies(
+            reply.replies,
+            targetReplyId,
+            newReply
+          ),
+        };
+      }
+      return reply;
+    });
+  };
+
+  // Create new thread
+  const createNewThread = () => {
+    if (!newThreadTitle.trim() || !newThreadContent.trim()) return;
+
+    const tagsArray = newThreadTags
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => tag !== "");
+
+    const newThread: ThreadType = {
+      id: `thread-${Date.now()}`,
+      title: newThreadTitle,
+      content: newThreadContent,
+      createdAt: new Date().toISOString(),
+      author: currentUser,
+      tags: tagsArray,
+      likes: 0,
+      isLiked: false,
+      isBookmarked: false,
+      replies: [],
+      category: newThreadCategory,
+      views: 0,
+    };
+
+    setThreads((prev) => [newThread, ...prev]);
+    setIsCreatingThread(false);
+    setNewThreadTitle("");
+    setNewThreadContent("");
+    setNewThreadTags("");
+    setNewThreadCategory("General");
+  };
+
+  // Toggle tag selection
+  const toggleTagSelection = (tag: string) => {
+    setSelectedTags((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((t) => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  // Handle search
+  const handleSearch = () => {
+    // The search is already handled via the searchQuery state and filteredThreads memo
+    if (searchInputRef.current) {
+      searchInputRef.current.blur();
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllNotificationsAsRead = () => {
+    setNotifications((prev) =>
+      prev.map((notification) => ({
+        ...notification,
+        isRead: true,
+      }))
+    );
+  };
+
+  // Calculate unread notifications count
+  const unreadNotificationsCount = notifications.filter(
+    (n) => !n.isRead
+  ).length;
+
+  // Handle tab change
+  const handleNavTabChange = (tab: string) => {
+    setActiveNavTab(tab);
+
+    if (tab === "Bookmarks") {
+      setBookmarkedOnly(true);
+      setSelectedCategory("All");
+    } else {
+      setBookmarkedOnly(false);
+    }
+  };
+
+  // Handle category selection
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setActiveNavTab("Discussions");
+    setBookmarkedOnly(false);
+    setShowCategoriesOnMobile(false); // Close mobile categories menu
+  };
+
+  // Handle sort method change
+  const handleSortMethodChange = (method: string) => {
+    setSortMethod(method);
+    setShowSortDropdown(false);
+  };
+
+  // Show toast notification
+  const showToast = (message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => {
+      setToast({ show: false, message: "" });
+    }, 3000);
+  };
+
+  // Parse content and highlight @mentions
+  const parseContentWithMentions = (content: string) => {
+    // Split by @mentions, keeping the @ symbol and handling names with spaces
+    const parts = content.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/g);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        // Extract the mentioned name (remove @ and trim)
+        const mentionedName = part.substring(1).trim();
+        // Check if this matches any user in our mockUsers
+        const isValidMention = mockUsers.some(user => 
+          user.name.toLowerCase() === mentionedName.toLowerCase()
+        );
+        
+        if (isValidMention) {
+          return (
+            <span key={index} className="text-blue-600 font-medium bg-blue-50 px-1 rounded">
+              {part}
+            </span>
+          );
+        }
+      }
+      return part;
+    });
+  };
+
+  const markNotificationAsRead = (notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, isRead: true }
+          : notification
+      )
+    );
+  };
+
+  const setUnreadNotificationsCount = (count: number) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.isRead ? { ...notification, isRead: false } : notification
+      )
+    );
+  };
+
+  const loadMoreThreads = () => {
+    // Simulate loading more threads
+    if (threads.length >= 40) return; // Limit to 100 threads
+    setTimeout(() => {
+      const newThreads = generateMockThreads().slice(0, 6);
+      // change the ID to avoid duplicates
+      newThreads.forEach((thread) => {
+        thread.id = `thread-${Date.now() + Math.random()}`;
+        // also change the image, name and role
+        thread.author = {
+          ...thread.author,
+          avatar:
+            mockUsers[Math.floor(Math.random() * mockUsers.length)].avatar,
+          name: mockUsers[Math.floor(Math.random() * mockUsers.length)].name,
+          role: mockUsers[Math.floor(Math.random() * mockUsers.length)].role,
         };
       });
-    });
-  }, [favoriteTeams]);
-
-  // Toggle theme function
-  const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
+      setThreads((prev) => [...prev, ...newThreads]);
+    }, 50);
   };
 
-  // Toggle favorite team - update both favoriteTeams array and team isFav property
-  const toggleFavorite = (teamId: string) => {
-    setFavoriteTeams(prev =>
-      prev.includes(teamId)
-        ? prev.filter(id => id !== teamId) // Remove if exists
-        : [...prev, teamId] // Add if doesn't exist
-    );
+  // Render a single reply and its nested replies
+  const renderReply = (
+    reply: ReplyType,
+    threadId: string,
+    depth: number = 0
+  ) => {
+    const isExpanded = expandedReplies.has(reply.id);
+    const hasNestedReplies = reply.replies.length > 0;
 
-    // If adding to favorites, immediately test a score for this team
-    if (!favoriteTeams.includes(teamId)) {
-      setTimeout(() => testScoreForTeam(teamId), 1000);
-    }
-  };
-
-  // Dismiss currently shown alert
-  const dismissAlert = () => {
-    console.log("Dismissing alert");
-
-    // Clear any pending timeouts
-    if (alertTimeoutRef.current) {
-      clearTimeout(alertTimeoutRef.current);
-      alertTimeoutRef.current = null;
-    }
-
-    if (alertTeam) {
-      // Reset the showAlert flag on the team that was showing an alert
-      setLiveMatches(prev => {
-        return prev.map(match => {
-          if (match.homeTeam.id === alertTeam.id) {
-            return {
-              ...match,
-              homeTeam: {
-                ...match.homeTeam,
-                showAlert: false
-              }
-            };
-          } else if (match.awayTeam.id === alertTeam.id) {
-            return {
-              ...match,
-              awayTeam: {
-                ...match.awayTeam,
-                showAlert: false
-              }
-            };
-          }
-          return match;
-        });
-      });
-    }
-
-    // Clear the current alert team
-    setAlertTeam(null);
-  };
-
-  // Add alert for a team
-  const addAlert = (teamId: string, message: string) => {
-    // Check if a similar alert already exists (same team and message within last 5 seconds)
-    const now = Date.now();
-    const existingAlert = alerts.find(alert => 
-      alert.teamId === teamId && 
-      alert.message === message && 
-      (now - alert.timestamp) < 5000 // Within 5 seconds
-    );
-
-    // Don't add duplicate alerts
-    if (existingAlert) {
-      console.log("Duplicate alert prevented:", message);
-      return;
-    }
-
-    const newAlert: Alert = {
-      id: `${teamId}-${now}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
-      teamId,
-      message,
-      read: false,
-      timestamp: now
-    };
-    
-    console.log("Adding new alert:", newAlert);
-    setAlerts(prev => [newAlert, ...prev]);
-  };
-
-  // Function to update a random match score - using team properties
-  const updateRandomScore = () => {
-    console.log("Updating random score...");
-    setLiveMatches(prevMatches => {
-      // Get only the live matches
-      const liveMatches = prevMatches.filter(match => match.status === 'live');
-      if (liveMatches.length === 0) return prevMatches;
-
-      // Pick a random live match
-      const matchIndex = Math.floor(Math.random() * liveMatches.length);
-      const match = { ...liveMatches[matchIndex] };
-
-      // Deep copy the teams
-      const homeTeam = { ...match.homeTeam };
-      const awayTeam = { ...match.awayTeam };
-
-      // Decide which team scores
-      const isHome = Math.random() > 0.4;
-      const scoringTeam = isHome ? homeTeam : awayTeam;
-
-      // Update the score
-      if (isHome) {
-        homeTeam.score += 1;
-      } else {
-        awayTeam.score += 1;
-      }
-
-      console.log(`Team ${scoringTeam.name} scored! New score: ${homeTeam.score}-${awayTeam.score}`);
-
-      // If scoring team is a favorite, set showAlert flag and update lastAlertShownAt
-      if (scoringTeam.isFav) {
-        console.log(`Favorite team ${scoringTeam.name} scored! Setting showAlert=true`);
-        
-        // Check if we recently showed an alert for this team (within last 3 seconds)
-        const now = Date.now();
-        if (now - scoringTeam.lastAlertShownAt < 3000) {
-          console.log("Alert recently shown for this team, skipping...");
-          // Still update the score but skip the alert
-          match.homeTeam = homeTeam;
-          match.awayTeam = awayTeam;
-          match.commentary = [
-            `${scoringTeam.name} SCORES! The crowd goes wild!`,
-            ...match.commentary.slice(0, 2)
-          ];
-          const updatedMatches = prevMatches.map(m =>
-            m.id === match.id ? match : m
-          );
-          return updatedMatches;
-        }
-        
-        scoringTeam.showAlert = true;
-        scoringTeam.lastAlertShownAt = now;
-
-        // Add to alerts list
-        const alertMessage = `GOAL! ${scoringTeam.name} has scored! New score: ${homeTeam.name} ${homeTeam.score} - ${awayTeam.score} ${match.awayTeam.name}`;
-        addAlert(scoringTeam.id, alertMessage);
-
-        // Dismiss any current alert first
-        dismissAlert();
-
-        // Schedule showing this team's alert
-        setTimeout(() => {
-          // Set this team as the current alert team
-          setAlertTeam(scoringTeam);
-
-          // Set auto-dismiss timer
-          alertTimeoutRef.current = setTimeout(dismissAlert, 5000);
-        }, 100);
-      }
-
-      // Update the teams in the match
-      match.homeTeam = homeTeam;
-      match.awayTeam = awayTeam;
-
-      // Add commentary
-      match.commentary = [
-        `${scoringTeam.name} SCORES! The crowd goes wild!`,
-        ...match.commentary.slice(0, 2)
-      ];
-
-      // Create new matches array with the updated match
-      const updatedMatches = prevMatches.map(m =>
-        m.id === match.id ? match : m
-      );
-
-      // Add ticker update for ALL score changes
-      const newUpdate = {
-        id: Date.now().toString(),
-        text: `GOAL! ${match.homeTeam.name} ${match.homeTeam.score} - ${match.awayTeam.score} ${match.awayTeam.name}`,
-        time: 'Just now',
-        type: 'score' as const
-      };
-      setTickerUpdates(prev => [newUpdate, ...prev.slice(0, 7)]);
-
-      return updatedMatches;
-    });
-  };
-
-  // Helper to test scoring for a specific team
-  const testScoreForTeam = (teamId: string) => {
-    setLiveMatches(prev => {
-      // Find the match with this team
-      const matchWithTeam = prev.find(
-        match => match.homeTeam.id === teamId || match.awayTeam.id === teamId
-      );
-
-      if (!matchWithTeam) {
-        console.log(`No match found with team ${teamId}`);
-        return prev;
-      }
-
-      const match = { ...matchWithTeam };
-      const isHome = match.homeTeam.id === teamId;
-
-      // Deep copy the teams
-      const homeTeam = { ...match.homeTeam };
-      const awayTeam = { ...match.awayTeam };
-
-      // Update score for the specified team
-      if (isHome) {
-        homeTeam.score += 1;
-        // Set alert flag
-        homeTeam.showAlert = true;
-        homeTeam.lastAlertShownAt = Date.now();
-
-        console.log(`TEST: ${homeTeam.name} scored! Setting showAlert=true`);
-      } else {
-        awayTeam.score += 1;
-        // Set alert flag
-        awayTeam.showAlert = true;
-        awayTeam.lastAlertShownAt = Date.now();
-
-        console.log(`TEST: ${awayTeam.name} scored! Setting showAlert=true`);
-      }
-
-      // Get scoring team reference
-      const scoringTeam = isHome ? homeTeam : awayTeam;
-
-      // Check if we recently showed an alert for this team (within last 3 seconds)
-      const now = Date.now();
-      if (now - scoringTeam.lastAlertShownAt < 3000) {
-        console.log("TEST: Alert recently shown for this team, skipping...");
-        // Still update the score but skip the alert
-        match.homeTeam = homeTeam;
-        match.awayTeam = awayTeam;
-        match.commentary = [
-          `${scoringTeam.name} SCORES! The crowd goes wild!`,
-          ...match.commentary.slice(0, 2)
-        ];
-        const updatedMatches = prev.map(m =>
-          m.id === match.id ? match : m
-        );
-        return updatedMatches;
-      }
-
-      // Update lastAlertShownAt timestamp
-      scoringTeam.lastAlertShownAt = now;
-
-      // Add to alerts list
-      const alertMessage = `GOAL! ${scoringTeam.name} has scored! New score: ${homeTeam.name} ${homeTeam.score} - ${awayTeam.score} ${awayTeam.name}`;
-      addAlert(scoringTeam.id, alertMessage);
-
-      // Dismiss any current alert
-      dismissAlert();
-
-      // Schedule showing this team's alert
-      setTimeout(() => {
-        // Set this team as the current alert team
-        setAlertTeam(scoringTeam);
-
-        // Set auto-dismiss timer
-        alertTimeoutRef.current = setTimeout(dismissAlert, 5000);
-      }, 100);
-
-      // Update match
-      match.homeTeam = homeTeam;
-      match.awayTeam = awayTeam;
-
-      // Add commentary
-      match.commentary = [
-        `${scoringTeam.name} SCORES! The crowd goes wild!`,
-        ...match.commentary.slice(0, 2)
-      ];
-
-      // Create updated matches array
-      const updatedMatches = prev.map(m =>
-        m.id === match.id ? match : m
-      );
-
-      // Add ticker update
-      const newUpdate = {
-        id: Date.now().toString(),
-        text: `GOAL! ${match.homeTeam.name} ${match.homeTeam.score} - ${match.awayTeam.score} ${match.awayTeam.name}`,
-        time: 'Just now',
-        type: 'score' as const
-      };
-      setTickerUpdates(prevTicker => [newUpdate, ...prevTicker.slice(0, 7)]);
-
-      return updatedMatches;
-    });
-  };
-
-  // Filter matches by selected sport
-  const filteredMatches = selectedSport === 'all'
-    ? liveMatches
-    : liveMatches.filter(match => match.sport === selectedSport);
-
-  // Add a refresh button handler to manually update scores for testing
-  const handleRefresh = () => {
-    updateRandomScore();
-  };
-
-  return (
-    <div className={`min-h-screen ${theme === "dark" ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
-      {/* Parallax background with gradient overlay */}
-      <div className="fixed inset-0 -z-10 opacity-10">
-        <img
-          src="https://images.unsplash.com/photo-1508098682722-e99c643e7d22?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-          alt="Sports background"
-          className="object-cover w-full h-full"
-        />
-      </div>
-      <div className={`fixed inset-0 -z-10 ${theme === "dark" ? "bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-900" : "bg-gradient-to-br from-blue-50 via-white/80 to-gray-100/90"}`} />
-
-      {/* Real-time score update alert - using team properties */}
-      <AnimatePresence mode="wait">
-        {alertTeam && (
-          <motion.div
-            key={`score-alert-${alertTeam.lastAlertShownAt}`}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-4 left-4 right-4 sm:bottom-6 sm:right-6 sm:left-auto z-[100] sm:max-w-sm"
-            onClick={() => dismissAlert()}
-          >
-            <div className={`relative rounded-xl backdrop-blur-md border ${
-              theme === "dark" 
-                ? "bg-gray-900/90 border-gray-700/50" 
-                : "bg-white/90 border-gray-200/50"
-            } shadow-lg`}>
-              {/* Simple accent line */}
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-500 rounded-t-xl"></div>
-              
-              {/* Content */}
-              <div className="p-3 sm:p-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  {/* Simple icon */}
-                  <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-red-500 flex items-center justify-center">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 0.4, repeat: 1 }}
-                      className="text-sm sm:text-base"
-                    >
-                      ⚽
-                    </motion.div>
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-semibold text-sm sm:text-base ${
-                      theme === "dark" ? "text-white" : "text-gray-900"
-                    }`}>
-                      {alertTeam.name} scored!
-                    </p>
-                    <p className={`text-xs sm:text-sm ${
-                      theme === "dark" ? "text-gray-400" : "text-gray-600"
-                    }`}>
-                      New score: <span className="font-bold">{alertTeam.score}</span>
-                    </p>
-                  </div>
-
-                  {/* Close Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dismissAlert();
-                    }}
-                    className={`flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center transition-colors ${
-                      theme === "dark" 
-                        ? "hover:bg-gray-800 text-gray-500 hover:text-gray-300" 
-                        : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                    }`}
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+    return (
+      <div
+        key={reply.id}
+        className={`transition-all duration-200 ease-in-out ${
+          depth > 0 ? "ml-6" : ""
+        }`}
+        style={{
+          marginLeft: `${depth * 1.5}rem`,
+          borderLeft: depth > 0 ? "2px solid #e5e7eb" : "none",
+          paddingLeft: depth > 0 ? "1rem" : "0",
+        }}
+      >
+        <div className="bg-gray-50 rounded-lg p-4 my-2 transition-all duration-300 hover:shadow-md">
+          <div className="flex items-start space-x-3">
+            <img
+              src={reply.author.avatar}
+              alt={reply.author.name}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-gray-900">
+                    {reply.author.name}
+                  </span>
+                  <span className="text-gray-500 text-sm">
+                    {reply.author.role}
+                  </span>
+                  {reply.author.isOnline && (
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+                  )}
                 </div>
+                <span className="text-gray-400 text-xs">
+                  {formatDate(reply.createdAt)}
+                </span>
+              </div>
+              <p className="text-gray-700 mb-3">{parseContentWithMentions(reply.content)}</p>
+              <div className="flex items-center space-x-4 text-gray-500">
+                <button
+                  onClick={() => handleLike(threadId, reply.id)}
+                  className={`flex items-center space-x-1 text-sm transition-colors duration-200 cursor-pointer ${
+                    reply.isLiked ? "text-blue-500" : "hover:text-blue-500"
+                  }`}
+                >
+                  <ThumbsUp
+                    size={16}
+                    className={reply.isLiked ? "fill-blue-500" : ""}
+                  />
+                  <span>{reply.likes}</span>
+                </button>
+                <button
+                  onClick={() => startReply(threadId, reply.id)}
+                  className="flex items-center space-x-1 text-sm hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+                >
+                  <Reply size={16} />
+                  <span>Reply</span>
+                </button>
+                {hasNestedReplies && (
+                  <button
+                    onClick={() => toggleReplyExpansion(reply.id)}
+                    className="flex items-center space-x-1 text-sm hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`transform transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                    />
+                    <span>
+                      {reply.replies.length}{" "}
+                      {reply.replies.length === 1 ? "reply" : "replies"}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Nested replies */}
+        {hasNestedReplies && isExpanded && (
+          <div
+            className={`pl-3 transition-all duration-300 ease-in-out ${
+              isExpanded
+                ? "opacity-100 max-h-full"
+                : "opacity-0 max-h-0 overflow-hidden"
+            }`}
+          >
+            {reply.replies.map((nestedReply) =>
+              renderReply(nestedReply, threadId, depth + 1)
+            )}
+          </div>
+        )}
+
+        {/* Reply form for this reply */}
+        {replyingTo &&
+          replyingTo.threadId === threadId &&
+          replyingTo.replyId === reply.id && (
+            <div className="pl-6 py-2 transition-all duration-300 ease-in-out">
+              {renderReplyForm()}
+            </div>
+          )}
+      </div>
+    );
+  };
+
+  // Render the reply form
+  const renderReplyForm = () => (
+    <div className="bg-white rounded-lg p-4 shadow-md relative">
+      <div className="flex items-start space-x-3">
+        <img
+          src={currentUser.avatar}
+          alt={currentUser.name}
+          className="w-8 h-8 rounded-full object-cover"
+        />
+        <div className="flex-1">
+          <textarea
+            ref={newReplyInputRef}
+            value={newReplyContent}
+            onChange={(e) => setNewReplyContent(e.target.value)}
+            placeholder="Write your reply..."
+            className="w-full p-2 mb-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none resize-none min-h-20"
+          ></textarea>
+
+          {/* User suggestions for @mentions */}
+          {showUserSuggestions && (
+            <div className="absolute z-10 w-64 bg-white shadow-lg rounded-md border border-gray-200 mt-1 max-h-48 overflow-y-auto">
+              {userSuggestions.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => addUserMention(user)}
+                  className="flex items-center p-2 hover:bg-gray-100 cursor-pointer transition-colors duration-150"
+                >
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-6 h-6 rounded-full mr-2"
+                  />
+                  <div>
+                    <div className="text-sm font-medium">{user.name}</div>
+                    <div className="text-xs text-gray-500">{user.role}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-2">
+            </div>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={cancelReply}
+                className="px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitReply}
+                disabled={!newReplyContent.trim()}
+                className={`px-3 py-1 rounded-md bg-blue-600 text-white flex items-center space-x-1 transition-all duration-200 cursor-pointer ${
+                  newReplyContent.trim()
+                    ? "hover:bg-blue-700"
+                    : "opacity-50 cursor-not-allowed"
+                }`}
+              >
+                <Send size={14} />
+                <span>Reply</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render a single thread and its replies
+  const renderThread = (thread: ThreadType) => {
+    const isExpanded = expandedThreads.has(thread.id);
+
+    return (
+      <div
+        key={thread.id}
+        className="bg-white rounded-lg shadow-sm mb-4 overflow-hidden transform transition-all duration-300 hover:shadow-md border border-gray-100"
+      >
+        {/* Thread header */}
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center space-x-3">
+              <img
+                src={thread.author.avatar}
+                alt={thread.author.name}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-gray-900">
+                    {thread.author.name}
+                  </span>
+                  <span className="text-gray-500 text-sm">
+                    {thread.author.role}
+                  </span>
+                  {thread.author.isOnline && (
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+                  )}
+                </div>
+                <span className="text-gray-400 text-xs">
+                  {formatDate(thread.createdAt)}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                className={`text-gray-400 hover:text-blue-500 transition-colors duration-200 cursor-pointer ${
+                  thread.isBookmarked ? "text-blue-500" : ""
+                }`}
+                onClick={() => handleBookmark(thread.id)}
+                aria-label="Bookmark"
+              >
+                <Bookmark
+                  size={16}
+                  className={thread.isBookmarked ? "fill-blue-500" : ""}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Status indicators */}
+          <div className="flex mt-2 mb-1 gap-2">
+            {thread.isPinned && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-800 border border-amber-200">
+                <Award size={12} className="mr-1" />
+                Pinned
+              </span>
+            )}
+            {thread.isFeatured && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-50 text-green-800 border border-green-200">
+                <Star size={12} className="mr-1" />
+                Featured
+              </span>
+            )}
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-500 border border-gray-200">
+              <Hash size={12} className="mr-1" />
+              {thread.category}
+            </span>
+          </div>
+
+          {/* Thread title and content */}
+          <h3 className="font-semibold text-lg mt-3 mb-2 text-gray-800">
+            {thread.title}
+          </h3>
+          <p className="text-gray-700 mb-3">{parseContentWithMentions(thread.content)}</p>
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {thread.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200 cursor-pointer"
+                onClick={() => toggleTagSelection(tag)}
+              >
+                <Hash size={12} className="mr-1" />
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          {/* Thread actions */}
+          <div className="flex items-center space-x-4 text-gray-500 mt-2">
+            <button
+              onClick={() => handleLike(thread.id)}
+              className={`flex items-center space-x-1 text-sm transition-colors duration-200 cursor-pointer ${
+                thread.isLiked ? "text-blue-500" : "hover:text-blue-500"
+              }`}
+            >
+              <ThumbsUp
+                size={16}
+                className={thread.isLiked ? "fill-blue-500" : ""}
+              />
+              <span>{thread.likes}</span>
+            </button>
+            <button
+              onClick={() => startReply(thread.id)}
+              className="flex items-center space-x-1 text-sm hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+            >
+              <MessageSquare size={16} />
+              <span>
+                {thread.replies.length > 0
+                  ? `${thread.replies.length} ${
+                      thread.replies.length === 1 ? "reply" : "replies"
+                    }`
+                  : "Reply"}
+              </span>
+            </button>
+            <button 
+              onClick={() => showToast("This functionality is coming soon")}
+              className="flex items-center space-x-1 text-sm hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+            >
+              <Share2 size={16} />
+              <span>Share</span>
+            </button>
+            <span className="flex items-center space-x-1 text-sm text-gray-400">
+              <Users size={14} />
+              <span>{thread.views} views</span>
+            </span>
+
+            {thread.replies.length > 0 && (
+              <button
+                onClick={() => toggleThreadExpansion(thread.id)}
+                className="ml-auto flex items-center space-x-1 text-sm hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+              >
+                <span>{isExpanded ? "Hide replies" : "Show replies"}</span>
+                <ChevronDown
+                  size={16}
+                  className={`transform transition-transform duration-200 ${
+                    isExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Thread replies */}
+        <div
+          className={`bg-gray-50 transition-all duration-300 ease-in-out ${
+            isExpanded || replyingTo?.threadId === thread.id
+              ? "max-h-full p-4"
+              : "max-h-0 overflow-hidden p-0"
+          }`}
+        >
+          {/* Reply form for the thread */}
+          {replyingTo &&
+            replyingTo.threadId === thread.id &&
+            !replyingTo.replyId &&
+            renderReplyForm()}
+
+          {/* List of replies */}
+          {thread.replies.map((reply) => renderReply(reply, thread.id))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render categories section for mobile
+  const renderMobileCategories = () => (
+    <div className="md:hidden mb-4">
+      <button
+        onClick={() => setShowCategoriesOnMobile(!showCategoriesOnMobile)}
+        className="w-full bg-white rounded-lg shadow-sm p-3 flex justify-between items-center cursor-pointer"
+      >
+        <span className="font-medium text-gray-800">Categories</span>
+        <ChevronDown
+          size={16}
+          className={`transition-transform duration-200 ${
+            showCategoriesOnMobile ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {showCategoriesOnMobile && (
+        <div className="bg-white rounded-lg shadow-sm mt-1 p-2 divide-y divide-gray-100">
+          <button
+            onClick={() => handleCategoryChange("All")}
+            className={`w-full flex items-center py-2 px-3 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
+              selectedCategory === "All"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <span>All ({categories["All"]})</span>
+          </button>
+          <button
+            onClick={() => handleCategoryChange("General")}
+            className={`w-full flex items-center py-2 px-3 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
+              selectedCategory === "General"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Building2 size={16} className="mr-2" />
+            <span>General ({categories["General"]})</span>
+          </button>
+          <button
+            onClick={() => handleCategoryChange("Ideas")}
+            className={`w-full flex items-center py-2 px-3 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
+              selectedCategory === "Ideas"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Lightbulb size={16} className="mr-2" />
+            <span>Ideas ({categories["Ideas"]})</span>
+          </button>
+          <button
+            onClick={() => handleCategoryChange("Technical")}
+            className={`w-full flex items-center py-2 px-3 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
+              selectedCategory === "Technical"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Wrench size={16} className="mr-2" />
+            <span>Technical ({categories["Technical"]})</span>
+          </button>
+          <button
+            onClick={() => handleCategoryChange("Reports")}
+            className={`w-full flex items-center py-2 px-3 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
+              selectedCategory === "Reports"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <TrendingUp size={16} className="mr-2" />
+            <span>Reports ({categories["Reports"]})</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Main component render
+  return (
+    <div
+      className="flex flex-col min-h-screen bg-gray-50 text-gray-900"
+      style={{ fontFamily: "var(--font-roboto), sans-serif" }}
+    >
+      {/* Navbar */}
+      <header className="bg-white shadow-sm sticky top-0 z-30">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo and title */}
+            <div className="flex items-center">
+              <div className="flex-shrink-0 flex items-center">
+                <div className="bg-blue-600 w-8 h-8 rounded flex items-center justify-center text-white font-bold">
+                  F
+                </div>
+                <span className="ml-2 text-xl font-semibold">ForumPro</span>
               </div>
 
-              {/* Simple progress bar */}
-              <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${
-                theme === "dark" ? "bg-gray-800" : "bg-gray-200"
-              } rounded-b-xl overflow-hidden`}>
-                <motion.div
-                  initial={{ width: "100%" }}
-                  animate={{ width: "0%" }}
-                  transition={{ duration: 5, ease: "linear" }}
-                  className="h-full bg-red-500"
+              {/* Desktop navigation */}
+              <nav className="hidden md:flex ml-10 space-x-8">
+                <button
+                  onClick={() => handleNavTabChange("Discussions")}
+                  className={`px-1 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                    activeNavTab === "Discussions"
+                      ? "text-blue-600 border-b-2 border-blue-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Discussions
+                </button>
+                <button
+                  onClick={() => handleNavTabChange("Bookmarks")}
+                  className={`px-1 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                    activeNavTab === "Bookmarks"
+                      ? "text-blue-600 border-b-2 border-blue-600"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Bookmarks
+                </button>
+              </nav>
+            </div>
+
+            {/* Search, notifications, and profile */}
+            <div className="flex items-center">
+              {/* Search */}
+              <div className="relative mr-4 md:block hidden">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search threads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="bg-gray-100 rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 w-40 md:w-64"
+                />
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 />
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Header */}
-      <header className={`sticky top-0 z-30 w-full backdrop-blur-md border-b ${theme === "dark" ? "border-gray-700/40 bg-gray-900/80" : "border-gray-200/60 bg-white/80"}`}>
-        <div className="container mx-auto px-3 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <motion.div
-              initial={{ rotate: 0 }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="text-red-600 text-xl"
-            >
-              <GiSoccerBall />
-            </motion.div>
-            <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-red-600 to-blue-600 bg-clip-text text-transparent">
-              SportsFusion
-            </h1>
-          </div>
+              {/* Notifications */}
+              <div className="relative mr-4">
+                <button
+                  ref={notificationsButtonRef}
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="text-gray-500 hover:text-gray-900 transition-colors duration-200 relative cursor-pointer"
+                >
+                  <Bell size={20} />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
 
-          <div className="flex items-center gap-2">
-            <div className="relative" ref={alertsDropdownRef}>
-              <button
-                className={`p-2 rounded-full ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"} relative transition-colors duration-200`}
-                aria-label="Notifications"
-                onClick={() => setShowAlertsDropdown(!showAlertsDropdown)}
-              >
-                <FiBell className="w-5 h-5" />
-                {alerts.filter(a => !a.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1">
-                    {alerts.filter(a => !a.read).length}
-                  </span>
-                )}
-              </button>
-
-              {/* Modern Alerts Dropdown */}
-              <AnimatePresence>
-                {showAlertsDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className={`absolute right-0 mt-2 w-80 sm:w-96 rounded-xl shadow-2xl overflow-hidden z-50 border ${
-                      theme === "dark" 
-                        ? "bg-gray-800 border-gray-700" 
-                        : "bg-white border-gray-200"
-                    }`}
+                {/* Notifications dropdown */}
+                {showNotifications && (
+                  <div
+                    ref={notificationsRef}
+                    className="absolute md:right-0 -right-20 mt-2 md:w-80 w-64 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                   >
-                    {/* Header */}
-                    <div className={`px-4 py-3 border-b ${theme === "dark" ? "border-gray-700" : "border-gray-100"}`}>
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-lg">Alerts</h4>
-                        <button
-                          onClick={() => setShowAlertsDropdown(false)}
-                          className={`p-1 rounded-lg ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"} transition-colors`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      {alerts.length > 0 && (
-                        <p className="text-sm opacity-70 mt-1">
-                          {alerts.filter(a => !a.read).length} unread alerts
-                        </p>
-                      )}
+                    <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                      <h3 className="text-sm font-medium">Notifications</h3>
+                      <button
+                        onClick={markAllNotificationsAsRead}
+                        className="text-xs text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
                     </div>
-
-                    {/* Content */}
-                    <div className="max-h-80 overflow-y-auto">
-                      {alerts.length > 0 ? (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {alerts.slice(0, 10).map((alert, index) => (
-                            <motion.div
-                              key={alert.id + index}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
-                                !alert.read ? "bg-blue-50/50 dark:bg-blue-900/20" : ""
-                              }`}
-                              onClick={() => {
-                                setAlerts(prev => prev.map(a => 
-                                  a.id === alert.id ? { ...a, read: true } : a
-                                ));
-                              }}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                                  !alert.read ? "bg-blue-500" : "bg-gray-300"
-                                }`}></div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm leading-relaxed">{alert.message}</p>
-                                  <p className="text-xs opacity-60 mt-1">
-                                    {new Date(alert.timestamp).toLocaleTimeString()}
-                                  </p>
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))}
+                    <div className="max-h-64 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                          No notifications
                         </div>
                       ) : (
-                        <div className="p-8 text-center">
-                          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                            theme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                          }`}>
-                            <FiBell className="w-8 h-8 opacity-50" />
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${
+                              notification.isRead ? "opacity-70" : ""
+                            }`}
+                          >
+                            <div className="flex items-start">
+                              {!notification.isRead && (
+                                <span className="h-2 w-2 mt-1 mr-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+                              )}
+                              <div
+                                onClick={() => {
+                                  // read notification and decrement unread count
+                                  markNotificationAsRead(notification.id);
+                                }}
+                                className={`flex-1 cursor-pointer ${
+                                  !notification.isRead ? "font-medium" : ""
+                                }`}
+                              >
+                                <p className="text-sm">{notification.text}</p>
+                                <p className="text-xs text-gray-500 mt-1 flex items-center">
+                                  <Clock size={12} className="mr-1" />2 hours
+                                  ago
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <h3 className="font-medium mb-2">No alerts yet</h3>
-                          <p className="text-sm opacity-70 max-w-xs mx-auto">
-                            Star your favorite teams to receive score alerts and updates
-                          </p>
-                        </div>
+                        ))
                       )}
                     </div>
-
-                    {/* Footer */}
-                    {alerts.length > 0 && (
-                      <div className={`px-4 py-3 border-t ${theme === "dark" ? "border-gray-700" : "border-gray-100"}`}>
-                        <button
-                          onClick={() => {
-                            setAlerts(prev => prev.map(alert => ({ ...alert, read: true })));
-                          }}
-                          className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                            theme === "dark"
-                              ? "bg-gray-700 hover:bg-gray-600 text-white"
-                              : "bg-gray-100 hover:bg-gray-200 text-gray-900"
-                          }`}
-                        >
-                          Mark all as read
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
+                    {/* <div className="px-4 py-2 border-t border-gray-100 text-center">
+                      <button className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                        View all notifications
+                      </button>
+                    </div> */}
+                  </div>
                 )}
-              </AnimatePresence>
-            </div>
+              </div>
 
-            <button
-              className={`p-2 rounded-full ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
-            </button>
+              {/* User profile */}
+              <div className="relative">
+                <button
+                  ref={profileButtonRef}
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center space-x-2 text-sm focus:outline-none cursor-pointer"
+                >
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-white"
+                  />
+                  <span className="hidden md:block">{currentUser.name}</span>
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-500 transition-transform duration-200 ${
+                      showProfileDropdown ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Profile dropdown */}
+                {showProfileDropdown && (
+                  <div
+                    ref={profileDropdownRef}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                  >
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">
+                        {currentUser.name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {currentUser.role}
+                      </p>
+                    </div>
+                    <div className="border-t border-gray-100 mt-1"></div>
+                    {/* <a href="#signout" className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 flex items-center">
+                      <LogOut size={16} className="mr-2" />
+                      Sign out
+                    </a> */}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="ml-4 md:hidden text-gray-500 focus:outline-none cursor-pointer"
+              >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile menu */}
+          <div
+            className={`md:hidden transition-all duration-300 ease-in-out ${
+              mobileMenuOpen ? "max-h-64" : "max-h-0 overflow-hidden"
+            }`}
+          >
+            <div className="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  handleNavTabChange("Discussions");
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full text-left cursor-pointer ${
+                  activeNavTab === "Discussions"
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                } block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200`}
+              >
+                Discussions
+              </button>
+              <button
+                onClick={() => {
+                  handleNavTabChange("Bookmarks");
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full text-left cursor-pointer ${
+                  activeNavTab === "Bookmarks"
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                } block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200`}
+              >
+                Bookmarks
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="relative px-2 pb-2 md:hidden w-full ">
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search threads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="bg-gray-100 w-full rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200"
+          />
+          <Search
+            size={16}
+            className="absolute left-6 top-[40%] transform -translate-y-1/2 text-gray-400"
+          />
         </div>
       </header>
 
       {/* Main content */}
-      <main className="container mx-auto px-3 py-4">
-        {/* Sports filter tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3">
-          <button
-            onClick={() => setSelectedSport('all')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'all'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <FiBarChart2 className="w-4 h-4" />
-            All Sports
-          </button>
+      <main className="flex-1 container mx-auto px-4 py-6">
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Left sidebar */}
+          <aside className="md:w-64 flex-shrink-0 hidden md:block">
+            <div className="sticky top-20 h-[calc(100vh-6rem)]">
+              <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
+                {/* Fixed header section */}
+                <div className="p-4 border-b border-gray-100">
+                  {/* Create new thread button */}
+                  <button
+                    onClick={() => setIsCreatingThread(true)}
+                    className="w-full bg-blue-600 text-white rounded-md py-2 px-4 flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                  >
+                    <MessageSquare size={16} />
+                    <span>New Discussion</span>
+                  </button>
+                </div>
 
-          <button
-            onClick={() => setSelectedSport('soccer')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'soccer'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <GiSoccerBall className="w-4 h-4" />
-            Soccer
-          </button>
-
-          <button
-            onClick={() => setSelectedSport('basketball')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'basketball'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <GiBasket className="w-4 h-4" />
-            Basketball
-          </button>
-
-          <button
-            onClick={() => setSelectedSport('tennis')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'tennis'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <GiTennisBall className="w-4 h-4" />
-            Tennis
-          </button>
-
-          <button
-            onClick={() => setSelectedSport('baseball')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'baseball'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <GiBaseballBat className="w-4 h-4" />
-            Baseball
-          </button>
-
-          <button
-            onClick={() => setSelectedSport('hockey')}
-            className={`px-3 py-2 rounded-full flex items-center gap-2 whitespace-nowrap transition-all text-sm ${selectedSport === 'hockey'
-              ? `${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-500 text-white"}`
-              : `${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-200 hover:bg-gray-300"}`
-              }`}
-          >
-            <GiHockey className="w-4 h-4" />
-            Hockey
-          </button>
-        </div>
-
-        {/* Ticker - Scrolling scores */}
-        <div className={`mt-3 mb-4 overflow-hidden rounded-lg shadow-lg relative ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
-          <div className="flex items-center p-2 gap-2 border-b border-gray-700/20">
-            <FiActivity className="text-red-500 w-4 h-4" />
-            <h2 className="font-bold text-sm">Live Updates</h2>
-            <div className="ml-auto">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${theme === "dark" ? "bg-red-900/60 text-red-200" : "bg-red-100 text-red-600"}`}>
-                <span className="w-2 h-2 mr-1 bg-red-500 rounded-full animate-pulse"></span>
-                Live
-              </span>
-            </div>
-          </div>
-
-          <div className="relative overflow-hidden h-10">
-            <motion.div
-              className="absolute whitespace-nowrap flex items-center h-full"
-              animate={{
-                x: [0, -2000]
-              }}
-              transition={{
-                ease: "linear",
-                duration: 30,
-                repeat: Infinity,
-              }}
-            >
-              {tickerUpdates.map((update, index) => (
-                <motion.div
-                  key={update.id + index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`px-3 py-1 mx-2 rounded-full flex items-center gap-2 whitespace-nowrap text-xs
-                  ${update.type === 'score'
-                      ? `${theme === "dark" ? "bg-red-950/40 text-red-200" : "bg-red-100 text-red-800"}`
-                      : update.type === 'event'
-                        ? `${theme === "dark" ? "bg-blue-950/40 text-blue-200" : "bg-blue-100 text-blue-800"}`
-                        : `${theme === "dark" ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-700"}`
-                    }`}
-                >
-                  <FiClock className="text-xs" />
-                  <span className="font-medium">{update.text}</span>
-                  <span className="opacity-70">{update.time}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Main grid layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-4">
-          {/* Live Matches */}
-          <div className="xl:col-span-3 lg:col-span-2 space-y-4">
-            <div className={`rounded-lg shadow-lg overflow-hidden ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
-              <div className="p-3 border-b border-gray-700/20 flex justify-between items-center">
-                <h2 className="font-bold text-lg">Live Matches</h2>
-                <button
-                  className={`p-2 rounded-full ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-100"} flex items-center gap-1`}
-                  onClick={handleRefresh}
-                  aria-label="Refresh"
-                >
-                  <FiRefreshCw className={`w-4 h-4 ${theme === "dark" ? "text-blue-400" : "text-blue-600"}`} />
-                  <span className="text-sm">Refresh</span>
-                </button>
-              </div>
-
-              <div className="p-3 space-y-3">
-                <AnimatePresence>
-                  {filteredMatches.map((match) => (
-                    <motion.div
-                      key={`match-${match.id}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        backgroundColor: theme === "dark"
-                          ? ["rgba(55, 65, 81, 0.5)", "rgba(220, 38, 38, 0.3)", "rgba(55, 65, 81, 0.5)"]
-                          : ["rgba(249, 250, 251, 1)", "rgba(254, 226, 226, 1)", "rgba(249, 250, 251, 1)"]
-                      }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{
-                        duration: 0.8,
-                        backgroundColor: {
-                          duration: 2,
-                          times: [0, 0.2, 1],
-                          repeat: 0
-                        }
-                      }}
-                      className={`p-4 rounded-lg ${theme === "dark" ? "bg-gray-700/50" : "bg-gray-50"}`}
+                {/* Scrollable content section */}
+                <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Categories */}
+                  <h3 className="font-medium text-gray-900 mb-2">Categories</h3>
+                  <nav className="space-y-1 mb-6">
+                    <button
+                      onClick={() => handleCategoryChange("All")}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm w-full text-left cursor-pointer ${
+                        selectedCategory === "All"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      }`}
                     >
-                      {/* Header with sport type and status */}
-                      <div className="flex justify-between items-center mb-3">
-                        <div className="flex items-center gap-2">
-                          {match.sport === 'soccer' && <GiSoccerBall className="text-green-500 text-lg" />}
-                          {match.sport === 'basketball' && <GiBasket className="text-orange-500 text-lg" />}
-                          {match.sport === 'tennis' && <GiTennisBall className="text-yellow-500 text-lg" />}
-                          {match.sport === 'baseball' && <GiBaseballBat className="text-blue-500 text-lg" />}
-                          {match.sport === 'hockey' && <GiHockey className="text-cyan-500 text-lg" />}
-                          <span className="text-sm font-medium uppercase tracking-wider">{match.sport}</span>
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${match.status === 'live'
-                          ? "bg-red-500/20 text-red-500 border border-red-500/30"
-                          : match.status === 'upcoming'
-                            ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30"
-                            : "bg-gray-500/20 text-gray-500 border border-gray-500/30"
-                          }`}>
-                          {match.status === 'live' && "• "}
-                          {match.status.toUpperCase()}
-                        </div>
-                      </div>
+                      <span>All</span>
+                      <span className="ml-auto bg-gray-100 text-gray-600 text-xs rounded-full px-2 py-0.5">
+                        {categories["All"]}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleCategoryChange("General")}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm w-full text-left cursor-pointer ${
+                        selectedCategory === "General"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      }`}
+                    >
+                      <Building2 size={16} className="mr-2" />
+                      <span>General</span>
+                      <span
+                        className={`ml-auto text-xs rounded-full px-2 py-0.5 ${
+                          selectedCategory === "General"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {categories["General"]}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleCategoryChange("Ideas")}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm w-full text-left cursor-pointer ${
+                        selectedCategory === "Ideas"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      }`}
+                    >
+                      <Lightbulb size={16} className="mr-2" />
+                      <span>Ideas</span>
+                      <span
+                        className={`ml-auto text-xs rounded-full px-2 py-0.5 ${
+                          selectedCategory === "Ideas"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {categories["Ideas"]}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleCategoryChange("Technical")}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm w-full text-left cursor-pointer ${
+                        selectedCategory === "Technical"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      }`}
+                    >
+                      <Wrench size={16} className="mr-2" />
+                      <span>Technical</span>
+                      <span
+                        className={`ml-auto text-xs rounded-full px-2 py-0.5 ${
+                          selectedCategory === "Technical"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {categories["Technical"]}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleCategoryChange("Reports")}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm w-full text-left cursor-pointer ${
+                        selectedCategory === "Reports"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      }`}
+                    >
+                      <TrendingUp size={16} className="mr-2" />
+                      <span>Reports</span>
+                      <span
+                        className={`ml-auto text-xs rounded-full px-2 py-0.5 ${
+                          selectedCategory === "Reports"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {categories["Reports"]}
+                      </span>
+                    </button>
+                  </nav>
 
-                      {/* Match content */}
-                      <div className="grid grid-cols-7 items-center mb-4 gap-2">
-                        {/* Home team */}
-                        <div className="col-span-3 flex flex-col items-center text-center">
-                          <div className="w-12 h-12 mb-2 relative">
-                            <img
-                              src={match.homeTeam.logo}
-                              alt={match.homeTeam.name}
-                              className="w-full h-full object-contain rounded-full"
-                            />
-                            <button
-                              onClick={() => toggleFavorite(match.homeTeam.id)}
-                              className="absolute -top-1 -right-1 bg-gray-800/40 p-1 rounded-full hover:bg-gray-700/80 tooltip-wrapper"
-                              title={favoriteTeams.includes(match.homeTeam.id) ? "Remove from favorites" : "Add to favorites"}
-                            >
-                              <FiStar className={`w-3 h-3 ${favoriteTeams.includes(match.homeTeam.id) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-                            </button>
-                          </div>
-                          <h3 className="font-bold text-sm">{match.homeTeam.name}</h3>
-                        </div>
-
-                        {/* Score */}
-                        <div className="col-span-1 flex flex-col items-center">
-                          {/* Time indicator with countdown */}
-                          <div className={`text-xs text-center px-2 py-1 rounded-md mb-1 ${theme === "dark" ? "bg-gray-800" : "bg-white"
-                            } ${match.status === 'live'
-                              ? "text-red-500 font-bold animate-pulse"
-                              : match.status === 'finished'
-                                ? "text-green-500 font-bold"
-                                : "opacity-70"
-                            }`}>
-                            {match.status === 'live' ? (
-                              <>
-                                <span className="inline-block w-2 h-2 mr-1 bg-red-500 rounded-full animate-pulse"></span>
-                                {match.time}
-                              </>
-                            ) : match.status === 'finished' ? (
-                              'FULL TIME'
-                            ) : (
-                              match.time
-                            )}
-                          </div>
-
-                          <div className={`flex items-center justify-center ${theme === "dark" ? "bg-gray-800/50" : "bg-white"} rounded-lg py-2 px-3 gap-2 w-20 shadow-md border ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
-                            <motion.span
-                              key={`${match.id}-home-${match.homeTeam.score}`}
-                              animate={{
-                                scale: match.homeTeam.score > 0 ? [1, 1.5, 1] : 1,
-                                color: match.homeTeam.score > 0 ? ["inherit", "#ef4444", "inherit"] : "inherit"
-                              }}
-                              transition={{ duration: 0.8 }}
-                              className={`text-xl font-bold text-center w-6 ${match.homeTeam.score > match.awayTeam.score ? "text-green-500" : ""}`}
-                            >
-                              {match.homeTeam.score}
-                            </motion.span>
-                            <span className="text-gray-400 font-normal">-</span>
-                            <motion.span
-                              key={`${match.id}-away-${match.awayTeam.score}`}
-                              animate={{
-                                scale: match.awayTeam.score > 0 ? [1, 1.5, 1] : 1,
-                                color: match.awayTeam.score > 0 ? ["inherit", "#ef4444", "inherit"] : "inherit"
-                              }}
-                              transition={{ duration: 0.8 }}
-                              className={`text-xl font-bold text-center w-6 ${match.awayTeam.score > match.homeTeam.score ? "text-green-500" : ""}`}
-                            >
-                              {match.awayTeam.score}
-                            </motion.span>
-                          </div>
-
-                          {/* Winner indicator or match period */}
-                          {match.status === 'live' ? (
-                            <div className="mt-1 text-xs flex items-center">
-                              <span className="text-red-500">{match.period}</span>
-                            </div>
-                          ) : match.status === 'finished' ? (
-                            <div className="mt-2">
-                              {match.homeTeam.score !== match.awayTeam.score && (
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${theme === "dark" ? "bg-green-800/30 text-green-400" : "bg-green-100 text-green-800"}`}>
-                                  {match.homeTeam.score > match.awayTeam.score ? match.homeTeam.name : match.awayTeam.name} wins
-                                </span>
-                              )}
-                              {match.homeTeam.score === match.awayTeam.score && (
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${theme === "dark" ? "bg-yellow-800/30 text-yellow-400" : "bg-yellow-100 text-yellow-800"}`}>
-                                  Draw
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="mt-1 text-xs">
-                              <span className="opacity-70">{match.period}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Away team */}
-                        <div className="col-span-3 flex flex-col items-center text-center">
-                          <div className="w-12 h-12 mb-2 relative">
-                            <img
-                              src={match.awayTeam.logo}
-                              alt={match.awayTeam.name}
-                              className="w-full h-full object-contain rounded-full"
-                            />
-                            <button
-                              onClick={() => toggleFavorite(match.awayTeam.id)}
-                              className="absolute -top-1 -right-1 bg-gray-800/40 p-1 rounded-full hover:bg-gray-700/80 tooltip-wrapper"
-                              title={favoriteTeams.includes(match.awayTeam.id) ? "Remove from favorites" : "Add to favorites"}
-                            >
-                              <FiStar className={`w-3 h-3 ${favoriteTeams.includes(match.awayTeam.id) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-                            </button>
-                          </div>
-                          <h3 className="font-bold text-sm">{match.awayTeam.name}</h3>
-                        </div>
-                      </div>
-
-                      {/* Live Commentary */}
-                      <div className={`rounded-lg p-3 text-sm ${theme === "dark" ? "bg-gray-800/70" : "bg-white"} border ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
-                        <h4 className="font-medium mb-2 text-xs uppercase tracking-wider flex items-center">
-                          <span className={`inline-block w-2 h-2 mr-2 rounded-full ${match.status === 'live' ? "bg-red-500 animate-pulse" : "bg-gray-500"}`}></span>
-                          Live Commentary
-                        </h4>
-                        <ul className="space-y-1">
-                          {match.commentary.slice(0, 2).map((comment, index) => (
-                            <motion.li
-                              key={index}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="flex items-start gap-2 pb-1 border-b border-gray-700/10 last:border-0"
-                            >
-                              <span className={`inline-block w-1.5 h-1.5 mt-1.5 rounded-full flex-shrink-0 ${index === 0 ? "bg-red-500" : "bg-yellow-500"
-                                }`}></span>
-                              <span className="text-xs">{comment}</span>
-                            </motion.li>
-                          ))}
-                        </ul>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {filteredMatches.length === 0 && (
-                  <div className="text-center p-8 opacity-70">
-                    <p>No matches found for this sport.</p>
+                  {/* Filter by tags */}
+                  <h3 className="font-medium text-gray-900 mb-2">Filter by tags</h3>
+                  <div className="space-y-2">
+                    {allTags
+                      .slice(0, showAllTags ? allTags.length - 1 : 8)
+                      .map((tag) => (
+                        <label
+                          key={tag}
+                          className="flex items-center space-x-2 cursor-pointer group"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTags.includes(tag)}
+                            onChange={() => toggleTagSelection(tag)}
+                            className="rounded text-blue-600 focus:ring-blue-500 transition-colors duration-200"
+                          />
+                          <span
+                            className={`text-sm ${
+                              selectedTags.includes(tag)
+                                ? "text-blue-600"
+                                : "text-gray-700 group-hover:text-gray-900"
+                            } transition-colors duration-200`}
+                          >
+                            {tag}
+                          </span>
+                        </label>
+                      ))}
+                    {allTags.length > 8 && (
+                      <button
+                        onClick={() => setShowAllTags(!showAllTags)}
+                        className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200 mt-1 cursor-pointer"
+                      >
+                        {showAllTags
+                          ? "Show less"
+                          : `Show ${allTags.length - 8} more`}
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Player Stats */}
-            <div className={`rounded-lg shadow-lg overflow-hidden ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
-              <div className="p-3 border-b border-gray-700/20">
-                <h2 className="font-bold text-lg">Top Performers</h2>
-              </div>
-
-              <div className="p-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {mockPlayers.map((player) => (
-                    <motion.div
-                      key={player.id}
-                      whileHover={{ scale: 1.03 }}
-                      className={`p-3 rounded-lg border ${theme === "dark" ? "border-gray-700 bg-gray-700/30" : "border-gray-200 bg-gray-50"}`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
-                          {player.team === 'Barcelona' && <GiSoccerBall className="text-red-500 text-sm" />}
-                          {player.team === 'Warriors' && <GiBasket className="text-orange-500 text-sm" />}
-                          {player.team === 'Serbia' && <GiTennisBall className="text-yellow-500 text-sm" />}
-                          {player.team === 'Yankees' && <GiBaseballBat className="text-blue-500 text-sm" />}
-                          {player.team === 'Bruins' && <GiHockey className="text-cyan-500 text-sm" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-sm truncate">{player.name}</h3>
-                          <p className="text-xs opacity-70">{player.team}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs">{player.stats}</p>
-                    </motion.div>
-                  ))}
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
 
-          {/* Right Sidebar */}
-          <div className="xl:col-span-1 lg:col-span-1 space-y-4">
-            {/* Alerts and Notifications */}
-            <div className={`rounded-xl shadow-lg overflow-hidden border ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-              <div className={`p-3 border-b ${theme === "dark" ? "border-gray-700" : "border-gray-100"}`}>
-                <h2 className="font-bold text-base flex items-center">
-                  <FiBell className="mr-2 w-4 h-4" /> 
-                  Alerts
-                  {alerts.filter(a => !a.read).length > 0 && (
-                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full font-bold ${theme === "dark" ? "bg-red-900 text-red-200" : "bg-red-500 text-white"}`}>
-                      {alerts.filter(a => !a.read).length}
-                    </span>
-                  )}
-                </h2>
-              </div>
+          {/* Main thread list */}
+          <div className="flex-1">
+            {/* Mobile actions bar */}
+            <div className="md:hidden flex space-x-2 mb-4">
+              <button
+                onClick={() => setIsCreatingThread(true)}
+                className="flex-1 bg-blue-600 text-white rounded-md py-2 px-4 flex items-center justify-center space-x-1 hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+              >
+                <MessageSquare size={16} />
+                <span>New</span>
+              </button>
+              <button
+                onClick={() => setBookmarkedOnly(!bookmarkedOnly)}
+                className={`px-3 py-2 rounded-md border flex items-center space-x-1 cursor-pointer ${
+                  bookmarkedOnly
+                    ? "bg-blue-50 text-blue-600 border-blue-200"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                } transition-colors duration-200`}
+              >
+                <Bookmark size={16} className={bookmarkedOnly ? "fill-blue-600" : ""} />
+                <span>{bookmarkedCount}</span>
+              </button>
+            </div>
 
-              <div className="p-3 space-y-3">
-                {alerts.length > 0 ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold">Recent Updates</h3>
-                      <button
-                        onClick={() => setAlerts(prev => prev.map(alert => ({ ...alert, read: true })))}
-                        className={`text-xs px-2 py-1 rounded-lg transition-colors ${
-                          theme === "dark"
-                            ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                            : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+            {/* Render mobile categories */}
+            {renderMobileCategories()}
+
+            {/* Title for thread list */}
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {activeNavTab === "Bookmarks"
+                  ? "Bookmarked Discussions"
+                  : selectedCategory === "All"
+                  ? "All Discussions"
+                  : `${selectedCategory} Discussions`}
+              </h2>
+              {/* Description based on current view */}
+              <p className="text-gray-500 mt-1">
+                {activeNavTab === "Bookmarks"
+                  ? `Discussions you've saved for later`
+                  : selectedCategory === "Ideas"
+                  ? "Share and discuss new ideas and innovations"
+                  : selectedCategory === "Technical"
+                  ? "Technical discussions and problem-solving"
+                  : selectedCategory === "Reports"
+                  ? "Reports, analytics, and data discussions"
+                  : selectedCategory === "General"
+                  ? "General company discussions and announcements"
+                  : "Join the conversation and share your thoughts"}
+              </p>
+            </div>
+
+            {/* Thread filters */}
+            <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
+              <div className="flex items-center space-x-2">
+                {/* Only show filter dropdown when not on Bookmarks tab */}
+                {activeNavTab !== "Bookmarks" && (
+                  <div className="relative">
+                    <button
+                      ref={filterButtonRef}
+                      onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                      className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 flex items-center space-x-1 hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
+                    >
+                      <Filter size={14} />
+                      <span>Filter</span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 ${
+                          showFilterDropdown ? "rotate-180" : ""
                         }`}
+                      />
+                    </button>
+
+                    {/* Filter dropdown */}
+                    {showFilterDropdown && (
+                      <div
+                        ref={filterDropdownRef}
+                        className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
                       >
-                        Mark all read
+                        <div className="px-3 py-2 border-b border-gray-100">
+                          <h4 className="text-xs font-medium text-gray-500 uppercase">
+                            Filter Options
+                          </h4>
+                        </div>
+                        <label className="flex items-center px-3 py-2 hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={bookmarkedOnly}
+                            onChange={() => setBookmarkedOnly(!bookmarkedOnly)}
+                            className="rounded text-blue-600 focus:ring-blue-500 mr-2"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Bookmarked only
+                          </span>
+                        </label>
+                        <div className="border-t border-gray-100 mt-1 pt-1">
+                          <button
+                            onClick={() => {
+                              setSelectedTags([]);
+                              setBookmarkedOnly(false);
+                              setShowFilterDropdown(false);
+                            }}
+                            className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors duration-200 w-full text-left cursor-pointer"
+                          >
+                            Clear all filters
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="relative">
+                  <button
+                    ref={sortButtonRef}
+                    onClick={() => setShowSortDropdown(!showSortDropdown)}
+                    className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 flex items-center space-x-1 hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
+                  >
+                    <Clock size={14} />
+                    <span>
+                      {sortMethod === "latest"
+                        ? "Latest"
+                        : sortMethod === "oldest"
+                        ? "Oldest"
+                        : sortMethod === "most-liked"
+                        ? "Most Liked"
+                        : sortMethod === "most-viewed"
+                        ? "Most Viewed"
+                        : "Most Replies"}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${
+                        showSortDropdown ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* Sort dropdown */}
+                  {showSortDropdown && (
+                    <div
+                      ref={sortDropdownRef}
+                      className="absolute left-0 mt-1 w-36 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                    >
+                      <button
+                        onClick={() => handleSortMethodChange("latest")}
+                        className={`px-3 py-2 text-sm w-full text-left cursor-pointer ${
+                          sortMethod === "latest"
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        } transition-colors duration-200`}
+                      >
+                        Latest
+                      </button>
+                      <button
+                        onClick={() => handleSortMethodChange("oldest")}
+                        className={`px-3 py-2 text-sm w-full text-left cursor-pointer ${
+                          sortMethod === "oldest"
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        } transition-colors duration-200`}
+                      >
+                        Oldest
+                      </button>
+                      <button
+                        onClick={() => handleSortMethodChange("most-liked")}
+                        className={`px-3 py-2 text-sm w-full text-left cursor-pointer ${
+                          sortMethod === "most-liked"
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        } transition-colors duration-200`}
+                      >
+                        Most Liked
+                      </button>
+                      <button
+                        onClick={() => handleSortMethodChange("most-viewed")}
+                        className={`px-3 py-2 text-sm w-full text-left cursor-pointer ${
+                          sortMethod === "most-viewed"
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        } transition-colors duration-200`}
+                      >
+                        Most Viewed
+                      </button>
+                      <button
+                        onClick={() => handleSortMethodChange("most-replies")}
+                        className={`px-3 py-2 text-sm w-full text-left cursor-pointer ${
+                          sortMethod === "most-replies"
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        } transition-colors duration-200`}
+                      >
+                        Most Replies
                       </button>
                     </div>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {alerts.slice(0, 4).map((alert, index) => (
-                        <motion.div
-                          key={alert.id + index}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-                            !alert.read
-                              ? theme === "dark"
-                                ? "bg-blue-900/20 border-blue-800/30 hover:bg-blue-900/30"
-                                : "bg-blue-50 border-blue-200 hover:bg-blue-100"
-                              : theme === "dark"
-                                ? "bg-gray-700/50 border-gray-600 hover:bg-gray-700"
-                                : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                          }`}
-                          onClick={() => {
-                            setAlerts(prev => prev.map(a => 
-                              a.id === alert.id ? { ...a, read: true } : a
-                            ));
-                          }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                              !alert.read ? "bg-blue-500" : "bg-gray-400"
-                            }`}></div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs leading-relaxed">{alert.message}</p>
-                              <p className="text-xs opacity-60 mt-0.5">
-                                {new Date(alert.timestamp).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <div className={`w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                      theme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                    }`}>
-                      <FiBell className="w-5 h-5 opacity-50" />
-                    </div>
-                    <h3 className="font-medium mb-1 text-sm">No alerts yet</h3>
-                    <p className="text-xs opacity-70">Star teams to receive alerts</p>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
 
-                {favoriteTeams.length === 0 ? (
-                  <div className={`text-center py-3 px-2 rounded-lg border-2 border-dashed ${
-                    theme === "dark" ? "border-gray-600" : "border-gray-300"
-                  }`}>
-                    <FiStar className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                    <p className="text-xs font-medium mb-1">No favorite teams</p>
-                    <p className="text-xs opacity-70">Click ★ next to teams</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <h3 className="text-xs font-bold flex items-center">
-                      <FiStar className="w-3 h-3 mr-1 text-yellow-500" />
-                      Favorite Teams ({favoriteTeams.length})
-                    </h3>
-                    <div className="space-y-1">
-                      {favoriteTeams.slice(0, 4).map((teamId, index) => {
-                        const team = [...liveMatches.map(m => m.homeTeam), ...liveMatches.map(m => m.awayTeam)]
-                          .find(t => t.id === teamId);
-
-                        return team && (
-                          <motion.div
-                            key={team.id + index}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`p-2 rounded-lg flex items-center justify-between border ${
-                              theme === "dark" 
-                                ? "bg-gray-700/50 border-gray-600 hover:bg-gray-700" 
-                                : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                            } transition-colors`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={team.logo}
-                                alt={team.name}
-                                className="w-5 h-5 object-contain rounded-full"
-                              />
-                              <span className="font-medium text-xs">{team.name}</span>
-                            </div>
-                            <button
-                              className={`p-1 rounded-lg transition-colors ${
-                                theme === "dark" ? "hover:bg-gray-600" : "hover:bg-gray-200"
-                              }`}
-                              onClick={() => toggleFavorite(team.id)}
-                              aria-label="Remove from favorites"
-                              title="Remove from favorites"
-                            >
-                              <FiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                            </button>
-                          </motion.div>
-                        );
-                      })}
-                      {favoriteTeams.length > 4 && (
-                        <p className="text-xs opacity-70 text-center">+{favoriteTeams.length - 4} more</p>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <div className="text-sm text-gray-500">
+                {filteredThreads.length}{" "}
+                {filteredThreads.length === 1 ? "discussion" : "discussions"}
               </div>
             </div>
 
-            {/* Leaderboard */}
-            <div className={`rounded-xl shadow-lg overflow-hidden border ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-              <div className={`p-3 border-b ${theme === "dark" ? "border-gray-700" : "border-gray-100"}`}>
-                <h2 className="font-bold text-base">
-                  {selectedSport === 'all' ? 'Sport Leaderboard' : `${selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)} Leaderboard`}
-                </h2>
-                <p className="text-xs opacity-70 mt-0.5">
-                  {selectedSport === 'all' ? 'Top performers by sport' : 'Current standings'}
+            {/* Loading state */}
+            {loading && (
+              <div className="text-center py-20">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-blue-600 mb-4"></div>
+                <p className="text-gray-500">Loading discussions...</p>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!loading && filteredThreads.length === 0 && (
+              <div className="text-center py-20 bg-white rounded-lg shadow-sm">
+                <div className="inline-block p-4 rounded-full bg-blue-50 mb-4">
+                  <MessageSquare size={32} className="text-blue-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">
+                  No discussions found
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {searchQuery || selectedTags.length > 0 || bookmarkedOnly
+                    ? "No discussions match your current filters."
+                    : "Be the first to start a discussion."}
                 </p>
-              </div>
-
-              <div className="p-3">
-                {selectedSport === 'all' ? (
-                  // Show condensed view of all sports when "all" is selected
-                  <div className="space-y-2">
-                    {mockSports.map((sport) => {
-                      const sportMatches = liveMatches.filter(match => match.sport === sport);
-                      if (sportMatches.length === 0) return null;
-
-                      const sportTeams = [
-                        ...sportMatches.map(m => ({ ...m.homeTeam, sport })),
-                        ...sportMatches.map(m => ({ ...m.awayTeam, sport }))
-                      ].sort((a, b) => b.score - a.score);
-
-                      const uniqueTeams = sportTeams.filter((team, index, arr) => 
-                        arr.findIndex(t => t.id === team.id) === index
-                      );
-
-                      const topTeam = uniqueTeams[0];
-                      if (!topTeam) return null;
-
-                      return (
-                        <motion.div
-                          key={sport}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: mockSports.indexOf(sport) * 0.05 }}
-                          className={`flex items-center justify-between p-2 rounded-lg border ${
-                            theme === "dark" ? "border-gray-700 bg-gray-700/30" : "border-gray-200 bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {sport === 'soccer' && <GiSoccerBall className="text-green-500 text-sm" />}
-                            {sport === 'basketball' && <GiBasket className="text-orange-500 text-sm" />}
-                            {sport === 'tennis' && <GiTennisBall className="text-yellow-500 text-sm" />}
-                            {sport === 'baseball' && <GiBaseballBat className="text-blue-500 text-sm" />}
-                            {sport === 'hockey' && <GiHockey className="text-cyan-500 text-sm" />}
-                            <div>
-                              <p className="font-semibold text-xs capitalize">{sport}</p>
-                              <p className="text-xs opacity-70">{topTeam.name}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <img
-                              src={topTeam.logo}
-                              alt={topTeam.name}
-                              className="w-5 h-5 object-contain rounded-full"
-                            />
-                            <span className="font-bold text-sm text-yellow-600">{topTeam.score}</span>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-
-                    {/* Overall Top Scorer - Compact Version */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: mockSports.length * 0.05 }}
-                      className={`p-2 rounded-lg border-2 border-dashed ${
-                        theme === "dark" ? "border-yellow-600/30 bg-yellow-900/10" : "border-yellow-400/50 bg-yellow-50"
-                      }`}
-                    >
-                      {(() => {
-                        const allTeams = [...liveMatches.map(m => m.homeTeam), ...liveMatches.map(m => m.awayTeam)];
-                        const topScorer = allTeams.reduce((max, team) => 
-                          team.score > max.score ? team : max
-                        );
-                        
-                        return (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">👑</span>
-                              <div>
-                                <p className="font-semibold text-xs">Overall Champion</p>
-                                <p className="text-xs opacity-70">{topScorer.name}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <img
-                                src={topScorer.logo}
-                                alt={topScorer.name}
-                                className="w-5 h-5 object-contain rounded-full"
-                              />
-                              <span className="text-lg font-bold text-yellow-600">{topScorer.score}</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </motion.div>
-                  </div>
-                ) : (
-                  // Show detailed view for selected sport
-                  (() => {
-                    const sportMatches = liveMatches.filter(match => match.sport === selectedSport);
-                    if (sportMatches.length === 0) {
-                      return (
-                        <div className="text-center py-6">
-                          <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${
-                            theme === "dark" ? "bg-gray-700" : "bg-gray-100"
-                          }`}>
-                            {selectedSport === 'soccer' && <GiSoccerBall className="w-6 h-6 opacity-50" />}
-                            {selectedSport === 'basketball' && <GiBasket className="w-6 h-6 opacity-50" />}
-                            {selectedSport === 'tennis' && <GiTennisBall className="w-6 h-6 opacity-50" />}
-                            {selectedSport === 'baseball' && <GiBaseballBat className="w-6 h-6 opacity-50" />}
-                            {selectedSport === 'hockey' && <GiHockey className="w-6 h-6 opacity-50" />}
-                          </div>
-                          <h3 className="font-medium mb-1 text-sm">No {selectedSport} matches</h3>
-                          <p className="text-xs opacity-70">Check back later for live games</p>
-                        </div>
-                      );
-                    }
-
-                    const sportTeams = [
-                      ...sportMatches.map(m => ({ ...m.homeTeam, sport: selectedSport })),
-                      ...sportMatches.map(m => ({ ...m.awayTeam, sport: selectedSport }))
-                    ].sort((a, b) => b.score - a.score);
-
-                    const uniqueTeams = sportTeams.filter((team, index, arr) => 
-                      arr.findIndex(t => t.id === team.id) === index
-                    );
-
-                    return (
-                      <div className="space-y-1">
-                        {uniqueTeams.map((team, index) => (
-                          <motion.div
-                            key={team.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`flex items-center gap-2 p-2 rounded-lg ${
-                              theme === "dark" ? "bg-gray-700/50 hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100"
-                            } transition-colors`}
-                          >
-                            {/* Rank */}
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                              index === 0 
-                                ? "bg-yellow-500/20 text-yellow-600" 
-                                : index === 1 
-                                  ? "bg-gray-400/20 text-gray-500"
-                                  : index === 2
-                                    ? "bg-orange-500/20 text-orange-600"
-                                    : "bg-gray-300/20 text-gray-400"
-                            }`}>
-                              {index + 1}
-                            </div>
-
-                            {/* Team Logo */}
-                            <img
-                              src={team.logo}
-                              alt={team.name}
-                              className="w-6 h-6 object-contain rounded-full"
-                            />
-
-                            {/* Team Name */}
-                            <span className="font-medium flex-1 text-xs">{team.name}</span>
-
-                            {/* Score and Favorite */}
-                            <div className="flex items-center gap-1">
-                              <span className={`text-lg font-bold ${
-                                index === 0 ? "text-yellow-600" : ""
-                              }`}>
-                                {team.score}
-                              </span>
-                              {team.isFav && (
-                                <FiStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    );
-                  })()
-                )}
-              </div>
-            </div>
-
-            {/* Statistics Card */}
-            <div className={`rounded-xl shadow-lg overflow-hidden border ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-              <div className={`p-3 border-b ${theme === "dark" ? "border-gray-700" : "border-gray-100"}`}>
-                <h2 className="font-bold text-base">Quick Stats</h2>
-              </div>
-
-              <div className="p-3 space-y-2">
-                <motion.div
-                  className={`p-2 rounded-lg grid grid-cols-2 gap-2 ${theme === "dark" ? "bg-gray-700/50" : "bg-gray-100"}`}
-                  whileHover={{ scale: 1.02 }}
+                <button
+                  onClick={() => setIsCreatingThread(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
                 >
-                  <div>
-                    <p className="text-xs opacity-70">Live Games</p>
-                    <p className="text-lg font-bold">{liveMatches.filter(m => m.status === 'live').length}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-70">Total Scores</p>
-                    <p className="text-lg font-bold">
-                      {liveMatches.reduce((acc, match) => acc + match.homeTeam.score + match.awayTeam.score, 0)}
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  className={`p-2 rounded-lg grid grid-cols-2 gap-2 ${theme === "dark" ? "bg-gray-700/50" : "bg-gray-100"}`}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <div>
-                    <p className="text-xs opacity-70">Teams</p>
-                    <p className="text-lg font-bold">
-                      {new Set([...liveMatches.map(m => m.homeTeam.name), ...liveMatches.map(m => m.awayTeam.name)]).size}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-70">Sports</p>
-                    <p className="text-lg font-bold">{mockSports.length}</p>
-                  </div>
-                </motion.div>
+                  Start a discussion
+                </button>
               </div>
-            </div>
+            )}
+
+            {/* Thread list */}
+            {!loading && filteredThreads.length > 0 && (
+              <div className="space-y-4">
+                {filteredThreads.map(renderThread)}
+              </div>
+            )}
+
+            {/* Load more button */}
+            {!loading && filteredThreads.length > 5 && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={loadMoreThreads}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
+                >
+                  Load more discussions
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className={`mt-6 py-4 border-t ${theme === "dark" ? "border-gray-700/40" : "border-gray-200"}`}>
-        <div className="container mx-auto px-3 text-center text-xs opacity-70">
-          <p>© 2025 SportsFusion. All rights reserved.</p>
+      <footer className="bg-white border-t border-gray-200 py-4 mt-8">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <div className="flex items-center">
+                <div className="bg-blue-600 w-6 h-6 rounded flex items-center justify-center text-white font-bold text-xs">
+                  F
+                </div>
+                <span className="ml-2 text-sm font-semibold">ForumPro</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                © 2025 ForumPro. All rights reserved.
+              </p>
+            </div>
+            <div className="flex space-x-6">
+              <a
+                href="#"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 cursor-pointer"
+              >
+                Help
+              </a>
+              <a
+                href="#"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 cursor-pointer"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 cursor-pointer"
+              >
+                Terms
+              </a>
+              <a
+                href="#"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 cursor-pointer"
+              >
+                Contact
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 duration-300">
+          <div className="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 max-w-sm">
+            <div className="flex-1">
+              <p className="text-sm font-medium">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => setToast({ show: false, message: "" })}
+              className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Discussion Modal */}
+      {isCreatingThread && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Create a new discussion
+                </h2>
+                <button
+                  onClick={() => setIsCreatingThread(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200 cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="modal-thread-title"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    id="modal-thread-title"
+                    value={newThreadTitle}
+                    onChange={(e) => setNewThreadTitle(e.target.value)}
+                    placeholder="Enter a title for your discussion"
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label
+                    htmlFor="modal-thread-content"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Content
+                  </label>
+                  <textarea
+                    id="modal-thread-content"
+                    ref={threadInputRef}
+                    value={newThreadContent}
+                    onChange={(e) => setNewThreadContent(e.target.value)}
+                    placeholder="What would you like to discuss?"
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none resize-none h-32"
+                  ></textarea>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="modal-thread-category"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Category
+                    </label>
+                    <select
+                      id="modal-thread-category"
+                      value={newThreadCategory}
+                      onChange={(e) => setNewThreadCategory(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
+                    >
+                      <option value="General">General</option>
+                      <option value="Ideas">Ideas</option>
+                      <option value="Technical">Technical</option>
+                      <option value="Reports">Reports</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label
+                      htmlFor="modal-thread-tags"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Tags
+                    </label>
+                    <input
+                      type="text"
+                      id="modal-thread-tags"
+                      value={newThreadTags}
+                      onChange={(e) => setNewThreadTags(e.target.value)}
+                      placeholder="e.g. sales, strategy, review"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingThread(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={createNewThread}
+                    disabled={!newThreadTitle.trim() || !newThreadContent.trim()}
+                    className={`px-6 py-2 rounded-md bg-blue-600 text-white transition-all duration-200 cursor-pointer ${
+                      newThreadTitle.trim() && newThreadContent.trim()
+                        ? "hover:bg-blue-700"
+                        : "opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    Create Discussion
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default ThreadedDiscussionForum;
