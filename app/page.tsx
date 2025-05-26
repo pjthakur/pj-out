@@ -1,2224 +1,2454 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Menu,
-  X,
-  Search,
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import {
+  BookOpen,
+  ShoppingCart,
   User,
-  LogOut,
-  Clock,
-  TrendingUp,
-  Globe,
-  Smartphone,
-  Cpu,
-  Shield,
-  ChevronRight,
+  Search,
+  Moon,
+  Sun,
+  Home,
+  Info,
+  Mail,
+  X,
+  Menu,
+  ChevronDown,
+  ChevronUp,
   Star,
-  Eye,
-  MessageCircle,
+  Filter,
+  ArrowRight,
+  Sparkles,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Gift,
+  Bookmark,
   Share2,
-  Bell,
-  Play,
-  Twitter,
-  Facebook,
-  Instagram,
-  Copy,
 } from "lucide-react";
 
-interface User {
-  email: string;
-  name: string;
-}
-
-interface NewsArticle {
-  id: string;
+interface Book {
+  id: number;
   title: string;
-  excerpt: string;
-  content: string;
-  image: string;
-  category: string;
-  readTime: string;
-  views: string;
-  comments: number;
   author: string;
-  publishedAt: string;
+  price: number;
+  coverImage: string;
+  additionalImages: string[];
+  description: string;
+  genre: string[];
+  rating: number;
+  reviews: Review[];
+  releaseDate?: string;
+  pages?: number;
   featured?: boolean;
-  likes: number;
 }
 
-interface LoginFormData {
-  email: string;
-  password: string;
+interface Review {
+  id: number;
+  userName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  avatar?: string;
 }
 
-interface NewsletterFormData {
-  email: string;
+interface CartItem {
+  book: Book;
+  quantity: number;
 }
 
-interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-  duration?: number;
-}
+const books: Book[] = [
+  {
+    id: 1,
+    title: "The Silent Echo",
+    author: "Elena Blackwood",
+    price: 14.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1748156783945-c8c585c403b3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxMnx8fGVufDB8fHx8fA%3D%3D",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1589998059171-988d887df646?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1541963463532-d68292c34b19?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "A haunting tale of mystery and intrigue set in a small coastal town. When strange echoes begin to haunt the residents, a local journalist must uncover the town's dark past before it consumes them all.",
+    genre: ["Mystery", "Thriller", "Supernatural"],
+    rating: 4.7,
+    releaseDate: "2025-03-15",
+    pages: 342,
+    featured: true,
+    reviews: [
+      {
+        id: 1,
+        userName: "BookLover42",
+        rating: 5,
+        comment:
+          "Absolutely couldn't put it down! The atmosphere created is palpable and the characters feel so real.",
+        date: "2025-04-15",
+        avatar: "https://i.pravatar.cc/150?img=3",
+      },
+      {
+        id: 2,
+        userName: "MysteryFan",
+        rating: 4,
+        comment:
+          "Brilliant pacing and an unexpected ending. Would definitely recommend to any thriller fans.",
+        date: "2025-04-02",
+        avatar: "https://i.pravatar.cc/150?img=8",
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: "Quantum Dreams",
+    author: "Marcus Chen",
+    price: 16.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1532012197267-da84d127e765?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1748053902367-b62241fc263f?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1fHx8ZW58MHx8fHx8",
+    ],
+    description:
+      "A mind-bending science fiction novel exploring the intersection of quantum physics and human consciousness. When a brilliant physicist discovers she can manipulate reality through her dreams, the boundaries between worlds begin to collapse.",
+    genre: ["Science Fiction", "Philosophical"],
+    rating: 4.5,
+    releaseDate: "2025-02-28",
+    pages: 415,
+    featured: true,
+    reviews: [
+      {
+        id: 1,
+        userName: "SciFiEnthusiast",
+        rating: 5,
+        comment:
+          "Mind-blowing concepts presented in an accessible way. The philosophical implications kept me thinking for days.",
+        date: "2025-03-28",
+        avatar: "https://i.pravatar.cc/150?img=11",
+      },
+      {
+        id: 2,
+        userName: "PhysicsNerd",
+        rating: 4,
+        comment:
+          "The quantum concepts are impressively accurate while the story remains engaging and emotionally resonant.",
+        date: "2025-04-10",
+        avatar: "https://i.pravatar.cc/150?img=5",
+      },
+    ],
+  },
+  {
+    id: 3,
+    title: "Whispers Garden",
+    author: "Sophia Rosewood",
+    price: 12.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1747863498866-e88b7ef50d3e?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw5fHx8ZW58MHx8fHx8",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "A tender and poignant tale of love, loss, and renewal. When a young widow inherits her grandmother's cottage with its mysterious garden, she discovers that the plants have secrets to share about both her past and future.",
+    genre: ["Romance", "Contemporary", "Magical Realism"],
+    rating: 4.8,
+    releaseDate: "2025-01-20",
+    pages: 298,
+    reviews: [
+      {
+        id: 1,
+        userName: "GreenThumb",
+        rating: 5,
+        comment:
+          "The descriptions of the garden made me feel like I was there. Such a beautiful metaphor for grief and healing.",
+        date: "2025-04-22",
+        avatar: "https://i.pravatar.cc/150?img=23",
+      },
+      {
+        id: 2,
+        userName: "RomanceReader",
+        rating: 5,
+        comment:
+          "Cried my eyes out and then felt uplifted. The perfect emotional journey.",
+        date: "2025-04-05",
+        avatar: "https://i.pravatar.cc/150?img=29",
+      },
+    ],
+  },
+  {
+    id: 4,
+    title: "Codebreaker",
+    author: "Julian West",
+    price: 18.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1587613865763-4b8b0d19e8ab?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1546521343-4eb2c01aa44b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1510172951991-856a654063f9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "A fast-paced techno-thriller set in the near future. When a brilliant cryptographer discovers a pattern in seemingly random terrorist attacks, she becomes the target of both the perpetrators and government agencies with their own agendas.",
+    genre: ["Thriller", "Techno-thriller", "Espionage"],
+    rating: 4.6,
+    releaseDate: "2025-02-10",
+    pages: 387,
+    reviews: [
+      {
+        id: 1,
+        userName: "TechGeek",
+        rating: 5,
+        comment:
+          "The technical details are spot on without slowing down the plot. Edge-of-your-seat tension throughout!",
+        date: "2025-03-15",
+        avatar: "https://i.pravatar.cc/150?img=12",
+      },
+      {
+        id: 2,
+        userName: "ThrillerFan",
+        rating: 4,
+        comment:
+          "Some great twists and turns. The protagonist is brilliantly written and relatable despite her genius-level intellect.",
+        date: "2025-04-20",
+        avatar: "https://i.pravatar.cc/150?img=19",
+      },
+    ],
+  },
+  {
+    id: 5,
+    title: "The Forgotten City",
+    author: "Rafael Domingo",
+    price: 15.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1519791883288-dc8bd696e667?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "An archaeological adventure that spans centuries. When a team of researchers discovers an ancient city hidden beneath the Amazon rainforest, they unearth not only artifacts but also a legacy of power that threatens the modern world.",
+    genre: ["Adventure", "Historical", "Mystery"],
+    rating: 4.9,
+    releaseDate: "2025-01-05",
+    pages: 478,
+    featured: false,
+    reviews: [
+      {
+        id: 1,
+        userName: "HistoryBuff",
+        rating: 5,
+        comment:
+          "The historical research that went into this is impressive. I felt transported across time.",
+        date: "2025-04-12",
+        avatar: "https://i.pravatar.cc/150?img=16",
+      },
+      {
+        id: 2,
+        userName: "AdventureSeeker",
+        rating: 5,
+        comment:
+          "Indiana Jones meets Dan Brown with a fresh, original twist. Couldn't stop reading!",
+        date: "2025-03-30",
+        avatar: "https://i.pravatar.cc/150?img=33",
+      },
+    ],
+  },
+  {
+    id: 6,
+    title: "Starlight Chronicles",
+    author: "Aurora Wells",
+    price: 19.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1748201135959-8635c11aebdb?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxNHx8fGVufDB8fHx8fA%3D%3D",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1465101162946-4377e57745c3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "An epic space opera spanning galaxies and generations. As humanity expands into the stars, ancient cosmic forces awaken, and the fate of multiple species rests in the hands of an unlikely alliance of misfits and rebels.",
+    genre: ["Science Fiction", "Space Opera", "Epic"],
+    rating: 4.7,
+    releaseDate: "2025-03-25",
+    pages: 542,
+    reviews: [
+      {
+        id: 1,
+        userName: "SpaceExplorer",
+        rating: 5,
+        comment:
+          "World-building that rivals the greats of sci-fi. The alien cultures are particularly well-developed and unique.",
+        date: "2025-04-08",
+        avatar: "https://i.pravatar.cc/150?img=41",
+      },
+      {
+        id: 2,
+        userName: "SciFiClassicist",
+        rating: 4,
+        comment:
+          "A fresh take on space opera that honors the classics while pushing the genre forward.",
+        date: "2025-03-25",
+        avatar: "https://i.pravatar.cc/150?img=50",
+      },
+    ],
+  },
+  {
+    id: 7,
+    title: "Midnight Alchemy",
+    author: "Octavia Blackwood",
+    price: 17.49,
+    coverImage:
+      "https://images.unsplash.com/photo-1600431521340-491eca880813?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1511108690759-009324a90311?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1518281361980-b26bfd556770?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "In a world where alchemy is science and magic is real, a young apothecary's apprentice discovers a forbidden formula that could either save the fractured kingdom or plunge it into eternal darkness.",
+    genre: ["Fantasy", "Historical Fantasy", "Young Adult"],
+    rating: 4.8,
+    releaseDate: "2025-02-18",
+    pages: 368,
+    reviews: [
+      {
+        id: 1,
+        userName: "MagicSeeker",
+        rating: 5,
+        comment:
+          "The magic system is intricate and fascinating. I was completely immersed in this world from page one.",
+        date: "2025-03-20",
+        avatar: "https://i.pravatar.cc/150?img=17",
+      },
+      {
+        id: 2,
+        userName: "FantasyReader",
+        rating: 5,
+        comment:
+          "Such vivid writing! I could practically smell the herbs and potions in the apothecary.",
+        date: "2025-04-02",
+        avatar: "https://i.pravatar.cc/150?img=22",
+      },
+    ],
+  },
+  {
+    id: 8,
+    title: "The Last Algorithm",
+    author: "Arjun Mehta",
+    price: 16.99,
+    coverImage:
+      "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    additionalImages: [
+      "https://images.unsplash.com/photo-1580927752452-89d86da3fa0a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    ],
+    description:
+      "When a brilliant but reclusive programmer creates an algorithm that can predict anyone's death with 100% accuracy, the world's most powerful people will stop at nothing to control it. But some secrets were never meant to be unlocked.",
+    genre: ["Techno-thriller", "Science Fiction", "Suspense"],
+    rating: 4.6,
+    releaseDate: "2025-04-01",
+    pages: 412,
+    featured: true,
+    reviews: [
+      {
+        id: 1,
+        userName: "CodeMonkey",
+        rating: 5,
+        comment:
+          "As someone who works in AI, I found the technical aspects surprisingly plausible. Terrifying and thought-provoking.",
+        date: "2025-04-15",
+        avatar: "https://i.pravatar.cc/150?img=52",
+      },
+      {
+        id: 2,
+        userName: "ThrillerJunkie",
+        rating: 4,
+        comment:
+          "Fast-paced and incredibly tense. I was holding my breath during the final chapters!",
+        date: "2025-04-18",
+        avatar: "https://i.pravatar.cc/150?img=39",
+      },
+    ],
+  },
+];
 
-const TechPulse: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(
-    null
-  );
-  const [shareArticle, setShareArticle] = useState<NewsArticle | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loginForm, setLoginForm] = useState<LoginFormData>({
-    email: "",
-    password: "",
+const allGenres = Array.from(new Set(books.flatMap((book) => book.genre)));
+
+const BookMarketplace = () => {
+  const [darkMode, setDarkMode] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentHeroImage, setCurrentHeroImage] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50]);
+  const [showGenreFilter, setShowGenreFilter] = useState(false);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [activeSection, setActiveSection] = useState("home");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState(1);
+  const [orderComplete, setOrderComplete] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [bookView, setBookView] = useState<"grid" | "list">("grid");
+
+  // Form states
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  // Checkout form states
+  const [shippingAddress, setShippingAddress] = useState({
+    fullName: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "",
   });
-  const [newsletterForm, setNewsletterForm] = useState<NewsletterFormData>({
-    email: "",
+  const [paymentDetails, setPaymentDetails] = useState({
+    cardNumber: "",
+    nameOnCard: "",
+    expiry: "",
+    cvv: "",
   });
-  const [loginErrors, setLoginErrors] = useState<Partial<LoginFormData>>({});
-  const [newsletterError, setNewsletterError] = useState("");
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [likedArticles, setLikedArticles] = useState<Set<string>>(new Set());
 
-  // Toast utility functions
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', duration: number = 4000) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast: Toast = { id, message, type, duration };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, duration);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  const categories = [
-    "All",
-    "AI",
-    "Blockchain",
-    "Cybersecurity",
-    "Mobile",
-    "Cloud",
-    "Hardware",
+  const heroImages = [
+    "https://images.unsplash.com/photo-1526243741027-444d633d7365?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2000&q=80",
+    "https://images.unsplash.com/photo-1495640388908-05b31e524ef2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2000&q=80",
+    "https://images.unsplash.com/photo-1524678606370-a47ad25cb82a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2000&q=80",
   ];
 
-  const newsArticles: NewsArticle[] = [
-    {
-      id: "1",
-      title:
-        "Revolutionary AI Breakthrough Changes Everything We Know About Machine Learning",
-      excerpt:
-        "Scientists at leading tech companies have developed a new approach to artificial intelligence that promises to revolutionize how machines learn and adapt.",
-      content: `<div class="prose max-w-none">
-        <p>In a groundbreaking development that could reshape the entire landscape of artificial intelligence, researchers at leading technology companies have unveiled a revolutionary approach to machine learning that promises unprecedented capabilities in pattern recognition and adaptive learning.</p>
-        
-        <h2>The Breakthrough</h2>
-        <p>The new methodology, dubbed "Neural Synthesis Architecture" (NSA), represents a fundamental shift from traditional deep learning approaches. Unlike conventional neural networks that require massive datasets and extensive training periods, NSA can learn and adapt with minimal data exposure, mimicking the efficiency of human cognitive processes.</p>
-        
-        <h2>Key Innovations</h2>
-        <p>The research team has identified three critical innovations that make this breakthrough possible:</p>
-        <ul>
-          <li><strong>Adaptive Memory Networks:</strong> These allow the AI to retain and apply knowledge across different domains without forgetting previous learnings.</li>
-          <li><strong>Contextual Reasoning Modules:</strong> Enable the system to understand nuanced relationships between concepts, much like human intuition.</li>
-          <li><strong>Self-Optimizing Algorithms:</strong> The AI can modify its own learning processes to become more efficient over time.</li>
-        </ul>
-        
-        <h2>Real-World Applications</h2>
-        <p>The implications of this breakthrough extend far beyond academic research. Industries from healthcare to autonomous vehicles are already exploring potential applications. Early tests show the system can diagnose medical conditions with 97% accuracy using just a fraction of the data required by current AI systems.</p>
-        
-        <p>Dr. Sarah Chen, lead researcher on the project, explains: "We're not just improving existing AI capabilities – we're fundamentally changing how machines can think and learn. This could be the key to achieving true artificial general intelligence."</p>
-        
-        <h2>Looking Forward</h2>
-        <p>While the technology is still in early stages, major tech companies are already investing heavily in development. The next phase of research will focus on scaling the system and addressing ethical considerations around such powerful AI capabilities.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
-      category: "AI",
-      readTime: "5 min read",
-      views: "12.5K",
-      comments: 89,
-      author: "Dr. Sarah Chen",
-      publishedAt: "2 hours ago",
-      featured: true,
-      likes: 245,
-    },
-    {
-      id: "2",
-      title:
-        "Quantum Computing Reaches New Milestone with 1000-Qubit Processor",
-      excerpt:
-        "The latest quantum processor breakthrough brings us closer to solving complex problems that are impossible for traditional computers.",
-      content: `<div class="prose max-w-none">
-        <p>The quantum computing industry has achieved another major milestone with the successful development and testing of a 1000-qubit quantum processor, marking a significant step toward practical quantum supremacy in real-world applications.</p>
-        
-        <h2>Technical Achievement</h2>
-        <p>This latest processor represents a 10x improvement over previous quantum systems, utilizing advanced error correction and qubit stabilization techniques that maintain coherence for unprecedented durations. The system operates at near absolute zero temperatures and requires sophisticated isolation from electromagnetic interference.</p>
-        
-        <h2>Breakthrough Applications</h2>
-        <p>With 1000 qubits at their disposal, researchers can now tackle problems that would take classical computers thousands of years to solve, including molecular simulation for drug discovery, optimization problems in logistics, and cryptographic applications.</p>
-        
-        <p>The implications for industries are immense – from revolutionizing pharmaceutical research to transforming financial modeling and weather prediction systems.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&h=400&fit=crop",
-      category: "Hardware",
-      readTime: "7 min read",
-      views: "8.2K",
-      comments: 45,
-      author: "Michael Rodriguez",
-      publishedAt: "4 hours ago",
-      likes: 189,
-    },
-    {
-      id: "3",
-      title:
-        "Major Security Vulnerability Discovered in Popular Cloud Platforms",
-      excerpt:
-        "Cybersecurity researchers have identified critical vulnerabilities affecting millions of cloud-based applications worldwide.",
-      content: `<div class="prose max-w-none">
-        <p>A team of cybersecurity researchers has uncovered a series of critical vulnerabilities in major cloud computing platforms that could potentially expose millions of applications and their sensitive data to malicious attacks.</p>
-        
-        <h2>The Vulnerability</h2>
-        <p>The discovered flaws, collectively termed "CloudStorm," affect the fundamental authentication mechanisms used by cloud platforms to verify user identities and manage access permissions. The vulnerabilities could allow attackers to escalate privileges, access sensitive data, and potentially take control of entire cloud infrastructures.</p>
-        
-        <h2>Immediate Response</h2>
-        <p>Major cloud providers have been notified and are working around the clock to deploy patches and security updates. Users are advised to review their security configurations and implement additional authentication measures as a precautionary step.</p>
-        
-        <p>This discovery highlights the critical importance of continuous security auditing in cloud environments and the need for robust security practices as organizations increasingly rely on cloud services.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&h=400&fit=crop",
-      category: "Cybersecurity",
-      readTime: "4 min read",
-      views: "15.7K",
-      comments: 156,
-      author: "Alex Thompson",
-      publishedAt: "6 hours ago",
-      likes: 312,
-    },
-    {
-      id: "4",
-      title:
-        "Next-Generation 6G Technology Promises 100x Faster Internet Speeds",
-      excerpt:
-        "Early testing of 6G networks shows unprecedented data transfer rates that could transform how we interact with digital content.",
-      content: `<div class="prose max-w-none">
-        <p>The telecommunications industry is setting its sights on the future with early 6G technology demonstrations showing internet speeds up to 100 times faster than current 5G networks, promising to revolutionize everything from streaming media to autonomous vehicle communications.</p>
-        
-        <h2>Speed Revolution</h2>
-        <p>Initial tests have achieved data transfer rates exceeding 1 terabit per second, enabling possibilities that seemed like science fiction just years ago. At these speeds, downloading a full-length 4K movie would take less than a second, and real-time holographic communications could become mainstream.</p>
-        
-        <h2>Beyond Speed</h2>
-        <p>However, 6G isn't just about faster downloads. The technology promises ultra-low latency, enhanced AI integration, and the ability to support millions of connected devices per square kilometer – crucial for the Internet of Things and smart city applications.</p>
-        
-        <p>While commercial deployment is still years away, the early results suggest that 6G could be the foundation for truly immersive digital experiences and seamless integration between physical and virtual worlds.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop",
-      category: "Mobile",
-      readTime: "6 min read",
-      views: "9.3K",
-      comments: 67,
-      author: "Emma Liu",
-      publishedAt: "8 hours ago",
-      likes: 156,
-    },
-    {
-      id: "5",
-      title: "Blockchain Technology Revolutionizes Supply Chain Management",
-      excerpt:
-        "Major corporations are adopting blockchain solutions to create transparent and efficient supply chain tracking systems.",
-      content: `<div class="prose max-w-none">
-        <p>Leading corporations across various industries are implementing blockchain technology to create unprecedented transparency and efficiency in their supply chain operations, marking a significant shift toward more accountable and sustainable business practices.</p>
-        
-        <h2>Transparency Revolution</h2>
-        <p>Blockchain's immutable ledger system allows companies and consumers to track products from their origin to final delivery, creating an unbreakable chain of custody that prevents fraud and ensures authenticity.</p>
-        
-        <h2>Real-World Implementation</h2>
-        <p>Major retailers are already using blockchain to track everything from food products to luxury goods, providing consumers with detailed information about product origins, manufacturing processes, and environmental impact.</p>
-        
-        <p>This technology is particularly valuable in industries where authenticity and ethical sourcing are crucial, such as pharmaceuticals, organic foods, and luxury goods.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=400&fit=crop",
-      category: "Blockchain",
-      readTime: "5 min read",
-      views: "6.8K",
-      comments: 34,
-      author: "David Park",
-      publishedAt: "12 hours ago",
-      likes: 98,
-    },
-    {
-      id: "6",
-      title: "Cloud Computing Giants Announce Major Infrastructure Expansion",
-      excerpt:
-        "Leading cloud providers are investing billions in new data centers to meet growing demand for cloud services.",
-      content: `<div class="prose max-w-none">
-        <p>Major cloud computing providers have announced massive infrastructure investments, with plans to build dozens of new data centers worldwide to meet the exponentially growing demand for cloud services and edge computing capabilities.</p>
-        
-        <h2>Investment Scale</h2>
-        <p>The combined investment from leading providers exceeds $50 billion, representing one of the largest infrastructure expansions in the technology sector's history. These new facilities will incorporate the latest in energy-efficient design and renewable energy sources.</p>
-        
-        <h2>Global Reach</h2>
-        <p>The expansion focuses on bringing cloud services closer to end users through edge computing locations, reducing latency and improving performance for applications requiring real-time processing.</p>
-        
-        <p>This infrastructure boom reflects the continued digital transformation of businesses worldwide and the increasing reliance on cloud-based services for everything from data storage to artificial intelligence processing.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop",
-      category: "Cloud",
-      readTime: "4 min read",
-      views: "7.1K",
-      comments: 28,
-      author: "Rachel Green",
-      publishedAt: "1 day ago",
-      likes: 134,
-    },
-    {
-      id: "7",
-      title:
-        "Virtual Reality Technology Transforms Medical Training and Patient Care",
-      excerpt:
-        "Healthcare professionals are using VR to train surgeons, treat phobias, and provide immersive therapy experiences for patients worldwide.",
-      content: `<div class="prose max-w-none">
-        <p>Virtual Reality technology is revolutionizing healthcare by providing innovative solutions for medical training, patient treatment, and therapeutic interventions that were previously impossible or impractical.</p>
-        
-        <h2>Medical Training Revolution</h2>
-        <p>Medical schools and hospitals are implementing VR systems that allow students and professionals to practice complex surgical procedures in risk-free virtual environments. These simulations provide detailed anatomical models and realistic surgical scenarios.</p>
-        
-        <h2>Patient Treatment Applications</h2>
-        <p>VR therapy is showing remarkable success in treating conditions like PTSD, phobias, and chronic pain. Patients can be gradually exposed to controlled virtual environments that help them overcome fears and manage symptoms.</p>
-        
-        <p>The technology is also being used for rehabilitation therapy, helping stroke patients regain motor skills through engaging virtual exercises and activities.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=800&h=400&fit=crop",
-      category: "AI",
-      readTime: "6 min read",
-      views: "11.2K",
-      comments: 73,
-      author: "Dr. Jennifer Walsh",
-      publishedAt: "14 hours ago",
-      likes: 187,
-    },
-    {
-      id: "8",
-      title: "Sustainable Tech: Solar Panel Efficiency Breaks 30% Barrier",
-      excerpt:
-        "New perovskite-silicon tandem solar cells achieve record-breaking efficiency rates, promising cheaper and more accessible renewable energy.",
-      content: `<div class="prose max-w-none">
-        <p>Researchers have achieved a major breakthrough in renewable energy technology with solar panels that can convert over 30% of sunlight into electricity, surpassing previous efficiency records.</p>
-        
-        <h2>Breakthrough Technology</h2>
-        <p>The new perovskite-silicon tandem cells combine two different materials to capture a broader spectrum of sunlight, significantly improving energy conversion rates compared to traditional silicon-only panels.</p>
-        
-        <h2>Environmental Impact</h2>
-        <p>This advancement could accelerate the global transition to renewable energy by making solar power more cost-effective and efficient, potentially reducing installation costs and increasing adoption rates worldwide.</p>
-        
-        <p>The technology promises to make renewable energy more accessible to developing nations and could play a crucial role in meeting global climate targets.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=400&fit=crop",
-      category: "Hardware",
-      readTime: "5 min read",
-      views: "9.8K",
-      comments: 52,
-      author: "Dr. Marcus Silva",
-      publishedAt: "18 hours ago",
-      likes: 203,
-    },
-    {
-      id: "9",
-      title: "Apple and Google Announce Major Privacy Updates for Mobile Users",
-      excerpt:
-        "Tech giants introduce new privacy features that give users unprecedented control over their personal data and app permissions.",
-      content: `<div class="prose max-w-none">
-        <p>Major technology companies are rolling out comprehensive privacy updates that fundamentally change how mobile applications can collect and use personal data.</p>
-        
-        <h2>Enhanced User Control</h2>
-        <p>The new features include granular permission controls, real-time tracking alerts, and simplified privacy dashboards that make it easier for users to understand and control their data sharing.</p>
-        
-        <h2>Industry Impact</h2>
-        <p>These changes are expected to significantly impact digital advertising and app development, forcing companies to adopt more transparent and user-friendly data practices.</p>
-        
-        <p>Privacy advocates praise these moves as important steps toward giving users more control over their digital lives and personal information.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=400&fit=crop",
-      category: "Mobile",
-      readTime: "4 min read",
-      views: "13.5K",
-      comments: 94,
-      author: "Sarah Kim",
-      publishedAt: "1 day ago",
-      likes: 278,
-    },
-    {
-      id: "10",
-      title: "Autonomous Vehicles Reach New Safety Milestone in Urban Testing",
-      excerpt:
-        "Self-driving cars demonstrate 40% fewer accidents than human drivers in comprehensive city-wide testing programs.",
-      content: `<div class="prose max-w-none">
-        <p>Extensive testing programs in major cities have shown that autonomous vehicles are significantly safer than human-operated cars, marking a crucial milestone for the self-driving car industry.</p>
-        
-        <h2>Safety Statistics</h2>
-        <p>The latest data from comprehensive testing programs shows autonomous vehicles have 40% fewer accidents per mile driven compared to human drivers, with particularly strong performance in complex urban environments.</p>
-        
-        <h2>Technology Advances</h2>
-        <p>Improvements in sensor technology, machine learning algorithms, and real-time processing capabilities have enabled these vehicles to better navigate challenging situations like pedestrian crossings, construction zones, and adverse weather conditions.</p>
-        
-        <p>Regulatory agencies are now considering frameworks that could accelerate the deployment of autonomous vehicles in urban areas.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=400&fit=crop",
-      category: "AI",
-      readTime: "7 min read",
-      views: "16.3K",
-      comments: 118,
-      author: "Robert Chen",
-      publishedAt: "2 days ago",
-      likes: 341,
-    },
-    {
-      id: "11",
-      title:
-        "Edge Computing Revolution: Processing Power Moves Closer to Users",
-      excerpt:
-        "New edge computing infrastructure promises ultra-low latency for applications ranging from gaming to industrial automation.",
-      content: `<div class="prose max-w-none">
-        <p>The computing industry is experiencing a fundamental shift as processing power moves from centralized cloud servers to edge locations closer to end users, enabling new applications and dramatically improving performance.</p>
-        
-        <h2>Technical Innovation</h2>
-        <p>Edge computing nodes are being deployed in cellular towers, retail locations, and industrial sites, providing powerful computing capabilities with latency measured in single-digit milliseconds rather than the 50-100ms typical of cloud services.</p>
-        
-        <h2>Real-World Applications</h2>
-        <p>This technology enables real-time applications like autonomous vehicles, industrial robotics, augmented reality, and ultra-responsive gaming experiences that were previously impossible with traditional cloud computing.</p>
-        
-        <p>The edge computing market is expected to grow exponentially as 5G networks provide the high-speed, low-latency connectivity needed to fully realize its potential.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop",
-      category: "Cloud",
-      readTime: "6 min read",
-      views: "8.7K",
-      comments: 61,
-      author: "Lisa Chang",
-      publishedAt: "2 days ago",
-      likes: 156,
-    },
-    {
-      id: "12",
-      title: "Cryptocurrency Market Sees Major Institutional Adoption Wave",
-      excerpt:
-        "Fortune 500 companies and central banks worldwide are integrating blockchain technology and digital currencies into their operations.",
-      content: `<div class="prose max-w-none">
-        <p>The cryptocurrency and blockchain industry is experiencing unprecedented institutional adoption as major corporations and government entities integrate digital assets into their financial strategies.</p>
-        
-        <h2>Corporate Adoption</h2>
-        <p>Major companies are not only investing in cryptocurrencies as treasury assets but also implementing blockchain technology for supply chain management, smart contracts, and cross-border payments.</p>
-        
-        <h2>Government Integration</h2>
-        <p>Central banks worldwide are developing digital versions of their national currencies, while regulatory frameworks are becoming more supportive of blockchain innovation and cryptocurrency trading.</p>
-        
-        <p>This mainstream adoption is driving increased stability and legitimacy in the cryptocurrency market, attracting more traditional investors and use cases.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=800&h=400&fit=crop",
-      category: "Blockchain",
-      readTime: "5 min read",
-      views: "12.4K",
-      comments: 87,
-      author: "Michael Torres",
-      publishedAt: "3 days ago",
-      likes: 234,
-    },
-    {
-      id: "13",
-      title:
-        "Breakthrough in Neuromorphic Computing Mimics Human Brain Function",
-      excerpt:
-        "Scientists develop computer chips that process information like biological neural networks, promising ultra-efficient AI systems.",
-      content: `<div class="prose max-w-none">
-        <p>Researchers have made significant advances in neuromorphic computing, creating chips that mimic the structure and function of biological neural networks to achieve unprecedented efficiency in AI processing.</p>
-        
-        <h2>Brain-Inspired Architecture</h2>
-        <p>Unlike traditional digital processors, neuromorphic chips use analog signals and event-driven processing that closely resembles how neurons communicate in the human brain, resulting in dramatically lower power consumption.</p>
-        
-        <h2>Efficiency Breakthrough</h2>
-        <p>These chips can perform AI tasks using up to 1000 times less energy than conventional processors, making it possible to run sophisticated AI applications on battery-powered devices for extended periods.</p>
-        
-        <p>Applications range from autonomous drones and smart sensors to prosthetic limbs and brain-computer interfaces that could revolutionize how humans interact with technology.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&h=400&fit=crop",
-      category: "Hardware",
-      readTime: "8 min read",
-      views: "7.9K",
-      comments: 45,
-      author: "Dr. Amanda Foster",
-      publishedAt: "3 days ago",
-      likes: 198,
-    },
-    {
-      id: "14",
-      title: "Next-Gen Cybersecurity: AI-Powered Threat Detection Systems",
-      excerpt:
-        "Advanced machine learning algorithms can now predict and prevent cyber attacks before they happen, revolutionizing digital security.",
-      content: `<div class="prose max-w-none">
-        <p>The cybersecurity industry is being transformed by artificial intelligence systems that can predict, identify, and neutralize cyber threats in real-time, offering unprecedented protection for digital infrastructure.</p>
-        
-        <h2>Predictive Security</h2>
-        <p>AI-powered security systems analyze patterns in network traffic, user behavior, and system interactions to identify potential threats before they can cause damage, moving from reactive to proactive cybersecurity.</p>
-        
-        <h2>Automated Response</h2>
-        <p>These systems can automatically isolate infected systems, block malicious traffic, and implement countermeasures without human intervention, responding to threats in milliseconds rather than hours or days.</p>
-        
-        <p>The technology is particularly crucial as cyber attacks become more sophisticated and frequent, with AI helping to level the playing field between attackers and defenders.</p>
-      </div>`,
-      image:
-        "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&h=400&fit=crop",
-      category: "Cybersecurity",
-      readTime: "6 min read",
-      views: "14.1K",
-      comments: 102,
-      author: "David Park",
-      publishedAt: "4 days ago",
-      likes: 267,
-    },
-  ];
+  const homeRef = useRef<HTMLDivElement>(null);
+  const booksRef = useRef<HTMLDivElement>(null);
+  const aboutRef = useRef<HTMLDivElement>(null);
+  const contactRef = useRef<HTMLDivElement>(null);
 
-  const filteredArticles = newsArticles.filter((article) => {
-    const matchesCategory =
-      selectedCategory === "All" || article.category === selectedCategory;
+  const filteredBooks = books.filter((book) => {
     const matchesSearch =
-      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGenre =
+      selectedGenres.length === 0 ||
+      book.genre.some((genre) => selectedGenres.includes(genre));
+    const matchesPrice =
+      book.price >= priceRange[0] && book.price <= priceRange[1];
+
+    return matchesSearch && matchesGenre && matchesPrice;
   });
 
-  const featuredArticle = newsArticles.find((article) => article.featured);
-  const regularArticles = filteredArticles.filter(
-    (article) => !article.featured
-  );
+  const featuredBooks = books.filter((book) => book.featured);
 
-  const toggleMenu = useCallback(() => {
-    setIsMenuOpen((prev) => !prev);
-  }, []);
-
-  const toggleLogin = useCallback(() => {
-    setIsLoginOpen((prev) => !prev);
-    setLoginErrors({});
-    setLoginForm({ email: "", password: "" });
-    setIsMenuOpen(false);
-    // loveleen
-  }, []);
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  const getRelatedBooks = (book: Book) => {
+    return books
+      .filter(
+        (b) =>
+          b.id !== book.id &&
+          b.genre.some((genre) => book.genre.includes(genre))
+      )
+      .slice(0, 3);
   };
 
-  const handleLogin = useCallback(() => {
-    const errors: Partial<LoginFormData> = {};
+  const addToCart = (book: Book) => {
+    setLoading(true);
 
-    if (!loginForm.email) {
-      errors.email = "Email is required";
-    } else if (!validateEmail(loginForm.email)) {
-      errors.email = "Please enter a valid email";
-    }
+    setTimeout(() => {
+      const existingItem = cart.find((item) => item.book.id === book.id);
 
-    if (!loginForm.password) {
-      errors.password = "Password is required";
-    } else if (loginForm.password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
-    }
-
-    setLoginErrors(errors);
-
-    if (Object.keys(errors).length === 0) {
-      // Sample credentials check
-      if (
-        loginForm.email === "demo@techpulse.com" &&
-        loginForm.password === "demo123"
-      ) {
-        setUser({ email: loginForm.email, name: "Demo User" });
-        setIsLoginOpen(false);
-        showToast("Successfully logged in! Welcome back.", "success");
+      if (existingItem) {
+        setCart(
+          cart.map((item) =>
+            item.book.id === book.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        );
       } else {
-        errors.password =
-          "Invalid credentials. Use: demo@techpulse.com / demo123";
-        setLoginErrors(errors);
+        setCart([...cart, { book, quantity: 1 }]);
       }
-    }
-  }, [loginForm, showToast]);
 
-  const handleLogout = useCallback(() => {
-    setUser(null);
-    showToast("Successfully logged out. See you next time!", "success");
-  }, [showToast]);
+      setNotificationMessage(`${book.title} added to cart!`);
+      setShowNotification(true);
+      setLoading(false);
 
-  const handleNewsletterSubmit = useCallback(() => {
-    if (!newsletterForm.email) {
-      setNewsletterError("Email is required");
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 3000);
+    }, 600);
+  };
+
+  const removeFromCart = (bookId: number) => {
+    setCart(cart.filter((item) => item.book.id !== bookId));
+  };
+
+  const updateCartItemQuantity = (bookId: number, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(bookId);
       return;
     }
-    if (!validateEmail(newsletterForm.email)) {
-      setNewsletterError("Please enter a valid email");
-      return;
-    }
 
-    setNewsletterError("");
-    showToast("Successfully subscribed to our newsletter!", "success");
-    setNewsletterForm({ email: "" });
-  }, [newsletterForm, showToast]);
+    setCart(
+      cart.map((item) =>
+        item.book.id === bookId ? { ...item, quantity } : item
+      )
+    );
+  };
 
-  const handleCategorySelect = useCallback((category: string) => {
-    setSelectedCategory(category);
-  }, []);
-
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-    },
-    []
-  );
-
-  const handleArticleClick = useCallback((article: NewsArticle) => {
-    setSelectedArticle(article);
-  }, []);
-
-  const handleBackToNews = useCallback(() => {
-    setSelectedArticle(null);
-  }, []);
-
-  const handleLikeArticle = useCallback(
-    (articleId: string) => {
-      setLikedArticles((prev) => {
-        const newLiked = new Set(prev);
-        if (newLiked.has(articleId)) {
-          newLiked.delete(articleId);
-        } else {
-          newLiked.add(articleId);
-        }
-        return newLiked;
-      });
-    },
-    []
-  );
-
-  const handleShareClick = useCallback((article: NewsArticle) => {
-    setShareArticle(article);
-    setIsShareOpen(true);
-  }, []);
-
-  const handleCloseShare = useCallback(() => {
-    setIsShareOpen(false);
-    setShareArticle(null);
-  }, []);
-
-  const handleShare = useCallback(
-    (platform: string) => {
-      if (!shareArticle) return;
-
-      const url = `https://techpulse.com/article/${shareArticle.id}`;
-      const text = shareArticle.title;
-
-      let shareUrl = "";
-      switch (platform) {
-        case "twitter":
-          shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-            text
-          )}&url=${encodeURIComponent(url)}`;
-          break;
-        case "facebook":
-          shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-            url
-          )}`;
-          break;
-        case "linkedin":
-          shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
-            url
-          )}`;
-          break;
-        case "copy":
-          navigator.clipboard.writeText(url);
-          showToast("Link copied to clipboard!", "success", 3000);
-          handleCloseShare();
-          return;
-      }
-
-      if (shareUrl) {
-        window.open(shareUrl, "_blank", "width=600,height=400");
-        handleCloseShare();
-      }
-    },
-    [shareArticle, showToast]
-  );
-
-  const scrollToSection = useCallback((sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-      setIsMenuOpen(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsLoginOpen(false);
-        setIsMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
-  useEffect(() => {
-    const shouldLockScroll =
-      isLoginOpen || isShareOpen || isMenuOpen || selectedArticle;
-
-    if (shouldLockScroll) {
-      document.body.classList.add("overflow-hidden");
+  const toggleWishlist = (bookId: number) => {
+    if (wishlist.includes(bookId)) {
+      setWishlist(wishlist.filter((id) => id !== bookId));
+      setNotificationMessage("Removed from wishlist");
     } else {
-      document.body.classList.remove("overflow-hidden");
+      setWishlist([...wishlist, bookId]);
+      setNotificationMessage("Added to wishlist");
     }
 
-    return () => {
-      document.body.classList.remove("overflow-hidden");
-    };
-  }, [isLoginOpen, isShareOpen, isMenuOpen, selectedArticle]);
+    setShowNotification(true);
 
-  // Remove scroll detection - we want a simple static header
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
+  const handleContactSubmit = () => {
+    if (name && email && message) {
+      setLoading(true);
+
+      setTimeout(() => {
+        setContactSubmitted(true);
+        setLoading(false);
+
+        setTimeout(() => {
+          setName("");
+          setEmail("");
+          setMessage("");
+          setContactSubmitted(false);
+        }, 3000);
+      }, 1000);
+    }
+  };
+
+  const handleCheckout = () => {
+    setIsCheckingOut(true);
+    setCheckoutStep(1);
+  };
+
+  const continueCheckout = () => {
+    if (checkoutStep === 1) {
+      if (
+        shippingAddress.fullName &&
+        shippingAddress.address &&
+        shippingAddress.city &&
+        shippingAddress.state &&
+        shippingAddress.zip &&
+        shippingAddress.country
+      ) {
+        setCheckoutStep(2);
+      } else {
+        setNotificationMessage("Please fill in all shipping fields");
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 3000);
+      }
+    } else if (checkoutStep === 2) {
+      if (
+        paymentDetails.cardNumber &&
+        paymentDetails.nameOnCard &&
+        paymentDetails.expiry &&
+        paymentDetails.cvv
+      ) {
+        setLoading(true);
+
+        setTimeout(() => {
+          setOrderComplete(true);
+          setLoading(false);
+
+          setTimeout(() => {
+            setCart([]);
+            setIsCheckingOut(false);
+            setOrderComplete(false);
+            setShowCart(false);
+
+            setShippingAddress({
+              fullName: "",
+              address: "",
+              city: "",
+              state: "",
+              zip: "",
+              country: "",
+            });
+            setPaymentDetails({
+              cardNumber: "",
+              nameOnCard: "",
+              expiry: "",
+              cvv: "",
+            });
+          }, 5000);
+        }, 2000);
+      } else {
+        setNotificationMessage("Please fill in all payment fields");
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 3000);
+      }
+    }
+  };
+
+  const cancelCheckout = () => {
+    setIsCheckingOut(false);
+    setCheckoutStep(1);
+  };
+
+  const cartTotal = cart.reduce(
+    (total, item) => total + item.book.price * item.quantity,
+    0
+  );
+
+  const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setShippingAddress({
+      ...shippingAddress,
+      [name]: value,
+    });
+  };
+
+  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPaymentDetails({
+      ...paymentDetails,
+      [name]: value,
+    });
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHeroImage((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Effect to handle body scrolling when a modal (cart or book details) is open
+  useEffect(() => {
+    const body = document.body;
+    if (showCart || selectedBook) {
+      body.style.overflow = 'hidden';
+    } else {
+      body.style.overflow = '';
+    }
+
+    // Cleanup function to reset overflow when component unmounts
+    return () => {
+      body.style.overflow = '';
+    };
+  }, [showCart, selectedBook]); // Re-run effect if showCart or selectedBook changes
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 100;
+
+      if (homeRef.current && scrollPosition < homeRef.current.offsetHeight) {
+        setActiveSection("home");
+      } else if (
+        booksRef.current &&
+        scrollPosition <
+          booksRef.current.offsetTop + booksRef.current.offsetHeight
+      ) {
+        setActiveSection("books");
+      } else if (
+        aboutRef.current &&
+        scrollPosition <
+          aboutRef.current.offsetTop + aboutRef.current.offsetHeight
+      ) {
+        setActiveSection("about");
+      } else if (contactRef.current) {
+        setActiveSection("contact");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
+  const toggleGenreFilter = () => {
+    setShowGenreFilter(!showGenreFilter);
+  };
+
+  const toggleGenre = (genre: string) => {
+    if (selectedGenres.includes(genre)) {
+      setSelectedGenres(selectedGenres.filter((g) => g !== genre));
+    } else {
+      setSelectedGenres([...selectedGenres, genre]);
+    }
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedGenres([]);
+    setPriceRange([0, 50]);
+  };
+
+  const handlePriceChange = (value: number, index: number) => {
+    const newRange = [...priceRange] as [number, number];
+    newRange[index] = value;
+    setPriceRange(newRange);
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    setMobileMenuOpen(false);
+
+    let sectionRef;
+    switch (sectionId) {
+      case "home":
+        sectionRef = homeRef;
+        break;
+      case "books":
+        sectionRef = booksRef;
+        break;
+      case "about":
+        sectionRef = aboutRef;
+        break;
+      case "contact":
+        sectionRef = contactRef;
+        break;
+      default:
+        sectionRef = null;
+    }
+
+    if (sectionRef && sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <style jsx>{`
-        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
-        * {
-          font-family: "Roboto", sans-serif;
-        }
-      `}</style>
-
-      {/* Toast Notifications */}
-      <div className="fixed bottom-4 left-4 right-4 md:top-4 md:right-4 md:left-auto md:bottom-auto z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`w-full md:min-w-80 md:max-w-sm bg-white/95 backdrop-blur-lg shadow-xl rounded-lg pointer-events-auto ring-1 ring-black/5 transform transition-all duration-300 ease-in-out ${
-              toast.type === 'success' ? 'border-l-4 border-green-500' :
-              toast.type === 'error' ? 'border-l-4 border-red-500' :
-              'border-l-4 border-blue-500'
-            }`}
+    <div
+      className={`min-h-screen transition-colors duration-500 ${
+        darkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
+      }`}
+    >
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <div className="p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  {toast.type === 'success' && (
-                    <div className="h-5 w-5 text-green-500">
-                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
-                  {toast.type === 'error' && (
-                    <div className="h-5 w-5 text-red-500">
-                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  )}
-                  {toast.type === 'info' && (
-                    <div className="h-5 w-5 text-blue-500">
-                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {toast.message}
-                  </p>
-                </div>
-                <div className="ml-4 flex-shrink-0">
-                  <button
-                    className="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md"
-                    onClick={() => removeToast(toast.id)}
-                  >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+            <div className="relative w-24 h-24">
+              <motion.span
+                className="absolute inset-0 rounded-full border-4 border-t-transparent border-b-transparent border-purple-500"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
+              <motion.span
+                className="absolute inset-2 rounded-full border-4 border-l-transparent border-r-transparent border-purple-300"
+                animate={{ rotate: -360 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              />
             </div>
-          </div>
-        ))}
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Simple Static Header */}
-      <header className="bg-white shadow-lg sticky top-0 z-40 border-b border-gray-200">
-        {/* Main Header */}
-        <div className="bg-white py-5 lg:py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-8">
-              {/* Logo */}
-              <div className="flex items-center space-x-4 flex-shrink-0">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2.5 rounded-xl shadow-md">
-                  <Globe className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    TechPulse
-                  </h1>
-                </div>
-              </div>
+      {/* Notification */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            className={`fixed top-24 right-4 z-[9999] px-6 py-3 rounded-lg shadow-lg ${
+              darkMode ? "bg-purple-800 text-white" : "bg-purple-600 text-white"
+            }`}
+            initial={{ opacity: 0, y: -50, x: 100 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -50, x: 100 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          >
+            {notificationMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* Desktop Navigation */}
-              <nav className="hidden lg:flex items-center space-x-10 flex-1 justify-center">
-                <button
-                  onClick={() => scrollToSection("home")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  HOME
-                </button>
-                <button
-                  onClick={() => scrollToSection("technology")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  TECH
-                </button>
-                <button
-                  onClick={() => scrollToSection("featured")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  FEATURED
-                </button>
-                <button
-                  onClick={() => scrollToSection("latest")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  LATEST
-                </button>
-                <button
-                  onClick={() => scrollToSection("trending")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  TRENDING
-                </button>
-                <button
-                  onClick={() => scrollToSection("videos")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  VIDEOS
-                </button>
-                <button
-                  onClick={() => scrollToSection("newsletter")}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 cursor-pointer text-sm tracking-wide"
-                >
-                  SUBSCRIBE
-                </button>
-              </nav>
+      {/* Header */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-lg ${
+          darkMode
+            ? "bg-gray-900/70 border-gray-800"
+            : "bg-white/70 border-gray-200"
+        } border-b`}
+      >
+        <div className="container mx-auto px-3 md:px-4 py-4 md:py-4 flex justify-between items-center">
+          <motion.div
+            className="flex items-center gap-1 md:gap-2 font-bold text-lg md:text-xl cursor-pointer"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            onClick={() => scrollToSection("home")}
+          >
+            <BookOpen
+              className={`w-5 h-5 md:w-6 md:h-6 ${darkMode ? "text-purple-400" : "text-purple-600"}`}
+            />
+            <span
+              className={`${
+                darkMode ? "text-white" : "text-gray-900"
+              } font-serif tracking-wide`}
+            >
+              <span className="text-purple-500">Indie</span>Page
+            </span>
+          </motion.div>
 
-              {/* Search and Login */}
-              <div className="flex items-center space-x-3 lg:space-x-5 flex-shrink-0">
-                {/* Search Bar - Desktop Only */}
-                <div className="relative hidden lg:block">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search news..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48 lg:w-56 xl:w-64 text-sm bg-gray-50 focus:bg-white transition-colors duration-200"
-                  />
-                </div>
+          {/* Desktop Navigation */}
+          <motion.nav
+            className="hidden md:flex items-center gap-6"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <motion.a
+              href="#home"
+              className={`font-medium transition-colors flex items-center gap-1 relative px-2 py-1 ${
+                activeSection === "home"
+                  ? "text-purple-500"
+                  : darkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection("home");
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Home size={18} />
+              <span>Home</span>
+              {activeSection === "home" && (
+                <motion.span
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-full"
+                  layoutId="navIndicator"
+                />
+              )}
+            </motion.a>
+            <motion.a
+              href="#books"
+              className={`font-medium transition-colors flex items-center gap-1 relative px-2 py-1 ${
+                activeSection === "books"
+                  ? "text-purple-500"
+                  : darkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection("books");
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <BookOpen size={18} />
+              <span>Books</span>
+              {activeSection === "books" && (
+                <motion.span
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-full"
+                  layoutId="navIndicator"
+                />
+              )}
+            </motion.a>
+            <motion.a
+              href="#about"
+              className={`font-medium transition-colors flex items-center gap-1 relative px-2 py-1 ${
+                activeSection === "about"
+                  ? "text-purple-500"
+                  : darkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection("about");
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Info size={18} />
+              <span>About</span>
+              {activeSection === "about" && (
+                <motion.span
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-full"
+                  layoutId="navIndicator"
+                />
+              )}
+            </motion.a>
+            <motion.a
+              href="#contact"
+              className={`font-medium transition-colors flex items-center gap-1 relative px-2 py-1 ${
+                activeSection === "contact"
+                  ? "text-purple-500"
+                  : darkMode
+                  ? "text-gray-300 hover:text-purple-400"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection("contact");
+              }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Mail size={18} />
+              <span>Contact</span>
+              {activeSection === "contact" && (
+                <motion.span
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-full"
+                  layoutId="navIndicator"
+                />
+              )}
+            </motion.a>
+          </motion.nav>
 
-                {/* User Controls */}
-                {user ? (
-                  <div className="flex items-center space-x-2 lg:space-x-3 xl:space-x-4">
-                    <span className="text-sm font-medium text-gray-700 hidden 2xl:block truncate max-w-32">
-                      Welcome, {user.name}
-                    </span>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center space-x-1 lg:space-x-2 text-red-600 hover:text-red-700 py-2 px-2 lg:px-3 rounded-lg hover:bg-red-50 transition-all duration-200 cursor-pointer flex-shrink-0"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span className="text-sm hidden xl:block">Logout</span>
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={toggleLogin}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 lg:px-5 py-2.5 rounded-full hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer text-sm font-medium flex-shrink-0"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>Login</span>
-                  </button>
-                )}
+          {/* Actions */}
+          <motion.div
+            className="flex items-center gap-2 md:gap-4"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {/* Dark mode toggle */}
+            <motion.button
+              onClick={toggleDarkMode}
+              className={`p-1.5 md:p-2 rounded-full cursor-pointer ${
+                darkMode
+                  ? "bg-gray-800 text-yellow-300 hover:bg-gray-700"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              } transition-colors`}
+              aria-label={
+                darkMode ? "Switch to light mode" : "Switch to dark mode"
+              }
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              {darkMode ? <Sun size={18} className="md:w-5 md:h-5" /> : <Moon size={18} className="md:w-5 md:h-5" />}
+            </motion.button>
 
-                {/* Mobile Menu Button */}
-                <button
-                  onClick={toggleMenu}
-                  className="lg:hidden p-2.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 cursor-pointer flex-shrink-0"
+            {/* Cart button */}
+            <motion.button
+              onClick={() => setShowCart(true)}
+              className={`p-1.5 md:p-2 rounded-full relative cursor-pointer ${
+                darkMode
+                  ? "bg-gray-800 hover:bg-gray-700"
+                  : "bg-gray-200 hover:bg-gray-300"
+              } transition-colors`}
+              aria-label="Shopping cart"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <ShoppingCart size={18} className="md:w-5 md:h-5" />
+              {cart.length > 0 && (
+                <motion.span
+                  className="absolute -top-1 -right-1 md:-top-2 md:-right-2 bg-purple-600 text-white text-xs rounded-full w-4 h-4 md:w-5 md:h-5 flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
                 >
-                  {isMenuOpen ? (
-                    <X className="h-6 w-6" />
-                  ) : (
-                    <Menu className="h-6 w-6" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+                  {cart.reduce((total, item) => total + item.quantity, 0)}
+                </motion.span>
+              )}
+            </motion.button>
+
+            {/* Mobile menu button */}
+            <motion.button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`p-1.5 md:p-2 rounded-full md:hidden cursor-pointer ${
+                darkMode
+                  ? "bg-gray-800 hover:bg-gray-700"
+                  : "bg-gray-200 hover:bg-gray-300"
+              } transition-colors`}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              {mobileMenuOpen ? <X size={18} className="md:w-5 md:h-5" /> : <Menu size={18} className="md:w-5 md:h-5" />}
+            </motion.button>
+          </motion.div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
-            <div className="px-4 py-4">
-              {/* Mobile Navigation Links */}
-              <div className="space-y-1 pb-5">
-                <button
-                  onClick={() => scrollToSection("home")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              className={`absolute top-full left-0 right-0 ${
+                darkMode ? "bg-gray-800/95" : "bg-white/95"
+              } border-b ${
+                darkMode ? "border-gray-700" : "border-gray-200"
+              } md:hidden backdrop-blur-md`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <nav className="container mx-auto py-4 px-4 flex flex-col gap-4">
+                <motion.a
+                  href="#home"
+                  className={`font-medium ${
+                    activeSection === "home" ? "text-purple-500" : ""
+                  } hover:text-purple-500 transition-colors py-2 flex items-center gap-2`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection("home");
+                  }}
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
                 >
-                  HOME
-                </button>
-                <button
-                  onClick={() => scrollToSection("technology")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
+                  <Home size={18} />
+                  <span>Home</span>
+                </motion.a>
+                <motion.a
+                  href="#books"
+                  className={`font-medium ${
+                    activeSection === "books" ? "text-purple-500" : ""
+                  } hover:text-purple-500 transition-colors py-2 flex items-center gap-2`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection("books");
+                  }}
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
                 >
-                  TECH
-                </button>
-                <button
-                  onClick={() => scrollToSection("featured")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
+                  <BookOpen size={18} />
+                  <span>Books</span>
+                </motion.a>
+                <motion.a
+                  href="#about"
+                  className={`font-medium ${
+                    activeSection === "about" ? "text-purple-500" : ""
+                  } hover:text-purple-500 transition-colors py-2 flex items-center gap-2`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection("about");
+                  }}
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
                 >
-                  FEATURED
-                </button>
-                <button
-                  onClick={() => scrollToSection("latest")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
+                  <Info size={18} />
+                  <span>About</span>
+                </motion.a>
+                <motion.a
+                  href="#contact"
+                  className={`font-medium ${
+                    activeSection === "contact" ? "text-purple-500" : ""
+                  } hover:text-purple-500 transition-colors py-2 flex items-center gap-2`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection("contact");
+                  }}
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
                 >
-                  LATEST
-                </button>
-                <button
-                  onClick={() => scrollToSection("trending")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
-                >
-                  TRENDING
-                </button>
-                <button
-                  onClick={() => scrollToSection("videos")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
-                >
-                  VIDEOS
-                </button>
-                <button
-                  onClick={() => scrollToSection("newsletter")}
-                  className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium py-3 px-3 rounded-lg transition-all duration-200 w-full text-left cursor-pointer"
-                >
-                  SUBSCRIBE
-                </button>
-
-                {/* Mobile User Controls */}
-                <div className="pt-4 border-t border-gray-200 mt-4">
-                  {user ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3 py-2 px-3">
-                        <User className="h-5 w-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
-                          Welcome, {user.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-3 text-red-600 hover:text-red-700 hover:bg-red-50 py-3 px-3 rounded-lg transition-all duration-200 cursor-pointer w-full"
-                      >
-                        <LogOut className="h-5 w-5" />
-                        <span>Logout</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={toggleLogin}
-                      className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-5 py-3 rounded-full hover:bg-blue-700 transition-all duration-200 w-full cursor-pointer font-medium"
-                    >
-                      <User className="h-4 w-4" />
-                      <span>Login</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                  <Mail size={18} />
+                  <span>Contact</span>
+                </motion.a>
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      {/* Login Modal */}
-      {isLoginOpen && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md transform transition-all duration-300 scale-100 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Welcome Back</h2>
-              <button
-                onClick={toggleLogin}
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 cursor-pointer"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter your email"
-                />
-                {loginErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {loginErrors.email}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({
-                      ...prev,
-                      password: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter your password"
-                />
-                {loginErrors.password && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {loginErrors.password}
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Demo Credentials:</strong>
-                  <br />
-                  Email: demo@techpulse.com
-                  <br />
-                  Password: demo123
-                </p>
-              </div>
-
-              <button
-                onClick={handleLogin}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg cursor-pointer"
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share Modal */}
-      {isShareOpen && shareArticle && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-4 md:p-8 w-full max-w-md transform transition-all duration-300 scale-100 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Share Article
-              </h2>
-              <button
-                onClick={handleCloseShare}
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 cursor-pointer"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-2">
-                {shareArticle.title}
-              </h3>
-              <p className="text-sm text-gray-600">
-                Share this article with your network
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm md:text-md">
-              <button
-                onClick={() => handleShare("twitter")}
-                className="flex items-center justify-center space-x-2 bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition-all duration-200 cursor-pointer"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path d="M23 3a10.9 10.9 0 01-3.14 1.53A4.48 4.48 0 0022.4.36a9.32 9.32 0 01-2.89 1.1A4.52 4.52 0 0016.1 0c-2.4 0-4.4 1.94-4.4 4.35 0 .34.04.66.1.97C7.69 5.2 4.07 3.3 1.64.44a4.28 4.28 0 00-.6 2.18c0 1.51.8 2.85 2 3.63A4.5 4.5 0 01.96 6v.06c0 2.1 1.52 3.85 3.55 4.25a4.53 4.53 0 01-2 .07c.57 1.76 2.23 3.03 4.2 3.06A9.06 9.06 0 010 19.54 12.8 12.8 0 006.29 21c7.55 0 11.68-6.09 11.68-11.38 0-.17 0-.35-.01-.52A8.18 8.18 0 0023 3z" />
-                </svg>
-                <span>Twitter</span>
-              </button>
-
-              <button
-                onClick={() => handleShare("facebook")}
-                className="flex items-center justify-center space-x-2 bg-blue-700 text-white px-4 py-3 rounded-lg hover:bg-blue-800 transition-all duration-200 cursor-pointer"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v9h4v-9h3l1-4h-4V7a1 1 0 011-1h3z" />
-                </svg>
-                <span>Facebook</span>
-              </button>
-
-              <button
-                onClick={() => handleShare("linkedin")}
-                className="flex items-center justify-center space-x-2 bg-pink-600 text-white px-4 py-3 rounded-lg hover:bg-pink-700 transition-all duration-200 cursor-pointer"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                  <path d="M16 11.37A4 4 0 0012 7a4 4 0 00-4 4.37v4.63h8z" />
-                  <line x1="8" y1="16" x2="8" y2="16" />
-                </svg>
-                <span>Instagram</span>
-              </button>
-
-              <button
-                onClick={() => handleShare("copy")}
-                className="flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 cursor-pointer"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                </svg>
-                <span>Copy </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hero Section */}
-      <section
-        id="home"
-        className="bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 text-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 md:mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Stay Ahead of Tomorrow
-            </h1>
-            <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-6 md:mb-8 max-w-3xl mx-auto px-4 sm:px-0">
-              Breaking technology news, in-depth analysis, and expert insights
-              that shape the future
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center px-4 sm:px-0">
-              <button
-                onClick={() => scrollToSection("latest")}
-                className="bg-blue-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-full hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 text-sm md:text-base cursor-pointer"
-              >
-                <span>Latest News</span>
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
-              </button>
-              <button
-                className="border-2 border-white text-white px-6 md:px-8 py-3 md:py-4 rounded-full hover:bg-white hover:text-gray-900 transition-all duration-200 font-medium text-sm md:text-base cursor-pointer"
-                onClick={() => scrollToSection("newsletter")}
-              >
-                Subscribe Newsletter
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Mobile Search Section - Below Hero */}
-      <section className="lg:hidden bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search news..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-gray-50 focus:bg-white transition-colors duration-200 shadow-sm"
+      {/* Main content */}
+      <main className="pt-16">
+        {/* Hero Section */}
+        <section
+          id="home"
+          ref={homeRef}
+          className="relative min-h-screen h-screen overflow-hidden"
+        >
+          {/* Hero Image Carousel */}
+          {heroImages.map((image, index) => (
+            <motion.div
+              key={index}
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${image})` }}
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: index === currentHeroImage ? 1 : 0,
+                scale: index === currentHeroImage ? 1 : 1.1,
+              }}
+              transition={{ duration: 1.5 }}
             />
-          </div>
-        </div>
-      </section>
+          ))}
 
-      {/* Category Filter */}
-      <section id="technology" className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => handleCategorySelect(category)}
-                className={`px-4 md:px-6 py-2 rounded-full font-medium transition-all duration-200 text-sm md:text-base cursor-pointer ${
-                  selectedCategory === category
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/50" />
+
+          {/* Content */}
+          <div className="relative h-full container mx-auto px-4 flex flex-col justify-center items-center text-center z-10 py-20">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="mb-4 md:mb-6"
+            >
+              <span className="inline-block px-3 py-1 md:px-4 md:py-1 rounded-full text-xs md:text-sm font-medium bg-purple-600/20 text-purple-300 backdrop-blur-sm mb-3 md:mb-4">
+                Direct from Authors to Readers
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 md:mb-6 font-serif leading-tight">
+                Discover <span className="text-purple-400">Independent</span>{" "}
+                Voices
+              </h1>
+            </motion.div>
+
+            <motion.p
+              className="text-lg md:text-xl text-gray-200 mb-6 md:mb-8 max-w-2xl leading-relaxed px-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            >
+              Support creators who pour their heart and soul into every page.
+              Find your next favorite book directly from the authors who bring
+              worlds to life.
+            </motion.p>
+
+            <motion.div
+              className="flex flex-col sm:flex-row gap-3 md:gap-4 items-center mb-12 md:mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+            >
+              <motion.a
+                href="#books"
+                className="group relative px-6 py-3 md:px-8 md:py-3 rounded-full bg-gradient-to-r from-purple-600 to-purple-800 text-white font-medium overflow-hidden w-full sm:w-auto text-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection("books");
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  Explore Books
+                  <ArrowRight
+                    size={18}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                  />
+                </span>
+                <motion.span
+                  className="absolute inset-0 bg-gradient-to-r from-purple-700 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileHover={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                />
+              </motion.a>
+
+              <motion.a
+                href="#about"
+                className="px-6 py-3 md:px-8 md:py-3 rounded-full bg-transparent border-2 border-white/30 hover:border-white/60 text-white font-medium backdrop-blur-sm transition-colors w-full sm:w-auto text-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToSection("about");
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                About IndiePage
+              </motion.a>
+            </motion.div>
+
+            {/* New Release Notification - positioned in the flow */}
+            <motion.div
+              className="flex justify-center mb-8 md:mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.8 }}
+            >
+              <div className="rounded-full px-4 py-2 md:px-6 md:py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white mx-4 max-w-sm md:max-w-none">
+                <div className="flex items-center gap-2 md:gap-4">
+                  <Sparkles size={16} className="text-purple-400 md:w-5 md:h-5 flex-shrink-0" />
+                  <p className="text-xs md:text-sm">
+                    <span className="font-bold text-purple-300">
+                      New Release:
+                    </span>{" "}
+                    "The Last Algorithm" by Arjun Mehta
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            className="absolute bottom-8 md:bottom-12 left-1/2 transform -translate-x-1/2 text-white"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, y: [0, 10, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            <ChevronDown size={24} className="md:w-8 md:h-8" />
+          </motion.div>
+        </section>
+
+        {/* Featured Books Section */}
+        <section
+          className={`py-20 ${
+            darkMode ? "bg-gray-900/50" : "bg-white/50"
+          } backdrop-blur-sm`}
+        >
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="mb-12 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <span className="inline-block px-4 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 mb-4">
+                Featured Selections
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                Handpicked for You
+              </h2>
+              <p
+                className={`max-w-2xl mx-auto ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+                Discover these exceptional reads curated by our team of
+                passionate bookworms
+              </p>
+            </motion.div>
 
-      {/* Article Detail View */}
-      {selectedArticle && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-between mb-8">
-              <button
-                onClick={handleBackToNews}
-                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors duration-200 cursor-pointer bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg"
-              >
-                <ChevronRight className="h-5 w-5 rotate-180" />
-                <span className="font-medium hidden md:block">Back to News</span>
-              </button>
-
-              <div className="flex items-center space-x-3 md:space-x-4">
-                <button
-                  onClick={() => handleShareClick(selectedArticle)}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer bg-white/80 backdrop-blur-sm px-3 md:px-4 py-2 rounded-full shadow-lg"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {featuredBooks.map((book, index) => (
+                <motion.div
+                  key={book.id}
+                  className={`group relative overflow-hidden rounded-xl cursor-pointer ${
+                    darkMode ? "bg-gray-800" : "bg-white"
+                  } shadow-xl`}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -10 }}
+                  onClick={() => setSelectedBook(book)}
                 >
-                  <Share2 className="h-5 w-5" />
-                  <span className="hidden md:block">Share</span>
-                </button>
+                  <div className="relative h-96 overflow-hidden">
+                    <img
+                      src={book.coverImage}
+                      alt={book.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                <button
-                  onClick={() => handleLikeArticle(selectedArticle.id)}
-                  className={`flex items-center space-x-2 transition-colors duration-200 cursor-pointer px-3 md:px-4 py-2 rounded-full shadow-lg backdrop-blur-sm ${
-                    likedArticles.has(selectedArticle.id)
-                      ? "text-red-500 hover:text-red-600 bg-red-50/80"
-                      : "text-gray-600 hover:text-red-500 bg-white/80"
+                    <div className="absolute inset-x-0 bottom-0 p-6 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+                      <h3 className="text-xl font-bold text-white mb-1">
+                        {book.title}
+                      </h3>
+                      <p className="text-gray-300 mb-3">by {book.author}</p>
+                      <p className="text-sm text-gray-300 line-clamp-2">
+                        {book.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="text-xl font-bold truncate">
+                          {book.title}
+                        </h3>
+                        <p
+                          className={`text-sm ${
+                            darkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
+                          by {book.author}
+                        </p>
+                      </div>
+                      <div
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          darkMode
+                            ? "bg-purple-900/50 text-purple-200"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
+                        ${book.price.toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center mt-2 mb-4">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={16}
+                            className={
+                              i < Math.floor(book.rating)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : i < book.rating
+                                ? "text-yellow-400 fill-yellow-400 opacity-50"
+                                : `${
+                                    darkMode ? "text-gray-600" : "text-gray-300"
+                                  }`
+                            }
+                          />
+                        ))}
+                      </div>
+                      <span
+                        className={`ml-2 text-sm ${
+                          darkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        ({book.reviews.length})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap gap-1">
+                        {book.genre.slice(0, 1).map((genre) => (
+                          <span
+                            key={genre}
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              darkMode
+                                ? "bg-gray-700 text-gray-300"
+                                : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {genre}
+                          </span>
+                        ))}
+                        {book.genre.length > 1 && (
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              darkMode
+                                ? "bg-gray-700 text-gray-300"
+                                : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            +{book.genre.length - 1}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                
+
+                        <motion.button
+                          className={`p-2 rounded-full cursor-pointer ${
+                            darkMode
+                              ? "bg-purple-700 hover:bg-purple-600"
+                              : "bg-purple-100 hover:bg-purple-200"
+                          } transition-colors`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(book);
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <ShoppingCart
+                            size={16}
+                            className={
+                              darkMode ? "text-white" : "text-purple-700"
+                            }
+                          />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-12 text-center">
+              <motion.button
+                className={`px-6 py-3 rounded-full cursor-pointer ${
+                  darkMode
+                    ? "bg-purple-700 hover:bg-purple-600"
+                    : "bg-purple-600 hover:bg-purple-700"
+                } text-white font-medium transition-all inline-flex items-center gap-2`}
+                onClick={() => scrollToSection("books")}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                See All Books
+                <ArrowRight size={18} />
+              </motion.button>
+            </div>
+          </div>
+        </section>
+
+        {/* Books Section */}
+        <section
+          id="books"
+          ref={booksRef}
+          className={`py-10 ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}
+        >
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="mb-12 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                Our Indie Library
+              </h2>
+              <p
+                className={`max-w-2xl mx-auto ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Discover handpicked stories from talented independent authors
+              </p>
+            </motion.div>
+
+            {/* Search and Filter */}
+            <motion.div
+              className={`mb-10 p-6 rounded-2xl backdrop-blur-lg min-h-[120px] ${
+                darkMode
+                  ? "bg-gray-800/70 border-gray-700"
+                  : "bg-white/70 border-gray-200"
+              } border shadow-xl`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                {/* Search Input Div */}
+                <div
+                  className={`flex items-center gap-2 w-full md:w-auto md:min-w-[300px] p-4 rounded-lg ${
+                    darkMode ? "bg-gray-700/70" : "bg-gray-100/70"
+                  } backdrop-blur-sm`}
+                >
+                  <Search
+                    size={20}
+                    className={darkMode ? "text-gray-400" : "text-gray-500"}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search by title or author..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-transparent outline-none w-full"
+                  />
+                </div>
+
+                {/* All Controls Group (for desktop right alignment) */}
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-3">
+                  {/* Mobile Row 2 / Part of Desktop Controls: Filters & Reset */}
+                  <div className="flex flex-row gap-3 w-full md:w-auto">
+                    <motion.button
+                      onClick={toggleGenreFilter}
+                      className={`flex-1 md:flex-initial flex items-center justify-center gap-1 px-4 py-2 rounded-lg cursor-pointer ${
+                        darkMode
+                          ? "bg-gray-700 hover:bg-gray-600"
+                          : "bg-gray-200 hover:bg-gray-300"
+                      } transition-colors backdrop-blur-sm`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Filter size={16} />
+                      <span>Filters</span>
+                      {showGenreFilter ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      )}
+                    </motion.button>
+
+                    <motion.button
+                      onClick={resetFilters}
+                      className={`flex-1 md:flex-initial px-4 py-2 rounded-lg cursor-pointer ${
+                        darkMode
+                          ? "bg-gray-700 hover:bg-gray-600"
+                          : "bg-gray-200 hover:bg-gray-300"
+                      } transition-colors backdrop-blur-sm`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Reset
+                    </motion.button>
+                  </div>
+
+                  {/* Mobile Row 3 / Part of Desktop Controls: Grid/List Toggle */}
+                  <div className="flex rounded-lg overflow-hidden w-full md:w-auto">
+                    <motion.button
+                      className={`flex-1 px-4 py-2 cursor-pointer ${
+                        bookView === "grid"
+                          ? darkMode
+                            ? "bg-purple-700 text-white"
+                            : "bg-purple-600 text-white"
+                          : darkMode
+                          ? "bg-gray-700 text-gray-300"
+                          : "bg-gray-200 text-gray-700"
+                      } transition-colors`}
+                      onClick={() => setBookView("grid")}
+                      whileHover={{ scale: bookView !== "grid" ? 1.05 : 1 }}
+                      whileTap={{ scale: bookView !== "grid" ? 0.95 : 1 }}
+                    >
+                      Grid
+                    </motion.button>
+                    <motion.button
+                      className={`flex-1 px-4 py-2 cursor-pointer ${
+                        bookView === "list"
+                          ? darkMode
+                            ? "bg-purple-700 text-white"
+                            : "bg-purple-600 text-white"
+                          : darkMode
+                          ? "bg-gray-700 text-gray-300"
+                          : "bg-gray-200 text-gray-700"
+                      } transition-colors`}
+                      onClick={() => setBookView("list")}
+                      whileHover={{ scale: bookView !== "list" ? 1.05 : 1 }}
+                      whileTap={{ scale: bookView !== "list" ? 0.95 : 1 }}
+                    >
+                      List
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Genre filter dropdown */}
+              <AnimatePresence>
+                {showGenreFilter && (
+                  <motion.div
+                    className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="font-medium">Price Range:</p>
+                        <p
+                          className={
+                            darkMode ? "text-gray-300" : "text-gray-700"
+                          }
+                        >
+                          ${priceRange[0]} - ${priceRange[1]}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                          <div
+                            className="absolute h-full bg-purple-500 rounded-full"
+                            style={{
+                              left: `${(priceRange[0] / 50) * 100}%`,
+                              right: `${100 - (priceRange[1] / 50) * 100}%`,
+                            }}
+                          />
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            step="1"
+                            value={priceRange[0]}
+                            onChange={(e) =>
+                              handlePriceChange(Number(e.target.value), 0)
+                            }
+                            className="absolute w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            step="1"
+                            value={priceRange[1]}
+                            onChange={(e) =>
+                              handlePriceChange(Number(e.target.value), 1)
+                            }
+                            className="absolute w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-3">Genres:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {allGenres.map((genre) => (
+                          <motion.button
+                            key={genre}
+                            onClick={() => toggleGenre(genre)}
+                            className={`px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${
+                              selectedGenres.includes(genre)
+                                ? "bg-purple-600 text-white"
+                                : darkMode
+                                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {genre}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Book Display */}
+            {filteredBooks.length === 0 ? (
+              <motion.div
+                className={`text-center py-16 px-4 rounded-xl ${
+                  darkMode
+                    ? "bg-gray-800 text-gray-300"
+                    : "bg-white text-gray-600"
+                } shadow-lg`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="inline-flex justify-center items-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 mb-6">
+                  <Search size={32} className="text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">
+                  No books match your filters
+                </h3>
+                <p className="mb-6 max-w-md mx-auto">
+                  Try adjusting your search criteria or browse our full
+                  collection
+                </p>
+                <motion.button
+                  onClick={resetFilters}
+                  className="px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors cursor-pointer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Reset Filters
+                </motion.button>
+              </motion.div>
+            ) : (
+              <>
+                {bookView === "grid" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredBooks.map((book, index) => (
+                      <motion.div
+                        key={book.id}
+                        className={`rounded-xl overflow-hidden ${
+                          darkMode ? "bg-gray-800" : "bg-white"
+                        } shadow-xl hover:shadow-2xl transition-all cursor-pointer group`}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.05 * (index % 4),
+                        }}
+                        whileHover={{ y: -10 }}
+                        onClick={() => setSelectedBook(book)}
+                      >
+                        <div className="relative h-64 overflow-hidden">
+                          <img
+                            src={book.coverImage}
+                            alt={book.title}
+                            className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            
+
+                          <motion.div
+                            className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300"
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                          >
+                            <motion.button
+                              className="w-full py-2 cursor-pointer px-4 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(book);
+                              }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <ShoppingCart size={16} />
+                              Add to Cart
+                            </motion.button>
+                          </motion.div>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-lg font-bold mb-1 leading-tight">
+                                {book.title}
+                              </h3>
+                              <p
+                                className={`text-sm ${
+                                  darkMode ? "text-gray-400" : "text-gray-600"
+                                }`}
+                              >
+                                by {book.author}
+                              </p>
+                            </div>
+                            <div
+                              className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                                darkMode
+                                  ? "bg-purple-900/50 text-purple-200"
+                                  : "bg-purple-100 text-purple-800"
+                              }`}
+                            >
+                              ${book.price.toFixed(2)}
+                            </div>
+                          </div>
+
+                          {/* Rating */}
+                          <div className="flex items-center mt-3">
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={16}
+                                  className={
+                                    i < Math.floor(book.rating)
+                                      ? "text-yellow-400 fill-yellow-400"
+                                      : i < book.rating
+                                      ? "text-yellow-400 fill-yellow-400 opacity-50"
+                                      : `${
+                                          darkMode
+                                            ? "text-gray-600"
+                                            : "text-gray-300"
+                                        }`
+                                  }
+                                />
+                              ))}
+                            </div>
+                            <span
+                              className={`ml-2 text-sm ${
+                                darkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {book.rating.toFixed(1)}
+                            </span>
+                          </div>
+
+                          {/* Genres */}
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {book.genre.slice(0, 2).map((genre) => (
+                              <span
+                                key={genre}
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  darkMode
+                                    ? "bg-gray-700 text-gray-300"
+                                    : "bg-gray-200 text-gray-700"
+                                }`}
+                              >
+                                {genre}
+                              </span>
+                            ))}
+                            {book.genre.length > 2 && (
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  darkMode
+                                    ? "bg-gray-700 text-gray-300"
+                                    : "bg-gray-200 text-gray-700"
+                                }`}
+                              >
+                                +{book.genre.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredBooks.map((book, index) => (
+                      <motion.div
+                        key={book.id}
+                        className={`rounded-xl overflow-hidden ${
+                          darkMode ? "bg-gray-800" : "bg-white"
+                        } shadow-lg hover:shadow-xl transition-all cursor-pointer`}
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.05 * index }}
+                        whileHover={{ x: 5 }}
+                        onClick={() => setSelectedBook(book)}
+                      >
+                        {/* MODIFIED: Ensure flex-row on small screens for list, md:flex-row is for larger than mobile */}
+                        <div className="flex flex-row">
+                          {/* MODIFIED: Image container for list view - smaller on mobile */}
+                          <div className="w-1/3 sm:w-1/4 md:w-48 flex-shrink-0 h-auto">
+                            <img
+                              src={book.coverImage}
+                              alt={book.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+
+                          {/* MODIFIED: Details container for list view */}
+                          <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 className="text-md sm:text-lg font-bold mb-1 line-clamp-2 sm:line-clamp-none">
+                                  {book.title}
+                                </h3>
+                                <p
+                                  className={`text-xs sm:text-sm ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                  } mb-2 sm:mb-3`}
+                                >
+                                  by {book.author}
+                                </p>
+
+                                {/* MODIFIED: Hide extended details on smallest screens for cleaner list */}
+                                <div className="hidden sm:block">
+                                  <div className="flex items-center mb-2 sm:mb-4">
+                                    <div className="flex">
+                                      {[...Array(5)].map((_, i) => (
+                                        <Star
+                                          key={i}
+                                          size={16}
+                                          className={
+                                            i < Math.floor(book.rating)
+                                              ? "text-yellow-400 fill-yellow-400"
+                                              : i < book.rating
+                                              ? "text-yellow-400 fill-yellow-400 opacity-50"
+                                              : `${darkMode ? "text-gray-600" : "text-gray-300"}`
+                                          }
+                                        />
+                                      ))}
+                                    </div>
+                                    <span
+                                      className={`ml-2 text-xs sm:text-sm ${
+                                        darkMode ? "text-gray-400" : "text-gray-500" 
+                                      }`}
+                                    >
+                                      {book.rating.toFixed(1)} ({book.reviews.length} reviews)
+                                    </span>
+                                  </div>
+
+                                  <p
+                                    className={`text-xs sm:text-sm ${
+                                      darkMode ? "text-gray-300" : "text-gray-700"
+                                    } mb-2 sm:mb-4 line-clamp-2`}
+                                  >
+                                    {book.description}
+                                  </p>
+                                
+                                  <div className="flex flex-wrap gap-1 mb-2 sm:mb-4">
+                                    {book.genre.slice(0, 2).map((genre) => (
+                                      <span
+                                        key={genre}
+                                        className={`text-xs px-2 py-1 rounded-full ${
+                                          darkMode
+                                            ? "bg-gray-700 text-gray-300"
+                                            : "bg-gray-200 text-gray-700"
+                                        }`}
+                                      >
+                                        {genre}
+                                      </span>
+                                    ))}
+                                    {book.genre.length > 2 && (
+                                       <span className={`text-xs px-2 py-1 rounded-full ${
+                                        darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-700"
+                                      }`}>+{book.genre.length - 2}</span>
+                                    )}
+                                  </div>
+
+                                  <div className="hidden md:flex items-center gap-4 text-xs sm:text-sm">
+                                      <div className="flex items-center gap-1">
+                                          <Clock size={14} className={darkMode ? "text-gray-400" : "text-gray-500"} />
+                                          <span>{book.releaseDate}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                          <BookOpen size={14} className={darkMode ? "text-gray-400" : "text-gray-500"} />
+                                          <span>{book.pages} pages</span>
+                                      </div>
+                                  </div>
+                              </div>
+                            </div>
+
+                            {/* Price and Add to Cart - Aligned to bottom right of details section */}
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mt-3 sm:mt-4 gap-2">
+                              <div
+                                className={`text-md sm:text-lg font-bold px-3 py-1 rounded-md self-start sm:self-center ${
+                                  darkMode
+                                    ? "bg-purple-900/30 text-purple-200"
+                                    : "bg-purple-100 text-purple-800"
+                                }`}
+                              >
+                                ${book.price.toFixed(2)}
+                              </div>
+                              <motion.button
+                                className={`w-full sm:w-auto px-4 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-2 ${
+                                  darkMode
+                                    ? "bg-purple-700 hover:bg-purple-600"
+                                    : "bg-purple-600 hover:bg-purple-700"
+                                } text-white transition-colors`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addToCart(book);
+                                }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <ShoppingCart size={16} />
+                                <span className="text-sm sm:text-base">Add to Cart</span>
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* About Section */}
+        <section
+          id="about"
+          ref={aboutRef}
+          className={`py-20 ${darkMode ? "bg-gray-800" : "bg-white"}`}
+        >
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="mb-12 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <span className="inline-block px-4 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 mb-4">
+                Our Story
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                About IndiePage
+              </h2>
+              <p
+                className={`max-w-2xl mx-auto ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Our mission and journey to empower independent authors
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch">
+              <motion.div
+                className="flex flex-col"
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <div
+                  className={`rounded-xl overflow-hidden shadow-xl ${
+                    darkMode ? "bg-gray-700" : "bg-gray-100"
                   }`}
                 >
-                  <Star
-                    className={`h-5 w-5 ${
-                      likedArticles.has(selectedArticle.id)
-                        ? "fill-current"
-                        : ""
-                    }`}
+                  <img
+                    src="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80"
+                    alt="Authors working together"
+                    className="w-full h-80 object-cover"
                   />
-                  <span className="hidden md:block">
-                    {selectedArticle.likes +
-                      (likedArticles.has(selectedArticle.id) ? 1 : 0)}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <article className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20">
-              <img
-                src={selectedArticle.image}
-                alt={selectedArticle.title}
-                className="w-full h-64 md:h-96 object-cover"
-              />
-
-              <div className="p-3 py-4 md:p-8">
-                <div className="flex items-center space-x-4 mb-6">
-                  <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    {selectedArticle.category}
-                  </span>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{selectedArticle.readTime}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Eye className="h-4 w-4" />
-                      <span>{selectedArticle.views}</span>
-                    </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold mb-3">Our Community</h3>
+                    <p className={darkMode ? "text-gray-300" : "text-gray-700"}>
+                      IndiePage was founded by a collective of independent
+                      authors who faced the challenges of the traditional
+                      publishing world. We understand the passion, dedication,
+                      and creativity that goes into crafting a book, and we
+                      believe authors deserve a platform that respects their
+                      work and connects them directly to readers.
+                    </p>
                   </div>
                 </div>
 
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                  {selectedArticle.title}
-                </h1>
-
-                <div className="flex items-center justify-between mb-8 pb-8 border-b border-gray-200/50">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-white font-semibold">
-                        {selectedArticle.author
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
+                {/* Adding flex-grow to this container for Fair Compensation card */}
+                <div className="mt-8 p-6 rounded-xl backdrop-blur-lg border border-purple-400/20 bg-gradient-to-br from-purple-500/10 to-indigo-500/10 flex-grow">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-lg bg-purple-500/20">
+                      <DollarSign size={24} className="text-purple-500" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">
-                        {selectedArticle.author}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {selectedArticle.publishedAt}
+                      <h4 className="text-lg font-bold mb-1">
+                        Fair Compensation
+                      </h4>
+                      <p
+                        className={darkMode ? "text-gray-300" : "text-gray-700"}
+                      >
+                        Authors receive 85% of revenue from each sale, compared
+                        to the industry standard of 10-15% with traditional
+                        publishers.
                       </p>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={() => handleLikeArticle(selectedArticle.id)}
-                      className={`flex items-center space-x-1 px-4 py-2 rounded-full transition-all duration-200 cursor-pointer backdrop-blur-sm ${
-                        likedArticles.has(selectedArticle.id)
-                          ? "bg-red-50/80 text-red-600 border border-red-200/50 shadow-lg"
-                          : "bg-gray-50/80 text-gray-600 border border-gray-200/50 hover:bg-red-50/80 hover:text-red-600 shadow-lg"
-                      }`}
-                    >
-                      <Star
-                        className={`h-4 w-4 ${
-                          likedArticles.has(selectedArticle.id)
-                            ? "fill-current"
-                            : ""
-                        }`}
-                      />
-                      <span>
-                        {selectedArticle.likes +
-                          (likedArticles.has(selectedArticle.id) ? 1 : 0)}
-                      </span>
-                    </button>
-                  </div>
                 </div>
+              </motion.div>
 
+              <motion.div
+                className="flex flex-col"
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                {/* Ensure flex-grow is on this div for the 'Our Mission' card */}
                 <div
-                  className="prose prose-lg max-w-none text-gray-700 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
-                />
-              </div>
-            </article>
-          </div>
-        </div>
-      )}
-
-      {/* Featured News */}
-      {featuredArticle && selectedCategory === "All" && !selectedArticle && !searchQuery.trim() && (
-        <section
-          id="featured"
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-        >
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300">
-            <div className="md:flex">
-              <div className="md:w-1/2">
-                <img
-                  src={featuredArticle.image}
-                  alt={featuredArticle.title}
-                  className="w-full h-64 md:h-full object-cover cursor-pointer"
-                  onClick={() => handleArticleClick(featuredArticle)}
-                />
-              </div>
-              <div className="md:w-1/2 p-8">
-                <div className="flex items-center space-x-4 mb-4">
-                  <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    FEATURED
-                  </span>
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {featuredArticle.category}
-                  </span>
-                </div>
-                <h2
-                  className="text-3xl font-bold text-gray-900 mb-4 hover:text-blue-600 cursor-pointer transition-colors duration-200"
-                  onClick={() => handleArticleClick(featuredArticle)}
+                  className={`p-8 rounded-xl ${
+                    darkMode ? "bg-gray-900/50" : "bg-gray-50"
+                  } backdrop-blur-lg border ${
+                    darkMode ? "border-gray-700" : "border-gray-200"
+                  } flex-grow`}
                 >
-                  {featuredArticle.title}
-                </h2>
-                <p className="text-gray-600 mb-6 text-lg leading-relaxed">
-                  {featuredArticle.excerpt}
-                </p>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
-                  {/* Left Section */}
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{featuredArticle.readTime}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Eye className="h-4 w-4" />
-                      <span>{featuredArticle.views}</span>
-                    </div>
+                  <h3 className="text-xl font-bold mb-4">Our Mission</h3>
+                  <div
+                    className={`space-y-4 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    <p>
+                      We believe in creating a direct bridge between authors and
+                      readers. By cutting out traditional middlemen, we ensure
+                      that authors receive fair compensation for their hard work
+                      while readers gain access to fresh, diverse voices at
+                      reasonable prices.
+                    </p>
+                    <p>
+                      IndiePage is committed to fostering a diverse literary
+                      ecosystem that celebrates unique perspectives,
+                      experimental genres, and stories that might not find a
+                      home in the mainstream publishing world.
+                    </p>
+                    <p>
+                      Our platform is designed to give independent authors
+                      control over their creative and business decisions, from
+                      pricing to presentation, allowing them to build
+                      sustainable careers doing what they love.
+                    </p>
+                  </div>
 
-                    <button
-                      onClick={() => handleLikeArticle(featuredArticle.id)}
-                      className={`flex items-center space-x-1 transition-colors duration-200 cursor-pointer ${
-                        likedArticles.has(featuredArticle.id)
-                          ? "text-red-500 hover:text-red-600"
-                          : "text-gray-500 hover:text-red-500"
+                  <div className="mt-8 grid grid-cols-2 gap-6">
+                    <motion.div
+                      className="text-center p-4 rounded-lg bg-purple-500/10 border border-purple-500/20"
+                      whileHover={{ y: -5 }}
+                    >
+                      <div
+                        className={`text-3xl font-bold ${
+                          darkMode ? "text-purple-400" : "text-purple-600"
+                        }`}
+                      >
+                        500+
+                      </div>
+                      <div
+                        className={`mt-1 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Authors
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      className="text-center p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20"
+                      whileHover={{ y: -5 }}
+                    >
+                      <div
+                        className={`text-3xl font-bold ${
+                          darkMode ? "text-indigo-400" : "text-indigo-600"
+                        }`}
+                      >
+                        2,500+
+                      </div>
+                      <div
+                        className={`mt-1 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Books
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      className="text-center p-4 rounded-lg bg-pink-500/10 border border-pink-500/20"
+                      whileHover={{ y: -5 }}
+                    >
+                      <div
+                        className={`text-3xl font-bold ${
+                          darkMode ? "text-pink-400" : "text-pink-600"
+                        }`}
+                      >
+                        85%
+                      </div>
+                      <div
+                        className={`mt-1 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Revenue to Authors
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      className="text-center p-4 rounded-lg bg-blue-500/10 border border-blue-500/20"
+                      whileHover={{ y: -5 }}
+                    >
+                      <div
+                        className={`text-3xl font-bold ${
+                          darkMode ? "text-blue-400" : "text-blue-600"
+                        }`}
+                      >
+                        20+
+                      </div>
+                      <div
+                        className={`mt-1 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Genres
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Section */}
+        <section
+          id="contact"
+          ref={contactRef}
+          className={`py-20 ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}
+        >
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="mb-12 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <span className="inline-block px-4 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 mb-4">
+                Get In Touch
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                Contact Us
+              </h2>
+              <p
+                className={`max-w-2xl mx-auto ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Have questions? We're here to help
+              </p>
+            </motion.div>
+
+            <div className="max-w-3xl mx-auto">
+              <motion.div
+                className={`rounded-xl overflow-hidden backdrop-blur-lg ${
+                  darkMode ? "bg-gray-800/70" : "bg-white/70"
+                } border ${
+                  darkMode ? "border-gray-700" : "border-gray-200"
+                } shadow-xl`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2">
+                  <div
+                    className={`p-6 ${
+                      darkMode
+                        ? "bg-gradient-to-br from-purple-900/30 to-indigo-900/30"
+                        : "bg-gradient-to-br from-purple-50 to-indigo-50"
+                    }`}
+                  >
+                    <h3 className="text-xl font-bold mb-4">Get In Touch</h3>
+                    <div
+                      className={`space-y-4 ${
+                        darkMode ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
-                      <Star
-                        className={`h-4 w-4 ${
-                          likedArticles.has(featuredArticle.id)
-                            ? "fill-current"
-                            : ""
-                        }`}
-                      />
-                      <span>
-                        {featuredArticle.likes +
-                          (likedArticles.has(featuredArticle.id) ? 1 : 0)}
-                      </span>
-                    </button>
-                  </div>
+                      <p>
+                        Whether you're an author looking to join our platform or
+                        a reader with questions, we'd love to hear from you.
+                      </p>
 
-                  {/* Right Section */}
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => handleShareClick(featuredArticle)}
-                      className="text-gray-500 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-                    >
-                      <Share2 className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleArticleClick(featuredArticle)}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer"
-                    >
-                      Read More
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* News Grid */}
-      {!selectedArticle && (
-        <section
-          id="latest"
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-        >
-          <div className="flex justify-between items-center mb-8">
-            <h2 className=" text-2xl md:text-3xl font-bold text-gray-900">
-              Latest News
-            </h2>
-            <div className="flex items-center space-x-2 text-gray-600 ">
-              <TrendingUp className="h-5 w-5" />
-              <span className="font-medium">Trending Now</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {regularArticles.map((article) => (
-              <article
-                key={article.id}
-                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-              >
-                <div className="relative">
-                  <img
-                    src={article.image}
-                    alt={article.title}
-                    className="w-full h-48 object-cover"
-                    onClick={() => handleArticleClick(article)}
-                  />
-                  <div className="absolute top-4 left-4">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      {article.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3
-                    className="text-xl font-bold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer transition-colors duration-200 line-clamp-2"
-                    onClick={() => handleArticleClick(article)}
-                  >
-                    {article.title}
-                  </h3>
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {article.excerpt}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{article.readTime}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Eye className="h-4 w-4" />
-                        <span>{article.views}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShareClick(article);
-                        }}
-                        className="hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500 ">
-                      <span className="hidden md:inline">
-                        By {article.author}
-                      </span>
-                      <span className=" hidden md:inline mx-2">•</span>
-                      <span>{article.publishedAt}</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-1 text-gray-500">
-                        {/* <MessageCircle className="h-4 w-4" />
-                                                    <span className="text-sm">{article.comments}</span> */}
-                      </div>
-                      
-                      {/* Star button that works for all users */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLikeArticle(article.id);
-                        }}
-                        className={`transition-colors duration-200 cursor-pointer ${
-                          likedArticles.has(article.id)
-                            ? "text-red-500 hover:text-red-600"
-                            : "text-gray-500 hover:text-red-500"
-                        }`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <Star
-                            className={`h-4 w-4 ${
-                              likedArticles.has(article.id)
-                                ? "fill-current text-red-500"
-                                : ""
-                            }`}
+                      <div className="flex items-start gap-3 mt-6">
+                        <div className="p-2 rounded-full bg-purple-500/20">
+                          <Mail
+                            className={
+                              darkMode ? "text-purple-400" : "text-purple-600"
+                            }
                           />
-                          <span className="text-sm">
-                            {article.likes +
-                              (likedArticles.has(article.id) ? 1 : 0)}
-                          </span>
                         </div>
-                      </button>
+                        <div>
+                          <p className="font-medium">Email Us</p>
+                          <a
+                            href="mailto:hello@indiepage.com"
+                            className="text-sm hover:underline"
+                          >
+                            hello@indiepage.com
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-purple-500/20">
+                          <User
+                            className={
+                              darkMode ? "text-purple-400" : "text-purple-600"
+                            }
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium">For Authors</p>
+                          <a
+                            href="mailto:authors@indiepage.com"
+                            className="text-sm hover:underline"
+                          >
+                            authors@indiepage.com
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          htmlFor="name"
+                          className={`block text-sm font-medium mb-1 ${
+                            darkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className={`w-full px-4 py-2 rounded-lg ${
+                            darkMode
+                              ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                              : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                          } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                          placeholder="Your name"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="email"
+                          className={`block text-sm font-medium mb-1 ${
+                            darkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className={`w-full px-4 py-2 rounded-lg ${
+                            darkMode
+                              ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                              : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                          } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                          placeholder="your.email@example.com"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="message"
+                          className={`block text-sm font-medium mb-1 ${
+                            darkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Message
+                        </label>
+                        <textarea
+                          id="message"
+                          rows={4}
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          className={`w-full px-4 py-2 rounded-lg ${
+                            darkMode
+                              ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                              : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                          } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                          placeholder="How can we help you?"
+                        ></textarea>
+                      </div>
+
+                      <motion.button
+                        onClick={handleContactSubmit}
+                        className={`w-full py-3 px-4 rounded-lg cursor-pointer ${
+                          darkMode
+                            ? "bg-purple-700 hover:bg-purple-600"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        } text-white font-medium transition-colors`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <motion.span
+                              className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                              animate={{ rotate: 360 }}
+                              transition={{
+                                duration: 1,
+                                repeat: Infinity,
+                                ease: "linear",
+                              }}
+                            />
+                            Processing...
+                          </span>
+                        ) : contactSubmitted ? (
+                          "Message Sent!"
+                        ) : (
+                          "Send Message"
+                        )}
+                      </motion.button>
+
+                      {contactSubmitted && (
+                        <motion.p
+                          className={`text-center text-sm ${
+                            darkMode ? "text-green-400" : "text-green-600"
+                          }`}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          Thank you for your message! We'll get back to you
+                          shortly.
+                        </motion.p>
+                      )}
                     </div>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
-
-          {filteredArticles.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No articles found
-              </h3>
-              <p className="text-gray-600">
-                Try adjusting your search or category filter
-              </p>
+              </motion.div>
             </div>
-          )}
+          </div>
         </section>
-      )}
-
-      {/* Trending Topics Section */}
-      <section id="trending" className="bg-gray-50 py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              {" "}
-              Trending Now
-            </h2>
-            <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-              Hot topics and breaking news that everyone's talking about
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-red-500">
-              <div className="flex items-center space-x-2 md:space-x-3 mb-3">
-                <span className="bg-red-100 text-red-600 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
-                  #1
-                </span>
-                <span className="text-xs md:text-sm text-gray-500">
-                  AI Revolution
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2 text-sm md:text-base">
-                Machine Learning Breakthrough
-              </h3>
-              <p className="text-gray-600 text-xs md:text-sm">
-                15.2K discussions
-              </p>
-            </div>
-
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-orange-500">
-              <div className="flex items-center space-x-2 md:space-x-3 mb-3">
-                <span className="bg-orange-100 text-orange-600 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
-                  #2
-                </span>
-                <span className="text-xs md:text-sm text-gray-500">
-                  Quantum Tech
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2 text-sm md:text-base">
-                1000-Qubit Processor
-              </h3>
-              <p className="text-gray-600 text-xs md:text-sm">
-                12.8K discussions
-              </p>
-            </div>
-
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-yellow-500">
-              <div className="flex items-center space-x-2 md:space-x-3 mb-3">
-                <span className="bg-yellow-100 text-yellow-600 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
-                  #3
-                </span>
-                <span className="text-xs md:text-sm text-gray-500">
-                  Cybersecurity
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2 text-sm md:text-base">
-                Cloud Vulnerabilities
-              </h3>
-              <p className="text-gray-600 text-xs md:text-sm">
-                10.5K discussions
-              </p>
-            </div>
-
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-l-4 border-green-500">
-              <div className="flex items-center space-x-2 md:space-x-3 mb-3">
-                <span className="bg-green-100 text-green-600 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-semibold">
-                  #4
-                </span>
-                <span className="text-xs md:text-sm text-gray-500">
-                  6G Networks
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2 text-sm md:text-base">
-                Ultra-Fast Internet
-              </h3>
-              <p className="text-gray-600 text-xs md:text-sm">
-                9.2K discussions
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tech Insights Section */}
-      <section className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-white mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
-              📊 Tech by the Numbers
-            </h2>
-            <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto">
-              Key statistics shaping the technology landscape
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-            <div className="text-center text-white">
-              <div className=" bg-white/50 bg-opacity-20 rounded-2xl p-6 md:p-8 backdrop-blur-sm hover:bg-opacity-30 transition-all duration-300">
-                <div className="text-3xl md:text-4xl font-bold mb-2">50B+</div>
-                <div className="text-base md:text-lg font-medium mb-1">
-                  IoT Devices
-                </div>
-                <div className="text-sm opacity-80">Connected by 2025</div>
-              </div>
-            </div>
-
-            <div className="text-center text-white">
-              <div className="bg-white/50 bg-opacity-20 rounded-2xl p-6 md:p-8 backdrop-blur-sm hover:bg-opacity-30 transition-all duration-300">
-                <div className="text-3xl md:text-4xl font-bold mb-2">$2T</div>
-                <div className="text-base md:text-lg font-medium mb-1">
-                  AI Market
-                </div>
-                <div className="text-sm opacity-80">Global value by 2030</div>
-              </div>
-            </div>
-
-            <div className="text-center text-white">
-              <div className="bg-white/50 bg-opacity-20 rounded-2xl p-6 md:p-8 backdrop-blur-sm hover:bg-opacity-30 transition-all duration-300">
-                <div className="text-3xl md:text-4xl font-bold mb-2">100x</div>
-                <div className="text-base md:text-lg font-medium mb-1">
-                  6G Speed
-                </div>
-                <div className="text-sm opacity-80">Faster than 5G</div>
-              </div>
-            </div>
-
-            <div className="text-center text-white">
-              <div className="bg-white/50 bg-opacity-20 rounded-2xl p-6 md:p-8 backdrop-blur-sm hover:bg-opacity-30 transition-all duration-300">
-                <div className="text-3xl md:text-4xl font-bold mb-2">95%</div>
-                <div className="text-base md:text-lg font-medium mb-1">
-                  Cloud Adoption
-                </div>
-                <div className="text-sm opacity-80">By enterprises</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Video & Media Section */}
-      <section id="videos" className="py-12 md:py-16 bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">
-              🎥 Tech Videos & Media
-            </h2>
-            <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-              Watch the latest tech demos, interviews, and breakthrough
-              announcements
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=225&fit=crop"
-                  alt="AI Demo"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-red-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                  LIVE
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  The Future of AI: ChatGPT and Beyond
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Revolutionary AI technology demonstration and analysis
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500 ">
-                  <span>12:34</span>
-                  <span>•</span>
-                  <span>2.1M views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=225&fit=crop"
-                  alt="Tech Interview"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  Tesla CEO on Future of Technology
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Exclusive interview with tech industry leaders
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>28:15</span>
-                  <span>•</span>
-                  <span>1.8M views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden">
-              <div
-                className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-                onClick={() =>
-                  window.open(
-                    "https://www.youtube.com/",
-                    "_blank"
-                  )
-                }
-              >
-                <div className="relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=225&fit=crop"
-                    alt="AI Demo"
-                    className="w-full h-40 sm:h-48 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                    <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                      <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                    </div>
-                  </div>
-                  <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-red-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                    LIVE
-                  </div>
-                </div>
-                <div className="p-4 md:p-6">
-                  <h3 className="font-bold text-base md:text-lg mb-2">
-                    The Future of AI: ChatGPT and Beyond
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-3">
-                    Revolutionary AI technology demonstration and analysis
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 ">
-                    <span>12:34</span>
-                    <span>•</span>
-                    <span>2.1M views</span>
-                    <span className="hidden md:inline">•</span>
-                    <span className="text-red-500 hidden md:inline">
-                      🔴 YouTube
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-                onClick={() =>
-                  window.open(
-                    "https://www.youtube.com/",
-                    "_blank"
-                  )
-                }
-              >
-                <div className="relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=225&fit=crop"
-                    alt="AI Demo"
-                    className="w-full h-40 sm:h-48 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                    <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                      <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                    </div>
-                  </div>
-                  <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-red-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                    LIVE
-                  </div>
-                </div>
-                <div className="p-4 md:p-6">
-                  <h3 className="font-bold text-base md:text-lg mb-2">
-                    The Future of AI: ChatGPT and Beyond
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-3">
-                    Revolutionary AI technology demonstration and analysis
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 ">
-                    <span>12:34</span>
-                    <span>•</span>
-                    <span>2.1M views</span>
-                    <span className="hidden md:inline">•</span>
-                    <span className="text-red-500 hidden md:inline">
-                      🔴 YouTube
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div
-                className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-                onClick={() =>
-                  window.open(
-                    "https://www.youtube.com/",
-                    "_blank"
-                  )
-                }
-              >
-                <div className="relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=225&fit=crop"
-                    alt="AI Demo"
-                    className="w-full h-40 sm:h-48 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                    <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                      <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                    </div>
-                  </div>
-                  <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-red-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                    LIVE
-                  </div>
-                </div>
-                <div className="p-4 md:p-6">
-                  <h3 className="font-bold text-base md:text-lg mb-2">
-                    The Future of AI: ChatGPT and Beyond
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-3">
-                    Revolutionary AI technology demonstration and analysis
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 ">
-                    <span>12:34</span>
-                    <span>•</span>
-                    <span>2.1M views</span>
-                    <span className="hidden md:inline">•</span>
-                    <span className="text-red-500 hidden md:inline">
-                      🔴 YouTube
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=225&fit=crop"
-                  alt="Product Launch"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-yellow-600 text-black px-2 py-1 rounded text-xs md:text-sm font-bold">
-                  NEW
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  Apple Vision Pro Launch Event
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Revolutionary mixed reality technology announcement
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>1:15:42</span>
-                  <span>•</span>
-                  <span>5.2M views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop"
-                  alt="Neural Networks"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  How Neural Networks Really Work
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Deep dive into machine learning fundamentals
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>19:13</span>
-                  <span>•</span>
-                  <span>3.4M views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=225&fit=crop"
-                  alt="Quantum Computing"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-purple-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                  TECH
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  Quantum Computing Explained
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Understanding the future of computational power
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>22:47</span>
-                  <span>•</span>
-                  <span>1.2M views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-gray-800 rounded-xl overflow-hidden hover:bg-gray-750 transition-all duration-300 cursor-pointer transform hover:scale-105"
-              onClick={() =>
-                window.open(
-                  "https://www.youtube.com/",
-                  "_blank"
-                )
-              }
-            >
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=225&fit=crop"
-                  alt="Cybersecurity"
-                  className="w-full h-40 sm:h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 bg-opacity-40 flex items-center justify-center">
-                  <div className="bg-red-600 rounded-full p-3 md:p-4 hover:bg-red-700 transition-colors duration-200 cursor-pointer">
-                    <Play className="h-6 w-6 md:h-8 md:w-8 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-3 md:top-4 right-3 md:right-4 bg-red-600 text-white px-2 py-1 rounded text-xs md:text-sm font-bold">
-                  ALERT
-                </div>
-              </div>
-              <div className="p-4 md:p-6">
-                <h3 className="font-bold text-base md:text-lg mb-2">
-                  Cybersecurity in the AI Age
-                </h3>
-                <p className="text-gray-400 text-sm mb-3">
-                  Protecting against next-generation cyber threats
-                </p>
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>35:12</span>
-                  <span>•</span>
-                  <span>892K views</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="text-red-500 hidden md:inline">
-                    🔴 YouTube
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter Section */}
-      <section
-        id="newsletter"
-        className="bg-gradient-to-r from-blue-600 to-purple-600"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="text-center">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4">
-              Stay in the Loop
-            </h2>
-            <p className="text-lg md:text-xl text-blue-100 mb-6 md:mb-8 max-w-2xl mx-auto">
-              Get the latest tech news and insights delivered straight to your
-              inbox
-            </p>
-
-            <div className="max-w-md mx-auto">
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-                <input
-                  type="email"
-                  value={newsletterForm.email}
-                  onChange={(e) =>
-                    setNewsletterForm((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter your email"
-                  className="flex-1 bg-white px-4 md:px-6 py-3 md:py-4 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 text-sm md:text-base"
-                />
-                <button
-                  onClick={handleNewsletterSubmit}
-                  className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-full hover:bg-gray-100 transition-all duration-200 font-medium shadow-lg hover:shadow-xl text-sm md:text-base cursor-pointer"
-                >
-                  Subscribe
-                </button>
-              </div>
-              {newsletterError && (
-                <p className="text-red-200 text-sm mt-2">{newsletterError}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <footer
+        className={`py-12 border-t ${
+          darkMode
+            ? "bg-gray-800 border-gray-700 text-gray-300"
+            : "bg-white border-gray-200 text-gray-600"
+        }`}
+      >
+        <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                  <Globe className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-2xl font-bold">TechPulse</span>
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2 font-bold text-xl mb-4">
+                <BookOpen
+                  className={`${
+                    darkMode ? "text-purple-400" : "text-purple-600"
+                  }`}
+                />
+                <span
+                  className={`${
+                    darkMode ? "text-white" : "text-gray-900"
+                  } font-serif tracking-wide`}
+                >
+                  <span className="text-purple-500">Indie</span>Page
+                </span>
               </div>
-              <p className="text-gray-400 mb-4">
-                Your premier source for technology news, insights, and analysis.
+              <p className="mb-4 max-w-md">
+                A marketplace connecting independent authors with readers who
+                love to discover new voices and stories.
               </p>
               <div className="flex space-x-4">
-                <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-colors duration-200">
-                  <span className="text-sm" onClick={() => window.open("https://www.facebook.com/")}>f</span>
-                </div>
-                <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-colors duration-200">
-                  <span className="text-sm" onClick={() => window.open("https://www.twitter.com/")}>t</span>
-                </div>
-                <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-colors duration-200">
-                  <span className="text-sm" onClick={() => window.open("https://www.linkedin.com/")}>in</span>
-                </div>
+                <a
+                  href="#"
+                  className={`p-2 rounded-full transition-all duration-200 hover:scale-110 ${
+                    darkMode 
+                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white" 
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 rounded-full transition-all duration-200 hover:scale-110 ${
+                    darkMode 
+                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white" 
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z" />
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 rounded-full transition-all duration-200 hover:scale-110 ${
+                    darkMode 
+                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white" 
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                  </svg>
+                </a>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold mb-4">Categories</h3>
+              <h4 className="font-bold text-lg mb-4">Quick Links</h4>
               <ul className="space-y-2">
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
+                    onClick={() => scrollToSection("home")}
                   >
-                    Artificial Intelligence
+                    Home
                   </a>
                 </li>
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
+                    onClick={() => scrollToSection("books")}
                   >
-                    Blockchain
+                    Books
                   </a>
                 </li>
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                  >
-                    Cybersecurity
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                  >
-                    Mobile Technology
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Company</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
+                    onClick={() => scrollToSection("about")}
                   >
                     About Us
                   </a>
@@ -2226,23 +2456,8 @@ const TechPulse: React.FC = () => {
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                  >
-                    Our Team
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                  >
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
+                    onClick={() => scrollToSection("contact")}
                   >
                     Contact
                   </a>
@@ -2251,20 +2466,28 @@ const TechPulse: React.FC = () => {
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold mb-4">Support</h3>
+              <h4 className="font-bold text-lg mb-4">Customer Service</h4>
               <ul className="space-y-2">
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
                   >
-                    Help Center
+                    FAQ
                   </a>
                 </li>
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
+                  >
+                    Shipping & Returns
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-purple-500 transition-colors"
                   >
                     Privacy Policy
                   </a>
@@ -2272,47 +2495,1222 @@ const TechPulse: React.FC = () => {
                 <li>
                   <a
                     href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                    className="hover:text-purple-500 transition-colors"
                   >
                     Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                  >
-                    Cookie Policy
                   </a>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700 text-center">
             <p>
-              &copy; 2025 TechPulse. All rights reserved. Built with
-              cutting-edge technology.
+              &copy; {new Date().getFullYear()} IndiePage. All rights reserved.
+            </p>
+            <p className="text-sm mt-1">
+              Empowering independent authors and readers worldwide.
             </p>
           </div>
         </div>
       </footer>
+
+      {/* Book Details Modal */}
+      <AnimatePresence>
+        {selectedBook && (
+          <motion.div
+            className="fixed inset-0 z-50 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="min-h-screen px-4 py-4 md:px-4 md:py-8 flex items-center justify-center">
+              {/* Enhanced Modern Backdrop */}
+              <motion.div
+                className="fixed inset-0 bg-gradient-to-br from-black/85 via-gray-900/75 to-black/90 backdrop-blur-xl"
+                initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
+                exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                transition={{ duration: 0.4 }}
+                onClick={() => setSelectedBook(null)}
+              />
+              
+              {/* Additional blur layer for depth */}
+              <motion.div
+                className="fixed inset-0 bg-black/25 backdrop-blur-md"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                onClick={() => setSelectedBook(null)}
+              />
+
+              {/* Subtle noise texture overlay for premium feel */}
+              <motion.div
+                className="fixed inset-0 opacity-[0.02] pointer-events-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.02 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+              />
+
+              {/* Backdrop */}
+              <motion.div
+                className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedBook(null)}
+              />
+
+              {/* Modal Content */}
+              <motion.div
+                className={`relative max-w-7xl w-full mx-2 md:mx-2 rounded-xl shadow-2xl overflow-hidden ${
+                  darkMode ? "bg-gray-800" : "bg-white"
+                } z-10`}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Close button */}
+                <motion.button
+                  className={`absolute top-4 right-4 z-20 p-2 rounded-full cursor-pointer ${
+                    darkMode
+                      ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  } transition-colors shadow-lg`}
+                  onClick={() => setSelectedBook(null)}
+                  aria-label="Close"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X size={20} />
+                </motion.button>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
+                  {/* Left side - Images */}
+                  <div className="relative">
+                    {/* Main cover image - extends to edges */}
+                    <motion.div
+                      className="h-full min-h-[400px] lg:min-h-[600px] relative overflow-hidden"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <img
+                        src={selectedBook.coverImage}
+                        alt={selectedBook.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Stronger gradient overlay for better text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    </motion.div>
+
+                    {/* Additional images overlay */}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="grid grid-cols-3 gap-2">
+                        {selectedBook.additionalImages.map((image, index) => (
+                          <motion.div
+                            key={index}
+                            className="rounded-lg overflow-hidden shadow-lg backdrop-blur-sm bg-black/20 border border-white/20"
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{
+                              duration: 0.5,
+                              delay: 0.1 * (index + 1),
+                            }}
+                          >
+                            <img
+                              src={image}
+                              alt={`${selectedBook.title} - additional view ${
+                                index + 1
+                              }`}
+                              className="w-full h-16 md:h-20 object-cover hover:scale-110 transition-transform duration-300 cursor-pointer"
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right side - Details */}
+                  <div className="p-6 md:p-8 py-8 md:py-12 overflow-y-auto">
+                    <motion.div
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {selectedBook.genre.map((genre) => (
+                          <span
+                            key={genre}
+                            className={`text-xs px-3 py-1 rounded-full ${
+                              darkMode
+                                ? "bg-gray-700 text-gray-300"
+                                : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+
+                      <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                        {selectedBook.title}
+                      </h2>
+                      <p
+                        className={`text-lg mb-6 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        by {selectedBook.author}
+                      </p>
+                    </motion.div>
+
+                    {/* Rating */}
+                    <motion.div
+                      className="flex items-center mb-6"
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.1 }}
+                    >
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={20}
+                            className={
+                              i < Math.floor(selectedBook.rating)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : i < selectedBook.rating
+                                ? "text-yellow-400 fill-yellow-400 opacity-50"
+                                : `${
+                                    darkMode ? "text-gray-600" : "text-gray-300"
+                                  }`
+                            }
+                          />
+                        ))}
+                      </div>
+                      <span
+                        className={`ml-2 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        {selectedBook.rating.toFixed(1)} (
+                        {selectedBook.reviews.length} reviews)
+                      </span>
+                    </motion.div>
+
+                    {/* Price and Add to Cart */}
+                    <motion.div
+                      className="flex items-center justify-between mb-8"
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                      <div className="text-2xl font-bold">
+                        ${selectedBook.price.toFixed(2)}
+                      </div>
+                      <div className="flex gap-2">
+                    
+                        <motion.button
+                          onClick={() => {
+                            addToCart(selectedBook);
+                          }}
+                          className={`px-6 py-2 rounded-lg cursor-pointer ${
+                            darkMode
+                              ? "bg-purple-700 hover:bg-purple-600"
+                              : "bg-purple-600 hover:bg-purple-700"
+                          } text-white font-medium transition-colors flex items-center gap-2`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <ShoppingCart size={18} />
+                          Add to Cart
+                        </motion.button>
+                      </div>
+                    </motion.div>
+
+                    {/* Description */}
+                    <motion.div
+                      className="mb-8"
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                      <h3 className="font-medium text-lg mb-3">Description</h3>
+                      <p
+                        className={`${
+                          darkMode ? "text-gray-300" : "text-gray-700"
+                        } leading-relaxed`}
+                      >
+                        {selectedBook.description}
+                      </p>
+                    </motion.div>
+
+                    {/* Reviews */}
+                    <motion.div
+                      className="mb-8"
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.4 }}
+                    >
+                      <h3 className="font-medium text-lg mb-4">
+                        Customer Reviews
+                      </h3>
+                      <div className="space-y-4">
+                        {selectedBook.reviews.map((review) => (
+                          <motion.div
+                            key={review.id}
+                            className={`p-4 rounded-lg ${
+                              darkMode ? "bg-gray-700" : "bg-gray-100"
+                            }`}
+                            whileHover={{ x: 5 }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                {review.avatar && (
+                                  <img
+                                    src={review.avatar}
+                                    alt={review.userName}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                )}
+                                <div className="font-medium">
+                                  {review.userName}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    size={16}
+                                    className={
+                                      i < review.rating
+                                        ? "text-yellow-400 fill-yellow-400"
+                                        : `${
+                                            darkMode
+                                              ? "text-gray-600"
+                                              : "text-gray-300"
+                                          }`
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <p
+                              className={`text-sm ${
+                                darkMode ? "text-gray-300" : "text-gray-700"
+                              }`}
+                            >
+                              {review.comment}
+                            </p>
+                            <p
+                              className={`text-xs mt-2 ${
+                                darkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {review.date}
+                            </p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+
+                    {/* Related Books */}
+                    <motion.div
+                      initial={{ y: -20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.5 }}
+                    >
+                      <h3 className="font-medium text-lg mb-4">
+                        You Might Also Like
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {getRelatedBooks(selectedBook).map((book, index) => (
+                          <motion.div
+                            key={book.id}
+                            className={`rounded-lg overflow-hidden cursor-pointer ${
+                              darkMode
+                                ? "bg-gray-700 hover:bg-gray-600"
+                                : "bg-gray-100 hover:bg-gray-200"
+                            } transition-colors`}
+                            onClick={() => setSelectedBook(book)}
+                            whileHover={{ y: -5 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 * index }}
+                          >
+                            <div className="relative h-32 overflow-hidden">
+                              <img
+                                src={book.coverImage}
+                                alt={book.title}
+                                className="w-full h-full object-cover transition-transform hover:scale-110 duration-700"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                            </div>
+                            <div className="p-3">
+                              <p className="font-medium text-sm truncate">
+                                {book.title}
+                              </p>
+                              <div className="flex justify-between items-center mt-1">
+                                <p
+                                  className={`text-xs ${
+                                    darkMode ? "text-gray-400" : "text-gray-600"
+                                  }`}
+                                >
+                                  by {book.author}
+                                </p>
+                                <p
+                                  className={`text-xs font-medium ${
+                                    darkMode
+                                      ? "text-purple-400"
+                                      : "text-purple-600"
+                                  }`}
+                                >
+                                  ${book.price.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Shopping Cart Modal */}
+      <AnimatePresence>
+        {showCart && (
+          <motion.div
+            className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Enhanced Modern Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-gradient-to-br from-black/85 via-gray-900/75 to-black/90 backdrop-blur-xl"
+              initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+              animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
+              exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+              transition={{ duration: 0.4 }}
+              onClick={() => {
+                if (!isCheckingOut) {
+                  setShowCart(false);
+                }
+              }}
+            />
+            <motion.div // Additional blur layer for depth
+              className="fixed inset-0 bg-black/25 backdrop-blur-md"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              onClick={() => { 
+                if (!isCheckingOut) {
+                  setShowCart(false);
+                }
+              }}
+            />
+            <motion.div // Subtle noise texture
+              className="fixed inset-0 opacity-[0.02] pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.02 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+            />
+
+            {/* Cart Content as a modal dialog */}
+            <motion.div
+              className={`relative max-w-md w-full rounded-xl shadow-2xl overflow-hidden ${
+                darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-900"
+              } z-10 flex flex-col max-h-[90vh]`}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Header */}
+              <div
+                className={`p-4 border-b ${
+                  darkMode ? "border-gray-700" : "border-gray-200"
+                } flex justify-between items-center flex-shrink-0`}
+              >
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {isCheckingOut ? (
+                    <>
+                      {orderComplete ? (
+                        <>
+                          <Sparkles size={20} className="text-green-500" />
+                          Order Complete
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={20} />
+                          {checkoutStep === 1 ? "Shipping" : "Payment"}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={20} />
+                      Cart (
+                      {cart.reduce(
+                        (total, item) => total + item.quantity,
+                        0
+                      )}{" "}
+                      items)
+                    </>
+                  )}
+                </h2>
+                {!isCheckingOut && (
+                  <button
+                    className={`p-2 rounded-full cursor-pointer ${
+                      darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"
+                    } transition-colors`}
+                    onClick={() => setShowCart(false)}
+                    aria-label="Close cart"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+
+              {/* Cart Content (Original and Corrected) */}
+              {!isCheckingOut ? (
+                <>
+                  {/* Cart Items */}
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {cart.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20,
+                          }}
+                        >
+                          <ShoppingCart
+                            size={64}
+                            className={`mb-4 ${
+                              darkMode ? "text-gray-600" : "text-gray-300"
+                            }`}
+                          />
+                        </motion.div>
+                        <p className="text-lg font-medium mb-2">
+                          Your cart is empty
+                        </p>
+                        <p
+                          className={`mb-6 ${
+                            darkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
+                          Add some books to get started!
+                        </p>
+                        <motion.button
+                          onClick={() => {
+                            setShowCart(false);
+                            scrollToSection("books");
+                          }}
+                          className={`px-6 py-2 rounded-lg cursor-pointer ${
+                            darkMode
+                              ? "bg-purple-700 hover:bg-purple-600"
+                              : "bg-purple-600 hover:bg-purple-700"
+                          } text-white transition-colors`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Browse Books
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {cart.map((item) => (
+                          <motion.div
+                            key={item.book.id}
+                            className={`p-4 rounded-lg ${
+                              darkMode ? "bg-gray-700" : "bg-gray-100"
+                            } flex gap-4`}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            layout
+                          >
+                            {/* Book cover */}
+                            <div className="w-20 h-24 flex-shrink-0 rounded-md overflow-hidden">
+                              <img
+                                src={item.book.coverImage}
+                                alt={item.book.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            {/* Details */}
+                            <div className="flex-1">
+                              <div className="flex justify-between">
+                                <div>
+                                  <h3 className="font-medium">
+                                    {item.book.title}
+                                  </h3>
+                                  <p
+                                    className={`text-sm ${
+                                      darkMode
+                                        ? "text-gray-400"
+                                        : "text-gray-600"
+                                    }`}
+                                  >
+                                    by {item.book.author}
+                                  </p>
+                                  <p className="font-bold mt-1">
+                                    ${item.book.price.toFixed(2)}
+                                  </p>
+                                </div>
+
+                                <motion.button
+                                  onClick={() => removeFromCart(item.book.id)}
+                                  className={`p-1 h-fit rounded-full cursor-pointer ${
+                                    darkMode
+                                      ? "text-gray-400 hover:bg-gray-600"
+                                      : "text-gray-500 hover:bg-gray-200"
+                                  } transition-colors`}
+                                  aria-label="Remove item"
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                >
+                                  <X size={16} />
+                                </motion.button>
+                              </div>
+
+                              {/* Quantity controls */}
+                              <div className="flex items-center mt-2">
+                                <motion.button
+                                  onClick={() =>
+                                    updateCartItemQuantity(
+                                      item.book.id,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                  className={`p-1 rounded cursor-pointer ${
+                                    darkMode
+                                      ? "bg-gray-600 hover:bg-gray-500"
+                                      : "bg-gray-200 hover:bg-gray-300"
+                                  } transition-colors`}
+                                  aria-label="Decrease quantity"
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                >
+                                  -
+                                </motion.button>
+                                <span className="w-8 text-center">
+                                  {item.quantity}
+                                </span>
+                                <motion.button
+                                  onClick={() =>
+                                    updateCartItemQuantity(
+                                      item.book.id,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                  className={`p-1 rounded cursor-pointer ${
+                                    darkMode
+                                      ? "bg-gray-600 hover:bg-gray-500"
+                                      : "bg-gray-200 hover:bg-gray-300"
+                                  } transition-colors`}
+                                  aria-label="Increase quantity"
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                >
+                                  +
+                                </motion.button>
+
+                                <span className="ml-auto font-medium">
+                                  $
+                                  {(item.book.price * item.quantity).toFixed(
+                                    2
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary */}
+                  {cart.length > 0 && (
+                    <div
+                      className={`p-4 border-t flex-shrink-0 ${
+                        darkMode ? "border-gray-700" : "border-gray-200"
+                      }`}
+                    >
+                      <div
+                        className={`p-4 rounded-lg mb-4 ${
+                          darkMode ? "bg-gray-700" : "bg-gray-100"
+                        }`}
+                      >
+                        <div className="flex justify-between mb-2">
+                          <span
+                            className={
+                              darkMode ? "text-gray-300" : "text-gray-700"
+                            }
+                          >
+                            Subtotal:
+                          </span>
+                          <span className="font-medium">
+                            ${cartTotal.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span
+                            className={
+                              darkMode ? "text-gray-300" : "text-gray-700"
+                            }
+                          >
+                            Shipping:
+                          </span>
+                          <span className="font-medium">$0.00</span>
+                        </div>
+                        <div className="flex justify-between mb-4">
+                          <span
+                            className={
+                              darkMode ? "text-gray-300" : "text-gray-700"
+                            }
+                          >
+                            Tax:
+                          </span>
+                          <span className="font-medium">
+                            ${(cartTotal * 0.08).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold">
+                          <span>Total:</span>
+                          <span>
+                            ${(cartTotal + cartTotal * 0.08).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        onClick={handleCheckout}
+                        className={`w-full py-3 px-4 rounded-lg cursor-pointer ${
+                          darkMode
+                            ? "bg-purple-700 hover:bg-purple-600"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        } text-white font-medium transition-colors flex items-center justify-center gap-2`}
+                        whileHover={{ scale: 1.02 }}                        
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Checkout
+                      </motion.button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Checkout Flow Content (remains the same structure as before)
+                <>
+                  {orderComplete ? (
+                    <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 260,
+                          damping: 20,
+                        }}
+                        className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6"
+                      >
+                        <Sparkles size={36} className="text-green-500" />
+                      </motion.div>
+
+                      <h3 className="text-2xl font-bold mb-2">Thank You!</h3>
+                      <p
+                        className={`mb-8 ${
+                          darkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Your order has been placed successfully. You will
+                        receive a confirmation email shortly.
+                      </p>
+
+                      <div
+                        className={`w-full p-4 rounded-lg ${
+                          darkMode ? "bg-gray-700" : "bg-gray-100"
+                        } mb-6`}
+                      >
+                        <div className="flex justify-between mb-2">
+                          <span className="font-medium">Order Number:</span>
+                          <span>
+                            #IND
+                            {Math.floor(Math.random() * 10000)
+                              .toString()
+                              .padStart(4, "0")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span className="font-medium">Date:</span>
+                          <span>{new Date().toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span className="font-medium">Total:</span>
+                          <span>
+                            ${(cartTotal + cartTotal * 0.08).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Payment Method:</span>
+                          <span>Credit Card</span>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        onClick={() => {
+                          setCart([]);
+                          setIsCheckingOut(false);
+                          setOrderComplete(false);
+                          setShowCart(false);
+                        }}
+                        className={`px-6 py-3 rounded-lg cursor-pointer ${
+                          darkMode
+                            ? "bg-purple-700 hover:bg-purple-600"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        } text-white font-medium transition-colors`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Continue Shopping
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-y-auto">
+                      {checkoutStep === 1 ? (
+                        <div className="p-6">
+                          <h3 className="text-lg font-bold mb-4">
+                            Shipping Information
+                          </h3>
+                          <div className="space-y-4">
+                            <div>
+                              <label
+                                className={`block text-sm font-medium mb-1 ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                Full Name
+                              </label>
+                              <input
+                                type="text"
+                                name="fullName"
+                                value={shippingAddress.fullName}
+                                onChange={handleShippingChange}
+                                className={`w-full px-4 py-2 rounded-lg ${
+                                  darkMode
+                                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                placeholder="Your full name"
+                              />
+                            </div>
+
+                            <div>
+                              <label
+                                className={`block text-sm font-medium mb-1 ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                Address
+                              </label>
+                              <input
+                                type="text"
+                                name="address"
+                                value={shippingAddress.address}
+                                onChange={handleShippingChange}
+                                className={`w-full px-4 py-2 rounded-lg ${
+                                  darkMode
+                                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                placeholder="Street address"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  City
+                                </label>
+                                <input
+                                  type="text"
+                                  name="city"
+                                  value={shippingAddress.city}
+                                  onChange={handleShippingChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="City"
+                                />
+                              </div>
+
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  State
+                                </label>
+                                <input
+                                  type="text"
+                                  name="state"
+                                  value={shippingAddress.state}
+                                  onChange={handleShippingChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="State/Province"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  ZIP Code
+                                </label>
+                                <input
+                                  type="text"
+                                  name="zip"
+                                  value={shippingAddress.zip}
+                                  onChange={handleShippingChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="ZIP/Postal code"
+                                />
+                              </div>
+
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  Country
+                                </label>
+                                <input
+                                  type="text"
+                                  name="country"
+                                  value={shippingAddress.country}
+                                  onChange={handleShippingChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="Country"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`mt-8 p-4 rounded-lg ${
+                              darkMode ? "bg-gray-700" : "bg-gray-100"
+                            }`}
+                          >
+                            <h4 className="font-bold mb-2">Order Summary</h4>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">
+                                {cart.reduce(
+                                  (total, item) => total + item.quantity,
+                                  0
+                                )}{" "}
+                                items
+                              </span>
+                              <span className="text-sm font-medium">
+                                ${cartTotal.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">Shipping</span>
+                              <span className="text-sm font-medium">
+                                $0.00
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">Tax</span>
+                              <span className="text-sm font-medium">
+                                ${(cartTotal * 0.08).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="border-t mt-2 pt-2 flex justify-between">
+                              <span className="font-bold">Total</span>
+                              <span className="font-bold">
+                                ${(cartTotal + cartTotal * 0.08).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-6">
+                          <h3 className="text-lg font-bold mb-4">
+                            Payment Information
+                          </h3>
+                          <div className="space-y-4">
+                            <div>
+                              <label
+                                className={`block text-sm font-medium mb-1 ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                Card Number
+                              </label>
+                              <input
+                                type="text"
+                                name="cardNumber"
+                                value={paymentDetails.cardNumber}
+                                onChange={handlePaymentChange}
+                                className={`w-full px-4 py-2 rounded-lg ${
+                                  darkMode
+                                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                placeholder="1234 5678 9012 3456"
+                              />
+                            </div>
+
+                            <div>
+                              <label
+                                className={`block text-sm font-medium mb-1 ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                Name on Card
+                              </label>
+                              <input
+                                type="text"
+                                name="nameOnCard"
+                                value={paymentDetails.nameOnCard}
+                                onChange={handlePaymentChange}
+                                className={`w-full px-4 py-2 rounded-lg ${
+                                  darkMode
+                                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                placeholder="John Doe"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  Expiry Date
+                                </label>
+                                <input
+                                  type="text"
+                                  name="expiry"
+                                  value={paymentDetails.expiry}
+                                  onChange={handlePaymentChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="MM/YY"
+                                />
+                              </div>
+
+                              <div>
+                                <label
+                                  className={`block text-sm font-medium mb-1 ${
+                                    darkMode
+                                      ? "text-gray-300"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  CVV
+                                </label>
+                                <input
+                                  type="text"
+                                  name="cvv"
+                                  value={paymentDetails.cvv}
+                                  onChange={handlePaymentChange}
+                                  className={`w-full px-4 py-2 rounded-lg ${
+                                    darkMode
+                                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                  } border focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-colors`}
+                                  placeholder="123"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`mt-8 p-4 rounded-lg ${
+                              darkMode ? "bg-gray-700" : "bg-gray-100"
+                            }`}
+                          >
+                            <h4 className="font-bold mb-2">
+                              Shipping Address
+                            </h4>
+                            <p className="text-sm">
+                              {shippingAddress.fullName}
+                            </p>
+                            <p className="text-sm">
+                              {shippingAddress.address}
+                            </p>
+                            <p className="text-sm">
+                              {shippingAddress.city}, {shippingAddress.state}{" "}
+                              {shippingAddress.zip}
+                            </p>
+                            <p className="text-sm">
+                              {shippingAddress.country}
+                            </p>
+                          </div>
+
+                          <div
+                            className={`mt-4 p-4 rounded-lg ${
+                              darkMode ? "bg-gray-700" : "bg-gray-100"
+                            }`}
+                          >
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">Subtotal</span>
+                              <span className="text-sm font-medium">
+                                ${cartTotal.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">Shipping</span>
+                              <span className="text-sm font-medium">
+                                $0.00
+                              </span>
+                            </div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm">Tax</span>
+                              <span className="text-sm font-medium">
+                                ${(cartTotal * 0.08).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="border-t mt-2 pt-2 flex justify-between">
+                              <span className="font-bold">Total</span>
+                              <span className="font-bold">
+                                ${(cartTotal + cartTotal * 0.08).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Checkout Footer */}
+                  {!orderComplete && (
+                    <div
+                      className={`p-4 border-t ${
+                        darkMode ? "border-gray-700" : "border-gray-200"
+                      } flex justify-between gap-4`}
+                    >
+                      <motion.button
+                        onClick={cancelCheckout}
+                        className={`flex-1 py-3 rounded-lg cursor-pointer ${
+                          darkMode
+                            ? "bg-gray-700 hover:bg-gray-600"
+                            : "bg-gray-200 hover:bg-gray-300"
+                        } transition-colors`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={loading}
+                      >
+                        {checkoutStep === 1 ? "Cancel" : "Back"}
+                      </motion.button>
+
+                      <motion.button
+                        onClick={continueCheckout}
+                        className={`flex-1 py-3 rounded-lg ${
+                          darkMode
+                            ? "bg-purple-700 hover:bg-purple-600"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        } text-white transition-colors flex items-center justify-center gap-2`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <motion.span
+                              className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full cursor-pointer"
+                              animate={{ rotate: 360 }}
+                              transition={{
+                                duration: 1,
+                                repeat: Infinity,
+                                ease: "linear",
+                              }}
+                            />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            {checkoutStep === 1 ? "Continue" : "Place Order"}
+                            <ArrowRight size={16} />
+                          </>
+                        )}
+                      </motion.button>
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default TechPulse;
-
-// Zod Schema
-export const Schema = {
-    "commentary": "Tech News Website Interface",
-    "template": "nextjs-developer",
-    "title": "Tech News",
-    "description": "A tech news website interface built with Next.js and TypeScript",
-    "additional_dependencies": ["lucide-react"],
-    "has_additional_dependencies": true,
-    "install_dependencies_command": "npm install lucide-react",
-    "port": 3000,
-    "file_path": "pages/index.tsx",
-    "code": "<see code above>"
-}
+export default BookMarketplace;
