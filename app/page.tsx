@@ -1,982 +1,2402 @@
-'use client'
+"use client"
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  Play,
+  Pause,
+  Heart,
+  Share2,
+  MessageCircle,
+  Users,
+  Target,
+  Calendar,
+  DollarSign,
+  Gift,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  X,
+  User,
+  LogOut,
+  CheckCircle,
+  AlertCircle,
+  Star,
+  TrendingUp,
+  Shield,
+  Award,
+  Clock,
+  MapPin,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Mail,
+  Link,
+  Copy,
+  Eye,
+  ThumbsUp,
+  Bookmark,
+  Flag,
+  ExternalLink,
+  Bell,
+  Settings,
+  Search,
+  Filter,
+  Download,
+  Upload,
+  Camera,
+  ArrowRight,
+  PlayCircle,
+  Users2,
+  Zap,
+  Globe,
+} from "lucide-react";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-
-interface ColorData {
+interface User {
+  id: string;
   name: string;
-  rgb: [number, number, number];
-  percentage: number;
-  icon: string;
+  email: string;
+  avatar: string;
 }
 
-interface SavedColor {
-  rgb: [number, number, number];
-  hex: string;
-  timestamp: number;
-  colors: ColorData[];
+interface Video {
+  id: string;
+  title: string;
+  embedId: string;
+  thumbnail: string;
+  duration: string;
+  description: string;
 }
 
-interface DropAnimation {
-  id: number;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  color: [number, number, number];
-  active: boolean;
+interface Reward {
+  id: string;
+  title: string;
+  description: string;
+  amount: number;
+  stock: number;
+  claimed: number;
+  estimatedDelivery: string;
+  image: string;
+  features: string[];
+  popularity: "limited" | "popular" | "early-bird" | null;
 }
 
-interface Confetti {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  size: number;
-  life: number;
+interface Comment {
+  id: string;
+  user: User;
+  content: string;
+  timestamp: Date;
+  isSupporter: boolean;
+  likes: number;
+  replies: Comment[];
+  isLiked?: boolean;
 }
 
-const BackgroundParticles = React.memo(() => {
-  const particles = useMemo(() => 
-    [...Array(60)].map((_, i) => ({
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      delay: `${Math.random() * 5}s`,
-      duration: `${3 + Math.random() * 4}s`
-    })), []
-  );
+interface Update {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: Date;
+  image?: string;
+  likes: number;
+  views: number;
+  isLiked?: boolean;
+}
 
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle, i) => (
-        <div
-          suppressHydrationWarning
-          key={i}
-          className="absolute w-1 h-1 bg-white opacity-20 rounded-full"
-          style={{
-            left: particle.left,
-            top: particle.top,
-            animationDelay: particle.delay,
-            animation: `twinkle ${particle.duration} ease-in-out infinite`
-          }}
-        />
-      ))}
-    </div>
-  );
-});
+interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+}
 
-const ConfettiParticle: React.FC<{ confetti: Confetti }> = ({ confetti }) => (
-  <div
-    className="absolute pointer-events-none"
-    style={{
-      left: confetti.x,
-      top: confetti.y,
-      width: confetti.size,
-      height: confetti.size,
-      backgroundColor: confetti.color,
-      borderRadius: '50%',
-      opacity: confetti.life / 100,
-      animation: 'confettiFall 3s ease-out forwards'
-    }}
-  />
-);
+interface FormErrors {
+  email?: string;
+  password?: string;
+  amount?: string;
+  comment?: string;
+}
 
-const ColorMixingPlayground: React.FC = () => {
-  const [colorData, setColorData] = useState<ColorData[]>([
-    { name: 'Red', rgb: [255, 60, 60], percentage: 0, icon: '🔴' },
-    { name: 'Blue', rgb: [60, 120, 255], percentage: 0, icon: '🔵' },
-    { name: 'Yellow', rgb: [255, 230, 60], percentage: 0, icon: '🟡' },
-    { name: 'Green', rgb: [60, 200, 90], percentage: 0, icon: '🟢' },
-    { name: 'Purple', rgb: [160, 60, 200], percentage: 0, icon: '🟣' },
-    { name: 'Orange', rgb: [255, 150, 60], percentage: 0, icon: '🟠' },
-    { name: 'Water', rgb: [240, 248, 255], percentage: 0, icon: '💧' },
+interface ProjectStats {
+  totalViews: number;
+  totalLikes: number;
+  totalShares: number;
+  averageContribution: number;
+  repeatBackers: number;
+}
+
+const FundForward: React.FC = () => {
+  // Refs for navigation
+  const heroRef = useRef<HTMLDivElement>(null);
+  const projectRef = useRef<HTMLDivElement>(null);
+  const howItWorksRef = useRef<HTMLDivElement>(null);
+
+  // Authentication State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginMessage, setLoginMessage] = useState("");
+  const [isClient, setIsClient] = useState(false);
+  // UI State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string>("0");
+  const [selectedReward, setSelectedReward] = useState<string | null>(null);
+  const [showDonateModal, setShowDonateModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "updates" | "comments" | "faq" | "risks"
+  >("updates");
+  const [expandedFAQs, setExpandedFAQs] = useState<Set<string>>(new Set());
+  const [isProjectLiked, setIsProjectLiked] = useState(false);
+  const [isProjectBookmarked, setIsProjectBookmarked] = useState(false);
+  const [showAllRewards, setShowAllRewards] = useState(false);
+  const [showLandingPage, setShowLandingPage] = useState(true);
+
+  // Form State
+  const [loginForm, setLoginForm] = useState({
+    email: "demo@crowdfund.com",
+    password: "demo123",
+  });
+  const [donateForm, setDonateForm] = useState({ amount: "", message: "" });
+  const [commentForm, setCommentForm] = useState({ content: "" });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+
+  const loginModalRef = useRef<HTMLDivElement>(null);
+  const shareModalRef = useRef<HTMLDivElement>(null);
+  const donateModalRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic state for updates and comments
+  const [updates, setUpdates] = useState<Update[]>([
+    {
+      id: "1",
+      title: "Prototype Testing Complete!",
+      content:
+        "We've successfully completed beta testing with 50 households. Results exceeded expectations with 40% faster growth rates and 90% user satisfaction.",
+      timestamp: new Date("2024-05-20"),
+      image:
+        "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=400&fit=crop",
+      likes: 156,
+      views: 2341,
+      isLiked: false,
+    },
+    {
+      id: "2",
+      title: "Manufacturing Partnership Secured",
+      content:
+        "Partnered with leading sustainable manufacturing facility. Production capacity confirmed for all reward tiers with eco-friendly processes.",
+      timestamp: new Date("2024-05-15"),
+      likes: 89,
+      views: 1456,
+      isLiked: false,
+    },
+    {
+      id: "3",
+      title: "AI Algorithm Enhancement",
+      content:
+        "Updated our machine learning models to provide even more precise growing recommendations based on 10,000+ data points.",
+      timestamp: new Date("2024-05-10"),
+      likes: 234,
+      views: 3102,
+      isLiked: false,
+    },
   ]);
 
-  const [mixedColor, setMixedColor] = useState<[number, number, number]>([240, 240, 240]);
-  const [targetColor, setTargetColor] = useState<[number, number, number]>([180, 120, 200]);
-  const [drops, setDrops] = useState<DropAnimation[]>([]);
-  const [confetti, setConfetti] = useState<Confetti[]>([]);
-  const [showAbout, setShowAbout] = useState(false);
-  const [showTargetHelp, setShowTargetHelp] = useState(false);
-  const [score, setScore] = useState(0);
-  const [totalPercentage, setTotalPercentage] = useState(0);
-  const [showWinning, setShowWinning] = useState(false);
-  const [lastScore, setLastScore] = useState(0);
-  const [showCopiedMessage, setShowCopiedMessage] = useState(false);
-  const dropIdRef = useRef(0);
-  const confettiIdRef = useRef(0);
+  const [comments, setComments] = useState<Comment[]>([
+    {
+      id: "1",
+      user: {
+        id: "2",
+        name: "Sarah Chen",
+        email: "sarah@example.com",
+        avatar: "https://randomuser.me/api/portraits/women/32.jpg",
+      },
+      content:
+        "This looks amazing! Can't wait to grow my own vegetables year-round. The beta results are very promising.",
+      timestamp: new Date("2024-05-22"),
+      isSupporter: true,
+      likes: 24,
+      replies: [],
+      isLiked: false,
+    },
+    {
+      id: "2",
+      user: {
+        id: "3",
+        name: "Mike Rodriguez",
+        email: "mike@example.com",
+        avatar:
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+      },
+      content:
+        "The beta results are impressive. Looking forward to the professional kit! When will shipping start?",
+      timestamp: new Date("2024-05-21"),
+      isSupporter: true,
+      likes: 18,
+      replies: [],
+      isLiked: false,
+    },
+  ]);
 
-  // Prevent body scroll when modals are open
-  useEffect(() => {
-    if (showAbout || showTargetHelp) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+  // Sample credentials
+  const sampleCredentials = {
+    email: "demo@crowdfund.com",
+    password: "demo123",
+  };
 
-    // Cleanup function to restore scroll when component unmounts
-    return () => {
-      document.body.style.overflow = 'unset';
+  // Project data with state
+  const [projectData, setProjectData] = useState({
+    id: "1",
+    title: "Revolutionary Smart Garden System",
+    description:
+      "An AI-powered hydroponic system that grows fresh vegetables year-round with minimal maintenance. Perfect for urban living and sustainable food production.",
+    raised: 127500,
+    goal: 200000,
+    backers: 847,
+    daysLeft: 23,
+    creator: {
+      id: "1",
+      name: "GreenTech Innovations",
+      avatar:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+      verified: true,
+      projectsCreated: 3,
+      projectsFunded: 12,
+      memberSince: "2019",
+    },
+    location: "San Francisco, CA",
+    category: "Technology",
+    tags: ["Smart Home", "Sustainable", "AI", "Indoor Gardening"],
+    risks: "Manufacturing delays, shipping complications, component shortages",
+    timeline: "6-8 months from funding completion",
+  });
+
+  const videos: Video[] = useMemo(
+    () => [
+      {
+        id: "0",
+        title: "Product Demo & Overview",
+        embedId: "6stlCkUDG_s",
+        thumbnail:
+          "https://images.unsplash.com/photo-1666727099499-ce24449b7b2b?w=800&h=450&fit=crop",
+        duration: "3:24",
+        description:
+          "See our Smart Garden System in action and learn how it works.",
+      },
+      {
+        id: "1",
+        title: "Installation Process",
+        embedId: "gsnqXt7d1mU",
+        thumbnail:
+          "https://images.unsplash.com/photo-1560161379-1f26045d6cba?w=800&h=450&fit=crop",
+        duration: "2:15",
+        description: "Step-by-step guide to setting up your garden system.",
+      },
+      {
+        id: "2",
+        title: "Growing Results",
+        embedId: "Jh6jZftn2e0",
+        thumbnail:
+          "https://images.unsplash.com/photo-1655731986321-d9bee041ec88?w=800&h=450&fit=crop",
+        duration: "4:02",
+        description:
+          "Real results from beta testers showing amazing growth rates.",
+      },
+    ],
+    []
+  );
+
+  const [rewards, setRewards] = useState<Reward[]>([
+    {
+      id: "1",
+      title: "Early Bird Special",
+      description: "Get the Smart Garden System at 30% off retail price.",
+      amount: 299,
+      stock: 100,
+      claimed: 67,
+      estimatedDelivery: "March 2025",
+      image:
+        "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop",
+      features: [
+        "Smart Garden System",
+        "Starter seed kit",
+        "Mobile app access",
+        "1-year warranty",
+      ],
+      popularity: "early-bird",
+    },
+    {
+      id: "2",
+      title: "Premium Package",
+      description:
+        "Smart Garden System + Premium LED grow lights + 6-month seed subscription.",
+      amount: 449,
+      stock: 75,
+      claimed: 23,
+      estimatedDelivery: "March 2025",
+      image:
+        "https://images.unsplash.com/photo-1612523563676-709f47fab6ea?w=400&h=300&fit=crop",
+      features: [
+        "Everything in Early Bird",
+        "Premium LED grow lights",
+        "6-month seed subscription",
+        "Priority support",
+      ],
+      popularity: "popular",
+    },
+    {
+      id: "3",
+      title: "Professional Kit",
+      description:
+        "Complete system with advanced monitoring sensors and nutrient automation.",
+      amount: 699,
+      stock: 50,
+      claimed: 12,
+      estimatedDelivery: "April 2025",
+      image:
+        "https://images.unsplash.com/photo-1722192148044-dbf55fd99c76?w=400&h=300&fit=crop",
+      features: [
+        "Everything in Premium",
+        "Advanced sensors",
+        "Nutrient automation",
+        "Climate control",
+        "2-year warranty",
+      ],
+      popularity: "limited",
+    },
+    {
+      id: "4",
+      title: "Supporter Package",
+      description: "Support the project and get exclusive updates.",
+      amount: 50,
+      stock: 500,
+      claimed: 234,
+      estimatedDelivery: "January 2025",
+      image:
+        "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop",
+      features: [
+        "Exclusive updates",
+        "Digital thank you card",
+        "Project stickers",
+        "Early access to future projects",
+      ],
+      popularity: null,
+    },
+    {
+      id: "5",
+      title: "Ultimate Bundle",
+      description: "Everything we offer plus exclusive perks.",
+      amount: 999,
+      stock: 25,
+      claimed: 5,
+      estimatedDelivery: "April 2025",
+      image:
+        "https://images.unsplash.com/photo-1604313476893-31aabc9c7fbb?w=400&h=300&fit=crop",
+      features: [
+        "Everything in Professional",
+        "Personal consultation",
+        "Custom engraving",
+        "Lifetime support",
+        "Beta access to new products",
+      ],
+      popularity: "limited",
+    },
+  ]);
+
+  const faqs: FAQ[] = useMemo(
+    () => [
+      {
+        id: "1",
+        question: "How much space does the system require?",
+        answer:
+          "The base unit requires a 2x2 foot footprint and can be placed on any stable surface near a power outlet. Height clearance of 3 feet is recommended.",
+      },
+      {
+        id: "2",
+        question: "What vegetables can I grow?",
+        answer:
+          "You can grow leafy greens, herbs, tomatoes, peppers, and most vegetables that don't require deep root systems. Our AI suggests optimal crops based on your preferences.",
+      },
+      {
+        id: "3",
+        question: "How much maintenance is required?",
+        answer:
+          "The system is designed for minimal maintenance - just refill water weekly and replace nutrients monthly. The app sends reminders and monitors everything automatically.",
+      },
+      {
+        id: "4",
+        question: "What if I encounter technical issues?",
+        answer:
+          "We provide 24/7 customer support and a comprehensive warranty covering all components for 2 years. Remote diagnostics help solve most issues quickly.",
+      },
+      {
+        id: "5",
+        question: "How does shipping work internationally?",
+        answer:
+          "We ship worldwide with tracking. International backers may be responsible for customs duties. Estimated shipping costs are calculated at checkout.",
+      },
+    ],
+    []
+  );
+
+  const projectStats: ProjectStats = useMemo(
+    () => ({
+      totalViews: 45672,
+      totalLikes: 1234,
+      totalShares: 567,
+      averageContribution: 387,
+      repeatBackers: 12,
+    }),
+    []
+  );
+
+  // Navigation scroll function
+  const scrollToSection = useCallback((section: string) => {
+    const refs = {
+      discover: projectRef,
+      start: howItWorksRef,
+      "how-it-works": howItWorksRef,
     };
-  }, [showAbout, showTargetHelp]);
 
-  // Color mixing and scoring logic
-  useEffect(() => {
-    const total = colorData.reduce((sum, color) => sum + color.percentage, 0);
-    setTotalPercentage(total);
-    
-    if (total === 0) {
-      setMixedColor([240, 240, 240]);
-      return;
+    const targetRef = refs[section as keyof typeof refs];
+    if (targetRef?.current) {
+      targetRef.current.scrollIntoView({ behavior: "smooth" });
+      setShowLandingPage(false);
     }
+    setIsMobileMenuOpen(false);
+  }, []);
 
-    // Improved color mixing using weighted average
-    let r = 0, g = 0, b = 0;
-    let totalWeight = 0;
-    
-    colorData.forEach(color => {
-      if (color.percentage > 0) {
-        const weight = color.percentage / 100;
-        totalWeight += weight;
-        r += color.rgb[0] * weight;
-        g += color.rgb[1] * weight;
-        b += color.rgb[2] * weight;
+  // Validation functions
+  const validateEmail = useCallback((email: string): string | undefined => {
+    if (!email) return "Email is required";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Invalid email format";
+    return undefined;
+  }, []);
+
+  const validatePassword = useCallback(
+    (password: string): string | undefined => {
+      if (!password) return "Password is required";
+      if (password.length < 6) return "Password must be at least 6 characters";
+      return undefined;
+    },
+    []
+  );
+
+  const validateAmount = useCallback((amount: string): string | undefined => {
+    if (!amount) return "Amount is required";
+    const num = parseFloat(amount);
+    if (isNaN(num) || num <= 0) return "Please enter a valid amount";
+    if (num < 10) return "Minimum donation is $10";
+    return undefined;
+  }, []);
+
+  const validateComment = useCallback((content: string): string | undefined => {
+    if (!content.trim()) return "Comment cannot be empty";
+    if (content.length < 10) return "Comment must be at least 10 characters";
+    return undefined;
+  }, []);
+
+  // Auth guard function
+  const requireAuth = useCallback(
+    (action: () => void) => {
+      if (!isLoggedIn) {
+        setShowLoginModal(true);
+        return;
       }
-    });
+      action();
+    },
+    [isLoggedIn]
+  );
 
-    if (totalWeight > 0) {
-      r = Math.round(r / totalWeight);
-      g = Math.round(g / totalWeight);
-      b = Math.round(b / totalWeight);
-    }
+  // Handlers
+  const handleLogin = useCallback(
+    (e?: React.MouseEvent | React.KeyboardEvent) => {
+      e?.preventDefault();
 
-    setMixedColor([r, g, b]);
-    const newScore = Math.round(calculateColorSimilarity([r, g, b], targetColor));
-    setScore(newScore);
+      const emailError = validateEmail(loginForm.email);
+      const passwordError = validatePassword(loginForm.password);
 
-    // Trigger winning animation
-    if (newScore >= 90 && lastScore < 90) {
-      triggerWinningAnimation();
-    }
-    setLastScore(newScore);
-  }, [colorData, targetColor, lastScore]);
+      if (emailError || passwordError) {
+        setFormErrors({ email: emailError, password: passwordError });
+        return;
+      }
 
-  const calculateColorSimilarity = (color1: [number, number, number], color2: [number, number, number]): number => {
-    const diff = Math.sqrt(
-      Math.pow(color1[0] - color2[0], 2) +
-      Math.pow(color1[1] - color2[1], 2) +
-      Math.pow(color1[2] - color2[2], 2)
-    );
-    const maxDiff = Math.sqrt(3 * 255 * 255);
-    return ((maxDiff - diff) / maxDiff) * 100;
-  };
+      if (
+        loginForm.email === sampleCredentials.email &&
+        loginForm.password === sampleCredentials.password
+      ) {
+        const user: User = {
+          id: "1",
+          name: "Alex Johnson",
+          email: loginForm.email,
+          avatar:
+            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+        };
 
-  const triggerWinningAnimation = () => {
-    setShowWinning(true);
-    
-    // Create confetti explosion
-    const newConfetti: Confetti[] = [];
-    for (let i = 0; i < 100; i++) {
-      newConfetti.push({
-        id: confettiIdRef.current++,
-        x: Math.random() * window.innerWidth,
-        y: -10,
-        vx: (Math.random() - 0.5) * 10,
-        vy: Math.random() * 5 + 2,
-        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-        size: Math.random() * 8 + 4,
-        life: 100
-      });
-    }
-    setConfetti(newConfetti);
+        setCurrentUser(user);
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+        setLoginMessage("Successfully logged in!");
+        setLoginForm({ email: "", password: "" });
+        setFormErrors({});
 
-    // Clear confetti after animation
-    setTimeout(() => {
-      setConfetti([]);
-      setShowWinning(false);
-    }, 3000);
-  };
+        setTimeout(() => setLoginMessage(""), 3000);
+      } else {
+        setFormErrors({ password: "Invalid credentials" });
+      }
+    },
+    [loginForm, validateEmail, validatePassword]
+  );
 
-  const getTargetColorSuggestions = () => {
-    const suggestions = [];
-    const [r, g, b] = targetColor;
-    
-    if (r > g && r > b) {
-      suggestions.push("🔴 Start with Red as your primary base");
-      if (g > 100) suggestions.push("🟡 Add Yellow for warmth");
-      if (b > 100) suggestions.push("🔵 Mix in Blue for depth");
-    } else if (g > r && g > b) {
-      suggestions.push("🟢 Begin with Green as your foundation");
-      if (r > 100) suggestions.push("🟡 Add Yellow for brightness");
-      if (b > 100) suggestions.push("🔵 Include Blue for coolness");
-    } else if (b > r && b > g) {
-      suggestions.push("🔵 Use Blue as your primary color");
-      if (r > 100) suggestions.push("🟣 Mix Purple for richness");
-      if (g > 100) suggestions.push("🟢 Add Green for balance");
-    }
-    
-    if (r + g + b > 450) {
-      suggestions.push("💧 Add Water to lighten the mix");
-    }
-    
-    return suggestions;
-  };
+  const handleLogout = useCallback(() => {
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setLoginMessage("Successfully logged out!");
+    setShowLandingPage(true);
+    setTimeout(() => setLoginMessage(""), 3000);
+  }, []);
 
-  const addColor = (index: number) => {
-    if (totalPercentage >= 100) return;
-    
-    const increment = Math.min(4, 100 - totalPercentage);
-    
-    const containerElement = document.getElementById(`container-${index}`);
-    const mixerElement = document.getElementById('color-mixer');
-    
-    if (containerElement && mixerElement) {
-      const containerRect = containerElement.getBoundingClientRect();
-      const mixerRect = mixerElement.getBoundingClientRect();
-      
-      const startX = containerRect.left + containerRect.width / 2;
-      const startY = containerRect.top;
-      const endX = mixerRect.left + mixerRect.width / 2;
-      const endY = mixerRect.top + mixerRect.height / 2;
+  const handleDonate = useCallback(
+    (e?: React.MouseEvent | React.KeyboardEvent) => {
+      e?.preventDefault();
 
-      const newDrop: DropAnimation = {
-        id: dropIdRef.current++,
-        startX,
-        startY,
-        endX,
-        endY,
-        color: colorData[index].rgb,
-        active: true
-      };
+      const amountError = validateAmount(donateForm.amount);
 
-      setDrops(prev => [...prev, newDrop]);
+      if (amountError) {
+        setFormErrors({ amount: amountError });
+        return;
+      }
 
-      setTimeout(() => {
-        setDrops(prev => prev.filter(drop => drop.id !== newDrop.id));
-        setColorData(prev => 
-          prev.map((color, i) => 
-            i === index ? { ...color, percentage: color.percentage + increment } : color
+      const donationAmount = parseFloat(donateForm.amount);
+
+      // Update project data with new donation
+      setProjectData((prev) => ({
+        ...prev,
+        raised: prev.raised + donationAmount,
+        backers: prev.backers + 1,
+      }));
+
+      // Update selected reward if applicable
+      if (selectedReward) {
+        setRewards((prevRewards) =>
+          prevRewards.map((reward) =>
+            reward.id === selectedReward
+              ? { ...reward, claimed: reward.claimed + 1 }
+              : reward
           )
         );
-      }, 1000);
-    }
-  };
+      }
 
-  const removeColor = (index: number) => {
-    setColorData(prev => 
-      prev.map((color, i) => 
-        i === index ? { ...color, percentage: Math.max(0, color.percentage - 4) } : color
-      )
+      // Simulate donation success
+      setShowDonateModal(false);
+      setDonateForm({ amount: "", message: "" });
+      setSelectedReward(null);
+      setFormErrors({});
+      setLoginMessage(`Thank you for your ${donationAmount} donation!`);
+      setTimeout(() => setLoginMessage(""), 3000);
+    },
+    [donateForm, validateAmount, selectedReward]
+  );
+
+  const handleSelectReward = useCallback(
+    (rewardId: string) => {
+      const reward = rewards.find((r) => r.id === rewardId);
+      if (reward && reward.stock > reward.claimed) {
+        setSelectedReward(rewardId);
+        setDonateForm((prev) => ({
+          ...prev,
+          amount: reward.amount.toString(),
+        }));
+        setShowDonateModal(true);
+      }
+    },
+    [rewards]
+  );
+
+  const handleComment = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+
+      const commentError = validateComment(commentForm.content);
+
+      if (commentError) {
+        setFormErrors({ comment: commentError });
+        return;
+      }
+
+      // Add new comment to the list
+      const newComment: Comment = {
+        id: Date.now().toString(),
+        user: currentUser!,
+        content: commentForm.content,
+        timestamp: new Date(),
+        isSupporter: true, // Assume user becomes supporter by commenting
+        likes: 0,
+        replies: [],
+        isLiked: false,
+      };
+
+      setComments((prev) => [newComment, ...prev]);
+      setCommentForm({ content: "" });
+      setFormErrors({});
+      setLoginMessage("Comment posted successfully!");
+      setTimeout(() => setLoginMessage(""), 3000);
+    },
+    [commentForm, validateComment, currentUser]
+  );
+
+  const handleUpdateLike = useCallback((updateId: string) => {
+    setUpdates((prev) =>
+      prev.map((update) => {
+        if (update.id === updateId) {
+          return {
+            ...update,
+            likes: update.isLiked ? update.likes - 1 : update.likes + 1,
+            isLiked: !update.isLiked,
+          };
+        }
+        return update;
+      })
     );
-  };
+  }, []);
 
-  const resetColors = () => {
-    setColorData(prev => prev.map(color => ({ ...color, percentage: 0 })));
-    setDrops([]);
-  };
+  const handleVideoSelect = useCallback((videoIndex: string) => {
+    setSelectedVideo(videoIndex);
+    // Video will automatically start playing due to the iframe src change
+  }, []);
 
-  const rgbToHex = (r: number, g: number, b: number): string => {
-    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-  };
+  const handleShare = useCallback(
+    (platform: string) => {
+      const url = window.location.href;
+      const title = projectData.title;
+      const text = projectData.description;
 
-  const getColorString = (rgb: [number, number, number]): string => {
-    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-  };
+      switch (platform) {
+        case "facebook":
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+              url
+            )}`,
+            "_blank"
+          );
+          break;
+        case "twitter":
+          window.open(
+            `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+              url
+            )}&text=${encodeURIComponent(text)}`,
+            "_blank"
+          );
+          break;
+        case "linkedin":
+          window.open(
+            `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+              url
+            )}`,
+            "_blank"
+          );
+          break;
+        case "email":
+          window.open(
+            `mailto:?subject=${encodeURIComponent(
+              title
+            )}&body=${encodeURIComponent(text + "\n\n" + url)}`
+          );
+          break;
+        case "copy":
+          navigator.clipboard.writeText(url);
+          setLoginMessage("Link copied to clipboard!");
+          setTimeout(() => setLoginMessage(""), 3000);
+          break;
+      }
+      setShowShareModal(false);
+    },
+    [projectData]
+  );
 
-  // Handler to copy color hex code
-  const handleCopyColor = () => {
-    navigator.clipboard.writeText(rgbToHex(mixedColor[0], mixedColor[1], mixedColor[2]));
-    setShowCopiedMessage(true);
-    setTimeout(() => setShowCopiedMessage(false), 2000);
-  };
+  const toggleFAQ = useCallback((id: string) => {
+    setExpandedFAQs((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const progressPercentage = (projectData.raised / projectData.goal) * 100;
+
+  useEffect(() => {
+    document.body.style.fontFamily =
+      "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showLoginModal &&
+        loginModalRef.current &&
+        !loginModalRef.current.contains(event.target as Node)
+      ) {
+        setShowLoginModal(false);
+      }
+
+      if (
+        showShareModal &&
+        shareModalRef.current &&
+        !shareModalRef.current.contains(event.target as Node)
+      ) {
+        setShowShareModal(false);
+      }
+
+      if (
+        showDonateModal &&
+        donateModalRef.current &&
+        !donateModalRef.current.contains(event.target as Node)
+      ) {
+        setShowDonateModal(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showLoginModal, showShareModal, showDonateModal]);
+
+  useEffect(() => {
+    const isScrollBlocked =
+      showLoginModal || showShareModal || showDonateModal || isMobileMenuOpen;
+
+    if (isScrollBlocked) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+    };
+  }, [showLoginModal, showShareModal, showDonateModal, isMobileMenuOpen]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const handleCommentLike = useCallback(
+    (commentId: string, parentId?: string) => {
+      const findAndToggleLike = (
+        commentsArray: Comment[]
+      ): Comment[] => {
+        return commentsArray.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
+              isLiked: !comment.isLiked,
+            };
+          }
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: findAndToggleLike(comment.replies),
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments((prevComments) => findAndToggleLike(prevComments));
+    },
+    []
+  );
+
+  const handlePostReply = useCallback(
+    (parentId: string) => {
+      if (!currentUser || !replyContent.trim()) return;
+
+      const newReply: Comment = {
+        id: Date.now().toString(),
+        user: currentUser,
+        content: replyContent,
+        timestamp: new Date(),
+        isSupporter: true, 
+        likes: 0,
+        replies: [],
+        isLiked: false,
+      };
+
+      const addReplyRecursively = (
+        commentsArray: Comment[],
+        currentParentId: string
+      ): Comment[] => {
+        return commentsArray.map((comment) => {
+          if (comment.id === currentParentId) {
+            return {
+              ...comment,
+              replies: [newReply, ...comment.replies],
+            };
+          }
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: addReplyRecursively(comment.replies, currentParentId),
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments((prevComments) => addReplyRecursively(prevComments, parentId));
+      setReplyContent("");
+      setActiveReplyId(null);
+      setLoginMessage("Reply posted successfully!");
+      setTimeout(() => setLoginMessage(""), 3000);
+    },
+    [currentUser, replyContent]
+  );
+
+  if (!isClient) {
+    return "";
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col lg:flex-row overflow-hidden antialiased relative">
-      <BackgroundParticles />
-
-      {/* --- LEFT CONTROL PANEL --- */}
-      <div className="w-full lg:w-[400px] xl:w-[480px] lg:flex-shrink-0 lg:h-screen lg:overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 order-1">
-        
-        {/* 1. App Header */}
-        <header className="space-y-2">
-          <div className="text-center lg:text-left">
-            <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow-2xl">🌪️ Color Tornado Lab</h1>
-            <p className="text-sm sm:text-base text-white/80 drop-shadow-lg">Mix colors in the mesmerizing tornado!</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            {/* Reset Button */}
-            <button
-              onClick={resetColors}
-              className="group w-full sm:w-auto relative px-3 py-1.5 backdrop-blur-md bg-red-500/80 hover:bg-red-600/80 text-white rounded-lg font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 border border-white/20 cursor-pointer overflow-hidden text-sm"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-400/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              <div className="relative flex items-center justify-center sm:justify-start gap-1.5">
-                <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Reset</span>
-              </div>
-            </button>
-            {/* About button */}
-            <button
-              onClick={() => setShowAbout(true)}
-              className="w-full sm:w-auto px-3 py-1.5 backdrop-blur-md bg-white/20 rounded-lg flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 border border-white/30 shadow-xl cursor-pointer text-sm font-semibold transform hover:scale-105"
-            >
-              <span className="mr-1.5">ℹ️</span> About
-            </button>
-          </div>
-        </header>
-
-        {/* 2. Target Color Card */}
-        <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-4 sm:p-6 border border-white/20 shadow-2xl">
-          <div className="text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg">🎯 Target</h2>
-            <div className="flex justify-center mb-3 sm:mb-4">
-              <div className="relative group">
-                <div
-                  className="w-20 h-10 sm:w-24 sm:h-12 rounded-2xl border-2 sm:border-3 border-white/30 shadow-xl cursor-pointer relative"
-                  style={{ backgroundColor: getColorString(targetColor) }}
-                >
-                  <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-white/90 rounded-full p-0.5 sm:p-1 shadow-lg transform transition-transform duration-200 group-hover:scale-110">
-                    <svg 
-                      className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-700" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <input
-                  type="color"
-                  value={rgbToHex(targetColor[0], targetColor[1], targetColor[2])}
-                  onChange={(e) => {
-                    const hex = e.target.value;
-                    const r = parseInt(hex.slice(1, 3), 16);
-                    const g = parseInt(hex.slice(3, 5), 16);
-                    const b = parseInt(hex.slice(5, 7), 16);
-                    setTargetColor([r, g, b]);
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="text-white mb-2 sm:mb-3">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 text-xs sm:text-sm">
-                <div className="text-white/70 drop-shadow">
-                  {rgbToHex(targetColor[0], targetColor[1], targetColor[2])}
-                </div>
-                <div className="text-white/50 hidden sm:block">•</div>
-                <div className="text-white/70 drop-shadow">
-                  RGB({targetColor[0]}, {targetColor[1]}, {targetColor[2]})
-                </div>
-              </div>
-            </div>
-            
-            <div className={`text-3xl sm:text-4xl font-bold mb-2 sm:mb-3 drop-shadow-lg transition-all duration-500 ${
-              score > 85 ? 'text-green-400 animate-pulse' : 
-              score > 70 ? 'text-yellow-400' : 
-              'text-red-400'
-            }`}>
-              {score}%
-            </div>
-            <div className="text-white/90 mb-3 sm:mb-4 drop-shadow text-xs sm:text-sm">Match Score</div>
-            
-            {score >= 90 && (
-              <div className="text-green-400 font-semibold animate-bounce mb-3 sm:mb-4 drop-shadow-lg text-sm sm:text-base">
-                🎉 Perfect Match!
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowTargetHelp(true)}
-              className="backdrop-blur-sm bg-white/20 border border-white/30 text-white px-4 py-1.5 sm:px-6 sm:py-2 rounded-xl font-semibold hover:bg-white/30 transition-all duration-300 transform hover:scale-105 shadow-lg drop-shadow text-xs sm:text-sm cursor-pointer"
-            >
-              💡 Get Hints
-            </button>
-          </div>
-        </div>
-
-        {/* 4. Color Selection Section (Moved from bottom) */}
-        <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-3 sm:p-4 border border-white/20 shadow-2xl space-y-3 sm:space-y-4">
-          <div className="flex flex-wrap items-end gap-2 sm:gap-3 justify-center">
-            {colorData.map((color, index) => (
-              <div key={color.name} id={`container-${index}`} className="flex flex-col items-center">
-                <div className="relative group mb-1 sm:mb-2">
-                  <div 
-                    className="w-10 h-14 sm:w-12 sm:h-16 relative cursor-pointer transform transition-all duration-300 hover:scale-110 hover:-translate-y-1"
-                    onClick={() => addColor(index)}
-                  >
-                    <div
-                      className="w-full h-10 sm:h-12 rounded-b-2xl border-2 border-gray-700 shadow-xl relative overflow-hidden transition-all duration-300"
-                      style={{ 
-                        background: color.name === 'Water' 
-                          ? `linear-gradient(180deg, rgba(240,248,255,0.9) 0%, rgba(173,216,230,0.8) 70%, rgba(100,149,237,0.6) 100%)`
-                          : `linear-gradient(180deg, ${getColorString(color.rgb)} 0%, ${getColorString(color.rgb)} 60%, rgba(0,0,0,0.3) 100%)` 
-                      }}
-                    >
-                      <div 
-                        className="absolute top-0.5 sm:top-1 left-0.5 sm:left-1 right-0.5 sm:right-1 h-1 sm:h-1.5 rounded-full opacity-90"
-                        style={{ 
-                          backgroundColor: color.name === 'Water' ? 'rgba(173,216,230,0.9)' : getColorString(color.rgb), 
-                          filter: 'brightness(1.3)',
-                          animation: 'liquidWave 2s ease-in-out infinite'
-                        }}
-                      />
-                      <div className="absolute -right-0.5 top-1 sm:top-2 w-1 sm:w-1.5 h-2 sm:h-3 border-2 border-gray-700 rounded-r-lg bg-gray-400" />
-                    </div>
-                    <div className="absolute top-0 left-0 right-0 h-2 sm:h-3 bg-gray-400 border-2 border-gray-700 rounded-t-lg" />
-                    {color.percentage > 0 && (
-                      <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-gradient-to-br from-yellow-400 to-yellow-500 text-black rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs font-bold animate-pulse border-2 border-white/80 shadow-lg transform transition-all duration-300 group-hover:scale-110">
-                        <div className="relative">
-                          <span className="relative z-10">{color.percentage}</span>
-                          <span className="absolute -top-1 -right-1 text-[8px] text-gray-600">%</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-0.5 sm:gap-1">
-                  <button
-                    onClick={() => removeColor(index)}
-                    disabled={color.percentage === 0}
-                    className="w-4 h-4 sm:w-5 sm:h-5 bg-red-500 hover:bg-red-600 disabled:bg-gray-500/70 disabled:cursor-not-allowed text-white rounded-full text-xs font-bold flex items-center justify-center transition-all duration-200 transform hover:scale-110 disabled:hover:scale-100 shadow-lg cursor-pointer"
-                  >
-                    −
-                  </button>
-                  
-                  <div className="text-center min-w-[20px] sm:min-w-[28px] px-0.5 sm:px-0">
-                    <div className="text-white text-[10px] sm:text-xs font-bold drop-shadow">{color.name}</div>
-                  </div>
-                  
-                  <button
-                    onClick={() => addColor(index)}
-                    disabled={totalPercentage >= 100}
-                    className="w-4 h-4 sm:w-5 sm:h-5 bg-green-500 hover:bg-green-600 disabled:bg-gray-500/70 disabled:cursor-not-allowed text-white rounded-full text-xs font-bold flex items-center justify-center transition-all duration-200 transform hover:scale-110 disabled:hover:scale-100 shadow-lg cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-2 sm:pt-3 border-t border-white/20">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2 text-xs text-white/90">
-              <div className="flex items-center gap-1 sm:gap-2 bg-white/5 hover:bg-white/10 rounded-lg px-2 py-1 sm:px-3 sm:py-2 transition-colors duration-200">
-                <span className="text-green-400 bg-green-400/10 p-0.5 sm:p-1 rounded">
-                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </span>
-                <span className="font-medium text-[10px] sm:text-xs">Add 4</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-2 bg-white/5 hover:bg-white/10 rounded-lg px-2 py-1 sm:px-3 sm:py-2 transition-colors duration-200">
-                <span className="text-red-400 bg-red-400/10 p-0.5 sm:p-1 rounded">
-                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
-                </span>
-                <span className="font-medium text-[10px] sm:text-xs">Remove</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-2 bg-white/5 hover:bg-white/10 rounded-lg px-2 py-1 sm:px-3 sm:py-2 transition-colors duration-200">
-                <span className="text-blue-400 bg-blue-400/10 p-0.5 sm:p-1 rounded text-sm sm:text-base">💧</span>
-                <span className="font-medium text-[10px] sm:text-xs">Lighten</span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-2 bg-white/5 hover:bg-white/10 rounded-lg px-2 py-1 sm:px-3 sm:py-2 transition-colors duration-200">
-                <span className="text-yellow-400 bg-yellow-400/10 p-0.5 sm:p-1 rounded text-sm sm:text-base">🎯</span>
-                <span className="font-medium text-[10px] sm:text-xs">90%+</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- NEW RIGHT CONTAINER (Mixer + Composition) --- */}
-      <div className="flex flex-col flex-grow order-2 lg:h-screen lg:overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* --- RIGHT DISPLAY PANEL (Mixing Bowl) --- */}
-        <div className="flex items-center justify-center relative min-h-[300px] sm:min-h-[350px] md:min-h-[400px] lg:flex-grow lg:min-h-0">
-          <div id="color-mixer" className="relative">
-            {/* Main Mixing Bowl (Responsive Size) */}
-            <div
-              className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-[380px] lg:h-[380px] xl:w-[420px] xl:h-[420px] relative rounded-full transition-all duration-1000 ease-in-out overflow-hidden"
-              style={{
-                background: totalPercentage > 0 
-                  ? `radial-gradient(circle at center, 
-                      ${getColorString(mixedColor)} 0%,
-                      ${getColorString(mixedColor)}E0 30%,
-                      ${getColorString(mixedColor)}C0 60%,
-                      ${getColorString(mixedColor)}A0 80%,
-                      ${getColorString(mixedColor)}60 100%)`
-                  : `radial-gradient(circle at center, 
-                      rgba(240,248,255,0.8) 0%,
-                      rgba(173,216,230,0.6) 30%,
-                      rgba(100,149,237,0.4) 60%,
-                      rgba(70,130,180,0.3) 80%,
-                      rgba(30,60,120,0.2) 100%)`,
-                boxShadow: `
-                  0 0 30px sm:0 0 40px md:0 0 60px ${totalPercentage > 0 ? getColorString(mixedColor) + '60' : 'rgba(173,216,230,0.4)'}, 
-                  0 0 60px sm:0 0 80px md:0 0 120px ${totalPercentage > 0 ? getColorString(mixedColor) + '30' : 'rgba(173,216,230,0.2)'},
-                  inset 0 0 20px sm:inset 0 0 30px md:inset 0 0 40px rgba(255,255,255,0.1)
-                `,
-                border: '3px sm:4px solid rgba(255,255,255,0.2)'
-              }}
-            >
-              {/* Liquid Surface Effect */}
-              <div 
-                className="absolute inset-2 sm:inset-3 md:inset-4 rounded-full"
-                style={{
-                  background: totalPercentage > 0 
-                    ? `linear-gradient(45deg, 
-                        ${getColorString(mixedColor)}FF 0%,
-                        ${getColorString(mixedColor)}E0 25%,
-                        ${getColorString(mixedColor)}FF 50%,
-                        ${getColorString(mixedColor)}E0 75%,
-                        ${getColorString(mixedColor)}FF 100%)`
-                    : `linear-gradient(45deg, 
-                        rgba(173,216,230,0.8) 0%,
-                        rgba(173,216,230,0.6) 25%,
-                        rgba(173,216,230,0.8) 50%,
-                        rgba(173,216,230,0.6) 75%,
-                        rgba(173,216,230,0.8) 100%)`,
-                  animation: 'liquidSwirl 8s linear infinite',
-                  filter: 'brightness(1.1)'
-                }}
-              />
-
-              {/* Color Blending Layers (Responsive Size) */}
-              {colorData.filter(color => color.percentage > 0).map((color, index) => (
-                <div
-                  key={`blend-${color.name}-${index}`}
-                  className="absolute rounded-full opacity-70"
-                  style={{
-                    width: `calc(50% + ${index * 10}px)`, // Responsive sizing
-                    height: `calc(50% + ${index * 10}px)`,
-                    left: `${40 + Math.cos(index * 60 * Math.PI / 180) * 10}%`, // Adjusted spread
-                    top: `${40 + Math.sin(index * 60 * Math.PI / 180) * 10}%`,
-                    background: `radial-gradient(circle, 
-                      ${getColorString(color.rgb)}${Math.round(color.percentage * 2.55).toString(16).padStart(2, '0')} 0%, 
-                      ${getColorString(color.rgb)}${Math.round(color.percentage * 1.5).toString(16).padStart(2, '0')} 40%, 
-                      transparent 70%)`,
-                    animation: `colorBlend ${4 + index * 0.5}s linear infinite ${index % 2 === 0 ? '' : 'reverse'}`,
-                    transform: 'translate(-50%, -50%)',
-                    filter: 'blur(1px)'
-                  }}
-                />
-              ))}
-
-              {/* Swirling Effect (Responsive Inset) */}
-              <div 
-                className="absolute inset-4 sm:inset-6 md:inset-8 rounded-full"
-                style={{
-                  background: totalPercentage > 0 
-                    ? `conic-gradient(from 0deg, 
-                        ${getColorString(mixedColor)}80, 
-                        transparent 30%, 
-                        ${getColorString(mixedColor)}60 60%, 
-                        transparent 90%, 
-                        ${getColorString(mixedColor)}80)`
-                    : `conic-gradient(from 0deg, 
-                        rgba(173,216,230,0.5), 
-                        transparent 30%, 
-                        rgba(173,216,230,0.3) 60%, 
-                        transparent 90%, 
-                        rgba(173,216,230,0.5))`,
-                  animation: 'colorSwirl 6s linear infinite'
-                }}
-              />
-
-              {/* Center Highlight (Responsive Inset) */}
-              <div 
-                className="absolute inset-12 sm:inset-16 md:inset-24 rounded-full"
-                style={{
-                  background: totalPercentage > 0 
-                    ? `radial-gradient(circle, 
-                        ${getColorString(mixedColor)} 0%, 
-                        ${getColorString(mixedColor)}C0 40%, 
-                        transparent 100%)`
-                    : `radial-gradient(circle, 
-                        rgba(240,248,255,0.9) 0%, 
-                        rgba(173,216,230,0.7) 40%, 
-                        transparent 100%)`,
-                  animation: 'pulse 3s ease-in-out infinite'
-                }}
-              />
-
-              {/* Ripple Effects (Responsive Sizes) */}
-              {totalPercentage > 0 && (
-                <>
-                  {/* Primary Ripples */}
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={`ripple-primary-${i}`}
-                      className="absolute rounded-full border opacity-70"
-                      style={{
-                        width: `calc(25% + ${i * 12}%)`, // Responsive sizing
-                        height: `calc(25% + ${i * 12}%)`,
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        borderColor: getColorString(mixedColor),
-                        borderWidth: '2px sm:3px',
-                        animation: `ripple ${1.2 + i * 0.25}s ease-out infinite`,
-                        boxShadow: `
-                          0 0 10px sm:0 0 15px md:0 0 20px ${getColorString(mixedColor)}50,
-                          inset 0 0 8px sm:inset 0 0 12px md:inset 0 0 15px ${getColorString(mixedColor)}30
-                        `,
-                        background: `radial-gradient(circle, 
-                          ${getColorString(mixedColor)}30 0%, 
-                          ${getColorString(mixedColor)}15 30%, 
-                          transparent 70%)`
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Secondary Ripples (offset) */}
-                  {[...Array(4)].map((_, i) => (
-                    <div
-                      key={`ripple-secondary-${i}`}
-                      className="absolute rounded-full border opacity-50"
-                      style={{
-                        width: `calc(30% + ${i * 15}%)`, // Responsive sizing
-                        height: `calc(30% + ${i * 15}%)`,
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        borderColor: getColorString(mixedColor),
-                        borderWidth: '1px sm:2px',
-                        animation: `rippleSecondary ${1.8 + i * 0.3}s ease-out infinite`,
-                        boxShadow: `0 0 8px sm:0 0 12px md:0 0 15px ${getColorString(mixedColor)}40`,
-                        background: `radial-gradient(circle, 
-                          ${getColorString(mixedColor)}20 0%, 
-                          transparent 60%)`
-                      }}
-                    />
-                  ))}
-
-                  {/* Glow Layer (Responsive Size) */}
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      width: '60%', // Responsive sizing
-                      height: '60%',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      background: `radial-gradient(circle, 
-                        ${getColorString(mixedColor)}15 0%, 
-                        transparent 70%)`,
-                      animation: 'pulseGlow 2s ease-in-out infinite',
-                      filter: 'blur(8px) sm:blur(10px)'
-                    }}
-                  />
-                </>
-              )}
-            </div>
-
-            {/* Color Info Above Bowl */}
-            <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 backdrop-blur-xl bg-white/10 rounded-2xl px-4 py-1.5 sm:px-6 sm:py-2 border border-white/20 shadow-2xl">
-              <div className="flex items-center justify-center gap-2 sm:gap-3">
-                <div className="text-base sm:text-lg font-bold text-white drop-shadow-lg">
-                  {rgbToHex(mixedColor[0], mixedColor[1], mixedColor[2])}
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-lg sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
                 <button
-                  onClick={handleCopyColor}
-                  className="p-1 rounded-md hover:bg-white/20 cursor-pointer transition-colors relative"
-                  aria-label="Copy color hex code"
+                  onClick={() => {
+                    setShowLandingPage(true);
+                    heroRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="flex items-center cursor-pointer"
                 >
-                  {showCopiedMessage ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-white/70 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  )}
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="ml-3 text-xl font-bold text-gray-900">
+                    FundForward
+                  </span>
                 </button>
               </div>
             </div>
+
+            {/* Desktop menu */}
+            <div className="hidden md:block">
+              <div className="ml-10 flex items-baseline space-x-8">
+                <button
+                  onClick={() => scrollToSection("discover")}
+                  className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors cursor-pointer"
+                >
+                  Discover
+                </button>
+                <button
+                  onClick={() => scrollToSection("start")}
+                  className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors cursor-pointer"
+                >
+                  Start a Project
+                </button>
+                <button
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors cursor-pointer"
+                >
+                  How it Works
+                </button>
+              </div>
+            </div>
+
+            {/* User menu */}
+            <div className="hidden md:flex items-center space-x-4">
+              {isLoggedIn ? (
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={currentUser?.avatar}
+                    alt={currentUser?.name}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {currentUser?.name}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm">Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                >
+                  Sign In
+                </button>
+              )}
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-gray-600 hover:text-gray-900 p-2 cursor-pointer"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 3. Color Composition Card */}
-        <div className="backdrop-blur-xl bg-white/10 rounded-2xl p-4 sm:p-6 border border-white/20 shadow-2xl">
-          <h3 className="text-base sm:text-lg text-white font-semibold mb-3 sm:mb-4 text-center drop-shadow">Color Composition</h3>
-          <div className="relative h-5 sm:h-6 bg-white/20 rounded-full overflow-hidden border border-white/30 mb-3 sm:mb-4">
-            {(() => {
-              let currentPosition = 0;
-              return colorData.map((color, index) => {
-                if (color.percentage > 0) {
-                  const segment = (
-                    <div
-                      key={color.name}
-                      className="absolute top-0 h-full transition-all duration-1000 ease-out"
-                      style={{
-                        left: `${currentPosition}%`,
-                        width: `${color.percentage}%`,
-                        backgroundColor: getColorString(color.rgb),
-                        boxShadow: `inset 0 0 10px rgba(0,0,0,0.2)`
-                      }}
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-200">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <button
+                onClick={() => scrollToSection("discover")}
+                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-50 cursor-pointer"
+              >
+                Discover
+              </button>
+              <button
+                onClick={() => scrollToSection("start")}
+                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 cursor-pointer"
+              >
+                Start a Project
+              </button>
+              <button
+                onClick={() => scrollToSection("how-it-works")}
+                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 cursor-pointer"
+              >
+                How it Works
+              </button>
+
+              {isLoggedIn ? (
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center px-3 py-2">
+                    <img
+                      src={currentUser?.avatar}
+                      alt={currentUser?.name}
+                      className="w-8 h-8 rounded-full"
                     />
-                  );
-                  currentPosition += color.percentage;
-                  return segment;
-                }
-                return null;
-              }).filter(Boolean);
-            })()}
-          </div>
-          <div className="flex justify-between items-center mb-3 sm:mb-4 text-xs text-white/80">
-            <span>0%</span>
-            <span>100%</span>
-          </div>
-          <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-            {colorData.filter(color => color.percentage > 0).map(color => (
-              <div key={color.name} className="flex items-center justify-between text-white/90">
-                <div className="flex items-center gap-2">
-                  <span>{color.icon}</span>
-                  <span>{color.name}</span>
+                    <span className="ml-3 text-base font-medium text-gray-700">
+                      {currentUser?.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 flex items-center cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </button>
                 </div>
-                <span>{color.percentage}%</span>
+              ) : (
+                <div className="border-t border-gray-200 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowLoginModal(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Login/Logout Message */}
+      {loginMessage && (
+        <div className="fixed top-20 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pulse">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5" />
+            <span>{loginMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Landing Page */}
+      {showLandingPage && (
+        <div
+          ref={heroRef}
+          className="relative bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen flex items-center"
+        >
+          <div className="absolute inset-0 bg-black/50 opacity-50"></div>
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage:
+                "url(https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=1920&h=1080&fit=crop)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          ></div>
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+                Fund the Future of
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                  Innovation
+                </span>
+              </h1>
+              <p className="text-xl sm:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                Discover groundbreaking projects, support visionary creators,
+                and be part of the next big thing. From tech innovations to
+                creative endeavors, every idea deserves a chance.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+                <button
+                  onClick={() => {
+                    scrollToSection("discover");
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 cursor-pointer flex items-center space-x-2"
+                >
+                  <span>Explore Projects</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => scrollToSection("start")}
+                  className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-gray-900 transition-all cursor-pointer"
+                >
+                  Start Your Project
+                </button>
               </div>
-            ))}
-             {colorData.filter(c => c.percentage > 0).length === 0 && (
-              <p className="text-center text-white/60 text-xs">Mix some colors to see their composition!</p>
-            )}
+
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                    $12M+
+                  </div>
+                  <div className="text-gray-300">Raised by creators</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                    25K+
+                  </div>
+                  <div className="text-gray-300">Projects funded</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                    180+
+                  </div>
+                  <div className="text-gray-300">Countries reached</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+            <button
+              onClick={() => scrollToSection("discover")}
+              className="text-white hover:text-blue-400 transition-colors cursor-pointer"
+            >
+              <ChevronDown className="w-8 h-8" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* How It Works Section */}
+      <div ref={howItWorksRef} className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              How FundForward Works
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Simple steps to bring your ideas to life or support amazing
+              projects
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Zap className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Create & Share
+              </h3>
+              <p className="text-gray-600">
+                Launch your project with compelling videos, detailed
+                descriptions, and exciting rewards for backers.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Users2 className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Build Community
+              </h3>
+              <p className="text-gray-600">
+                Engage with supporters, share updates, and build a community
+                around your vision and passion.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Globe className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Make It Happen
+              </h3>
+              <p className="text-gray-600">
+                Reach your funding goal and bring your project to life with the
+                support of your community.
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Winning Animation Overlay */}
-      {showWinning && (
-        <div className="fixed inset-0 pointer-events-none z-50">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-3xl md:text-6xl font-bold text-yellow-300 animate-bounce drop-shadow-2xl text-center px-4">
-              🎉 PERFECT MATCH! 🎉
-            </div>
-          </div>
-          {confetti.map(particle => (
-            <ConfettiParticle key={particle.id} confetti={particle} />
-          ))}
-        </div>
-      )}
-      
-      {/* Drop Animations */}
-      {drops.map(drop => (
-        <div
-          key={drop.id}
-          className="fixed w-5 h-5 md:w-6 md:h-6 rounded-full pointer-events-none z-30" // Slightly smaller base for drops
-          style={{
-            left: drop.startX - 10, // Adjust offset for smaller size
-            top: drop.startY,
-            background: `radial-gradient(circle, ${getColorString(drop.color)}, ${getColorString(drop.color)}CC)`,
-            boxShadow: `0 0 15px ${getColorString(drop.color)}CC, 0 0 30px ${getColorString(drop.color)}66`,
-            filter: 'brightness(1.3)',
-            animation: `dropAnimation 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
-            '--end-x': `${drop.endX - drop.startX}px`,
-            '--end-y': `${drop.endY - drop.startY}px`
-          } as React.CSSProperties}
-        />
-      ))}
+      {/* Main Project Content */}
+      <div
+        ref={projectRef}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+          {/* Left Column - Project Details */}
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Project Header */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 space-y-4 sm:space-y-0">
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                    {projectData.title}
+                  </h1>
+                  <p className="text-gray-600 text-base sm:text-lg mb-4">
+                    {projectData.description}
+                  </p>
 
-      {/* Modals */}
-      {showTargetHelp && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"> {/* Increased z-index for modals */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-6 sm:p-8 max-w-sm sm:max-w-md w-full border border-white/20 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow">💡 Mixing Hints</h2>
-              <button
-                onClick={() => setShowTargetHelp(false)}
-                className="text-white/80 hover:text-white text-2xl transition-colors cursor-pointer"
-              >
-                ×
-              </button>
+                  {/* Project Tags */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {projectData.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex space-x-2 sm:ml-4">
+                  <button
+                    onClick={() =>
+                      requireAuth(() => setIsProjectLiked(!isProjectLiked))
+                    }
+                    className={`p-2 transition-colors cursor-pointer ${
+                      isProjectLiked
+                        ? "text-red-500"
+                        : "text-gray-400 hover:text-red-500"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${
+                        isProjectLiked ? "fill-current" : ""
+                      }`}
+                    />
+                  </button>
+                  <button
+                    onClick={() => requireAuth(() => setShowShareModal(true))}
+                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() =>
+                      requireAuth(() =>
+                        setIsProjectBookmarked(!isProjectBookmarked)
+                      )
+                    }
+                    className={`p-2 transition-colors cursor-pointer ${
+                      isProjectBookmarked
+                        ? "text-yellow-500"
+                        : "text-gray-400 hover:text-yellow-500"
+                    }`}
+                  >
+                    <Bookmark
+                      className={`w-5 h-5 ${
+                        isProjectBookmarked ? "fill-current" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center space-x-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>{projectData.location}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Award className="w-4 h-4" />
+                  <span>{projectData.category}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Eye className="w-4 h-4" />
+                  <span>{projectStats.totalViews.toLocaleString()} views</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <ThumbsUp className="w-4 h-4" />
+                  <span>{projectStats.totalLikes.toLocaleString()} likes</span>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-3 sm:space-y-4 text-white">
-              <div className="backdrop-blur-sm bg-white/10 rounded-2xl p-3 sm:p-4 border border-white/20">
-                <h3 className="font-semibold mb-2 sm:mb-3 text-yellow-300 drop-shadow">How to achieve this color:</h3>
-                <ul className="text-sm space-y-1.5 sm:space-y-2 text-white/90">
-                  {getTargetColorSuggestions().map((suggestion, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-blue-300">•</span>
-                      <span className="drop-shadow">{suggestion}</span>
-                    </li>
+
+            {/* Video Section */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              {/* Video Player */}
+              <div className="relative aspect-video bg-gray-900">
+                <iframe
+                  key={selectedVideo} // Force re-render when video changes
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${
+                    videos[parseInt(selectedVideo)].embedId
+                  }?autoplay=1&mute=1&rel=0&modestbranding=1&enablejsapi=1`}
+                  title={videos[parseInt(selectedVideo)].title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+
+              {/* Video Playlist */}
+              <div className="p-4 sm:p-6">
+                <h3 className="text-lg font-semibold mb-4">Project Videos</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {videos.map((video, index) => (
+                    <div
+                      key={video.id}
+                      onClick={() =>
+                        requireAuth(() => handleVideoSelect(index.toString()))
+                      }
+                      className={`cursor-pointer rounded-lg overflow-hidden transition-all ${
+                        selectedVideo === index.toString()
+                          ? "ring-2 ring-blue-500 ring-offset-2"
+                          : "hover:shadow-md"
+                      }`}
+                    >
+                      <div className="relative">
+                        <img
+                          src={video.thumbnail}
+                          alt={video.title}
+                          className="w-full h-24 sm:h-32 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 bg-opacity-30 flex items-center justify-center">
+                          <PlayCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="absolute bottom-2 right-2 bg-black/50 bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                          {video.duration}
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <h4 className="font-medium text-sm text-gray-900 mb-1">
+                          {video.title}
+                        </h4>
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {video.description}
+                        </p>
+                      </div>
+                    </div>
                   ))}
-                   {getTargetColorSuggestions().length === 0 && (
-                    <li className="text-white/70">Try adding some primary colors first!</li>
-                  )}
-                </ul>
+                </div>
               </div>
-              
-              <div className="text-center pt-2 sm:pt-4">
-                <p className="text-xs sm:text-sm text-white/80 drop-shadow">
-                  Watch the color bowl swirl as colors blend naturally together!
-                </p>
+            </div>
+
+            {/* Creator Info */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <img
+                  src={projectData.creator.avatar}
+                  alt={projectData.creator.name}
+                  className="w-16 h-16 rounded-full mx-auto sm:mx-0"
+                />
+                <div className="flex-1 text-center sm:text-left pl-2">
+                  <div className="flex items-center justify-center sm:justify-start space-x-2 mb-1">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {projectData.creator.name}
+                    </h3>
+                    {projectData.creator.verified && (
+                      <Shield className="w-5 h-5 text-blue-500" />
+                    )}
+                  </div>
+                  <p className="text-gray-600 mb-2">
+                    Project Creator • Member since{" "}
+                    {projectData.creator.memberSince}
+                  </p>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-gray-500">
+                    <span>
+                      {projectData.creator.projectsCreated} projects created
+                    </span>
+                    <span>
+                      {projectData.creator.projectsFunded} projects backed
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Project Stats */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <h3 className="text-lg font-semibold mb-4">Project Statistics</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    ${projectStats.averageContribution}
+                  </div>
+                  <div className="text-gray-600 text-sm">Avg. contribution</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {projectStats.totalShares}
+                  </div>
+                  <div className="text-gray-600 text-sm">Total shares</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {projectStats.repeatBackers}
+                  </div>
+                  <div className="text-gray-600 text-sm">Repeat backers</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {Math.round(progressPercentage)}%
+                  </div>
+                  <div className="text-gray-600 text-sm">Funded</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="bg-white rounded-xl shadow-sm">
+              <div className="border-b border-gray-200 overflow-x-auto">
+                <nav className="flex space-x-8 min-w-max px-4 sm:px-6">
+                  {[
+                    { key: "updates", label: "Updates", count: updates.length },
+                    {
+                      key: "comments",
+                      label: "Comments",
+                      count: comments.length,
+                    },
+                    { key: "faq", label: "FAQ", count: faqs.length },
+                    { key: "risks", label: "Risks & Challenges", count: null },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() =>
+                        requireAuth(() => setActiveTab(tab.key as any))
+                      }
+                      className={`px-2 py-4 text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+                        activeTab === tab.key
+                          ? "border-blue-500 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {tab.label} {tab.count !== null && `(${tab.count})`}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                {/* Updates Tab */}
+                {activeTab === "updates" && (
+                  <div className="space-y-6">
+                    {updates.map((update) => (
+                      <div
+                        key={update.id}
+                        className="border-b border-gray-200 last:border-b-0 pb-6 last:pb-0"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                              {update.title}
+                            </h4>
+                            <p className="text-gray-600 mb-3">
+                              {update.content}
+                            </p>
+                            {update.image && (
+                              <img
+                                src={update.image}
+                                alt="Update"
+                                className="w-full h-48 object-cover rounded-lg mb-3"
+                              />
+                            )}
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-1" />
+                                {update.timestamp.toLocaleDateString()}
+                              </div>
+                              <div className="flex items-center">
+                                <Eye className="w-4 h-4 mr-1" />
+                                {update.views.toLocaleString()} views
+                              </div>
+                              <button
+                                onClick={() =>
+                                  requireAuth(() => handleUpdateLike(update.id))
+                                }
+                                className={`flex items-center transition-colors cursor-pointer ${
+                                  update.isLiked
+                                    ? "text-blue-600"
+                                    : "hover:text-blue-600"
+                                }`}
+                              >
+                                <ThumbsUp
+                                  className={`w-4 h-4 mr-1 ${
+                                    update.isLiked ? "fill-current" : ""
+                                  }`}
+                                />
+                                {update.likes} likes
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Comments Tab */}
+                {activeTab === "comments" && (
+                  <div className="space-y-6">
+                    {/* Comment Form */}
+                    <div className="space-y-4">
+                      <textarea
+                        value={commentForm.content}
+                        onChange={(e) =>
+                          setCommentForm({ content: e.target.value })
+                        }
+                        placeholder={
+                          isLoggedIn
+                            ? "Share your thoughts..."
+                            : "Please sign in to comment"
+                        }
+                        disabled={!isLoggedIn}
+                        className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24"
+                      />
+                      {formErrors.comment && (
+                        <p className="text-red-500 text-sm flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {formErrors.comment}
+                        </p>
+                      )}
+                      <button
+                        onClick={() => requireAuth(handleComment)}
+                        disabled={!isLoggedIn}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      >
+                        Post Comment
+                      </button>
+                    </div>
+
+                    {/* Comments List */}
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <div key={comment.id}>
+                          <div className="flex space-x-4">
+                            <img
+                              src={comment.user.avatar}
+                              alt={comment.user.name}
+                              className="w-10 h-10 rounded-full flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center space-x-2 mb-1">
+                                <span className="font-medium text-gray-900">
+                                  {comment.user.name}
+                                </span>
+                                {comment.isSupporter && (
+                                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                    Supporter
+                                  </span>
+                                )}
+                                <span className="text-gray-500 text-sm">
+                                  {comment.timestamp.toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 mb-2">
+                                {comment.content}
+                              </p>
+                              <div className="flex items-center space-x-4 text-sm">
+                                <button
+                                  onClick={() => requireAuth(() => handleCommentLike(comment.id))}
+                                  className={`flex items-center transition-colors cursor-pointer ${
+                                    comment.isLiked
+                                      ? "text-blue-600"
+                                      : "text-gray-500 hover:text-blue-600"
+                                  }`}
+                                >
+                                  <ThumbsUp className={`w-4 h-4 mr-1 ${comment.isLiked ? "fill-current" : ""}`} />
+                                  {comment.likes}
+                                </button>
+                                <button
+                                  onClick={() => requireAuth(() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id))}
+                                  className="text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
+                                >
+                                  Reply
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          {activeReplyId === comment.id && (
+                            <div className="ml-14 mt-4 space-y-2">
+                              <textarea
+                                value={replyContent}
+                                onChange={(e) => setReplyContent(e.target.value)}
+                                placeholder={`Replying to ${comment.user.name}...`}
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
+                              />
+                              <button
+                                onClick={() => handlePostReply(comment.id)}
+                                className="px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                              >
+                                Post Reply
+                              </button>
+                            </div>
+                          )}
+                          {/* Render Replies */}
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="ml-14 mt-4 space-y-4">
+                              {comment.replies.map((reply) => (
+                                <div key={reply.id} className="flex space-x-4">
+                                  <img
+                                    src={reply.user.avatar}
+                                    alt={reply.user.name}
+                                    className="w-8 h-8 rounded-full flex-shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center space-x-2 mb-1">
+                                      <span className="font-medium text-gray-900">
+                                        {reply.user.name}
+                                      </span>
+                                      {reply.isSupporter && (
+                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                          Supporter
+                                        </span>
+                                      )}
+                                      <span className="text-gray-500 text-sm">
+                                        {reply.timestamp.toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-700 mb-2">
+                                      {reply.content}
+                                    </p>
+                                    <div className="flex items-center space-x-4 text-sm">
+                                      <button
+                                        onClick={() => requireAuth(() => handleCommentLike(reply.id, comment.id))}
+                                        className={`flex items-center transition-colors cursor-pointer ${
+                                          reply.isLiked
+                                            ? "text-blue-600"
+                                            : "text-gray-500 hover:text-blue-600"
+                                        }`}
+                                      >
+                                        <ThumbsUp className={`w-4 h-4 mr-1 ${reply.isLiked ? "fill-current" : ""}`} />
+                                        {reply.likes}
+                                      </button>
+                                      {/* Add reply to reply functionality if needed */}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* FAQ Tab */}
+                {activeTab === "faq" && (
+                  <div className="space-y-4">
+                    {faqs.map((faq) => (
+                      <div
+                        key={faq.id}
+                        className="border border-gray-200 rounded-lg"
+                      >
+                        <button
+                          onClick={() => requireAuth(() => toggleFAQ(faq.id))}
+                          className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <span className="font-medium text-gray-900 pr-4">
+                            {faq.question}
+                          </span>
+                          {expandedFAQs.has(faq.id) ? (
+                            <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                          )}
+                        </button>
+                        {expandedFAQs.has(faq.id) && (
+                          <div className="px-6 pb-4">
+                            <p className="text-gray-600">{faq.answer}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Risks & Challenges Tab */}
+                {activeTab === "risks" && (
+                  <div className="space-y-6">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-yellow-800 mb-2">
+                            Potential Risks
+                          </h4>
+                          <p className="text-yellow-700">{projectData.risks}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-blue-800 mb-2">
+                            Timeline
+                          </h4>
+                          <p className="text-blue-700">
+                            {projectData.timeline}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <Shield className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-green-800 mb-2">
+                            Our Commitment
+                          </h4>
+                          <p className="text-green-700">
+                            We're committed to transparent communication and
+                            will provide regular updates on any challenges we
+                            encounter. Our experienced team has successfully
+                            delivered similar projects before.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Funding Info & Rewards */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Funding Progress - Fixed positioning */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6   lg:top-24">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    ${projectData.raised.toLocaleString()}
+                  </div>
+                  <div className="text-gray-600">
+                    raised of ${projectData.goal.toLocaleString()} goal
+                  </div>
+                </div>
+
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                  ></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                      {projectData.backers}
+                    </div>
+                    <div className="text-gray-600 text-sm">backers</div>
+                  </div>
+                  <div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                      {projectData.daysLeft}
+                    </div>
+                    <div className="text-gray-600 text-sm">days left</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => requireAuth(() => setShowDonateModal(true))}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 cursor-pointer"
+                >
+                  Back this project
+                </button>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() =>
+                      requireAuth(() => setIsProjectLiked(!isProjectLiked))
+                    }
+                    className={`flex-1 flex items-center justify-center space-x-2 py-2 border rounded-lg transition-colors cursor-pointer ${
+                      isProjectLiked
+                        ? "border-red-300 text-red-600 bg-red-50"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        isProjectLiked ? "fill-current" : ""
+                      }`}
+                    />
+                    <span className="text-sm">Like</span>
+                  </button>
+                  <button
+                    onClick={() => requireAuth(() => setShowShareModal(true))}
+                    className="flex-1 flex items-center justify-center space-x-2 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm">Share</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Rewards */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                Choose your reward
+              </h3>
+              <div className="space-y-4">
+                {rewards
+                  .slice(0, showAllRewards ? rewards.length : 3)
+                  .map((reward) => (
+                    <div
+                      key={reward.id}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all relative ${
+                        selectedReward === reward.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } ${reward.stock <= reward.claimed ? "opacity-60" : ""}`}
+                      onClick={() =>
+                        requireAuth(() => {
+                          if (reward.stock > reward.claimed) {
+                            setSelectedReward(reward.id);
+                          }
+                        })
+                      }
+                    >
+                      {/* Intentionally blank here to remove the old badge code */}
+                      <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                        <img
+                          src={reward.image}
+                          alt={reward.title}
+                          className="w-full sm:w-16 h-32 sm:h-16 rounded-lg object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1"> {/* Price */}
+                            <span className="text-lg font-bold text-gray-900">
+                              ${reward.amount}
+                            </span>
+                          </div>
+
+                          {/* Absolute positioned Tag + Stock container */}
+                          <div className="absolute top-4 right-4 text-right">
+                            {reward.popularity && (
+                              <span
+                                className={`inline-block px-2 py-1 text-xs font-semibold rounded-full mb-1 ${
+                                  reward.popularity === "limited"
+                                    ? "bg-red-500 text-white"
+                                    : reward.popularity === "popular"
+                                    ? "bg-green-500 text-white"
+                                    : "bg-orange-500 text-white"
+                                }`}
+                              >
+                                {reward.popularity === "limited"
+                                  ? "Limited"
+                                  : reward.popularity === "popular"
+                                  ? "Popular"
+                                  : "Early Bird"}
+                              </span>
+                            )}
+                            <span className={`block text-xs ${
+                                  reward.stock <= reward.claimed
+                                    ? "text-red-500"
+                                    : "text-gray-500"
+                                }`}>
+                                {reward.stock <= reward.claimed
+                                  ? "Sold Out"
+                                  : `${reward.stock - reward.claimed} left`}
+                            </span>
+                          </div>
+                          
+                          <h4 className="font-semibold text-gray-900 mb-1">
+                            {reward.title}
+                          </h4>
+                          <p className="text-gray-600 text-sm mb-2">
+                            {reward.description}
+                          </p>
+
+                          {/* Features */}
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-500 mb-1">
+                              Includes:
+                            </p>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {reward.features.map((feature, index) => (
+                                <li
+                                  key={index}
+                                  className="flex items-center space-x-1"
+                                >
+                                  <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                            <span>
+                              Estimated delivery: {reward.estimatedDelivery}
+                            </span>
+                            <span>{reward.claimed} claimed</span>
+                          </div>
+
+                          {/* Reward Selection Button */}
+                          {selectedReward === reward.id ? (
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <span className="text-blue-800 font-semibold text-sm">
+                                  Reward Selected
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    requireAuth(() =>
+                                      handleSelectReward(reward.id)
+                                    )
+                                  }
+                                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
+                                >
+                                  ${reward.amount}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                requireAuth(() => setSelectedReward(reward.id))
+                              }
+                              disabled={reward.stock <= reward.claimed}
+                              className={`mt-3 w-full py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                                reward.stock <= reward.claimed
+                                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {reward.stock <= reward.claimed
+                                ? "Sold Out"
+                                : "Select This Reward"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                {rewards.length > 3 && (
+                  <button
+                    onClick={() => setShowAllRewards(!showAllRewards)}
+                    className="w-full py-3 text-blue-600 hover:text-blue-700 font-medium transition-colors cursor-pointer"
+                  >
+                    {showAllRewards
+                      ? "Show Less"
+                      : `Show ${rewards.length - 3} More Rewards`}
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {showAbout && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"> {/* Increased z-index for modals */}
-          <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-6 sm:p-8 max-w-sm sm:max-w-md w-full border border-white/20 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow">About Color Tornado Lab</h2>
+      {/* Floating Donate Button */}
+      <button
+        onClick={() => requireAuth(() => setShowDonateModal(true))}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-110 z-30 cursor-pointer"
+      >
+        <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+      </button>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            ref={loginModalRef}
+            className="bg-white rounded-xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
               <button
-                onClick={() => setShowAbout(false)}
-                className="text-white/80 hover:text-white text-2xl transition-colors cursor-pointer"
+                onClick={() => setShowLoginModal(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                ×
+                <X className="w-6 h-6" />
               </button>
             </div>
-            
-            <div className="space-y-3 sm:space-y-4 text-white">
-              <p className="text-sm sm:text-base text-white/90 drop-shadow">
-                Experience the magic of <strong className="text-yellow-300">Color Tornado Lab</strong> - where colors swirl in a realistic mixing bowl!
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Demo Credentials:</strong>
+                <br />
+                Email: demo@crowdfund.com
+                <br />
+                Password: demo123
               </p>
-              
-              <div className="backdrop-blur-sm bg-white/10 rounded-2xl p-3 sm:p-4 border border-white/20">
-                <h3 className="font-semibold text-yellow-300 mb-2 drop-shadow">🌪️ Features:</h3>
-                <ul className="text-xs sm:text-sm space-y-1 text-white/90">
-                  <li>• Realistic color mixing bowl with swirling effects</li>
-                  <li>• Scientific color mixing algorithms</li>
-                  <li>• Target color challenges with hints</li>
-                  <li>• Beautiful glassmorphism UI design</li>
-                  <li>• Winning celebrations and confetti!</li>
-                </ul>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(e) =>
+                    setLoginForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your email"
+                  onKeyPress={(e) => e.key === "Enter" && handleLogin(e)}
+                />
+                {formErrors.email && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {formErrors.email}
+                  </p>
+                )}
               </div>
-              
-              <div className="text-center pt-3 sm:pt-4 border-t border-white/20">
-                <p className="text-xs sm:text-sm text-white/70 drop-shadow">
-                  Created with ❤️ for color enthusiasts
-                </p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) =>
+                    setLoginForm((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your password"
+                  onKeyPress={(e) => e.key === "Enter" && handleLogin(e)}
+                />
+                {formErrors.password && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {formErrors.password}
+                  </p>
+                )}
               </div>
+
+              <button
+                onClick={handleLogin}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes liquidSwirl {
-          0% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(180deg) scale(1.02); }
-          100% { transform: rotate(360deg) scale(1); }
-        }
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            ref={shareModalRef}
+            className="bg-white rounded-xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">
+                Share this project
+              </h2>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-        @keyframes colorSwirl {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => handleShare("facebook")}
+                className="flex items-center justify-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer"
+              >
+                <Facebook className="w-5 h-5 text-blue-600" />
+                <span className="text-gray-700">Facebook</span>
+              </button>
+              <button
+                onClick={() => handleShare("twitter")}
+                className="flex items-center justify-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer"
+              >
+                <Twitter className="w-5 h-5 text-blue-400" />
+                <span className="text-gray-700">Twitter</span>
+              </button>
+              <button
+                onClick={() => handleShare("linkedin")}
+                className="flex items-center justify-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer"
+              >
+                <Linkedin className="w-5 h-5 text-blue-700" />
+                <span className="text-gray-700">LinkedIn</span>
+              </button>
+              <button
+                onClick={() => handleShare("email")}
+                className="flex items-center justify-center space-x-2 p-3 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer"
+              >
+                <Mail className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-700">Email</span>
+              </button>
+            </div>
 
-        @keyframes colorBlend {
-          0% { transform: translate(-50%, -50%) rotate(0deg); }
-          100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => handleShare("copy")}
+                className="w-full flex items-center justify-center space-x-2 p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                <Copy className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-700">Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.05); }
-        }
+      {/* Donate Modal */}
+      {showDonateModal && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div
+            ref={donateModalRef}
+            className="bg-white rounded-xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">
+                {selectedReward ? "Confirm Your Reward" : "Make a Donation"}
+              </h2>
+              <button
+                onClick={() => setShowDonateModal(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-        @keyframes ripple {
-          0% { 
-            transform: translate(-50%, -50%) scale(0.8) rotate(0deg); 
-            opacity: 0.8;
-            borderWidth: '3px';
-          }
-          50% {
-            opacity: 0.5;
-            borderWidth: '2px';
-            transform: translate(-50%, -50%) scale(1.15) rotate(180deg);
-          }
-          100% { 
-            transform: translate(-50%, -50%) scale(1.5) rotate(360deg); 
-            opacity: 0;
-            borderWidth: '1px';
-          }
-        }
-        
-        @keyframes dropAnimation {
-          0% {
-            transform: translate(0, 0) scale(1);
-            opacity: 1;
-          }
-          100% {
-            transform: translate(var(--end-x), var(--end-y)) scale(0.3);
-            opacity: 0;
-          }
-        }
+            {/* Selected Reward Display */}
+            {selectedReward && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                {(() => {
+                  const reward = rewards.find((r) => r.id === selectedReward);
+                  return reward ? (
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={reward.image}
+                        alt={reward.title}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-blue-900">
+                          {reward.title}
+                        </h3>
+                        <p className="text-blue-700 text-sm">
+                          ${reward.amount} reward selected
+                        </p>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
 
-        @keyframes confettiFall {
-          0% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(100vh) rotate(720deg);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes liquidWave {
-          0%, 100% { 
-            transform: scaleX(1) scaleY(1);
-          }
-          50% { 
-            transform: scaleX(1.05) scaleY(0.95);
-          }
-        }
-        
-        @keyframes twinkle {
-          0%, 100% { 
-            opacity: 0.2;
-            transform: scale(1);
-          }
-          50% { 
-            opacity: 0.6;
-            transform: scale(1.2);
-          }
-        }
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Donation Amount ($)
+                </label>
+                <input
+                  type="number"
+                  value={donateForm.amount}
+                  onChange={(e) =>
+                    setDonateForm((prev) => ({
+                      ...prev,
+                      amount: e.target.value,
+                    }))
+                  }
+                  min="10"
+                  step="1"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter amount (minimum $10)"
+                  onKeyPress={(e) => e.key === "Enter" && handleDonate(e)}
+                />
+                {formErrors.amount && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {formErrors.amount}
+                  </p>
+                )}
+              </div>
 
-        @keyframes rippleSecondary {
-          0% { 
-            transform: translate(-50%, -50%) scale(0.9) rotate(0deg); 
-            opacity: 0.6;
-          }
-          50% {
-            opacity: 0.3;
-            transform: translate(-50%, -50%) scale(1.2) rotate(-180deg);
-          }
-          100% { 
-            transform: translate(-50%, -50%) scale(1.6) rotate(-360deg); 
-            opacity: 0;
-          }
-        }
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Message (Optional)
+                </label>
+                <textarea
+                  value={donateForm.message}
+                  onChange={(e) =>
+                    setDonateForm((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
+                  placeholder="Leave a message for the creator"
+                />
+              </div>
 
-        @keyframes pulseGlow {
-          0%, 100% { 
-            opacity: 0.5;
-            transform: translate(-50%, -50%) scale(1);
-          }
-          50% { 
-            opacity: 0.8;
-            transform: translate(-50%, -50%) scale(1.1);
-          }
-        }
-      `}</style>
+              <button
+                onClick={handleDonate}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all cursor-pointer"
+              >
+                {selectedReward ? `Pledge ${donateForm.amount}` : "Donate Now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-gray-900 text-gray-300">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-1">
+              <div className="flex items-center">
+                {/* <Clock className="h-8 w-8 text-blue-400" /> */}
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <span className="ml-2 text-xl font-bold text-white">
+                  FundForward
+                </span>
+              </div>
+              <p className="mt-4 text-sm text-gray-400">
+                Empowering ideas through community-driven crowdfunding for
+                impactful change.
+              </p>
+              <div className="mt-6 flex space-x-4">
+                <a href="#" className="text-gray-400 hover:text-blue-400">
+                  <span className="sr-only">Twitter</span>
+                  <svg
+                    className="h-6 w-6"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M23.954 4.569c-.885.389-1.83.654-2.825.775 1.014-.611 1.794-1.574 2.163-2.723-.951.555-2.005.959-3.127 1.184-.896-.959-2.173-1.559-3.591-1.559-2.717 0-4.92 2.203-4.92 4.917 0 .39.045.765.127 1.124C7.691 8.094 4.066 6.13 1.64 3.161c-.427.722-.666 1.561-.666 2.475 0 1.71.87 3.213 2.188 4.096-.807-.026-1.566-.248-2.228-.616v.061c0 2.385 1.693 4.374 3.946 4.827-.413.111-.849.171-1.296.171-.314 0-.615-.03-.916-.086.631 1.953 2.445 3.377 4.604 3.417-1.68 1.319-3.809 2.105-6.102 2.105-.39 0-.779-.023-1.17-.067 2.189 1.394 4.768 2.209 7.557 2.209 9.054 0 14-7.503 14-14v-.648c.959-.689 1.795-1.556 2.455-2.541z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-blue-400">
+                  <span className="sr-only">LinkedIn</span>
+                  <svg
+                    className="h-6 w-6"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-blue-400">
+                  <span className="sr-only">GitHub</span>
+                  <svg
+                    className="h-6 w-6"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    />
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">
+                Product
+              </h3>
+              <ul className="mt-4 space-y-4">
+                <li>
+                  <a
+                    href="#features"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Discover
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#pricing"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Start a Project
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    How it Works
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Changelog
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">
+                Support
+              </h3>
+              <ul className="mt-4 space-y-4">
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#faq"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Help Center
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">
+                Company
+              </h3>
+              <ul className="mt-4 space-y-4">
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Blog
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-base text-gray-400 hover:text-white"
+                  >
+                    Press
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between">
+            <p className="text-base text-gray-400">
+              &copy; 2025 TimeTrack, Inc. All rights reserved.
+            </p>
+            <div className="mt-4 md:mt-0 flex space-x-6">
+              <a href="#" className="text-gray-400 hover:text-white">
+                Privacy
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white">
+                Terms
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white">
+                Cookies
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
 
-export default ColorMixingPlayground;
+export default FundForward;
