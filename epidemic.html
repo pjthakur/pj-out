@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EpiCurve Pro - Advanced Disease Surveillance Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        },
+                        accent: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.6s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'slide-down': 'slideDown 0.5s ease-out',
+                        'pulse-slow': 'pulse 3s infinite',
+                        'bounce-subtle': 'bounceSubtle 2s infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'float': 'float 3s ease-in-out infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            }
+
+            to {
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 50%, rgba(16, 185, 129, 0.1) 100%);
+        }
+
+        .premium-button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .premium-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .premium-button:hover:before {
+            left: 100%;
+        }
+
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .premium-button:active {
+            transform: translateY(0);
+        }
+
+        .notification {
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .tooltip {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .slider-modern::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .slider-modern::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        .chart-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .data-table {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .data-table::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .data-table::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .data-table::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.6);
+            border-radius: 4px;
+        }
+
+        .heatmap-cell {
+            transition: all 0.3s ease;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .chart-mode-toggle {
+            transition: all 0.3s ease;
+        }
+
+        .chart-mode-toggle.active {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            transform: scale(1.05);
+        }
+
+        /* Mobile-specific improvements */
+        @media (max-width: 640px) {
+            .premium-button {
+                min-height: 44px; /* iOS touch target minimum */
+                touch-action: manipulation; /* Prevent zoom on double-tap */
+            }
+
+            .chart-mode-toggle {
+                min-height: 40px;
+                min-width: 40px;
+                touch-action: manipulation;
+            }
+
+            .glass-effect {
+                backdrop-filter: blur(15px); /* Reduce blur for better mobile performance */
+            }
+
+            /* Improve button spacing on mobile */
+            .grid.grid-cols-1.sm\\:grid-cols-2 {
+                gap: 0.75rem;
+            }
+
+            /* Better mobile slider styling */
+            .slider-modern {
+                height: 8px; /* Thicker for easier touch */
+            }
+
+            .slider-modern::-webkit-slider-thumb {
+                width: 28px;
+                height: 28px;
+                border: 4px solid white;
+            }
+
+            /* Mobile-friendly select dropdowns */
+            select {
+                min-height: 40px;
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+
+            /* Improve mobile text readability */
+            .text-xs {
+                font-size: 0.75rem;
+                line-height: 1.2;
+            }
+
+            /* Better mobile card spacing */
+            .glass-effect.rounded-xl {
+                padding: 1rem;
+            }
+        }
+
+        /* Touch-friendly hover states */
+        @media (hover: hover) {
+            .premium-button:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        /* Mobile-only styles */
+        @media (hover: none) {
+            .premium-button:active {
+                transform: scale(0.98);
+                transition: transform 0.1s ease;
+            }
+
+            .chart-mode-toggle:active {
+                transform: scale(0.95);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen text-white font-sans">
+    <!-- Notification Bar -->
+    <div id="notificationBar" class="fixed top-0 left-0 right-0 z-50 hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 text-center notification">
+            <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                <span id="notificationText">Real-time data synchronized</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="backdrop-blur-sm bg-white/5 border-b border-white/10 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 rounded-xl flex items-center justify-center animate-glow">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">EpiCurve Pro</h1>
+                        <p class="text-xs text-gray-400">Advanced Disease Surveillance</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="settingsBtn" class="premium-button p-2 glass-effect rounded-lg hover:bg-white/20">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <button id="helpBtn" class="premium-button p-2 glass-effect rounded-lg hover:bg-white/20">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <div class="hidden md:flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-xs text-green-400 font-medium">LIVE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Enhanced Dashboard Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8 animate-fade-in">
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">Total Cases</p>
+                        <p class="text-xl lg:text-2xl font-bold text-blue-400" id="totalCases">0</p>
+                        <p class="text-xs text-green-400" id="totalCasesChange">+0%</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">Active Cases</p>
+                        <p class="text-xl lg:text-2xl font-bold text-orange-400" id="activeCases">0</p>
+                        <p class="text-xs text-red-400" id="activeCasesChange">+0%</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">Recovery Rate</p>
+                        <p class="text-xl lg:text-2xl font-bold text-green-400" id="recoveryRate">0%</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">R₀ Value</p>
+                        <p class="text-xl lg:text-2xl font-bold text-purple-400" id="reproductionRate">1.0</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">Waves</p>
+                        <p class="text-xl lg:text-2xl font-bold text-red-400" id="wavesCount">0</p>
+                        <p class="text-xs text-blue-400" id="wavesCountChange">Detected</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
+                            <path
+                                d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-4 hover:glass-strong transition-all duration-300 group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-300 uppercase tracking-wide">Current Day</p>
+                        <p class="text-xl lg:text-2xl font-bold text-cyan-400" id="currentDay">Day 1</p>
+                        <p class="text-xs text-gray-400" id="currentDate">Jan 1, 2024</p>
+                    </div>
+                    <div
+                        class="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center group-hover:animate-float">
+                        <svg class="w-4 h-4 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Control Panel -->
+        <div class="glass-effect rounded-2xl md:p-6 p-4 mb-8 animate-slide-up">
+            <!-- Header Section -->
+            <div class="flex flex-col mb-6">
+                <div class="mb-4">
+                    <h2 class="text-xl md:text-2xl font-bold gradient-text mb-2">Advanced Epidemic Analytics</h2>
+                    <p class="text-sm md:text-base text-gray-300">Multi-dimensional visualization and predictive modeling platform</p>
+                </div>
+                
+                <!-- Chart Mode Toggles - Full width on mobile -->
+                <div class="w-full bg-slate-800/50 rounded-lg p-1 grid grid-cols-4 gap-1">
+                    <button id="areaChartBtn"
+                        class="chart-mode-toggle active px-2 md:px-3 py-2 rounded-md text-xs md:text-sm font-medium transition-all text-center">Area</button>
+                    <button id="lineChartBtn"
+                        class="chart-mode-toggle px-2 md:px-3 py-2 rounded-md text-xs md:text-sm font-medium transition-all text-center">Line</button>
+                    <button id="barChartBtn"
+                        class="chart-mode-toggle px-2 md:px-3 py-2 rounded-md text-xs md:text-sm font-medium transition-all text-center">Bar</button>
+                    <button id="heatmapBtn"
+                        class="chart-mode-toggle px-2 md:px-3 py-2 rounded-md text-xs md:text-sm font-medium transition-all text-center">Heat</button>
+                </div>
+            </div>
+
+            <!-- Primary Action Buttons - Side by Side -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button id="peakModeBtn"
+                    class="premium-button px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-lg text-sm font-medium shadow-lg flex items-center justify-center gap-2 w-full">
+                    <span class="text-lg">🔍</span>
+                    <span class="hidden sm:inline">Peak Detection:</span>
+                    <span class="sm:hidden">Peak:</span>
+                    <span class="font-bold">OFF</span>
+                </button>
+
+                <button id="playPauseBtn"
+                    class="premium-button px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg text-sm font-medium shadow-lg flex items-center justify-center gap-2 w-full">
+                    <svg id="playIcon" class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <svg id="pauseIcon" class="w-4 h-4 flex-shrink-0 hidden" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Play Animation</span>
+                    <span class="sm:hidden">Play</span>
+                </button>
+            </div>
+
+            <!-- Secondary Controls Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="flex items-center gap-2 bg-slate-800/30 rounded-lg px-3 py-2">
+                    <label class="text-xs md:text-sm text-gray-300 whitespace-nowrap">Speed:</label>
+                    <select id="animationSpeed" class="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm flex-1 min-w-0">
+                        <option value="100">Slow</option>
+                        <option value="50" selected>Normal</option>
+                        <option value="25">Fast</option>
+                        <option value="10">Ultra Fast</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 bg-slate-800/30 rounded-lg px-3 py-2">
+                    <label class="text-xs md:text-sm text-gray-300 whitespace-nowrap">Range:</label>
+                    <select id="timeRange" class="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm flex-1 min-w-0">
+                        <option value="7">7 Days</option>
+                        <option value="30">30 Days</option>
+                        <option value="90">90 Days</option>
+                        <option value="365" selected>Full Year</option>
+                    </select>
+                </div>
+
+                <button id="fullscreenBtn"
+                    class="premium-button px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 rounded-lg text-xs md:text-sm font-medium shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Fullscreen</span>
+                    <span class="sm:hidden">Full</span>
+                </button>
+
+                <!-- Mobile-friendly info display -->
+                <div class="flex items-center justify-center bg-slate-800/30 rounded-lg px-3 py-2 lg:hidden">
+                    <div class="text-center">
+                        <div class="text-xs text-gray-400">Current</div>
+                        <div class="text-sm font-medium text-cyan-400" id="mobileCurrentDay">Day 1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chart Area -->
+            <div class="chart-container rounded-xl border border-white/10 relative overflow-hidden">
+                <div
+                    class="flex items-center glass-effect justify-between md:flex-row flex-col md:gap-4 gap-2 md:px-4 px-1 md:py-0 pb-2">
+
+                    <div class=" rounded-lg px-3 py-2">
+                        <div class="text-sm font-medium text-white" id="chartTitle">Epidemic Curve - Area Chart</div>
+                        <div class="text-xs text-gray-300" id="chartSubtitle">Real-time disease spread visualization
+                        </div>
+                    </div>
+
+                    <div class="z-10 flex gap-2">
+                        <button id="zoomInBtn" class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                        <button id="zoomOutBtn" class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                        <button id="resetZoomBtn" class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <canvas id="chartCanvas" class="w-full touch-pan-y" style="height: 500px;"></canvas>
+
+                <!-- Chart Overlay for Tooltips -->
+                <div class="chart-overlay" id="chartOverlay"></div>
+
+                <!-- Enhanced Timeline Scrubber -->
+                <div class="p-4 bg-slate-900/50 backdrop-blur-sm border-t border-white/10">
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-gray-400 min-w-fit">Day 1</span>
+                        <div class="flex-1 relative">
+                            <input type="range" id="timelineSlider" min="0" max="365" value="0"
+                                class="slider-modern w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                style="background: linear-gradient(to right, #3b82f6 0%, #1e293b 0%);">
+                            <div class="absolute -top-12 left-0 tooltip px-3 py-2 rounded-lg text-sm text-white transform -translate-x-1/2 opacity-0 transition-all duration-200 pointer-events-none"
+                                id="scrubberTooltip">
+                                <div class="font-medium" id="tooltipDay">Day 1</div>
+                                <div class="text-xs text-gray-300" id="tooltipDate">Jan 1, 2024</div>
+                                <div class="text-xs text-blue-400" id="tooltipCases">0 cases</div>
+                            </div>
+                        </div>
+                        <span class="text-sm text-gray-400 min-w-fit" id="maxDayLabel">Day 365</span>
+                    </div>
+
+                    <!-- Playback Controls -->
+                    <div class="flex items-center justify-center gap-2 mt-4">
+                        <button id="stepBackBtn" class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                        <button id="stepForwardBtn"
+                            class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z"
+                                    clip-rule="evenodd"></path>
+                                <path fill-rule="evenodd"
+                                    d="M4.293 15.707a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                        <button id="jumpToStartBtn"
+                            class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z">
+                                </path>
+                            </svg>
+                        </button>
+                        <button id="jumpToEndBtn" class="p-2 glass-effect rounded-lg hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798l-5.445-3.63z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Control Panels Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Data Filtering Panel -->
+            <div class="glass-effect rounded-xl overflow-hidden animate-slide-up">
+                <button
+                    class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-white/10 transition-all duration-300"
+                    id="filterToggle">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Advanced Filters</h3>
+                            <p class="text-sm text-gray-400">Customize data parameters</p>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 transform transition-transform duration-300" id="filterArrow"
+                        fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+                <div class="px-6 pb-6 space-y-6 transition-all duration-500 ease-in-out overflow-hidden"
+                    id="filterPanel" style="max-height: 0; opacity: 0;">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-300">Minimum Cases</label>
+                            <span class="text-sm text-blue-400 font-mono" id="minThresholdValue">0</span>
+                        </div>
+                        <input type="range" id="minThreshold" min="0" max="1000" value="0"
+                            class="slider-modern w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-300">Maximum Cases</label>
+                            <span class="text-sm text-blue-400 font-mono" id="maxThresholdValue">10000</span>
+                        </div>
+                        <input type="range" id="maxThreshold" min="0" max="10000" value="10000"
+                            class="slider-modern w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-300">Peak Sensitivity</label>
+                            <span class="text-sm text-blue-400 font-mono" id="sensitivityValue">50%</span>
+                        </div>
+                        <input type="range" id="peakSensitivity" min="10" max="90" value="50"
+                            class="slider-modern w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-300">Moving Average</label>
+                            <span class="text-sm text-blue-400 font-mono" id="movingAvgValue">7 days</span>
+                        </div>
+                        <input type="range" id="movingAverage" min="1" max="30" value="7"
+                            class="slider-modern w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Dashboard -->
+            <div class="glass-effect rounded-xl overflow-hidden animate-slide-up">
+                <button
+                    class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-white/10 transition-all duration-300"
+                    id="analyticsToggle">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Real-time Analytics</h3>
+                            <p class="text-sm text-gray-400">Advanced epidemic insights</p>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 transform transition-transform duration-300" id="analyticsArrow"
+                        fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+                <div class="px-6 pb-6 space-y-4 transition-all duration-500 ease-in-out overflow-hidden"
+                    id="analyticsPanel" style="max-height: 0; opacity: 0;">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-all">
+                            <p class="text-xs text-gray-400 uppercase tracking-wide">Growth Rate</p>
+                            <p class="text-lg font-bold text-yellow-400" id="growthRate">+0%</p>
+                            <div class="w-full bg-slate-700 rounded-full h-1 mt-2">
+                                <div class="bg-yellow-400 h-1 rounded-full transition-all duration-500"
+                                    id="growthRateBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-all">
+                            <p class="text-xs text-gray-400 uppercase tracking-wide">Acceleration</p>
+                            <p class="text-lg font-bold text-orange-400" id="acceleration">0</p>
+                            <div class="w-full bg-slate-700 rounded-full h-1 mt-2">
+                                <div class="bg-orange-400 h-1 rounded-full transition-all duration-500"
+                                    id="accelerationBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-all">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Trend Analysis</p>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                            <p class="text-sm text-gray-300" id="trendAnalysis">Analyzing patterns...</p>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-green-400 to-blue-400 h-2 rounded-full transition-all duration-1000"
+                                id="trendBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-all">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Next 7 Days Forecast</p>
+                        <p class="text-sm text-purple-400 font-medium" id="forecastText">Enable forecasting mode</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Export & Settings -->
+            <div class="glass-effect rounded-xl overflow-hidden animate-slide-up">
+                <button
+                    class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-white/10 transition-all duration-300"
+                    id="dataToggle">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">Data Management</h3>
+                            <p class="text-sm text-gray-400">Export & configuration</p>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 transform transition-transform duration-300" id="dataArrow"
+                        fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+                <div class="px-6 pb-6 space-y-4 transition-all duration-500 ease-in-out overflow-hidden" id="dataPanel"
+                    style="max-height: 0; opacity: 0;">
+                    <div class="space-y-3">
+                        <button id="exportCSVBtn"
+                            class="w-full premium-button px-4 py-3 bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 border border-blue-500/30 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                <path fill-rule="evenodd"
+                                    d="M4 5a2 2 0 012-2v1a2 2 0 00-2 2v6a2 2 0 002 2h2v1a2 2 0 002 2h2a2 2 0 002-2v-1h2a2 2 0 002-2V7a2 2 0 00-2-2V4a2 2 0 00-2-2H6a2 2 0 00-2 2v1zm10 5a1 1 0 01-1 1h-4a1 1 0 110-2h4a1 1 0 011 1z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Export as CSV
+                        </button>
+                        <button id="exportJSONBtn"
+                            class="w-full premium-button px-4 py-3 bg-gradient-to-r from-green-500/20 to-green-600/20 hover:from-green-500/30 hover:to-green-600/30 border border-green-500/30 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Export as JSON
+                        </button>
+                        <button id="exportImageBtn"
+                            class="w-full premium-button px-4 py-3 bg-gradient-to-r from-purple-500/20 to-purple-600/20 hover:from-purple-500/30 hover:to-purple-600/30 border border-purple-500/30 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Save as Image
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="glass-effect rounded-xl p-6 animate-slide-up">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-white">Real-time Data Stream</h3>
+                <div class="flex items-center gap-2">
+                    <div class="loading-spinner"></div>
+                    <span class="text-sm text-green-400">Live Updates</span>
+                </div>
+            </div>
+            <div class="data-table">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-800/50 sticky top-0">
+                        <tr>
+                            <th class="text-left p-3 text-gray-300">Day</th>
+                            <th class="text-left p-3 text-gray-300">Date</th>
+                            <th class="text-left p-3 text-gray-300">New Cases</th>
+                            <th class="text-left p-3 text-gray-300">Total Cases</th>
+                            <th class="text-left p-3 text-gray-300">7-Day Avg</th>
+                            <th class="text-left p-3 text-gray-300">Growth %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="text-gray-300">
+                        <!-- Data rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-16 border-t border-white/10 bg-slate-900/50 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center">
+                <p class="text-gray-400 text-sm">© 2024 EpiCurve Pro. Advanced epidemiological visualization platform
+                    powered by AI-driven analytics.</p>
+                <p class="text-gray-500 text-xs mt-2">Built with cutting-edge web technologies for Fortune 500
+                    enterprises</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="settingsOverlay"></div>
+        <div
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 glass-strong rounded-2xl p-6 w-96 max-w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-white">Settings</h3>
+                <button id="closeSettings" class="p-2 hover:bg-white/20 rounded-lg transition-all">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Auto-refresh Interval</label>
+                    <select class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2">
+                        <option>5 seconds</option>
+                        <option>10 seconds</option>
+                        <option>30 seconds</option>
+                        <option>1 minute</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Chart Quality</label>
+                    <select class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2">
+                        <option>Standard</option>
+                        <option>High</option>
+                        <option>Ultra</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-300">Show Grid</span>
+                    <input type="checkbox" id="showGrid" checked class="toggle">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-300">Show Animations</span>
+                    <input type="checkbox" id="showAnimations" checked class="toggle">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdvancedEpidemicVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('chartCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.data = this.generateAdvancedEpidemicData();
+                this.forecastData = [];
+                this.currentDay = 0;
+                this.isPlaying = false;
+                this.animationId = null;
+                this.animationSpeed = 50;
+                this.chartMode = 'area';
+
+                // Feature flags
+                this.peakModeEnabled = false;
+                this.forecastEnabled = false;
+                this.compareMode = false;
+
+                // Analysis data
+                this.peaks = [];
+                this.movingAverage = 7;
+                this.minThreshold = 0;
+                this.maxThreshold = 10000;
+                this.peakSensitivity = 50;
+
+                // Zoom and pan
+                this.zoomLevel = 1;
+                this.panOffset = { x: 0, y: 0 };
+
+                this.init();
+            }
+
+            async init() {
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.setupPanels();
+                this.detectPeaks();
+                this.generateForecast();
+                this.updateChart();
+                this.updateStats();
+                this.updateDataTable();
+
+                // Start live updates simulation
+                this.startLiveUpdates();
+            }
+
+            generateAdvancedEpidemicData() {
+                const data = [];
+                const totalDays = 365;
+                let cumulativeCases = 0;
+
+                for (let day = 0; day < totalDays; day++) {
+                    let dailyCases = 0;
+                    let recoveries = 0;
+
+                    // Multi-wave simulation with realistic parameters
+                    // Wave 1: Initial outbreak
+                    if (day < 120) {
+                        const peak1Day = 45;
+                        const intensity1 = Math.exp(-Math.pow(day - peak1Day, 2) / (2 * Math.pow(15, 2)));
+                        dailyCases += intensity1 * 2800 * (1 + Math.sin(day * 0.1) * 0.2);
+                    }
+
+                    // Wave 2: Major surge
+                    if (day > 80 && day < 220) {
+                        const peak2Day = 150;
+                        const intensity2 = Math.exp(-Math.pow(day - peak2Day, 2) / (2 * Math.pow(25, 2)));
+                        dailyCases += intensity2 * 5200 * (1 + Math.sin(day * 0.05) * 0.15);
+                    }
+
+                    // Wave 3: Variant wave
+                    if (day > 200 && day < 320) {
+                        const peak3Day = 260;
+                        const intensity3 = Math.exp(-Math.pow(day - peak3Day, 2) / (2 * Math.pow(18, 2)));
+                        dailyCases += intensity3 * 3400 * (1 + Math.sin(day * 0.08) * 0.25);
+                    }
+
+                    // Seasonal effects and noise
+                    const seasonalEffect = 1 + 0.3 * Math.sin((day / 365) * 2 * Math.PI);
+                    const weekendEffect = (day % 7 < 2) ? 0.7 : 1.0; // Lower reporting on weekends
+                    const randomNoise = 0.8 + Math.random() * 0.4;
+
+                    dailyCases = dailyCases * seasonalEffect * weekendEffect * randomNoise;
+                    dailyCases = Math.max(10, Math.floor(dailyCases));
+
+                    // Calculate recoveries (simplified model)
+                    recoveries = Math.floor(cumulativeCases * 0.02 + Math.random() * 50);
+
+                    cumulativeCases += dailyCases - recoveries;
+                    cumulativeCases = Math.max(0, cumulativeCases);
+
+                    data.push({
+                        day: day + 1,
+                        date: new Date(2024, 0, day + 1),
+                        cases: dailyCases,
+                        totalCases: cumulativeCases,
+                        recoveries: recoveries,
+                        activeCases: Math.max(0, cumulativeCases - (recoveries * (day + 1))),
+                        hospitalizations: Math.floor(dailyCases * 0.1),
+                        deaths: Math.floor(dailyCases * 0.015)
+                    });
+                }
+
+                return data;
+            }
+
+            generateForecast() {
+                if (!this.forecastEnabled) return;
+
+                const recentData = this.data.slice(-30);
+                const avgGrowthRate = this.calculateGrowthRate(recentData);
+
+                this.forecastData = [];
+                let lastValue = this.data[this.data.length - 1].cases;
+
+                for (let i = 1; i <= 30; i++) {
+                    const seasonalFactor = 1 + 0.1 * Math.sin((i / 30) * Math.PI);
+                    const decayFactor = Math.exp(-i * 0.05); // Natural decay
+                    const forecastValue = lastValue * (1 + avgGrowthRate) * seasonalFactor * decayFactor;
+
+                    this.forecastData.push({
+                        day: this.data.length + i,
+                        cases: Math.max(0, forecastValue),
+                        confidence: Math.max(0.3, 1 - (i * 0.02)) // Decreasing confidence
+                    });
+
+                    lastValue = forecastValue;
+                }
+            }
+
+            calculateGrowthRate(data) {
+                if (data.length < 2) return 0;
+
+                const recent = data.slice(-7).reduce((sum, d) => sum + d.cases, 0) / 7;
+                const previous = data.slice(-14, -7).reduce((sum, d) => sum + d.cases, 0) / 7;
+
+                return previous > 0 ? (recent - previous) / previous : 0;
+            }
+
+            setupCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+
+                    this.canvas.width = rect.width * dpr;
+                    this.canvas.height = rect.height * dpr;
+
+                    this.ctx.scale(dpr, dpr);
+                    this.canvas.style.width = rect.width + 'px';
+                    this.canvas.style.height = rect.height + 'px';
+
+                    this.updateChart();
+                };
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+            }
+
+            setupEventListeners() {
+                // Play/Pause
+                document.getElementById('playPauseBtn').addEventListener('click', () => {
+                    this.toggleAnimation();
+                });
+
+                // Chart mode toggles
+                document.querySelectorAll('.chart-mode-toggle').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.chart-mode-toggle').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.chartMode = e.target.id.replace('ChartBtn', '').replace('Btn', '');
+                        this.updateChart();
+                        this.updateChartTitle();
+                    });
+                });
+
+                // Peak mode toggle
+                document.getElementById('peakModeBtn').addEventListener('click', () => {
+                    this.togglePeakMode();
+                });
+
+                // Timeline controls
+                this.setupTimelineControls();
+
+                // Filter controls
+                this.setupFilterControls();
+
+                // Export functions
+                this.setupExportFunctions();
+
+                // Settings and help
+                this.setupModalControls();
+
+                // Canvas interactions
+                this.setupCanvasInteractions();
+
+                // Speed control
+                document.getElementById('animationSpeed').addEventListener('change', (e) => {
+                    this.animationSpeed = parseInt(e.target.value);
+                });
+
+                document.getElementById('timeRange').addEventListener('change', (e) => {
+                    const range = parseInt(e.target.value);
+                    this.currentDay = Math.min(this.currentDay, range - 1);
+                    this.updateChart();
+                    this.updateStats();
+                });
+            }
+
+            setupTimelineControls() {
+                const timelineSlider = document.getElementById('timelineSlider');
+                const tooltip = document.getElementById('scrubberTooltip');
+
+                timelineSlider.addEventListener('input', (e) => {
+                    this.currentDay = parseInt(e.target.value);
+                    this.updateChart();
+                    this.updateStats();
+                    this.updateSliderBackground(timelineSlider);
+                });
+
+                timelineSlider.addEventListener('mouseenter', () => {
+                    tooltip.style.opacity = '1';
+                });
+
+                timelineSlider.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+
+                timelineSlider.addEventListener('mousemove', (e) => {
+                    const rect = timelineSlider.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    const day = Math.round(percent * (this.data.length - 1));
+                    const dataPoint = this.data[day] || this.data[0];
+
+                    document.getElementById('tooltipDay').textContent = `Day ${dataPoint.day}`;
+                    document.getElementById('tooltipDate').textContent = dataPoint.date.toLocaleDateString();
+                    document.getElementById('tooltipCases').textContent = `${dataPoint.cases.toLocaleString()} cases`;
+                    tooltip.style.left = `${percent * 100}%`;
+                });
+
+                // Step controls
+                document.getElementById('stepBackBtn').addEventListener('click', () => {
+                    this.currentDay = Math.max(0, this.currentDay - 1);
+                    this.updateTimelineAndChart();
+                });
+
+                document.getElementById('stepForwardBtn').addEventListener('click', () => {
+                    this.currentDay = Math.min(this.data.length - 1, this.currentDay + 1);
+                    this.updateTimelineAndChart();
+                });
+
+                document.getElementById('jumpToStartBtn').addEventListener('click', () => {
+                    this.currentDay = 0;
+                    this.updateTimelineAndChart();
+                });
+
+                document.getElementById('jumpToEndBtn').addEventListener('click', () => {
+                    this.currentDay = this.data.length - 1;
+                    this.updateTimelineAndChart();
+                });
+            }
+
+            setupFilterControls() {
+                // Threshold sliders
+                document.getElementById('minThreshold').addEventListener('input', (e) => {
+                    this.minThreshold = parseInt(e.target.value);
+                    document.getElementById('minThresholdValue').textContent = this.minThreshold.toLocaleString();
+                    this.updateChart();
+                });
+
+                document.getElementById('maxThreshold').addEventListener('input', (e) => {
+                    this.maxThreshold = parseInt(e.target.value);
+                    document.getElementById('maxThresholdValue').textContent = this.maxThreshold.toLocaleString();
+                    this.updateChart();
+                });
+
+                document.getElementById('peakSensitivity').addEventListener('input', (e) => {
+                    this.peakSensitivity = parseInt(e.target.value);
+                    document.getElementById('sensitivityValue').textContent = `${this.peakSensitivity}%`;
+                    this.detectPeaks();
+                    this.updateChart();
+                });
+
+                document.getElementById('movingAverage').addEventListener('input', (e) => {
+                    this.movingAverage = parseInt(e.target.value);
+                    document.getElementById('movingAvgValue').textContent = `${this.movingAverage} days`;
+                    this.updateChart();
+                });
+            }
+
+            setupExportFunctions() {
+                document.getElementById('exportCSVBtn').addEventListener('click', () => {
+                    this.exportToCSV();
+                });
+
+                document.getElementById('exportJSONBtn').addEventListener('click', () => {
+                    this.exportToJSON();
+                });
+
+                document.getElementById('exportImageBtn').addEventListener('click', () => {
+                    this.exportToImage();
+                });
+            }
+
+            setupModalControls() {
+                // Settings modal
+                document.getElementById('settingsBtn').addEventListener('click', () => {
+                    document.getElementById('settingsModal').classList.remove('hidden');
+                });
+
+                document.getElementById('closeSettings').addEventListener('click', () => {
+                    document.getElementById('settingsModal').classList.add('hidden');
+                });
+
+                document.getElementById('settingsOverlay').addEventListener('click', () => {
+                    document.getElementById('settingsModal').classList.add('hidden');
+                });
+
+                // Help button
+                document.getElementById('helpBtn').addEventListener('click', () => {
+                    this.showHelp();
+                });
+
+                // Fullscreen
+                document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+            }
+
+            setupCanvasInteractions() {
+                let isDragging = false;
+                let dragStart = { x: 0, y: 0 };
+
+                const handleStart = (e) => {
+                    isDragging = true;
+                    const rect = this.canvas.getBoundingClientRect();
+                    dragStart.x = (e.clientX || e.touches[0].clientX) - rect.left;
+                    dragStart.y = (e.clientY || e.touches[0].clientY) - rect.top;
+                    this.handleCanvasInteraction(e);
+                };
+
+                const handleMove = (e) => {
+                    if (isDragging) {
+                        this.handleCanvasInteraction(e);
+                    }
+                };
+
+                const handleEnd = () => {
+                    isDragging = false;
+                };
+
+                // Mouse events
+                this.canvas.addEventListener('mousedown', handleStart);
+                this.canvas.addEventListener('mousemove', handleMove);
+                this.canvas.addEventListener('mouseup', handleEnd);
+                this.canvas.addEventListener('mouseleave', handleEnd);
+
+                // Touch events
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleStart(e.touches[0]);
+                });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    handleMove(e.touches[0]);
+                });
+
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleEnd();
+                });
+
+                // Zoom controls
+                document.getElementById('zoomInBtn').addEventListener('click', () => {
+                    this.zoomLevel = Math.min(3, this.zoomLevel * 1.2);
+                    this.updateChart();
+                });
+
+                document.getElementById('zoomOutBtn').addEventListener('click', () => {
+                    this.zoomLevel = Math.max(0.5, this.zoomLevel / 1.2);
+                    this.updateChart();
+                });
+
+                document.getElementById('resetZoomBtn').addEventListener('click', () => {
+                    this.zoomLevel = 1;
+                    this.panOffset = { x: 0, y: 0 };
+                    this.updateChart();
+                });
+            }
+
+            setupPanels() {
+                // Filter panel
+                this.setupPanel('filterToggle', 'filterPanel', 'filterArrow');
+
+                // Analytics panel
+                this.setupPanel('analyticsToggle', 'analyticsPanel', 'analyticsArrow');
+
+                // Data panel
+                this.setupPanel('dataToggle', 'dataPanel', 'dataArrow');
+            }
+
+            setupPanel(toggleId, panelId, arrowId) {
+                document.getElementById(toggleId).addEventListener('click', () => {
+                    const panel = document.getElementById(panelId);
+                    const arrow = document.getElementById(arrowId);
+
+                    if (panel.style.maxHeight === '0px' || !panel.style.maxHeight) {
+                        panel.style.maxHeight = '500px';
+                        panel.style.opacity = '1';
+                        arrow.style.transform = 'rotate(180deg)';
+                    } else {
+                        panel.style.maxHeight = '0px';
+                        panel.style.opacity = '0';
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+            }
+
+            handleCanvasInteraction(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const chartWidth = rect.width - 120;
+                const chartLeft = 60;
+
+                if (x >= chartLeft && x <= chartLeft + chartWidth) {
+                    const percent = (x - chartLeft) / chartWidth;
+                    this.currentDay = Math.round(percent * (this.data.length - 1));
+                    this.currentDay = Math.max(0, Math.min(this.data.length - 1, this.currentDay));
+
+                    this.updateTimelineAndChart();
+                }
+            }
+
+            updateTimelineAndChart() {
+                document.getElementById('timelineSlider').value = this.currentDay;
+                this.updateSliderBackground(document.getElementById('timelineSlider'));
+                this.updateChart();
+                this.updateStats();
+                this.updateDataTable();
+            }
+
+            detectPeaks() {
+                this.peaks = [];
+                const sensitivity = this.peakSensitivity / 100;
+                const windowSize = Math.max(3, Math.floor(this.data.length * 0.01));
+
+                for (let i = windowSize; i < this.data.length - windowSize; i++) {
+                    const currentValue = this.data[i].cases;
+                    let isLocalMaximum = true;
+
+                    for (let j = i - windowSize; j <= i + windowSize; j++) {
+                        if (j !== i && this.data[j].cases >= currentValue) {
+                            isLocalMaximum = false;
+                            break;
+                        }
+                    }
+
+                    if (isLocalMaximum) {
+                        const maxValue = Math.max(...this.data.map(d => d.cases));
+                        const threshold = maxValue * sensitivity * 0.2;
+
+                        if (currentValue > threshold) {
+                            this.peaks.push({
+                                day: i,
+                                cases: currentValue,
+                                significance: currentValue / maxValue
+                            });
+                        }
+                    }
+                }
+
+                document.getElementById('wavesCount').textContent = this.peaks.length;
+            }
+
+            toggleAnimation() {
+                if (this.isPlaying) {
+                    this.pauseAnimation();
+                } else {
+                    this.startAnimation();
+                }
+            }
+
+            startAnimation() {
+                this.isPlaying = true;
+                this.updatePlayButton();
+
+                const animate = () => {
+                    if (this.isPlaying) {
+                        this.currentDay = (this.currentDay + 1) % this.data.length;
+                        this.updateTimelineAndChart();
+                        this.animationId = setTimeout(animate, this.animationSpeed);
+                    }
+                };
+
+                animate();
+            }
+
+            pauseAnimation() {
+                this.isPlaying = false;
+                if (this.animationId) {
+                    clearTimeout(this.animationId);
+                }
+                this.updatePlayButton();
+            }
+
+            updatePlayButton() {
+                const btn = document.getElementById('playPauseBtn');
+                const playIcon = document.getElementById('playIcon');
+                const pauseIcon = document.getElementById('pauseIcon');
+                const playTextFull = btn.querySelector('.hidden.sm\\:inline');
+                const playTextMobile = btn.querySelector('.sm\\:hidden');
+
+                if (this.isPlaying) {
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                    if (playTextFull) playTextFull.textContent = 'Pause Animation';
+                    if (playTextMobile) playTextMobile.textContent = 'Pause';
+                } else {
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                    if (playTextFull) playTextFull.textContent = 'Play Animation';
+                    if (playTextMobile) playTextMobile.textContent = 'Play';
+                }
+            }
+
+            togglePeakMode() {
+                this.peakModeEnabled = !this.peakModeEnabled;
+                const btn = document.getElementById('peakModeBtn');
+                const statusSpan = btn.querySelector('.font-bold');
+
+                if (this.peakModeEnabled) {
+                    if (statusSpan) statusSpan.textContent = 'ON';
+                    btn.className = btn.className.replace('from-purple-500 to-purple-600', 'from-red-500 to-red-600');
+                } else {
+                    if (statusSpan) statusSpan.textContent = 'OFF';
+                    btn.className = btn.className.replace('from-red-500 to-red-600', 'from-purple-500 to-purple-600');
+                }
+
+                this.updateChart();
+            }
+
+
+            updateChart() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.ctx.clearRect(0, 0, rect.width, rect.height);
+
+                const margin = { top: 40, right: 50, bottom: 80, left: 80 };
+                const chartWidth = rect.width - margin.left - margin.right;
+                const chartHeight = rect.height - margin.top - margin.bottom;
+
+                if (chartWidth <= 0 || chartHeight <= 0) return;
+
+                const filteredData = this.getFilteredData();
+                if (filteredData.length === 0) return;
+
+                const maxCases = Math.max(...filteredData.map(d => d.cases));
+
+                // Apply zoom and pan
+                this.ctx.save();
+                this.ctx.translate(this.panOffset.x, this.panOffset.y);
+                this.ctx.scale(this.zoomLevel, this.zoomLevel);
+
+                // Draw grid
+                this.drawEnhancedGrid(margin, chartWidth, chartHeight, maxCases);
+
+                // Draw chart based on mode
+                switch (this.chartMode) {
+                    case 'area':
+                        this.drawAreaChart(filteredData, margin, chartWidth, chartHeight, maxCases);
+                        break;
+                    case 'line':
+                        this.drawLineChart(filteredData, margin, chartWidth, chartHeight, maxCases);
+                        break;
+                    case 'bar':
+                        this.drawBarChart(filteredData, margin, chartWidth, chartHeight, maxCases);
+                        break;
+                    case 'heatmap':
+                        this.drawHeatmap(filteredData, margin, chartWidth, chartHeight);
+                        break;
+                }
+
+                // Draw forecast if enabled
+                if (this.forecastEnabled && this.forecastData.length > 0) {
+                    this.drawForecast(margin, chartWidth, chartHeight, maxCases);
+                }
+
+                // Draw peaks if enabled
+                if (this.peakModeEnabled) {
+                    this.drawEnhancedPeaks(filteredData, margin, chartWidth, chartHeight, maxCases);
+                }
+
+                // Draw current day indicator
+                this.drawCurrentDayIndicator(margin, chartWidth, chartHeight, maxCases);
+
+                // Draw axes
+                this.drawEnhancedAxes(margin, chartWidth, chartHeight, maxCases, filteredData.length);
+
+                this.ctx.restore();
+            }
+
+            getFilteredData() {
+                const timeRange = parseInt(document.getElementById('timeRange').value);
+                const startDay = Math.max(0, this.data.length - timeRange);
+
+                return this.data.slice(startDay).filter(d =>
+                    d.cases >= this.minThreshold && d.cases <= this.maxThreshold
+                );
+            }
+
+            drawEnhancedGrid(margin, chartWidth, chartHeight, maxCases) {
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                this.ctx.lineWidth = 1;
+
+                // Horizontal grid lines
+                for (let i = 0; i <= 10; i++) {
+                    const y = margin.top + (chartHeight / 10) * i;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(margin.left, y);
+                    this.ctx.lineTo(margin.left + chartWidth, y);
+                    this.ctx.stroke();
+                }
+
+                // Vertical grid lines
+                for (let i = 0; i <= 20; i++) {
+                    const x = margin.left + (chartWidth / 20) * i;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, margin.top);
+                    this.ctx.lineTo(x, margin.top + chartHeight);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawAreaChart(data, margin, chartWidth, chartHeight, maxCases) {
+                const visibleData = data.slice(0, this.currentDay + 1);
+                if (visibleData.length < 2) return;
+
+                // Create gradient
+                const gradient = this.ctx.createLinearGradient(0, margin.top, 0, margin.top + chartHeight);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
+                gradient.addColorStop(0.3, 'rgba(147, 51, 234, 0.6)');
+                gradient.addColorStop(0.7, 'rgba(16, 185, 129, 0.4)');
+                gradient.addColorStop(1, 'rgba(59, 130, 246, 0.1)');
+
+                // Draw area
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.moveTo(margin.left, margin.top + chartHeight);
+
+                // Apply moving average smoothing
+                const smoothedData = this.applyMovingAverage(visibleData);
+
+                smoothedData.forEach((point, index) => {
+                    const x = margin.left + (index / (data.length - 1)) * chartWidth;
+                    const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                    if (index === 0) {
+                        this.ctx.lineTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                const lastX = margin.left + ((smoothedData.length - 1) / (data.length - 1)) * chartWidth;
+                this.ctx.lineTo(lastX, margin.top + chartHeight);
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Draw outline
+                this.ctx.strokeStyle = '#3b82f6';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+
+                smoothedData.forEach((point, index) => {
+                    const x = margin.left + (index / (data.length - 1)) * chartWidth;
+                    const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                    if (index === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                this.ctx.stroke();
+            }
+
+            drawLineChart(data, margin, chartWidth, chartHeight, maxCases) {
+                const visibleData = data.slice(0, this.currentDay + 1);
+                if (visibleData.length < 2) return;
+
+                const smoothedData = this.applyMovingAverage(visibleData);
+
+                // Main line
+                this.ctx.strokeStyle = '#10b981';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+
+                smoothedData.forEach((point, index) => {
+                    const x = margin.left + (index / (data.length - 1)) * chartWidth;
+                    const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                    if (index === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                this.ctx.stroke();
+
+                // Add glow effect
+                this.ctx.shadowColor = '#10b981';
+                this.ctx.shadowBlur = 10;
+                this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
+
+                // Draw data points
+                smoothedData.forEach((point, index) => {
+                    if (index % 5 === 0) { // Show every 5th point
+                        const x = margin.left + (index / (data.length - 1)) * chartWidth;
+                        const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                        this.ctx.fillStyle = '#10b981';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        this.ctx.fill();
+
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    }
+                });
+            }
+
+            drawBarChart(data, margin, chartWidth, chartHeight, maxCases) {
+                const visibleData = data.slice(0, this.currentDay + 1);
+                const barWidth = Math.max(1, chartWidth / data.length * 0.8);
+
+                visibleData.forEach((point, index) => {
+                    const x = margin.left + (index / (data.length - 1)) * chartWidth - barWidth / 2;
+                    const barHeight = (point.cases / maxCases) * chartHeight;
+                    const y = margin.top + chartHeight - barHeight;
+
+                    // Create gradient for each bar
+                    const gradient = this.ctx.createLinearGradient(x, y, x, y + barHeight);
+                    gradient.addColorStop(0, '#8b5cf6');
+                    gradient.addColorStop(1, '#3b82f6');
+
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fillRect(x, y, barWidth, barHeight);
+
+                    // Add border
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(x, y, barWidth, barHeight);
+                });
+            }
+
+            drawHeatmap(data, margin, chartWidth, chartHeight) {
+                const visibleData = data.slice(0, this.currentDay + 1);
+                const cellWidth = chartWidth / 52; // 52 weeks
+                const cellHeight = chartHeight / 7; // 7 days
+
+                visibleData.forEach((point, index) => {
+                    const week = Math.floor(index / 7);
+                    const day = index % 7;
+
+                    if (week < 52) {
+                        const x = margin.left + week * cellWidth;
+                        const y = margin.top + day * cellHeight;
+
+                        const intensity = point.cases / Math.max(...data.map(d => d.cases));
+                        const hue = 240 - (intensity * 240); // Blue to red
+
+                        this.ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${0.3 + intensity * 0.7})`;
+                        this.ctx.fillRect(x, y, cellWidth - 1, cellHeight - 1);
+
+                        // Add border for current cell
+                        if (index === this.currentDay) {
+                            this.ctx.strokeStyle = '#ffffff';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.strokeRect(x, y, cellWidth - 1, cellHeight - 1);
+                        }
+                    }
+                });
+            }
+
+            drawForecast(margin, chartWidth, chartHeight, maxCases) {
+                if (this.forecastData.length === 0) return;
+
+                const allData = [...this.data, ...this.forecastData];
+
+                // Draw forecast area with decreasing opacity
+                this.ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.beginPath();
+
+                this.forecastData.forEach((point, index) => {
+                    const dataIndex = this.data.length + index;
+                    const x = margin.left + (dataIndex / (allData.length - 1)) * chartWidth;
+                    const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                    if (index === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                // Draw confidence intervals
+                this.forecastData.forEach((point, index) => {
+                    const dataIndex = this.data.length + index;
+                    const x = margin.left + (dataIndex / (allData.length - 1)) * chartWidth;
+                    const y = margin.top + chartHeight - (point.cases / maxCases) * chartHeight;
+
+                    const confidence = point.confidence;
+                    const range = point.cases * (1 - confidence) * 0.5;
+                    const upperY = margin.top + chartHeight - ((point.cases + range) / maxCases) * chartHeight;
+                    const lowerY = margin.top + chartHeight - ((point.cases - range) / maxCases) * chartHeight;
+
+                    this.ctx.fillStyle = `rgba(255, 165, 0, ${0.1 * confidence})`;
+                    this.ctx.fillRect(x - 2, upperY, 4, lowerY - upperY);
+                });
+            }
+
+            drawEnhancedPeaks(data, margin, chartWidth, chartHeight, maxCases) {
+                this.peaks.forEach(peak => {
+                    if (peak.day <= this.currentDay) {
+                        const x = margin.left + (peak.day / (data.length - 1)) * chartWidth;
+                        const y = margin.top + chartHeight - (peak.cases / maxCases) * chartHeight;
+
+                        // Peak indicator with pulsing effect
+                        const pulse = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
+
+                        this.ctx.fillStyle = `rgba(239, 68, 68, ${pulse})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, 8 + pulse * 4, 0, 2 * Math.PI);
+                        this.ctx.fill();
+
+                        // Inner circle
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        this.ctx.fill();
+
+                        // Peak label with background
+                        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        this.ctx.fillRect(x - 40, y - 35, 80, 20);
+
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.font = 'bold 12px sans-serif';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(`Peak: ${peak.cases.toLocaleString()}`, x, y - 20);
+
+                        // Significance indicator
+                        const significance = Math.round(peak.significance * 100);
+                        this.ctx.fillStyle = '#ef4444';
+                        this.ctx.font = '10px sans-serif';
+                        this.ctx.fillText(`${significance}%`, x, y - 8);
+                    }
+                });
+            }
+
+            drawCurrentDayIndicator(margin, chartWidth, chartHeight, maxCases) {
+                const data = this.getFilteredData();
+                if (this.currentDay >= data.length) return;
+
+                const x = margin.left + (this.currentDay / (data.length - 1)) * chartWidth;
+
+                // Animated vertical line
+                const pulse = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+                this.ctx.strokeStyle = `rgba(16, 185, 129, ${0.6 + pulse * 0.4})`;
+                this.ctx.lineWidth = 3;
+                this.ctx.setLineDash([8, 4]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, margin.top);
+                this.ctx.lineTo(x, margin.top + chartHeight);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                // Current value indicator
+                const currentCases = data[this.currentDay]?.cases || 0;
+                const y = margin.top + chartHeight - (currentCases / maxCases) * chartHeight;
+
+                this.ctx.fillStyle = '#10b981';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                this.ctx.fill();
+
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                this.ctx.fill();
+
+                // Value label with background
+                this.ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
+                this.ctx.fillRect(x - 30, y - 25, 60, 16);
+
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = 'bold 11px sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(currentCases.toLocaleString(), x, y - 12);
+            }
+
+            drawEnhancedAxes(margin, chartWidth, chartHeight, maxCases, dataLength) {
+                // Axes lines
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                this.ctx.lineWidth = 2;
+
+                // Y-axis
+                this.ctx.beginPath();
+                this.ctx.moveTo(margin.left, margin.top);
+                this.ctx.lineTo(margin.left, margin.top + chartHeight);
+                this.ctx.stroke();
+
+                // X-axis
+                this.ctx.beginPath();
+                this.ctx.moveTo(margin.left, margin.top + chartHeight);
+                this.ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+                this.ctx.stroke();
+
+                // Y-axis labels and ticks
+                this.ctx.fillStyle = '#cbd5e1';
+                this.ctx.font = '12px sans-serif';
+                this.ctx.textAlign = 'right';
+
+                for (let i = 0; i <= 8; i++) {
+                    const value = Math.round((maxCases / 8) * (8 - i));
+                    const y = margin.top + (chartHeight / 8) * i;
+
+                    // Tick marks
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(margin.left - 5, y);
+                    this.ctx.lineTo(margin.left, y);
+                    this.ctx.stroke();
+
+                    // Labels
+                    this.ctx.fillText(this.formatNumber(value), margin.left - 10, y + 4);
+                }
+
+                // X-axis labels and ticks
+                // X-axis labels and ticks
+                this.ctx.textAlign = 'center';
+                const timeRange = parseInt(document.getElementById('timeRange').value);
+
+                // Detect mobile viewport
+                const isMobile = window.innerWidth < 640;      // <640px = mobile
+                const tickCount = isMobile ? 3 : 9;            // 3 labels on mobile, 9 on desktop
+                const step = (tickCount - 1) === 0 ? 1 : (chartWidth / (tickCount - 1));
+
+                for (let i = 0; i < tickCount; i++) {
+                    const x = margin.left + step * i;
+                    const day = Math.round(timeRange * (i / (tickCount - 1)));
+
+                    // tick mark
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, margin.top + chartHeight);
+                    this.ctx.lineTo(x, margin.top + chartHeight + 5);
+                    this.ctx.stroke();
+
+                    // big label ("Start", "Day N")
+                    this.ctx.fillStyle = '#cbd5e1';
+                    this.ctx.font = '12px sans-serif';
+                    const bigLabel = (i === 0) ? 'Start' : `Day ${day}`;
+                    this.ctx.fillText(bigLabel, x, margin.top + chartHeight + 20);
+
+                    // small date label underneath
+                    const date = new Date(2024, 0, day + 1)
+                    this.ctx.fillStyle = '#94a3b8';
+                    this.ctx.font = '10px sans-serif';
+                    this.ctx.fillText(
+                        date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                        x,
+                        margin.top + chartHeight + 35
+                    );
+                }
+                // Axis titles
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = 'bold 14px sans-serif';
+
+                // Y-axis title (rotated)
+                this.ctx.save();
+                this.ctx.translate(20, margin.top + chartHeight / 2);
+                this.ctx.rotate(-Math.PI / 2);
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Daily Cases', 0, 0);
+                this.ctx.restore();
+
+                // X-axis title
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Timeline', margin.left + chartWidth / 2, margin.top + chartHeight + 60);
+            }
+
+            applyMovingAverage(data) {
+                if (this.movingAverage <= 1) return data;
+
+                const smoothed = [];
+                for (let i = 0; i < data.length; i++) {
+                    const start = Math.max(0, i - Math.floor(this.movingAverage / 2));
+                    const end = Math.min(data.length, i + Math.floor(this.movingAverage / 2) + 1);
+                    const subset = data.slice(start, end);
+                    const avg = subset.reduce((sum, d) => sum + d.cases, 0) / subset.length;
+
+                    smoothed.push({ ...data[i], cases: avg });
+                }
+
+                return smoothed;
+            }
+
+            updateChartTitle() {
+                const titles = {
+                    area: 'Epidemic Curve - Area Chart',
+                    line: 'Epidemic Curve - Line Chart',
+                    bar: 'Epidemic Curve - Bar Chart',
+                    heatmap: 'Epidemic Curve - Heatmap'
+                };
+
+                document.getElementById('chartTitle').textContent = titles[this.chartMode] || 'Epidemic Curve';
+            }
+
+            updateSliderBackground(slider) {
+                const value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+                slider.style.background = `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value}%, #1e293b ${value}%, #1e293b 100%)`;
+            }
+
+            updateStats() {
+                const currentData = this.data[this.currentDay];
+                if (!currentData) return;
+
+                // Calculate cumulative stats
+                const currentSlice = this.data.slice(0, this.currentDay + 1);
+                const totalCases = currentSlice.reduce((sum, d) => sum + d.cases, 0);
+                const activeCases = currentData.activeCases || currentData.totalCases;
+
+                // Calculate recovery rate
+                const totalRecoveries = currentSlice.reduce((sum, d) => sum + (d.recoveries || 0), 0);
+                const recoveryRate = totalCases > 0 ? (totalRecoveries / totalCases * 100) : 0;
+
+                // Calculate growth rates
+                const weeklyGrowth = this.calculateWeeklyGrowth();
+                const dailyGrowth = this.calculateDailyGrowth();
+
+                // Update dashboard
+                document.getElementById('totalCases').textContent = totalCases.toLocaleString();
+                document.getElementById('activeCases').textContent = activeCases.toLocaleString();
+                document.getElementById('recoveryRate').textContent = `${recoveryRate.toFixed(1)}%`;
+                document.getElementById('currentDay').textContent = `Day ${currentData.day}`;
+                document.getElementById('currentDate').textContent = currentData.date.toLocaleDateString();
+
+                // Update mobile current day display
+                const mobileCurrentDay = document.getElementById('mobileCurrentDay');
+                if (mobileCurrentDay) {
+                    mobileCurrentDay.textContent = `Day ${currentData.day}`;
+                }
+
+                // Update change indicators
+                document.getElementById('totalCasesChange').textContent = `${weeklyGrowth >= 0 ? '+' : ''}${weeklyGrowth.toFixed(1)}%`;
+                document.getElementById('totalCasesChange').className = weeklyGrowth >= 0 ? 'text-xs text-red-400' : 'text-xs text-green-400';
+
+                // Update R₀ calculation
+                const r0 = this.calculateReproductionNumber();
+                document.getElementById('reproductionRate').textContent = r0.toFixed(2);
+
+                // Update analytics panel
+                this.updateAnalyticsPanel(dailyGrowth, weeklyGrowth);
+            }
+
+            calculateWeeklyGrowth() {
+                if (this.currentDay < 7) return 0;
+
+                const current = this.data[this.currentDay].cases;
+                const weekAgo = this.data[this.currentDay - 7].cases;
+
+                return weekAgo > 0 ? ((current - weekAgo) / weekAgo * 100) : 0;
+            }
+
+            calculateDailyGrowth() {
+                if (this.currentDay < 1) return 0;
+
+                const current = this.data[this.currentDay].cases;
+                const yesterday = this.data[this.currentDay - 1].cases;
+
+                return yesterday > 0 ? ((current - yesterday) / yesterday * 100) : 0;
+            }
+
+            calculateReproductionNumber() {
+                if (this.currentDay < 14) return 1.0;
+
+                const recent = this.data.slice(Math.max(0, this.currentDay - 6), this.currentDay + 1);
+                const previous = this.data.slice(Math.max(0, this.currentDay - 13), this.currentDay - 6);
+
+                const recentAvg = recent.reduce((sum, d) => sum + d.cases, 0) / recent.length;
+                const previousAvg = previous.reduce((sum, d) => sum + d.cases, 0) / previous.length;
+
+                return previousAvg > 0 ? Math.max(0.1, recentAvg / previousAvg) : 1.0;
+            }
+
+            updateAnalyticsPanel(dailyGrowth, weeklyGrowth) {
+                // Growth rate
+                document.getElementById('growthRate').textContent = `${weeklyGrowth >= 0 ? '+' : ''}${weeklyGrowth.toFixed(1)}%`;
+                document.getElementById('growthRateBar').style.width = `${Math.min(100, Math.abs(weeklyGrowth))}%`;
+
+                // Acceleration (change in growth rate)
+                const acceleration = this.calculateAcceleration();
+                document.getElementById('acceleration').textContent = acceleration.toFixed(2);
+                document.getElementById('accelerationBar').style.width = `${Math.min(100, Math.abs(acceleration * 10))}%`;
+
+                // Trend analysis
+                const trend = this.analyzeTrend();
+                document.getElementById('trendAnalysis').textContent = trend.message;
+                document.getElementById('trendBar').style.width = `${trend.confidence}%`;
+
+                // Forecast text
+                if (this.forecastEnabled) {
+                    const nextWeekForecast = this.forecastData.slice(0, 7).reduce((sum, d) => sum + d.cases, 0);
+                    document.getElementById('forecastText').textContent = `Projected: ${nextWeekForecast.toLocaleString()} cases`;
+                }
+            }
+
+            calculateAcceleration() {
+                if (this.currentDay < 14) return 0;
+
+                const currentGrowth = this.calculateWeeklyGrowth();
+                const previousWeek = Math.max(0, this.currentDay - 7);
+
+                // Temporarily set current day to previous week to get past growth
+                const tempDay = this.currentDay;
+                this.currentDay = previousWeek;
+                const previousGrowth = this.calculateWeeklyGrowth();
+                this.currentDay = tempDay;
+
+                return currentGrowth - previousGrowth;
+            }
+
+            analyzeTrend() {
+                const recentData = this.data.slice(Math.max(0, this.currentDay - 13), this.currentDay + 1);
+                const trend = this.calculateTrendDirection(recentData);
+
+                const messages = {
+                    'rising': 'Exponential growth detected',
+                    'peak': 'Peak transmission phase',
+                    'declining': 'Declining infection rates',
+                    'stable': 'Stable transmission rates',
+                    'volatile': 'High volatility detected'
+                };
+
+                return {
+                    message: messages[trend.direction] || 'Analyzing patterns...',
+                    confidence: trend.confidence
+                };
+            }
+
+            calculateTrendDirection(data) {
+                if (data.length < 5) return { direction: 'stable', confidence: 50 };
+
+                const values = data.map(d => d.cases);
+                const increases = values.slice(1).map((val, i) => val > values[i] ? 1 : -1);
+                const avgChange = increases.reduce((sum, change) => sum + change, 0) / increases.length;
+
+                const volatility = this.calculateVolatility(values);
+
+                if (volatility > 0.5) {
+                    return { direction: 'volatile', confidence: Math.min(90, volatility * 100) };
+                } else if (avgChange > 0.3) {
+                    return { direction: 'rising', confidence: Math.min(90, avgChange * 100) };
+                } else if (avgChange < -0.3) {
+                    return { direction: 'declining', confidence: Math.min(90, Math.abs(avgChange) * 100) };
+                } else if (Math.abs(avgChange) < 0.1) {
+                    return { direction: 'stable', confidence: 80 };
+                } else {
+                    return { direction: 'peak', confidence: 70 };
+                }
+            }
+
+            calculateVolatility(values) {
+                if (values.length < 2) return 0;
+
+                const changes = values.slice(1).map((val, i) => Math.abs(val - values[i]) / values[i]);
+                return changes.reduce((sum, change) => sum + change, 0) / changes.length;
+            }
+
+            updateDataTable() {
+                const tbody = document.getElementById('dataTableBody');
+                tbody.innerHTML = '';
+
+                // Show last 20 days of data
+                const startIndex = Math.max(0, this.currentDay - 19);
+                const endIndex = this.currentDay + 1;
+                const tableData = this.data.slice(startIndex, endIndex);
+
+                let cumulativeTotal = this.data.slice(0, startIndex).reduce((sum, d) => sum + d.cases, 0);
+
+                tableData.forEach((day, index) => {
+                    cumulativeTotal += day.cases;
+
+                    // Calculate 7-day average
+                    const weekStart = Math.max(0, startIndex + index - 6);
+                    const weekData = this.data.slice(weekStart, startIndex + index + 1);
+                    const weekAvg = weekData.reduce((sum, d) => sum + d.cases, 0) / weekData.length;
+
+                    // Calculate growth percentage
+                    const previousDay = startIndex + index > 0 ? this.data[startIndex + index - 1] : null;
+                    const growthPercent = previousDay ? ((day.cases - previousDay.cases) / previousDay.cases * 100) : 0;
+
+                    const row = document.createElement('tr');
+                    row.className = `hover:bg-slate-800/50 transition-colors ${startIndex + index === this.currentDay ? 'bg-blue-900/30 border-l-4 border-blue-500' : ''}`;
+
+                    row.innerHTML = `
+                        <td class="p-3">${day.day}</td>
+                        <td class="p-3">${day.date.toLocaleDateString()}</td>
+                        <td class="p-3 font-mono">${day.cases.toLocaleString()}</td>
+                        <td class="p-3 font-mono">${cumulativeTotal.toLocaleString()}</td>
+                        <td class="p-3 font-mono">${weekAvg.toFixed(0)}</td>
+                        <td class="p-3 font-mono ${growthPercent >= 0 ? 'text-red-400' : 'text-green-400'}">
+                            ${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}%
+                        </td>
+                    `;
+
+                    tbody.appendChild(row);
+                });
+            }
+
+            formatNumber(num) {
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'M';
+                } else if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'K';
+                } else {
+                    return num.toString();
+                }
+            }
+
+            exportToCSV() {
+                const headers = ['Day', 'Date', 'Daily_Cases', 'Total_Cases', 'Active_Cases', 'Recoveries'];
+                const rows = this.data.map(d => [
+                    d.day,
+                    d.date.toISOString().split('T')[0],
+                    d.cases,
+                    d.totalCases,
+                    d.activeCases || 0,
+                    d.recoveries || 0
+                ]);
+
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                this.downloadFile(csvContent, 'epidemic-data.csv', 'text/csv');
+                this.showNotification('Data exported as CSV');
+            }
+
+            exportToJSON() {
+                const jsonData = {
+                    metadata: {
+                        title: 'Epidemic Curve Data',
+                        generated: new Date().toISOString(),
+                        total_days: this.data.length,
+                        peaks_detected: this.peaks.length
+                    },
+                    data: this.data
+                };
+
+                const jsonContent = JSON.stringify(jsonData, null, 2);
+                this.downloadFile(jsonContent, 'epidemic-data.json', 'application/json');
+                this.showNotification('Data exported as JSON');
+            }
+
+            exportToImage() {
+                const link = document.createElement('a');
+                link.download = 'epidemic-chart.png';
+                link.href = this.canvas.toDataURL();
+                link.click();
+                this.showNotification('Chart saved as image');
+            }
+
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            showNotification(message) {
+                const notification = document.getElementById('notificationBar');
+                const text = document.getElementById('notificationText');
+
+                text.textContent = message;
+                notification.classList.remove('hidden');
+
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                }, 3000);
+            }
+
+            showHelp() {
+                this.showNotification('Interactive help: Drag timeline, click chart modes, use keyboard arrows');
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    this.showNotification('Entered fullscreen mode');
+                } else {
+                    document.exitFullscreen();
+                    this.showNotification('Exited fullscreen mode');
+                }
+            }
+
+            startLiveUpdates() {
+                setInterval(() => {
+                    // Simulate live data updates
+                    const lastDay = this.data[this.data.length - 1];
+                    const randomVariation = (Math.random() - 0.5) * 0.1;
+                    const newCases = Math.max(0, Math.floor(lastDay.cases * (1 + randomVariation)));
+
+                    // Update current day's data slightly
+                    if (this.currentDay < this.data.length - 1) {
+                        this.data[this.currentDay].cases = Math.max(0,
+                            this.data[this.currentDay].cases + Math.floor((Math.random() - 0.5) * 10)
+                        );
+
+                        if (Math.random() < 0.3) { // 30% chance to update
+                            this.updateChart();
+                            this.updateStats();
+                        }
+                    }
+                }, 5000);
+            }
+        }
+
+        // Initialize the advanced visualizer
+        document.addEventListener('DOMContentLoaded', () => {
+            new AdvancedEpidemicVisualizer();
+        });
+    </script>
+</body>
