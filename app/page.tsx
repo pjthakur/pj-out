@@ -1,2493 +1,1459 @@
-"use client";
+"use client"
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import {
-  Search,
-  MapPin,
-  Star,
-  Filter,
-  Plus,
-  User,
-  LogOut,
-  Menu,
-  X,
-  Camera,
-  Mic,
-  Send,
-  Heart,
-  Share2,
-  Clock,
-  ChefHat,
-  Utensils,
-  Globe,
-  Award,
-  Shield,
-  Instagram,
-  Facebook,
-  Twitter,
-  Copy,
-  ArrowUpDown,
-  Eye,
-  Users,
-  Quote,
-} from "lucide-react";
+import type React from "react"
 
-interface Review {
-  id: string;
-  vendorName: string;
-  dishName: string;
-  city: string;
-  location: string;
-  rating: number;
-  review: string;
-  author: string;
-  authorAvatar: string;
-  date: string;
-  image: string;
-  dishType: string;
-  price: string;
-  likes: number;
-  isLiked: boolean;
-  comments: number;
-  views: number;
-  verified: boolean;
-  vendorRating: number;
-  tags: string[];
-  staticTag: string;
-  imageUrls?: string[];
+import { useState, useEffect, useRef } from "react"
+import { ShoppingCart, X, Plus, Minus, ChevronRight, Menu, Search, CheckCircle, Heart, ChevronLeft } from "lucide-react"
+import Link from "next/link"
+
+// Types
+interface Product {
+  id: number
+  name: string
+  category: string
+  price: number
+  image: string
+  description: string
+  featured?: boolean
+  author?: string
 }
 
-interface User {
-  name: string;
-  email: string;
-  isAuthenticated: boolean;
-  avatar: string;
+interface CartItem extends Product {
+  quantity: number
 }
 
-const ReviewStreetFood: React.FC = () => {
-  const [user, setUser] = useState<User>({
+interface Toast {
+  id: string
+  title: string
+  description: string
+  type: "success" | "error" | "info"
+}
+
+// Custom Toast component
+const ToastContainer = ({
+  toasts,
+  removeToast,
+}: {
+  toasts: Toast[]
+  removeToast: (id: string) => void
+}) => {
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`p-4 rounded-lg shadow-lg flex items-start gap-3 max-w-md transform transition-all duration-300 animate-slide-up ${
+            toast.type === "success"
+              ? "bg-black text-white"
+              : toast.type === "error"
+                ? "bg-red-600 text-white"
+                : "bg-gray-800 text-white"
+          }`}
+        >
+          {toast.type === "success" && <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
+          <div className="flex-1">
+            <h4 className="font-medium">{toast.title}</h4>
+            <p className="text-sm opacity-90">{toast.description}</p>
+          </div>
+          <button onClick={() => removeToast(toast.id)} className="text-white/80 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Custom hook for toast
+const useToast = () => {
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const addToast = (toast: Omit<Toast, "id">) => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts((prev) => [...prev, { ...toast, id }])
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      removeToast(id)
+    }, 5000)
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
+
+  return { toasts, addToast, removeToast }
+}
+
+export default function BookStore() {
+  // Toast
+  const { toasts, addToast, removeToast } = useToast()
+
+  // State
+  const [products, setProducts] = useState<Product[]>([])
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [wishlist, setWishlist] = useState<Product[]>([])
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<string>("all")
+  const [scrollY, setScrollY] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [email, setEmail] = useState("")
+  const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
-    isAuthenticated: false,
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-  });
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginForm, setLoginForm] = useState({
-    email: "user@streeteats.com",
-    password: "password123",
-  });
+    message: "",
+  })
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [isMessageSent, setIsMessageSent] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [shareReview, setShareReview] = useState<Review | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedReviewDetails, setSelectedReviewDetails] =
-    useState<Review | null>(null);
+  // Refs for scrolling
+  const heroRef = useRef<HTMLDivElement>(null)
+  const featuredRef = useRef<HTMLElement>(null)
+  const productsRef = useRef<HTMLElement>(null)
+  const aboutRef = useRef<HTMLElement>(null)
+  const contactRef = useRef<HTMLElement>(null)
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCity, setSelectedCity] = useState("all");
-  const [selectedDishType, setSelectedDishType] = useState("all");
-  const [selectedRating, setSelectedRating] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const filterRef = useRef<HTMLDivElement | null>(null);
-  const citiesRef = useRef<HTMLDivElement | null>(null);
-
-  const [reviewForm, setReviewForm] = useState({
-    vendorName: "",
-    dishName: "",
-    city: "",
-    location: "",
-    rating: 0,
-    review: "",
-    dishType: "",
-    price: "",
-    image: null as File | null,
-    tags: [] as string[],
-  });
-
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: "1",
-      vendorName: "Mumbai Street Delights",
-      dishName: "Vada Pav",
-      city: "Mumbai",
-      location: "Juhu Beach, Mumbai",
-      rating: 5,
-      review:
-        "Absolutely incredible! The vada was perfectly crispy with amazing spice blend. The vendor has been serving this spot for 20 years and it shows in every bite. Fresh ingredients, authentic flavors, and the perfect balance of textures. This is what street food dreams are made of!",
-      author: "Priya Sharma",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-20",
-      image:
-        "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=500&h=350&fit=crop",
-      dishType: "Snacks",
-      price: "₹15",
-      likes: 124,
-      isLiked: false,
-      comments: 18,
-      views: 847,
-      verified: true,
-      vendorRating: 4.8,
-      tags: [
-        "Authentic",
-        "Fresh Ingredients",
-        "Local Favorite",
-        "Budget Friendly",
-      ],
-      staticTag: "Editor's Pick",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500&h=350&fit=crop",
-      ],
-    },
-    {
-      id: "2",
-      vendorName: "Delhi Chat Corner",
-      dishName: "Chole Bhature",
-      city: "Delhi",
-      location: "Chandni Chowk, Delhi",
-      rating: 4,
-      review:
-        "Generous portion and authentic taste. The bhature was fluffy and the chole had the perfect balance of spices. A bit crowded during lunch hours but absolutely worth the wait. The vendor knows his craft and has been perfecting this recipe for decades.",
-      author: "Raj Kumar",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-19",
-      image:
-        "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
-      dishType: "Main Course",
-      price: "₹60",
-      likes: 89,
-      isLiked: false,
-      comments: 12,
-      views: 523,
-      verified: true,
-      vendorRating: 4.6,
-      tags: ["Generous Portion", "Traditional", "Spicy", "Must Try"],
-      staticTag: "Trending",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9vZHxlbnwwfHwwfHx8MA%3D%3D",
-        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=350&fit=crop",
-      ],
-    },
-    {
-      id: "3",
-      vendorName: "Bangkok Street Kitchen",
-      dishName: "Pad Thai",
-      city: "Bangkok",
-      location: "Khao San Road",
-      rating: 5,
-      review:
-        "Best Pad Thai I have ever had! Fresh ingredients, perfect balance of sweet and sour. The vendor speaks great English and is very friendly. Watching him cook is like watching an artist at work. Every ingredient is fresh and the flavors are perfectly balanced.",
-      author: "Sarah Johnson",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-18",
-      image:
-        "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=500&h=350&fit=crop",
-      dishType: "Noodles",
-      price: "฿80",
-      likes: 156,
-      isLiked: true,
-      comments: 24,
-      views: 1247,
-      verified: true,
-      vendorRating: 4.9,
-      tags: [
-        "Fresh Ingredients",
-        "Friendly Vendor",
-        "Tourist Friendly",
-        "Instagram Worthy",
-      ],
-      staticTag: "Most Popular",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9vZHxlbnwwfHwwfHx8MA%3D%3D",
-        "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
-      ],
-    },
-    {
-      id: "4",
-      vendorName: "Istanbul Kebab Master",
-      dishName: "Döner Kebab",
-      city: "Istanbul",
-      location: "Sultanahmet Square",
-      rating: 4,
-      review:
-        "Traditional flavors with high-quality meat. The bread was fresh and warm. Great value for money in the heart of the historic district. The meat was perfectly seasoned and cooked to perfection. A true taste of Istanbul!",
-      author: "Ahmed Hassan",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-17",
-      image:
-        "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500&h=350&fit=crop",
-      dishType: "Meat",
-      price: "₺25",
-      likes: 67,
-      isLiked: false,
-      comments: 8,
-      views: 432,
-      verified: true,
-      vendorRating: 4.5,
-      tags: [
-        "High Quality",
-        "Traditional",
-        "Historic Location",
-        "Value for Money",
-      ],
-      staticTag: "Hidden Gem",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9vZHxlbnwwfHwwfHx8MA%3D%3D",
-        "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
-      ],
-    },
-    {
-      id: "5",
-      vendorName: "Mexico City Tacos",
-      dishName: "Tacos al Pastor",
-      city: "Mexico City",
-      location: "Plaza Mayor",
-      rating: 5,
-      review:
-        "Authentic street tacos with perfectly seasoned meat and fresh salsa. The vendor has been perfecting this recipe for decades! The pineapple adds the perfect sweetness and the meat is incredibly tender. This is authentic Mexican street food at its finest.",
-      author: "Carlos Rodriguez",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-16",
-      image:
-        "https://images.unsplash.com/photo-1613409385222-3d0decb6742a?w=500&h=350&fit=crop",
-      dishType: "Tacos",
-      price: "$3",
-      likes: 203,
-      isLiked: false,
-      comments: 31,
-      views: 1856,
-      verified: true,
-      vendorRating: 4.9,
-      tags: ["Authentic", "Perfect Seasoning", "Fresh Salsa", "Local Legend"],
-      staticTag: "Authentic",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1613409385222-3d0decb6742a?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1560781290-7dc94c0f8f4f?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=500&h=350&fit=crop",
-      ],
-    },
-    {
-      id: "6",
-      vendorName: "New York Hot Dog Stand",
-      dishName: "Classic Hot Dog",
-      city: "New York",
-      location: "Central Park South",
-      rating: 3,
-      review:
-        "Good quality hot dog with all the classic toppings. A bit pricey for what you get, but convenient location makes up for it. Perfect for a quick bite while exploring the city. The vendor is friendly and service is fast.",
-      author: "Mike Chen",
-      authorAvatar:
-        "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&h=100&fit=crop&crop=face",
-      date: "2024-05-15",
-      image:
-        "https://images.unsplash.com/photo-1695089028667-6f7d84ddbe01?w=500&h=350&fit=crop",
-      dishType: "Fast Food",
-      price: "$5",
-      likes: 34,
-      isLiked: false,
-      comments: 5,
-      views: 267,
-      verified: false,
-      vendorRating: 4.2,
-      tags: ["Quick Bite", "Tourist Spot", "High Quality", "Convenient"],
-      staticTag: "Quick Bite",
-      imageUrls: [
-        "https://images.unsplash.com/photo-1695089028667-6f7d84ddbe01?w=500&h=350&fit=crop",
-        "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9vZHxlbnwwfHwwfHx8MA%3D%3D",
-        "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
-      ],
-    },
-  ]);
-
-  const cities = [
-    "Mumbai",
-    "Delhi",
-    "Bangkok",
-    "Istanbul",
-    "Mexico City",
-    "New York",
-  ];
-  const dishTypes = [
-    "Snacks",
-    "Main Course",
-    "Noodles",
-    "Meat",
-    "Tacos",
-    "Fast Food",
-    "Desserts",
-    "Beverages",
-  ];
-
-  const handleLogin = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (
-        loginForm.email.trim() !== "" &&
-        loginForm.email.includes("@") &&
-        loginForm.password.trim() !== ""
-      ) {
-        setUser({
-          name: "Food Explorer",
-          email: loginForm.email,
-          isAuthenticated: true,
-          avatar:
-            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        });
-        setShowLoginModal(false);
-        setLoginForm({ email: "", password: "" });
-        toast.success("Welcome back, Food Explorer!", {
-          position: "bottom-center",
-          autoClose: 2000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          theme: "light",
-        });
-      } else {
-        toast.error("Please enter a valid email and password.", {
-          position: "bottom-center",
-          autoClose: 4000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          theme: "light",
-        });
-      }
-    },
-    [loginForm]
-  );
-
-  const handleLogout = useCallback(() => {
-    setUser({ name: "", email: "", isAuthenticated: false, avatar: "" });
-    setIsMobileMenuOpen(false);
-    toast.success("Successfully signed out", {
-      position: "bottom-center",
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      theme: "light",
-    });
-  }, []);
-
-  const handleLike = useCallback(
-    (reviewId: string) => {
-      if (!user.isAuthenticated) {
-        setShowLoginModal(true);
-        return;
-      }
-
-      setReviews((prev) =>
-        prev.map((review) => {
-          if (review.id === reviewId) {
-            const newIsLiked = !review.isLiked;
-            return {
-              ...review,
-              isLiked: newIsLiked,
-              likes: newIsLiked ? review.likes + 1 : review.likes - 1,
-            };
-          }
-          return review;
-        })
-      );
-    },
-    [user]
-  );
-
-  const handleShare = useCallback((review: Review) => {
-    setShareReview(review);
-    setShowShareModal(true);
-  }, []);
-
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Link copied to clipboard!", {
-      position: "bottom-center",
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-  }, []);
-
-  const searchSuggestions = useMemo(() => {
-    const allItems = [
-      ...reviews.map((r) => r.vendorName),
-      ...reviews.map((r) => r.dishName),
-      ...reviews.map((r) => r.city),
-      ...reviews.map((r) => r.dishType),
-      ...reviews.flatMap((r) => r.tags),
-    ];
-    return [...new Set(allItems)];
-  }, [reviews]);
-
+  
   useEffect(() => {
-    if (searchQuery.length > 0) {
-      const filtered = searchSuggestions
-        .filter((item) =>
-          item.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .slice(0, 5);
-      setSuggestions(filtered);
-      setShowSuggestions(true);
+ 
+    document.documentElement.classList.remove("dark")
+  }, [])
+
+  // Scroll to section function
+  const scrollToSection = (elementRef: React.RefObject<HTMLElement | null>) => {
+    if (elementRef.current) {
+      window.scrollTo({
+        top: elementRef.current.offsetTop - 80, // Adjust for header height
+        behavior: "smooth",
+      })
+      setMobileMenuOpen(false)
+    }
+  }
+
+  //products
+  useEffect(() => {
+    // Mock books data with Unsplash images
+    const mockProducts: Product[] = [
+      {
+        id: 1,
+        name: "The Midnight Chronicles",
+        category: "fantasy",
+        price: 24.99,
+        image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=2787&auto=format&fit=crop",
+        description: "An epic fantasy tale of magic, adventure, and destiny in a world where darkness threatens to consume all.",
+        author: "Elena Nightweaver",
+        featured: true,
+      },
+      {
+        id: 2,
+        name: "Digital Horizons",
+        category: "science-fiction",
+        price: 19.99,
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2787&auto=format&fit=crop",
+        description: "A thrilling sci-fi adventure exploring the boundaries between human consciousness and artificial intelligence.",
+        author: "Marcus Techwell",
+        featured: true,
+      },
+      {
+        id: 3,
+        name: "Hearts in Bloom",
+        category: "romance",
+        price: 16.99,
+        image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=80&w=2942&auto=format&fit=crop",
+        description: "A heartwarming romance about second chances and finding love in unexpected places.",
+        author: "Sophie Heartwell",
+        featured: true,
+      },
+      {
+        id: 4,
+        name: "The Silent Witness",
+        category: "mystery",
+        price: 22.99,
+        image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=2940&auto=format&fit=crop",
+        description: "A gripping mystery thriller that will keep you guessing until the very last page.",
+        author: "Detective Ray Morgan",
+      },
+      {
+        id: 5,
+        name: "Quantum Physics Simplified",
+        category: "science",
+        price: 29.99,
+        image: "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=2940&auto=format&fit=crop",
+        description: "An accessible guide to understanding the fascinating world of quantum mechanics.",
+        author: "Dr. Sarah Quantum",
+      },
+      {
+        id: 6,
+        name: "The Art of Mindfulness",
+        category: "self-help",
+        price: 18.99,
+        image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=2787&auto=format&fit=crop",
+        description: "Discover inner peace and mental clarity through practical mindfulness techniques.",
+        author: "Zen Master Liu",
+      },
+      {
+        id: 7,
+        name: "Culinary Adventures",
+        category: "cooking",
+        price: 34.99,
+        image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=2787&auto=format&fit=crop",
+        description: "A comprehensive cookbook featuring recipes from around the world with step-by-step instructions.",
+        author: "Chef Isabella Romano",
+      },
+      {
+        id: 8,
+        name: "The Lost Kingdom",
+        category: "historical-fiction",
+        price: 21.99,
+        image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=80&w=2940&auto=format&fit=crop",
+        description: "A sweeping historical epic set in medieval times, following the rise and fall of a forgotten empire.",
+        author: "William Chronicler",
+      },
+      {
+        id: 9,
+        name: "Code Masters",
+        category: "technology",
+        price: 39.99,
+        image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=2940&auto=format&fit=crop",
+        description: "Master the art of programming with this comprehensive guide to modern software development.",
+        author: "Alex Codewright",
+      },
+      {
+        id: 10,
+        name: "Ocean's Secrets",
+        category: "nature",
+        price: 26.99,
+        image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=2787&auto=format&fit=crop",
+        description: "Explore the mysteries of marine life and discover the hidden wonders beneath the waves.",
+        author: "Dr. Marina Deepwater",
+      },
+      {
+        id: 11,
+        name: "Business Breakthrough",
+        category: "business",
+        price: 32.99,
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2787&auto=format&fit=crop",
+        description: "Revolutionary strategies for building successful businesses in the modern economy.",
+        author: "CEO Jonathan Success",
+      },
+      {
+        id: 12,
+        name: "Children's Wonder Tales",
+        category: "children",
+        price: 14.99,
+        image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=2942&auto=format&fit=crop",
+        description: "Delightful stories and colorful illustrations that spark imagination in young readers.",
+        author: "Annie Storyteller",
+      },
+    ]
+
+    setProducts(mockProducts)
+    setSearchResults(mockProducts)
+  }, [])
+
+  // Search functionality with debounce
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setSearchResults(products)
+      return
+    }
+
+    const query = searchQuery.toLowerCase()
+    const filtered = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(query) ||
+        product.description.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query),
+    )
+
+    setSearchResults(filtered)
+
+    // Debounced search functionality - wait 3 seconds and require at least 4 characters
+    const timeoutId = setTimeout(() => {
+      if (filtered.length > 0 && query.length >= 4) {
+        scrollToSection(productsRef)
+        setActiveCategory("all")
+      }
+    }, 3000)
+
+    // Cleanup timeout on new search query
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, products])
+
+   
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Featured products carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const featuredCount = products.filter((p) => p.featured).length
+      if (featuredCount > 0 && !isAnimating) {
+        changeSlide((currentSlide + 1) % featuredCount)
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [products, currentSlide, isAnimating])
+
+  // Prevent body scroll when cart or wishlist is open
+  useEffect(() => {
+    if (isCartOpen || isWishlistOpen) {
+      document.body.style.overflow = 'hidden'
     } else {
-      setShowSuggestions(false);
+      document.body.style.overflow = 'unset'
     }
-  }, [searchQuery, searchSuggestions]);
-  useEffect(() => {
-    const isModalOpen =
-      showLoginModal || showReviewModal || showShareModal || showAboutModal || showDetailsModal;
-    document.body.style.overflow = isModalOpen ? "hidden" : "auto";
 
+    // Cleanup function to restore scroll when component unmounts
     return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [showLoginModal, showReviewModal, showShareModal, showAboutModal, showDetailsModal]);
-
-  const filteredAndSortedReviews = useMemo(() => {
-    let filtered = reviews.filter((review) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        review.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.dishName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.review.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        review.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-      const matchesCity =
-        selectedCity === "all" || review.city === selectedCity;
-      const matchesDishType =
-        selectedDishType === "all" || review.dishType === selectedDishType;
-      const matchesRating =
-        selectedRating === "all" || review.rating >= parseInt(selectedRating);
-
-      return matchesSearch && matchesCity && matchesDishType && matchesRating;
-    });
-
-    switch (sortBy) {
-      case "newest":
-        filtered.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        break;
-      case "oldest":
-        filtered.sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-        break;
-      case "highest-rated":
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case "most-liked":
-        filtered.sort((a, b) => b.likes - a.likes);
-        break;
-      case "most-viewed":
-        filtered.sort((a, b) => b.views - a.views);
-        break;
-      default:
-        break;
+      document.body.style.overflow = 'unset'
     }
+  }, [isCartOpen, isWishlistOpen])
 
-    return filtered;
-  }, [
-    reviews,
-    searchQuery,
-    selectedCity,
-    selectedDishType,
-    selectedRating,
-    sortBy,
-  ]);
+  // Change slid 
+  const changeSlide = (newSlide: number) => {
+    if (isAnimating) return
 
-  const handleReviewSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!user.isAuthenticated) {
-        setShowLoginModal(true);
-        return;
-      }
+    setIsAnimating(true)
+    setCurrentSlide(newSlide)
 
-      // Validation
-      if (!reviewForm.vendorName.trim()) {
-        toast.error("Please enter vendor name");
-        return;
-      }
-      if (!reviewForm.dishName.trim()) {
-        toast.error("Please enter dish name");
-        return;
-      }
-      if (!reviewForm.city) {
-        toast.error("Please select a city");
-        return;
-      }
-      if (!reviewForm.location.trim()) {
-        toast.error("Please enter location");
-        return;
-      }
-      if (!reviewForm.dishType) {
-        toast.error("Please select dish type");
-        return;
-      }
-      if (reviewForm.rating === 0) {
-        toast.error("Please rate the dish");
-        return;
-      }
-      if (!reviewForm.review.trim()) {
-        toast.error("Please write your review");
-        return;
-      }
-      if (reviewForm.review.trim().length < 20) {
-        toast.error("Review should be at least 20 characters long");
-        return;
-      }
+     
+    setTimeout(() => {
+      setIsAnimating(false)
+    }, 600)
+  }
 
-      const newReview: Review = {
-        id: Date.now().toString(),
-        vendorName: reviewForm.vendorName,
-        dishName: reviewForm.dishName,
-        city: reviewForm.city,
-        location: reviewForm.location,
-        rating: reviewForm.rating,
-        review: reviewForm.review,
-        author: user.name,
-        authorAvatar: user.avatar,
-        date: new Date().toISOString().split("T")[0],
-        image:
-          "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500&h=350&fit=crop",
-        dishType: reviewForm.dishType,
-        price: reviewForm.price,
-        likes: 0,
-        isLiked: false,
-        comments: 0,
-        views: 0,
-        verified: false,
-        vendorRating: 4.0,
-        tags: reviewForm.tags,
-        staticTag: "New Review",
-        imageUrls: [ "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500&h=350&fit=crop" ],
-      };
+  // Cart functions
+  const addToCart = (product: Product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id)
 
-      setReviews((prev) => [newReview, ...prev]);
-      setShowReviewModal(false);
-      setReviewForm({
-        vendorName: "",
-        dishName: "",
-        city: "",
-        location: "",
-        rating: 0,
-        review: "",
-        dishType: "",
-        price: "",
-        image: null,
-        tags: [],
-      });
-      toast.success("Review submitted successfully! Thank you for sharing.", {
-        position: "bottom-center",
-        autoClose: 3000,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "light",
-      });
-    },
-    [reviewForm, user]
-  );
+      if (existingItem) {
+        return prevCart.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
+      } else {
+        
+        return [...prevCart, { ...product, quantity: 1 }]
+      }
+    })
+  }
 
-  const StarRating: React.FC<{
-    rating: number;
-    interactive?: boolean;
-    onRate?: (rating: number) => void;
-    size?: "sm" | "md" | "lg";
-  }> = ({ rating, interactive = false, onRate, size = "md" }) => {
-    const sizeClasses = {
-      sm: "w-4 h-4",
-      md: "w-5 h-5",
-      lg: "w-6 h-6",
-    };
+  const removeFromCart = (productId: number) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== productId))
+     
+  }
 
-    return (
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`${sizeClasses[size]} ${
-              star <= rating
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-gray-300"
-            } ${
-              interactive
-                ? "cursor-pointer hover:text-yellow-400 transition-colors"
-                : ""
-            }`}
-            onClick={interactive && onRate ? () => onRate(star) : undefined}
-          />
-        ))}
-      </div>
-    );
-  };
+  const updateQuantity = (productId: number, newQuantity: number) => {
+    if (newQuantity < 1) return
+
+    setCart((prevCart) => prevCart.map((item) => (item.id === productId ? { ...item, quantity: newQuantity } : item)))
+  }
+
+  // Wishlist functions
+  const toggleWishlist = (product: Product) => {
+    const isInWishlist = wishlist.some((item) => item.id === product.id)
+
+    if (isInWishlist) {
+      setWishlist((prev) => prev.filter((item) => item.id !== product.id))
+      // No toast notification for removing from wishlist
+    } else {
+      setWishlist((prev) => [...prev, product])
+      // No toast notification for adding to wishlist
+    }
+  }
+
+  const isInWishlist = (productId: number) => {
+    return wishlist.some((item) => item.id === productId)
+  }
+
+  const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
+
+  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0)
+
+  // Filter products by category
+  const filteredProducts =
+    activeCategory === "all" ? searchResults : searchResults.filter((product) => product.category === activeCategory)
+
+  // Get unique categories
+  const categories = ["all", ...new Set(products.map((product) => product.category))]
+
+  // Featured products
+  const featuredProducts = products.filter((product) => product.featured)
+
+  // Handle newsletter subscription
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (email) {
+      setIsSubscribed(true)
+      addToast({
+        title: "Subscribed!",
+        description: "You've been successfully subscribed to our newsletter.",
+        type: "success",
+      })
+      setEmail("")
+    }
+  }
+
+  // Handle contact form submission
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (contactForm.name && contactForm.email && contactForm.message) {
+      setIsMessageSent(true)
+      addToast({
+        title: "Message sent!",
+        description: "Thank you for your message. We'll get back to you soon.",
+        type: "success",
+      })
+      setContactForm({ name: "", email: "", message: "" })
+      setTimeout(() => setIsMessageSent(false), 3000)
+    }
+  }
+
+  // Handle checkout
+  const handleCheckout = () => {
+    setIsCartOpen(false)
+    addToast({
+      title: "Order placed!",
+      description: "Thank you for your purchase. Your order has been placed successfully.",
+      type: "success",
+    })
+    setCart([])
+  }
+
+  // Handle search
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    // search is already handled by the useEffect 
+  }
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100"
-      style={{ fontFamily: "var(--font-roboto), sans-serif" }}
-    >
-      <ToastContainer />
-      <nav className="bg-white/95 backdrop-blur-lg shadow-xl sticky top-0 z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 p-2.5 rounded-xl shadow-lg">
-                <Utensils className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 text-transparent bg-clip-text">
-                  StreetEats
-                </h1>
-                <p className="text-xs text-gray-500 hidden sm:block">
-                  Community Reviews
-                </p>
-              </div>
+    <div className="min-h-screen flex flex-col font-['Poppins',sans-serif] bg-gray-50">
+      {/* Custom CSS for fonts */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
+      
+        body {
+          font-family: 'Raleway', sans-serif;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        /* Line clamp utilities */
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .line-clamp-3 {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        /* Carousel animation */
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        
+        .carousel-item {
+          opacity: 0;
+          position: absolute;
+          transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+          width: 100%;
+        }
+        
+        .carousel-item.active {
+          opacity: 1;
+          position: relative;
+          animation: fadeIn 0.6s ease-in-out;
+        }
+
+        /*   */ 
+        button, 
+        a,
+        [role="button"],
+        .cursor-pointer,
+        input[type="submit"],
+        input[type="button"] {
+          cursor: pointer;
+        }
+
+         
+        .hover\:bg-gray-100:hover,
+        .hover\:bg-gray-200:hover,
+        .hover\:bg-gray-800:hover,
+        .hover\:text-white:hover,
+        .hover\:text-black:hover,
+        .hover\:bg-red-100:hover,
+        .hover\:text-red-500:hover,
+        .hover\:text-red-600:hover,
+        .hover\:scale-105:hover,
+        .hover\:shadow-xl:hover {
+          cursor: pointer;
+        }
+      `}</style>
+
+      {/* Navigation */}
+      <header className="sticky top-0 z-50 bg-white shadow-md backdrop-blur-md bg-opacity-90 transition-colors duration-300">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <button
+                className="md:hidden mr-4 text-gray-700 cursor-pointer"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <Link href="/" className="flex items-center">
+                <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 text-transparent bg-clip-text">
+                  BookHaven
+                </span>
+              </Link>
             </div>
 
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-center space-x-8">
               <button
-                onClick={() => {
-                  if (citiesRef.current) {
-                      const yOffset = -40;
-                    const y =
-                      citiesRef.current.getBoundingClientRect().top +
-                      window.pageYOffset +
-                      yOffset;
-                    window.scrollTo({ top: y, behavior: "smooth" });
-                  }
-                }}
-                className="text-gray-700 cursor-pointer hover:text-orange-600 font-medium transition-colors relative group"
+                onClick={() => scrollToSection(featuredRef)}
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
-                Cities
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
+                Featured Books
               </button>
               <button
-                onClick={() => setShowAboutModal(true)}
-                className="text-gray-700 cursor-pointer hover:text-orange-600 font-medium transition-colors relative group"
+                onClick={() => scrollToSection(productsRef)}
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
-                About
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
-              </button>
-
-              {user.isAuthenticated ? (
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setShowReviewModal(true)}
-                    className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-5 py-2.5 rounded-xl cursor-pointer hover:from-orange-700 hover:to-red-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Review
-                  </button>
-
-                  <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
-                    />
-                    <span className="font-medium text-gray-800">
-                      {user.name}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="text-gray-500 cursor-pointer hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-2.5 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl cursor-pointer transform hover:scale-105"
-                >
-                  Sign In
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 cursor-pointer rounded-lg text-gray-700 hover:bg-gray-100"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
-          </div>
-
-          {isMobileMenuOpen && (
-            <div className="md:hidden border-t bg-white/95 backdrop-blur-lg py-4 space-y-4 animate-in slide-in-from-top duration-200">
-              <button
-                onClick={() => {
-                  if (citiesRef.current) {
-                      const yOffset = -230;
-                    const y =
-                      citiesRef.current.getBoundingClientRect().top +
-                      window.pageYOffset +
-                      yOffset;
-                    window.scrollTo({ top: y, behavior: "smooth" });
-                    setIsMobileMenuOpen(false);
-                  }
-                }}
-                className="block w-full cursor-pointer  text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg mx-4"
-              >
-                Cities
+                All Books
               </button>
               <button
-                onClick={() => {
-                  setShowAboutModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block  cursor-pointer w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg mx-4"
+                onClick={() => scrollToSection(aboutRef)}
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
                 About
               </button>
-
-              {user.isAuthenticated ? (
-                <div className="px-4 space-y-3">
-                  <button
-                    onClick={() => {
-                      setShowReviewModal(true);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all flex items-center  cursor-pointer justify-center gap-2 shadow-lg"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Review
-                  </button>
-
-                  <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
-                      />
-                      <span className="font-medium text-gray-800">
-                        {user.name}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="text-red-600 cursor-pointer  hover:text-red-700 p-2 hover:bg-red-50 rounded-lg"
-                    >
-                      <LogOut className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="px-4">
-                  <button
-                    onClick={() => {
-                      setShowLoginModal(true);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full cursor-pointer  bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => scrollToSection(contactRef)}
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
+              >
+                Contact
+              </button>
             </div>
-          )}
-        </div>
-      </nav>
 
-      <div className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 relative">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 sm:mb-8 leading-tight">
-              Discover Amazing
-              <span className="block bg-gradient-to-r from-yellow-300 to-yellow-500 text-transparent bg-clip-text">
-                Street Food
-              </span>
-            </h1>
-            <p className="text-lg sm:text-xl md:text-2xl mb-8 sm:mb-12 text-orange-100 leading-relaxed max-w-3xl mx-auto px-4">
-              Join our community of food lovers sharing authentic street food
-              experiences from around the world
-            </p>
-
-            <div className="relative max-w-2xl mx-auto mb-8 sm:mb-12 px-4">
-              <div className="relative">
-                <Search className="absolute left-4 sm:left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 sm:w-6 sm:h-6" />
-
+            <div className="flex items-center space-x-4">
+              <form onSubmit={handleSearch} className="hidden md:flex relative">
                 <input
                   type="text"
-                  placeholder="Search vendors, dishes, cities, or tags..."
+                  placeholder="Search books..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 sm:pl-14 pr-12 sm:pr-14 py-4 sm:py-5 text-base sm:text-lg rounded-2xl text-gray-900 bg-white/95 backdrop-blur-sm shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/20 transition-all border border-white/20"
+                  className="pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </form>
 
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute  cursor-pointer right-4 sm:right-5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
+              <button className="relative text-gray-700 cursor-pointer" onClick={() => setIsWishlistOpen(true)}>
+                <Heart className={`h-6 w-6 ${wishlist.length > 0 ? "fill-red-500 text-red-500" : ""}`} />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {wishlist.length}
+                  </span>
                 )}
-              </div>
-
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white rounded-xl mt-3 shadow-lg border border-gray-100 overflow-hidden z-10 mx-4 max-h-72 overflow-y-auto">
-                  {suggestions.slice(0, 3).map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setSearchQuery(suggestion);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full cursor-pointer  text-left px-5 py-3 text-gray-700 hover:bg-orange-100/20 transition-colors border-b last:border-b-0 flex items-center gap-3"
-                    >
-                      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="truncate">{suggestion}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-lg sm:max-w-2xl lg:max-w-4xl mx-auto px-4">
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/20">
-                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 sm:mb-2">
-                  12K+
-                </div>
-                <div className="text-orange-200 text-xs sm:text-sm font-medium">
-                  Reviews
-                </div>
-              </div>
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/20">
-                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 sm:mb-2">
-                  50+
-                </div>
-                <div className="text-orange-200 text-xs sm:text-sm font-medium">
-                  Cities
-                </div>
-              </div>
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/20">
-                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 sm:mb-2">
-                  8K+
-                </div>
-                <div className="text-orange-200 text-xs sm:text-sm font-medium">
-                  Vendors
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        ref={filterRef}
-        className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-gray-100   top-16 z-40"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 items-start lg:items-center justify-between">
-            <div className="flex items-center gap-4 w-full lg:w-auto">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center cursor-pointer  gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors lg:hidden shadow-sm"
-              >
-                <Filter className="w-4 h-4" />
-                Filters
               </button>
 
-              <div className="hidden lg:flex items-center gap-3 sm:gap-4 flex-wrap">
-                <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-2">
-                  <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-                  <select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    className="px-2 sm:px-3 py-1 sm:py-2 border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-lg text-sm sm:text-base text-black cursor-pointer"
-                  >
-                    <option value="all">All Cities</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-2">
-                  <ChefHat className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-                  <select
-                    value={selectedDishType}
-                    onChange={(e) => setSelectedDishType(e.target.value)}
-                    className="px-2 sm:px-3 py-1 sm:py-2 border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-lg text-sm sm:text-base text-black cursor-pointer"
-                  >
-                    <option value="all">All Dishes</option>
-                    {dishTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-2">
-                  <Star className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-                  <select
-                    value={selectedRating}
-                    onChange={(e) => setSelectedRating(e.target.value)}
-                    className="px-2 sm:px-3 py-1 sm:py-2 border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-lg text-sm sm:text-base text-black cursor-pointer"
-                  >
-                    <option value="all">All Ratings</option>
-                    <option value="4">4+ Stars</option>
-                    <option value="3">3+ Stars</option>
-                    <option value="2">2+ Stars</option>
-                  </select>
-                </div>
-              </div>
+              <button className="relative text-gray-700 cursor-pointer" onClick={() => setIsCartOpen(true)}>
+                <ShoppingCart className="h-6 w-6" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </button>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 lg:gap-4 flex-wrap justify-between lg:justify-end w-full lg:w-auto">
-              {(searchQuery || selectedCity !== "all" || selectedDishType !== "all" || selectedRating !== "all" || sortBy !== "newest") && (
+          {/* Mobile menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 py-4 border-t">
+              <div className="flex flex-col space-y-4">
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCity("all");
-                    setSelectedDishType("all");
-                    setSelectedRating("all");
-                    setSortBy("newest");
-                  }}
-                  className="flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-4 py-2 lg:py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all border border-red-200 hover:border-red-300 cursor-pointer text-xs lg:text-sm font-medium"
+                  onClick={() => scrollToSection(featuredRef)}
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
-                  <X className="w-3 h-3 lg:w-4 lg:h-4" />
-                  <span className="hidden sm:inline">Reset</span>
-                  <span className="sm:hidden">Reset</span>
+                  Featured Books
                 </button>
-              )}
-
-              <div className="flex items-center gap-1.5 lg:gap-2 bg-gray-50 rounded-xl p-1.5 lg:p-2">
-                <ArrowUpDown className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-1.5 lg:px-3 py-1 lg:py-2 border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-lg text-xs lg:text-sm text-black cursor-pointer"
+                <button
+                  onClick={() => scrollToSection(productsRef)}
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="highest-rated">Highest Rated</option>
-                  <option value="most-liked">Most Liked</option>
-                  <option value="most-viewed">Most Viewed</option>
-                </select>
+                  All Books
+                </button>
+                <button
+                  onClick={() => scrollToSection(aboutRef)}
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
+                >
+                  About
+                </button>
+                <button
+                  onClick={() => scrollToSection(contactRef)}
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
+                >
+                  Contact
+                </button>
+                <form onSubmit={handleSearch} className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search books..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                </form>
               </div>
-
-              <div className="text-gray-600 text-xs lg:text-sm bg-gray-50 px-2 lg:px-3 py-1.5 lg:py-2 rounded-xl whitespace-nowrap">
-                <span className="hidden sm:inline">{filteredAndSortedReviews.length} of {reviews.length} reviews</span>
-                <span className="sm:hidden">{filteredAndSortedReviews.length}/{reviews.length}</span>
-              </div>
-            </div>
-          </div>
-
-          {showFilters && (
-            <div className="lg:hidden mt-4 sm:mt-6 p-4 sm:p-6 bg-gray-50 rounded-2xl space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City
-                  </label>
-                  <select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  >
-                    <option value="all">All Cities</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dish Type
-                  </label>
-                  <select
-                    value={selectedDishType}
-                    onChange={(e) => setSelectedDishType(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  >
-                    <option value="all">All Dishes</option>
-                    {dishTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Rating
-                  </label>
-                  <select
-                    value={selectedRating}
-                    onChange={(e) => setSelectedRating(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  >
-                    <option value="all">All Ratings</option>
-                    <option value="4">4+ Stars</option>
-                    <option value="3">3+ Stars</option>
-                    <option value="2">2+ Stars</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sort By
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="highest-rated">Highest Rated</option>
-                    <option value="most-liked">Most Liked</option>
-                    <option value="most-viewed">Most Viewed</option>
-                  </select>
-                </div>
-              </div>
-
-              {(searchQuery || selectedCity !== "all" || selectedDishType !== "all" || selectedRating !== "all" || sortBy !== "newest") && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCity("all");
-                  setSelectedDishType("all");
-                  setSelectedRating("all");
-                  setSortBy("newest");
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all border border-red-200 hover:border-red-300 cursor-pointer font-medium"
-              >
-                <X className="w-4 h-4" />
-                Reset All Filters
-              </button>
-              )}
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredAndSortedReviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-white rounded-2xl sm:rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden group border border-gray-100 hover:border-orange-200 cursor-pointer"
-              onClick={() => {
-                setSelectedReviewDetails(review);
-                setShowDetailsModal(true);
-              }}
-            >
-              <div className="relative h-48 sm:h-56 overflow-hidden">
-                <img
-                  src={review.image}
-                  alt={review.dishName}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-
-                <div className="absolute top-3 sm:top-4 left-3 sm:left-4 bg-white/95 backdrop-blur-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold text-gray-900 shadow-lg">
-                  {review.price}
-                </div>
-
-                <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-lg">
-                  {review.staticTag}
-                </div>
-
-                {review.verified && (
-                  <div className="absolute bottom-3 sm:bottom-4 right-3 sm:right-4 bg-green-500 text-white p-1.5 sm:p-2 rounded-full shadow-lg">
-                    <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </div>
-                )}
-
-                <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1 shadow-lg">
-                  <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs sm:text-sm font-bold text-gray-900">
-                    {review.rating}.0
-                  </span>
+      {/* Hero section*/} 
+      {!searchQuery && (
+        <div ref={heroRef} className="bg-white py-16 md:py-24">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="order-2 md:order-1">
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+                  Discover Your Next Great Read
+                </h1>
+                <p className="text-lg text-gray-600 mb-8">
+                  Explore our curated collection of books across all genres, from bestselling novels to educational guides
+                  and everything in between.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <button
+                    onClick={() => scrollToSection(productsRef)}
+                    className="bg-black text-white px-8 py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
+                  >
+                    Browse Books
+                  </button>
+                  <button
+                    onClick={() => scrollToSection(featuredRef)}
+                    className="bg-white text-black px-8 py-3 rounded-md font-medium border border-gray-300 hover:bg-gray-100 transition-all cursor-pointer"
+                  >
+                    Featured Books
+                  </button>
                 </div>
               </div>
-
-              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <h3 className="font-bold text-lg sm:text-xl text-gray-900 leading-tight">
-                      {review.dishName}
-                    </h3>
-
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Eye className="w-3 h-3" />
-                      <span>{review.views}</span>
-                    </div>
-                  </div>
-                  <p className="text-orange-600 font-semibold text-base sm:text-lg">
-                    {review.vendorName}
-                  </p>
-
-                  <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-600">
-                    <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                    <span className="truncate">{review.location}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 p-2 sm:p-3 bg-gray-50 rounded-xl">
-                  <Award className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Vendor Rating:
-                  </span>
-                  <StarRating
-                    rating={Math.floor(review.vendorRating)}
-                    size="sm"
-                  />
-                  <span className="text-xs sm:text-sm font-medium">
-                    {review.vendorRating}
-                  </span>
-                </div>
-
-                <p className="text-gray-700 text-xs sm:text-sm leading-relaxed line-clamp-3">
-                  {review.review}
-                </p>
-
-                <div className="flex flex-wrap gap-1 sm:gap-2">
-                  {review.tags.slice(0, 3).map((tag, index) => (
-                    <span
-                      key={index}
-                      className="bg-gradient-to-r from-orange-100 to-red-100 text-orange-800 px-2 sm:px-3 py-1 rounded-full text-xs font-medium"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {review.tags.length > 3 && (
-                    <span className="bg-gray-100 text-gray-600 px-2 sm:px-3 py-1 rounded-full text-xs font-medium">
-                      +{review.tags.length - 3} more
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-gray-100">
-                  <div className="flex items-center  justify-between w-full">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); 
-                        handleLike(review.id);
-                      }}
-                      className={`flex  cursor-pointer items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all text-xs sm:text-sm ${
-                        review.isLiked
-                          ? "text-red-600 bg-red-50"
-                          : "text-gray-500 hover:text-red-600 hover:bg-red-50"
-                      }`}
-                    >
-                      <Heart
-                        className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                          review.isLiked ? "fill-current" : ""
-                        }`}
-                      />
-                      <span className="font-medium">{review.likes}</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShare(review);
-                      }}
-                      className="flex items-center gap-1 sm:gap-1.5 text-gray-500 hover:text-blue-600 cursor-pointer  hover:bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all text-xs sm:text-sm"
-                    >
-                      <Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="font-medium">Share</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2 sm:gap-3">
+              <div className="order-1 md:order-2 grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="h-40 md:h-48 rounded-lg overflow-hidden">
                     <img
-                      src={review.authorAvatar}
-                      alt={review.author}
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-gray-100"
+                      src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=2787&auto=format&fit=crop"
+                      alt="Fantasy book"
+                      className="w-full h-full object-cover"
                     />
-                    <div>
-                      <p className="text-xs sm:text-sm font-medium text-gray-900">
-                        {review.author}
-                      </p>
-                      <div className="flex items-center gap-1 sm:gap-2 text-xs text-gray-500">
-                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        {review.date}
+                  </div>
+                  <div className="h-40 md:h-48 rounded-lg overflow-hidden">
+                    <img
+                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2787&auto=format&fit=crop"
+                      alt="Science fiction book"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="h-full">
+                  <div className="h-full rounded-lg overflow-hidden">
+                    <img
+                      src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=80&w=2942&auto=format&fit=crop"
+                      alt="Romance book"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Featured products */}
+      {!searchQuery && (
+        <section ref={featuredRef} id="featured" className="py-20 bg-gray-100 transition-colors duration-300">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold mb-4 text-gray-900">Featured Books</h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto"></div>
+              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+                Discover our handpicked selection of must-read books across various genres
+              </p>
+            </div>
+
+            {/*carousel */}
+            <div className="relative max-w-4xl mx-auto">
+              {/* Carousel items */}
+              <div className="relative min-h-[500px]">
+                {featuredProducts.map((product, index) => (
+                  <div key={product.id} className={`carousel-item ${currentSlide === index ? "active" : ""}`}>
+                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                      <div className="md:flex">
+                        <div className="md:w-1/2">
+                          <div className="h-64 md:h-96 overflow-hidden">
+                            <img
+                              src={product.image || "/placeholder.svg"}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                            />
+                          </div>
+                        </div>
+                        <div className="md:w-1/2 p-8 flex flex-col justify-between">
+                          <div>
+                            <div className="mb-2 text-gray-500 text-sm uppercase tracking-wider">{product.category}</div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h3>
+                            <p className="text-gray-700 text-sm mb-2">by {product.author}</p>
+                            <p className="text-gray-600 mb-6">{product.description}</p>
+                            <div className="text-2xl font-bold text-gray-900 mb-6">${product.price.toFixed(2)}</div>
+                          </div>
+                          <div className="flex gap-4">
+                            <button
+                              onClick={() => addToCart(product)}
+                              className="flex-1 bg-black text-white py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
+                            >
+                              Add to Cart
+                            </button>
+                            <button
+                              onClick={() => toggleWishlist(product)}
+                              className={`p-3 rounded-md cursor-pointer ${
+                                isInWishlist(product.id)
+                                  ? "bg-red-100 text-red-500"
+                                  : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500"
+                              } transition-colors`}
+                            >
+                              <Heart className={`h-6 w-6 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  <span className="bg-gray-100 text-gray-700 px-2 sm:px-3 py-1 rounded-full text-xs font-medium">
-                    {review.dishType}
-                  </span>
-                </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
 
-        {filteredAndSortedReviews.length === 0 && (
-          <div className="text-center py-12 sm:py-16">
-            <div className="text-gray-300 mb-4 sm:mb-6">
-              <Search className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" />
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">
-              No reviews found
-            </h3>
-            <p className="text-gray-600 text-base sm:text-lg mb-4 sm:mb-6">
-              Try adjusting your search or filters
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCity("all");
-                setSelectedDishType("all");
-                setSelectedRating("all");
-                setSortBy("newest");
-              }}
-              className="bg-orange-600 text-white cursor-pointer  px-6 py-3 rounded-xl hover:bg-orange-700 transition-colors"
-            >
-              Clear All Filters
-            </button>
-          </div>
-        )}
-      </div>
-      <div className="bg-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
-              Why Choose <span className="text-orange-600">StreetEats?</span>
-            </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
-              Discover the world's best street food through our trusted
-              community of food enthusiasts
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-orange-100 hover:shadow-lg transition-all duration-300">
-              <div className="bg-orange-500 p-3 sm:p-4 rounded-2xl w-fit mb-4 sm:mb-6">
-                <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Verified Reviews
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                All reviews are verified by our community. Get honest, authentic
-                feedback from real food lovers who've been there.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-blue-100 hover:shadow-lg transition-all duration-300">
-              <div className="bg-blue-500 p-3 sm:p-4 rounded-2xl w-fit mb-4 sm:mb-6">
-                <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Global Coverage
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                From Mumbai's vada pav to Bangkok's pad thai, discover authentic
-                street food from over 50 cities worldwide.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-purple-100 hover:shadow-lg transition-all duration-300">
-              <div className="bg-purple-500 p-3 sm:p-4 rounded-2xl w-fit mb-4 sm:mb-6">
-                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Community Driven
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                Join thousands of food enthusiasts sharing their discoveries and
-                helping others find incredible street food.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={citiesRef}
-        className="bg-gradient-to-br from-gray-50 to-gray-100 py-12 sm:py-16 lg:py-20"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
-              Explore <span className="text-orange-600">Popular Cities</span>
-            </h2>
-            <p className="text-lg sm:text-xl text-gray-600">
-              Discover amazing street food destinations around the world
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-            {cities.map((city, index) => {
-              const cityImages = [
-                "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=300&h=200&fit=crop",
-                "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=300&h=200&fit=crop",
-                "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=300&h=200&fit=crop",
-                "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=300&h=200&fit=crop",
-                "https://images.unsplash.com/photo-1518638150340-f706e86654de?w=300&h=200&fit=crop",
-                "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=300&h=200&fit=crop",
-              ];
-
-              return (
-                <div
-                  key={city}
-                  className="group cursor-pointer"
-                  onClick={() => {
-                    setSelectedCity(city);
-                    setShowFilters(false);
-                    setTimeout(() => {
-                      if (filterRef.current) {
-                        const yOffset = -40;
-                        const y =
-                          filterRef.current.getBoundingClientRect().top +
-                          window.pageYOffset +
-                          yOffset;
-                        window.scrollTo({ top: y, behavior: "smooth" });
-                      }
-                    }, 100);
-                  }}
+              {/* Carousel controls */}
+              <div className="absolute inset-0 flex justify-between items-center pointer-events-none z-20">
+                <button
+                  onClick={() => changeSlide((currentSlide - 1 + featuredProducts.length) % featuredProducts.length)}
+                  className="bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 cursor-pointer pointer-events-auto ml-6"
+                  disabled={isAnimating}
+                  style={{ marginTop: '-160px' }}
                 >
-                  <div className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform group-hover:scale-105">
-                    <img
-                      src={cityImages[index]}
-                      alt={city}
-                      className="w-full h-32 sm:h-40 object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-                      <h3 className="text-white font-bold text-sm sm:text-base lg:text-lg">
-                        {city}
-                      </h3>
-                      <p className="text-white/80 text-xs sm:text-sm">
-                        {reviews.filter((r) => r.city === city).length} reviews
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={() => changeSlide((currentSlide + 1) % featuredProducts.length)}
+                  className="bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 cursor-pointer pointer-events-auto mr-6"
+                  disabled={isAnimating}
+                  style={{ marginTop: '-160px' }}
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </div>
 
-      <div className="bg-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
-              What Our <span className="text-orange-600">Community</span> Says
+              {/* Carousel indicators */}
+              <div className="flex justify-center mt-8 space-x-2">
+                {featuredProducts.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => changeSlide(index)}
+                    className={`w-3 h-3 rounded-full transition-colors cursor-pointer ${
+                      currentSlide === index ? "bg-gray-900" : "bg-gray-300"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                    disabled={isAnimating}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Products section */}
+      <section ref={productsRef} id="products" className={`py-20 transition-colors duration-300 ${searchQuery ? 'pt-8' : ''}`}>
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">
+              {searchQuery ? `Search Results` : 'Our Book Collection'}
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600">
-              Real stories from food lovers around the world
+            <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto"></div>
+            <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              {searchQuery 
+                ? `Showing results for "${searchQuery}"`
+                : 'Browse our extensive collection of books across all genres and interests'
+              }
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-orange-100">
-              <Quote className="w-8 h-8 text-orange-500 mb-4 sm:mb-6" />
-              <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-4 sm:mb-6">
-                "StreetEats helped me discover the most amazing tacos in Mexico
-                City. The community reviews are spot on!"
-              </p>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <img
-                  src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&fit=crop&crop=face"
-                  alt="Sarah"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">Sarah Johnson</p>
-                  <p className="text-sm text-gray-600">Travel Blogger</p>
-                </div>
-              </div>
+          {/* Categories - only show when not searching */}
+          {!searchQuery && (
+            <div className="flex flex-wrap justify-center gap-3 mb-12">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setActiveCategory(category)}
+                  className={`px-6 py-3 rounded-md capitalize transition-all duration-300 cursor-pointer ${
+                    activeCategory === category
+                      ? "bg-black text-white shadow-md"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {category === "science-fiction" ? "Sci-Fi" : 
+                   category === "historical-fiction" ? "Historical Fiction" :
+                   category === "self-help" ? "Self Help" :
+                   category}
+                </button>
+              ))}
             </div>
-
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-blue-100">
-              <Quote className="w-8 h-8 text-blue-500 mb-4 sm:mb-6" />
-              <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-4 sm:mb-6">
-                "As a food enthusiast, this platform is a goldmine. I've found
-                hidden gems in every city I visit."
-              </p>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face"
-                  alt="Raj"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">Raj Kumar</p>
-                  <p className="text-sm text-gray-600">Food Critic</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-purple-100">
-              <Quote className="w-8 h-8 text-purple-500 mb-4 sm:mb-6" />
-              <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-4 sm:mb-6">
-                "The reviews are brilliant! You can hear the passion in
-                people's voices when they talk about great food."
-              </p>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <img
-                  src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=60&h=60&fit=crop&crop=face"
-                  alt="Carlos"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    Carlos Rodriguez
-                  </p>
-                  <p className="text-sm text-gray-600">Chef</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
-            Ready to Share Your Experience?
-          </h2>
-          <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-orange-100">
-            Join thousands of food lovers and help others discover amazing
-            street food
-          </p>
-          {user.isAuthenticated ? (
-            <button
-              onClick={() => setShowReviewModal(true)}
-              className="bg-white text-orange-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer "
-            >
-              Write Your First Review
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="bg-white text-orange-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer "
-            >
-              Join StreetEats Today
-            </button>
           )}
-        </div>
-      </div>
 
-      {showAboutModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50  ">
-          <div className="bg-white p-1 rounded-lg max-w-4xl w-full animate-in zoom-in-95 duration-300 shadow-2xl border border-gray-100 my-8">
-            <div className="max-h-[90vh] overflow-y-auto rounded-b-lg">
-              <div className="relative bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 text-white p-6 sm:p-8 lg:p-12 rounded-t-lg ">
-                <button
-                  onClick={() => setShowAboutModal(false)}
-                  className="absolute top-4  cursor-pointer sm:top-6 right-4 sm:right-6 text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-xl transition-all"
+          {/* Search results info */}
+          {searchQuery && (
+            <div className="text-center mb-8">
+              <p className="text-gray-600 mb-4">
+                {filteredProducts.length === 0
+                  ? `No books found for "${searchQuery}"`
+                  : `Found ${filteredProducts.length} book${filteredProducts.length !== 1 ? 's' : ''}`}
+              </p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105 cursor-pointer border border-gray-300 hover:border-gray-400"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear search
+              </button>
+            </div>
+          )}
+
+          {/* Products grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="group bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
                 >
-                  <X className="w-6 h-6" />
-                </button>
-
-                <div className="text-center">
-                  <div className="bg-white/20 p-4 rounded-2xl w-fit mx-auto mb-6">
-                    <Utensils className="w-12 h-12 text-white" />
-                  </div>
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-                    About StreetEats
-                  </h2>
-                  <p className="text-lg sm:text-xl text-orange-100 max-w-2xl mx-auto">
-                    Connecting food lovers with authentic street food
-                    experiences worldwide
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-6 sm:p-8 lg:p-12 space-y-8 sm:space-y-12">
-                  <div className="text-center max-w-3xl mx-auto">
-                  <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
-                    Our Mission
-                  </h3>
-                  <p className="text-lg sm:text-xl text-gray-600 leading-relaxed">
-                    To create the world's most trusted community for street food
-                    discovery, where authentic experiences are shared,
-                    celebrated, and preserved for food lovers everywhere.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 text-center">
-                  <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 sm:p-6 rounded-2xl border border-orange-100">
-                    <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-orange-600 mb-2">
-                      12K+
-                    </div>
-                    <div className="text-sm sm:text-base text-gray-600 font-medium">
-                      Reviews
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 sm:p-6 rounded-2xl border border-blue-100">
-                    <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-600 mb-2">
-                      50+
-                    </div>
-                    <div className="text-sm sm:text-base text-gray-600 font-medium">
-                      Cities
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 sm:p-6 rounded-2xl border border-green-100">
-                    <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-600 mb-2">
-                      8K+
-                    </div>
-                    <div className="text-sm sm:text-base text-gray-600 font-medium">
-                      Vendors
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 sm:p-6 rounded-2xl border border-purple-100">
-                    <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-purple-600 mb-2">
-                      25K+
-                    </div>
-                    <div className="text-sm sm:text-base text-gray-600 font-medium">
-                      Users
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                  <div className="text-center">
-                    <div className="bg-orange-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Shield className="w-8 h-8 text-orange-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Verified Reviews
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Every review is verified by our community to ensure
-                      authenticity and reliability.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="bg-blue-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Globe className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Global Reach
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Discover street food treasures from major cities across
-                      six continents.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="bg-purple-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Users className="w-8 h-8 text-purple-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Community First
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Built by food lovers, for food lovers. Every feature is
-                      community-driven.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="bg-green-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Mic className="w-8 h-8 text-green-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Great Reviews
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Hear the passion in reviewers' voices with our verified
-                      reviews.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="bg-red-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Camera className="w-8 h-8 text-red-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Visual Stories
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Every review includes high-quality photos to showcase the
-                      food experience.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="bg-yellow-100 p-4 rounded-2xl w-fit mx-auto mb-4">
-                      <Award className="w-8 h-8 text-yellow-600" />
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Quality Ratings
-                    </h4>
-                    <p className="text-gray-600 text-sm sm:text-base">
-                      Detailed ratings for both dishes and vendors to help you
-                      make informed choices.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 sm:p-8 rounded-3xl text-center">
-                  <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
-                    Join Our Community
-                  </h3>
-                  <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
-                    Whether you're a seasoned foodie or just beginning your
-                    culinary journey, StreetEats is your gateway to authentic
-                    street food experiences.
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-                    {user.isAuthenticated ? (
+                  <div className="relative h-64 overflow-hidden">
+                    <img
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute top-3 right-3 z-10">
                       <button
-                        onClick={() => {
-                          setShowAboutModal(false);
-                          setShowReviewModal(true);
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleWishlist(product)
                         }}
-                        className="w-full cursor-pointer  sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
+                        className={`p-2 rounded-full ${
+                          isInWishlist(product.id)
+                            ? "bg-red-100 text-red-500"
+                            : "bg-white/80 text-gray-500 hover:bg-red-100 hover:text-red-500"
+                        } transition-colors`}
                       >
-                        Share Your Experience
+                        <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setShowAboutModal(false);
-                          setShowLoginModal(true);
-                        }}
-                        className="w-full  cursor-pointer sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
-                      >
-                        Get Started Today
-                      </button>
-                    )}
+                    </div>
+                  </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <div className="mb-1 text-gray-500 text-xs uppercase tracking-wider">{product.category}</div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
+                    <p className="text-gray-600 text-sm mb-3">by {product.author}</p>
+                    <p className="text-gray-600 text-sm mb-4 flex-grow line-clamp-3">{product.description}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-2xl font-bold text-gray-900">
+                        ${product.price.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Free shipping
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="w-full bg-black text-white py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-all cursor-pointer mt-auto"
+                    >
+                      Add to Cart
+                    </button>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500 text-lg">No books found. Try a different search or category.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </section>
 
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full animate-in zoom-in-95 duration-300 shadow-2xl border border-gray-100">
-            <div className="text-center mb-6 sm:mb-8">
-              <div className="bg-gradient-to-r from-orange-500 to-red-500 p-3 sm:p-4 rounded-2xl w-fit mx-auto mb-4 sm:mb-6 shadow-xl">
-                <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
-                Welcome Back
-              </h2>
-              <p className="text-gray-600 text-base sm:text-lg">
-                Sign in to share your street food experiences
-              </p>
-            </div>
-
-            <div className="space-y-4 sm:space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-base sm:text-lg text-gray-900 bg-white"
-                  placeholder="user@streeteats.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) =>
-                    setLoginForm((prev) => ({
-                      ...prev,
-                      password: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-base sm:text-lg text-gray-900 bg-white"
-                  placeholder="password123"
-                />
-              </div>
-
-              <div className="flex gap-3 sm:gap-4">
-                <button
-                  onClick={() => setShowLoginModal(false)}
-                  className="flex-1 px-4 cursor-pointer  sm:px-6 py-3 sm:py-4 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleLogin(e);
-                  }}
-                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all font-semibold shadow-lg hover:shadow-xl cursor-pointer"
-                >
-                  Sign In
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showShareModal && shareReview && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full animate-in zoom-in-95 duration-300 shadow-2xl border border-gray-100 h-[90vh] overflow-y-scroll">
-            <div className="text-center mb-6 sm:mb-8">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-3 sm:p-4 rounded-2xl w-fit mx-auto mb-4 sm:mb-6 shadow-xl">
-                <Share2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
-                Share Review
-              </h2>
-              <p className="text-gray-600">
-                Share this amazing food review with others
-              </p>
-            </div>
-
-            <div className="bg-gray-50 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-3 mb-2 sm:mb-3">
-                <img
-                  src={shareReview.image}
-                  alt={shareReview.dishName}
-                  className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">
-                    {shareReview.dishName}
-                  </h3>
-                  <p className="text-orange-600 font-medium text-xs sm:text-sm truncate">
-                    {shareReview.vendorName}
-                  </p>
-                  <StarRating rating={shareReview.rating} size="sm" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-              <button
-                onClick={() => {
-                  window.open(
-                    `https://twitter.com/intent/tweet?text=Check out this amazing ${shareReview.dishName} review from ${shareReview.vendorName}!&url=${window.location.href}`
-                  );
-                }}
-                className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all border cursor-pointer  border-blue-200"
-              >
-                <div className="bg-blue-500 p-2 rounded-lg">
-                  <Twitter className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-semibold text-blue-700 text-sm sm:text-base">
-                  Share on Twitter
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  window.open(
-                    `https://www.facebook.com/sharer/sharer.php?u=${window.location.href}`
-                  );
-                }}
-                className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all cursor-pointer  border border-blue-200"
-              >
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <Facebook className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-semibold text-blue-700 text-sm sm:text-base">
-                  Share on Facebook
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  window.open(`https://www.instagram.com/`);
-                }}
-                className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-pink-50 hover:bg-pink-100 rounded-xl transition-all cursor-pointer  border border-pink-200"
-              >
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg">
-                  <Instagram className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-semibold text-pink-700 text-sm sm:text-base">
-                  Share on Instagram
-                </span>
-              </button>
-
-              <button
-                onClick={() =>
-                  copyToClipboard(
-                    `Check out this amazing ${shareReview.dishName} review from ${shareReview.vendorName}! ${window.location.href}`
-                  )
-                }
-                className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all cursor-pointer border border-gray-200"
-              >
-                <div className="bg-gray-500 p-2 rounded-lg">
-                  <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-semibold text-gray-700 text-sm sm:text-base">
-                  Copy Link
-                </span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowShareModal(false)}
-              className="w-full px-4 sm:px-6 py-3 sm:py-4 border-2 cursor-pointer  border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showReviewModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-4 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 shadow-2xl border border-gray-100 my-8">
-            <div className="flex items-center justify-between mb-6 sm:mb-8">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Share Your Experience
-                </h2>
-                <p className="text-gray-600">
-                  Help others discover amazing street food
-                </p>
-              </div>
-              <button
-                onClick={() => setShowReviewModal(false)}
-                className="text-gray-500 cursor-pointer  hover:text-gray-700 p-2 hover:bg-gray-100 rounded-xl transition-all"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-6 sm:space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vendor Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewForm.vendorName}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        vendorName: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    placeholder="e.g., Mumbai Street Delights"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    What's the name of the food stall or vendor?
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dish Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewForm.dishName}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        dishName: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    placeholder="e.g., Vada Pav"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    What dish did you try?
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
-                  </label>
-                  <select
-                    value={reviewForm.city}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        city: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    required
-                  >
-                    <option value="">Select City</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dish Type *
-                  </label>
-                  <select
-                    value={reviewForm.dishType}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        dishType: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    {dishTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewForm.location}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        location: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    placeholder="e.g., Near Central Park"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Specific location or landmark
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewForm.price}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({
-                        ...prev,
-                        price: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 bg-white"
-                    placeholder="e.g., $5 or ₹50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    How much did it cost?
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3 sm:mb-4">
-                  Rating *
-                </label>
-                <div className="flex items-center gap-4 p-4 sm:p-6 bg-gray-50 rounded-xl">
-                  <StarRating
-                    rating={reviewForm.rating}
-                    interactive={true}
-                    onRate={(rating) =>
-                      setReviewForm((prev) => ({ ...prev, rating }))
-                    }
-                    size="lg"
-                  />
-                  <span className="text-base sm:text-lg font-semibold text-gray-700">
-                    {reviewForm.rating > 0
-                      ? `${reviewForm.rating}/5`
-                      : "Click to rate"}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
-                  Your Review *
-                </label>
-                <textarea
-                  value={reviewForm.review}
-                  onChange={(e) =>
-                    setReviewForm((prev) => ({
-                      ...prev,
-                      review: e.target.value,
-                    }))
-                  }
-                  rows={5}
-                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all resize-none text-gray-900 bg-white"
-                  placeholder="Share your honest experience! What made this dish special? How was the taste, portion size, and overall experience? Be descriptive and help other food lovers!"
-                  required
-                />
-                <div className="mt-3 p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-xs sm:text-sm text-blue-800">
-                    <span className="font-semibold">
-                      💡 Tips for a great review:
-                    </span>{" "}
-                    Mention the taste, texture, freshness, portion size, vendor
-                    friendliness, and overall experience. Be specific and
-                    honest!
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Camera className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium">
-                      Photo will be added automatically
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-xs text-gray-500  items-center gap-1 hidden md:flex">
-                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Help the community</span>
-                  <span className="sm:hidden">Help others</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button
-                  onClick={() => setShowReviewModal(false)}
-                  className="flex-1 px-6 sm:px-8 cursor-pointer  py-3 sm:py-4 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold text-base sm:text-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleReviewSubmit(e);
-                  }}
-                  className="flex-1 px-6 sm:px-8 py-3  cursor-pointer sm:py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all flex items-center justify-center gap-2 sm:gap-3 font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl"
-                >
-                  <Send className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Submit Review
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {user.isAuthenticated && (
-        <button
-          onClick={() => setShowReviewModal(true)}
-          className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-3xl transition-all  cursor-pointer duration-300 hover:scale-110 z-40 group"
-        >
-          <Plus className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      )}
-
-      <footer className="bg-gray-900 text-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-            <div className="lg:col-span-1">
-              <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 p-2.5 rounded-xl shadow-lg">
-                  <Utensils className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-orange-400 to-red-400 text-transparent bg-clip-text">
-                    StreetEats
-                  </h1>
-                  <p className="text-xs text-gray-400">Community Reviews</p>
-                </div>
-              </div>
-              <p className="text-gray-300 leading-relaxed mb-4 sm:mb-6">
-                Connecting food lovers with authentic street food experiences
-                from around the world.
-              </p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => window.open('https://www.instagram.com/', '_blank')}
-                  className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
-                >
-                  <Instagram className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => window.open('https://www.facebook.com/', '_blank')}
-                  className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
-                >
-                  <Facebook className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => window.open('https://www.twitter.com/', '_blank')}
-                  className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
-                >
-                  <Twitter className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-lg mb-4 sm:mb-6">Quick Links</h3>
-              <ul className="space-y-2 sm:space-y-3">
-                <li>
-                  <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Discover
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      if (citiesRef.current) {
-                        const yOffset = -40;
-                        const y = citiesRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                      }
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Popular Cities
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      setSelectedRating("4");
-                      if (filterRef.current) {
-                        const yOffset = -40;
-                        const y = filterRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                      }
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Top Vendors
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      setSortBy("highest-rated");
-                      if (filterRef.current) {
-                        const yOffset = -40;
-                        const y = filterRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                      }
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Best Dishes
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-lg mb-4 sm:mb-6">Support</h3>
-              <ul className="space-y-2 sm:space-y-3">
-                <li>
-                  <button
-                    onClick={() => setShowAboutModal(true)}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Help Center
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setShowAboutModal(true)}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Community Guidelines
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      if (user.isAuthenticated) {
-                        setShowReviewModal(true);
-                      } else {
-                        setShowLoginModal(true);
-                      }
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Contact Us
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      toast.info("Report feature coming soon! For now, please contact us directly.", {
-                        position: "bottom-center",
-                        autoClose: 3000,
-                      });
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Report Issue
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-lg mb-4 sm:mb-6">Company</h3>
-              <ul className="space-y-2 sm:space-y-3">
-                <li>
-                  <button
-                    onClick={() => setShowAboutModal(true)}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    About Us
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      if (user.isAuthenticated) {
-                        setShowReviewModal(true);
-                      } else {
-                        setShowLoginModal(true);
-                      }
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Feedback
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      toast.info("Partnership opportunities available! Contact us for more details.", {
-                        position: "bottom-center",
-                        autoClose: 3000,
-                      });
-                    }}
-                    className="text-gray-300 hover:text-orange-400 transition-colors cursor-pointer"
-                  >
-                    Partnerships
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-8 sm:mt-12 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-sm text-center sm:text-left">
-              © 2024 StreetEats. All rights reserved. Made with ❤️ for food
-              lovers worldwide.
+      {/* About section */}
+      <section ref={aboutRef} id="about" className="py-24 bg-gray-100">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-bold mb-6 text-gray-900">About BookHaven</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto mb-8"></div>
+            <p className="text-lg mb-10 leading-relaxed text-gray-600">
+              Founded in 2015, BookHaven has been providing book lovers with carefully curated selections across all genres.
+              Our mission is to connect readers with their next great adventure, whether it's through fiction, non-fiction,
+              educational materials, or children's books.
             </p>
-            <div className="flex gap-6 text-sm text-gray-400">
-              <button 
-                onClick={() => {
-                  toast.info("Privacy Policy coming soon!", {
-                    position: "bottom-center",
-                    autoClose: 2000,
-                  });
-                }}
-                className="hover:text-orange-400 transition-colors cursor-pointer"
-              >
-                Privacy Policy
-              </button>
-              <button 
-                onClick={() => {
-                  toast.info("Terms of Service coming soon!", {
-                    position: "bottom-center",
-                    autoClose: 2000,
-                  });
-                }}
-                className="hover:text-orange-400 transition-colors cursor-pointer"
-              >
-                Terms of Service
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">10k+</div>
+                <div className="text-gray-600 font-medium">Books Available</div>
+              </div>
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">50k+</div>
+                <div className="text-gray-600 font-medium">Happy Readers</div>
+              </div>
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">25+</div>
+                <div className="text-gray-600 font-medium">Book Categories</div>
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact section */}
+      <section ref={contactRef} id="contact" className="py-20 bg-white transition-colors duration-300">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">Contact Us</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto"></div>
+            <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              Have questions about our books or need reading recommendations? Our team is here to help you
+            </p>
+          </div>
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="bg-white p-8 rounded-lg shadow-md">
+              <h3 className="text-2xl font-semibold mb-6 text-gray-900">Get in Touch</h3>
+              <p className="text-gray-600 mb-8">
+                Have questions about our books or need personalized reading recommendations? Our knowledgeable team is here
+                to help you discover your next favorite book.
+              </p>
+              <div className="space-y-6">
+                <div className="flex items-start">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6 text-gray-700"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-lg mb-1">Address</h4>
+                    <p className="text-gray-600">123 Literary Lane, Booktown, BT 12345</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6 text-gray-700"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-lg mb-1">Phone</h4>
+                    <p className="text-gray-600">+1 (555) 123-BOOK</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6 text-gray-700"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-lg mb-1">Email</h4>
+                    <p className="text-gray-600">info@bookhaven.example</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-8 rounded-lg shadow-md">
+              <h3 className="text-2xl font-semibold mb-6 text-gray-900">Send a Message</h3>
+              <form className="space-y-6" onSubmit={handleContactSubmit}>
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    rows={4}
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    required
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-black text-white py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
+                >
+                  {isMessageSent ? (
+                    <>
+                      <CheckCircle className="mr-2 h-5 w-5 inline" /> Message Sent!
+                    </>
+                  ) : (
+                    "Send Message"
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Newsletter section */}
+      <section className="py-16 bg-gray-100">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl font-bold mb-4 text-gray-900">Join Our Book Club Newsletter</h2>
+            <p className="text-gray-600 mb-8">
+              Subscribe to our newsletter for the latest book releases, reading recommendations, author interviews, and exclusive offers.
+            </p>
+            <form className="flex flex-col sm:flex-row gap-4 justify-center" onSubmit={handleSubscribe}>
+              <input
+                type="email"
+                placeholder="Your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="px-6 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent flex-grow max-w-md"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-black text-white px-8 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                {isSubscribed ? (
+                  <>
+                    <CheckCircle className="mr-2 h-5 w-5 inline" /> Subscribed!
+                  </>
+                ) : (
+                  "Subscribe"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-16 transition-colors duration-300">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div>
+              <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-300 to-gray-500 text-transparent bg-clip-text">
+                BookHaven
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Your trusted destination for discovering amazing books across all genres and interests.
+              </p>
+              <div className="flex space-x-4">
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </a>
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-6">Quick Links</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Home
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(featuredRef)}
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Featured Books
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(productsRef)}
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    All Books
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(aboutRef)}
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    About
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(contactRef)}
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Contact
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-6">Book Categories</h4>
+              <ul className="space-y-3">
+                {categories.slice(1, 7).map((category) => (
+                  <li key={category}>
+                    <button
+                      onClick={() => {
+                        scrollToSection(productsRef)
+                        setActiveCategory(category)
+                      }}
+                      className="text-gray-300 hover:text-white transition-colors capitalize cursor-pointer"
+                    >
+                      {category === "science-fiction" ? "Science Fiction" : 
+                       category === "historical-fiction" ? "Historical Fiction" :
+                       category === "self-help" ? "Self Help" :
+                       category}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-6">Customer Service</h4>
+              <ul className="space-y-3">
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Shipping Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Returns & Refunds
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Terms of Service
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+            <p>&copy; {new Date().getFullYear()} BookHaven. All rights reserved.</p>
           </div>
         </div>
       </footer>
 
-      {showDetailsModal && selectedReviewDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-4 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300 shadow-2xl border border-gray-100 my-8">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                  {selectedReviewDetails.dishName}
-                </h2>
-                <p className="text-orange-600 font-semibold text-lg sm:text-xl">
-                  {selectedReviewDetails.vendorName}
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
-                  <MapPin className="w-4 h-4 flex-shrink-0" />
-                  <span>{selectedReviewDetails.location}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700 cursor-pointer p-2 hover:bg-gray-100 rounded-xl transition-all -mt-2 -mr-2"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      {/* Shopping Cart Sidebar */}
+      <div
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity ${isCartOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      >
+        <div
+          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}
+        >
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-xl font-semibold">Your Cart ({cartItemCount})</h2>
+            <button
+              onClick={() => setIsCartOpen(false)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700 cursor-pointer"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
 
-            <div className="mb-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
-                {(selectedReviewDetails.imageUrls && selectedReviewDetails.imageUrls.length > 0 
-                  ? selectedReviewDetails.imageUrls 
-                  : [selectedReviewDetails.image]
-                ).slice(0,3).map((imgUrl, idx) => (
-                  <img
-                    key={idx}
-                    src={imgUrl}
-                    alt={`${selectedReviewDetails.dishName} image ${idx + 1}`}
-                    className="w-full h-32 sm:h-40 object-cover rounded-xl shadow-md"
-                  />
-                ))}
-              </div>
-               {selectedReviewDetails.imageUrls && selectedReviewDetails.imageUrls.length > 3 && (
-                 <p className="text-xs text-gray-500 text-center">+{selectedReviewDetails.imageUrls.length -3} more images</p>
-               )}
-            </div>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-lg font-bold text-gray-900">
-                    {selectedReviewDetails.rating}.0 / 5.0
-                  </span>
+          <div className="p-6 overflow-y-auto max-h-[calc(100vh-250px)]">
+            {cart.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                  <ShoppingCart className="h-12 w-12 text-gray-400" />
                 </div>
-                <span className="text-md text-gray-600">
-                  Price: {selectedReviewDetails.price}
-                </span>
+                <p className="text-gray-500 mb-6">Your cart is empty</p>
+                <button
+                  onClick={() => {
+                    setIsCartOpen(false)
+                    scrollToSection(productsRef)
+                  }}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                >
+                  Continue Shopping
+                </button>
               </div>
-
-              <div>
-                <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                  Full Review
-                </h4>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedReviewDetails.review}
-                </p>
-              </div>
-              
-              <div className="border-t pt-4">
-                 <h4 className="text-lg font-semibold text-gray-800 mb-3">Tags</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedReviewDetails.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="bg-gradient-to-r from-orange-100 to-red-100 text-orange-800 px-3 py-1.5 rounded-full text-sm font-medium"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={selectedReviewDetails.authorAvatar}
-                      alt={selectedReviewDetails.author}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-gray-100"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {selectedReviewDetails.author}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <Clock className="w-3 h-3" />
-                        {selectedReviewDetails.date}
+            ) : (
+              <div className="space-y-6">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex border-b pb-6">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0">
+                      <img
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-gray-400 hover:text-red-500 cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <p className="text-gray-500 text-sm">${item.price.toFixed(2)}</p>
+                      <div className="flex items-center mt-3">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="p-1 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-700 cursor-pointer"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="mx-3 w-8 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="p-1 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-700 cursor-pointer"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                        <span className="ml-auto font-medium">${(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
-                  <span className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-sm font-medium">
-                    {selectedReviewDetails.dishType}
-                  </span>
-                </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {cart.length > 0 && (
+            <div className="border-t p-6 bg-gray-50 absolute bottom-0 left-0 right-0">
+              <div className="flex justify-between mb-4">
+                <span className="font-medium">Subtotal</span>
+                <span className="font-bold">${cartTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-4">
+                <span className="font-medium">Shipping</span>
+                <span className="font-medium">Free</span>
+              </div>
+              <div className="flex justify-between mb-6">
+                <span className="text-lg font-bold">Total</span>
+                <span className="text-lg font-bold">${cartTotal.toFixed(2)}</span>
+              </div>
+              <button
+                onClick={handleCheckout}
+                className="w-full bg-black text-white py-3 rounded-md font-semibold hover:bg-gray-800 transition-all cursor-pointer"
+              >
+                Checkout <ChevronRight className="ml-2 h-5 w-5 inline" />
+              </button>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Wishlist Sidebar */}
+      <div
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity ${isWishlistOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      >
+        <div
+          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform ${isWishlistOpen ? "translate-x-0" : "translate-x-full"}`}
+        >
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-xl font-semibold">Your Wishlist ({wishlist.length})</h2>
+            <button
+              onClick={() => setIsWishlistOpen(false)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700 cursor-pointer"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="p-6 overflow-y-auto max-h-[calc(100vh-180px)]">
+            {wishlist.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Heart className="h-12 w-12 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-6">Your wishlist is empty</p>
+                <button
+                  onClick={() => {
+                    setIsWishlistOpen(false)
+                    scrollToSection(productsRef)
+                  }}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                >
+                  Explore Books
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {wishlist.map((item) => (
+                  <div key={item.id} className="flex border-b pb-6">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0">
+                      <img
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <button
+                          onClick={() => toggleWishlist(item)}
+                          className="text-red-500 hover:text-red-600 cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <p className="text-gray-500 text-sm">${item.price.toFixed(2)}</p>
+                      <div className="flex items-center mt-3">
+                        <button
+                          onClick={() => {
+                            addToCart(item)
+                            toggleWishlist(item)
+                          }}
+                          className="bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors cursor-pointer"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
-    </div>
-  );
-};
+      </div>
 
-export default ReviewStreetFood;
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+    </div>
+  )
+}
