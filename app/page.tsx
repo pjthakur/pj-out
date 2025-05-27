@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { ShoppingCart, X, Plus, Minus, ChevronRight, Menu, Search, CheckCircle } from "lucide-react"
+import { ShoppingCart, X, Plus, Minus, ChevronRight, Menu, Search, CheckCircle, Heart, ChevronLeft } from "lucide-react"
 import Link from "next/link"
 
 // Types
@@ -37,24 +37,24 @@ const ToastContainer = ({
   removeToast: (id: string) => void
 }) => {
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 flex flex-col gap-2">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`p-4 rounded-lg shadow-lg flex items-start gap-3 w-full transform transition-all duration-300 animate-slide-up ${
+          className={`p-4 rounded-lg shadow-lg flex items-start gap-3 max-w-md transform transition-all duration-300 animate-slide-up ${
             toast.type === "success"
-              ? "bg-gray-900 text-white"
+              ? "bg-black text-white"
               : toast.type === "error"
                 ? "bg-red-600 text-white"
                 : "bg-gray-800 text-white"
           }`}
         >
           {toast.type === "success" && <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1">
             <h4 className="font-medium">{toast.title}</h4>
-            <p className="text-sm opacity-90 break-words">{toast.description}</p>
+            <p className="text-sm opacity-90">{toast.description}</p>
           </div>
-          <button onClick={() => removeToast(toast.id)} className="text-white/80 hover:text-white flex-shrink-0">
+          <button onClick={() => removeToast(toast.id)} className="text-white/80 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -84,14 +84,16 @@ const useToast = () => {
   return { toasts, addToast, removeToast }
 }
 
-export default function SportsEquipmentStore() {
+export default function StationeryStore() {
   // Toast
   const { toasts, addToast, removeToast } = useToast()
 
   // State
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
+  const [wishlist, setWishlist] = useState<Product[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string>("all")
   const [scrollY, setScrollY] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -105,7 +107,8 @@ export default function SportsEquipmentStore() {
   const [isMessageSent, setIsMessageSent] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Product[]>([])
-  const lastAddToCartRef = useRef<{ productId: number; timestamp: number } | null>(null)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
 
   // Refs for scrolling
   const heroRef = useRef<HTMLDivElement>(null)
@@ -137,94 +140,88 @@ export default function SportsEquipmentStore() {
     const mockProducts: Product[] = [
       {
         id: 1,
-        name: "Pro Basketball",
-        category: "basketball",
-        price: 89.99,
-        image: "https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=2787&auto=format&fit=crop",
-        description: "Professional grade basketball with superior grip and durability.",
+        name: "Premium Fountain Pen",
+        category: "pens",
+        price: 49.99,
+        image: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?q=80&w=2787&auto=format&fit=crop",
+        description: "Elegant fountain pen with smooth ink flow and ergonomic grip.",
         featured: true,
       },
       {
         id: 2,
-        name: "Tennis Racket Elite",
-        category: "tennis",
-        price: 199.99,
-        image: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2940&auto=format&fit=crop",
-        description: "Lightweight carbon fiber tennis racket for professional players.",
+        name: "Leather-Bound Journal",
+        category: "notebooks",
+        price: 35.99,
+        image: "https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=2787&auto=format&fit=crop",
+        description: "Handcrafted leather journal with premium paper for writing and sketching.",
         featured: true,
       },
       {
         id: 3,
-        name: "Running Shoes Air",
-        category: "running",
-        price: 129.99,
-        image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=2787&auto=format&fit=crop",
-        description: "Breathable running shoes with advanced cushioning technology.",
+        name: "Watercolor Set",
+        category: "art",
+        price: 28.99,
+        image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2942&auto=format&fit=crop",
+        description: "Professional-grade watercolor set with 24 vibrant colors.",
         featured: true,
       },
-      {
-        id: 4,
-        name: "Soccer Ball Pro",
-        category: "soccer",
-        price: 49.99,
-        image: "https://images.unsplash.com/photo-1614632537423-1e6c2e7e0aab?q=80&w=2787&auto=format&fit=crop",
-        description: "Match-quality soccer ball with water-resistant exterior.",
-      },
+     
       {
         id: 5,
-        name: "Yoga Mat Premium",
-        category: "yoga",
-        price: 39.99,
-        image: "https://images.unsplash.com/photo-1592432678016-e910b452f9a2?q=80&w=2787&auto=format&fit=crop",
-        description: "Extra thick yoga mat with non-slip surface and carrying strap.",
+        name: "Washi Tape Collection",
+        category: "decoration",
+        price: 15.99,
+        image: "https://images.unsplash.com/photo-1612444530582-fc66183b16f7?q=80&w=2940&auto=format&fit=crop",
+        description: "Set of 10 decorative washi tapes in various patterns and colors.",
       },
       {
         id: 6,
-        name: "Dumbbells Set",
-        category: "fitness",
-        price: 149.99,
-        image: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?q=80&w=2787&auto=format&fit=crop",
-        description: "Adjustable dumbbells set with storage rack, 5-25kg per hand.",
+        name: "Mechanical Pencil Set",
+        category: "pencils",
+        price: 18.99,
+        image: "https://images.unsplash.com/photo-1568205612837-017257d2310a?q=80&w=2787&auto=format&fit=crop",
+        description: "Precision mechanical pencils in various lead sizes for technical drawing and writing.",
       },
       {
         id: 7,
-        name: "Swimming Goggles Pro",
-        category: "swimming",
-        price: 34.99,
-        image: "https://images.unsplash.com/photo-1599586120429-48281b6f0ece?q=80&w=2787&auto=format&fit=crop",
-        description: "Anti-fog swimming goggles with UV protection and adjustable strap.",
+        name: "Calligraphy Starter Kit",
+        category: "calligraphy",
+        price: 42.99,
+        image: "https://images.unsplash.com/photo-1620783770629-122b7f187703?q=80&w=2787&auto=format&fit=crop",
+        description: "Complete calligraphy kit with nibs, ink, and instructional guide for beginners.",
+      },
+      {
+        id: 8,
+        name: "Sticky Note Collection",
+        category: "notes",
+        price: 9.99,
+        image: "https://images.unsplash.com/photo-1586282391129-76a6df230234?q=80&w=2940&auto=format&fit=crop",
+        description: "Assorted sticky notes in various sizes, colors, and shapes for organization.",
       },
       {
         id: 9,
-        name: "Golf Club Set",
-        category: "golf",
-        price: 499.99,
-        image: "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?q=80&w=2787&auto=format&fit=crop",
-        description: "Complete set of golf clubs for beginners and intermediate players.",
+        name: "Handmade Paper Set",
+        category: "paper",
+        price: 19.99,
+        image: "https://images.unsplash.com/photo-1598620617148-c9e8ddee6711?q=80&w=2940&auto=format&fit=crop",
+        description: "Artisanal handmade paper with natural fibers, perfect for special projects.",
       },
-      {
-        id: 10,
-        name: "Badminton Racket Pair",
-        category: "badminton",
-        price: 59.99,
-        image: "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=2787&auto=format&fit=crop",
-        description: "Pair of lightweight badminton rackets with carrying case.",
-      },
+      
       {
         id: 11,
-        name: "Hiking Backpack",
-        category: "hiking",
-        price: 79.99,
-        image: "https://images.unsplash.com/photo-1501554728187-ce583db33af7?q=80&w=2787&auto=format&fit=crop",
-        description: "Waterproof hiking backpack with multiple compartments and hydration system.",
+        name: "Vintage Stamp Set",
+        category: "decoration",
+        price: 29.99,
+        image: "https://images.unsplash.com/photo-1605496036006-fa36378ca4ab?q=80&w=2787&auto=format&fit=crop",
+        description: "Collection of vintage-inspired rubber stamps with wooden handles.",
       },
       {
         id: 12,
-        name: "Boxing Gloves",
-        category: "boxing",
-        price: 69.99,
-        image: "https://images.unsplash.com/photo-1593352216894-89108a0d2653?q=80&w=2787&auto=format&fit=crop",
-        description: "Professional boxing gloves with wrist support and padding.",
+        name: "Planner System",
+        category: "organization",
+        price: 39.99,
+        image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?q=80&w=2940&auto=format&fit=crop",
+        description: "Comprehensive planner system with monthly, weekly, and daily layouts.",
       },
     ]
 
@@ -232,7 +229,7 @@ export default function SportsEquipmentStore() {
     setSearchResults(mockProducts)
   }, [])
 
-  // Search functionality
+  // Search functionality with debounce
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setSearchResults(products)
@@ -249,14 +246,19 @@ export default function SportsEquipmentStore() {
 
     setSearchResults(filtered)
 
-    // If we're searching and have results, scroll to products section
-    if (filtered.length > 0 && query.length > 2) {
-      scrollToSection(productsRef)
-      setActiveCategory("all")
-    }
+    // Debounced search functionality - wait 3 seconds and require at least 4 characters
+    const timeoutId = setTimeout(() => {
+      if (filtered.length > 0 && query.length >= 4) {
+        scrollToSection(productsRef)
+        setActiveCategory("all")
+      }
+    }, 3000)
+
+    // Cleanup timeout on new search query
+    return () => clearTimeout(timeoutId)
   }, [searchQuery, products])
 
-  // Parallax effect
+   
   useEffect(() => {
     const handleScroll = () => {
       setScrollY(window.scrollY)
@@ -266,94 +268,84 @@ export default function SportsEquipmentStore() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Body scroll lock when cart is open
+  // Featured products carousel
   useEffect(() => {
-    if (isCartOpen) {
-      // Save current scroll position
-      const scrollY = window.scrollY
-      // Lock body scroll
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-    } else {
-      // Get the scroll position from the body top value
-      const scrollY = document.body.style.top
-      // Restore body scroll
-      document.body.style.position = ''
-      document.body.style.top = ''
-      document.body.style.width = ''
-      // Restore scroll position
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    const interval = setInterval(() => {
+      const featuredCount = products.filter((p) => p.featured).length
+      if (featuredCount > 0 && !isAnimating) {
+        changeSlide((currentSlide + 1) % featuredCount)
       }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [products, currentSlide, isAnimating])
+
+  // Prevent body scroll when cart or wishlist is open
+  useEffect(() => {
+    if (isCartOpen || isWishlistOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
     }
 
-    // Cleanup function to restore scroll on unmount
+    // Cleanup function to restore scroll when component unmounts
     return () => {
-      document.body.style.position = ''
-      document.body.style.top = ''
-      document.body.style.width = ''
+      document.body.style.overflow = 'unset'
     }
-  }, [isCartOpen])
+  }, [isCartOpen, isWishlistOpen])
+
+  // Change slid 
+  const changeSlide = (newSlide: number) => {
+    if (isAnimating) return
+
+    setIsAnimating(true)
+    setCurrentSlide(newSlide)
+
+     
+    setTimeout(() => {
+      setIsAnimating(false)
+    }, 600)
+  }
 
   // Cart functions
   const addToCart = (product: Product) => {
-    const now = Date.now()
-    
-    // Check if this is a duplicate call within 500ms for the same product
-    if (
-      lastAddToCartRef.current &&
-      lastAddToCartRef.current.productId === product.id &&
-      now - lastAddToCartRef.current.timestamp < 500
-    ) {
-      return // Ignore duplicate calls
-    }
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id)
 
-    // Update the ref with current action
-    lastAddToCartRef.current = { productId: product.id, timestamp: now }
-
-    const existingItem = cart.find((item) => item.id === product.id)
-
-    if (existingItem) {
-      // Item already exists, increase quantity
-      setCart((prevCart) => 
-        prevCart.map((item) => 
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        )
-      )
-      addToast({
-        title: "Added to cart",
-        description: `${product.name} quantity increased in your cart.`,
-        type: "success",
-      })
-    } else {
-      // New item, add to cart
-      setCart((prevCart) => [...prevCart, { ...product, quantity: 1 }])
-      addToast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart.`,
-        type: "success",
-      })
-    }
+      if (existingItem) {
+        return prevCart.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
+      } else {
+        
+        return [...prevCart, { ...product, quantity: 1 }]
+      }
+    })
   }
 
   const removeFromCart = (productId: number) => {
-    const productToRemove = cart.find((item) => item.id === productId)
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId))
-
-    if (productToRemove) {
-      addToast({
-        title: "Removed from cart",
-        description: `${productToRemove.name} has been removed from your cart.`,
-        type: "info",
-      })
-    }
+     
   }
 
   const updateQuantity = (productId: number, newQuantity: number) => {
     if (newQuantity < 1) return
 
     setCart((prevCart) => prevCart.map((item) => (item.id === productId ? { ...item, quantity: newQuantity } : item)))
+  }
+
+  // Wishlist functions
+  const toggleWishlist = (product: Product) => {
+    const isInWishlist = wishlist.some((item) => item.id === product.id)
+
+    if (isInWishlist) {
+      setWishlist((prev) => prev.filter((item) => item.id !== product.id))
+      // No toast notification for removing from wishlist
+    } else {
+      setWishlist((prev) => [...prev, product])
+      // No toast notification for adding to wishlist
+    }
+  }
+
+  const isInWishlist = (productId: number) => {
+    return wishlist.some((item) => item.id === productId)
   }
 
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
@@ -399,24 +391,93 @@ export default function SportsEquipmentStore() {
     }
   }
 
+  // Handle checkout
+  const handleCheckout = () => {
+    setIsCartOpen(false)
+    addToast({
+      title: "Order placed!",
+      description: "Thank you for your purchase. Your order has been placed successfully.",
+      type: "success",
+    })
+    setCart([])
+  }
+
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // Search is already handled by the useEffect
+    // search is already handled by the useEffect 
   }
 
   return (
-    <div className="min-h-screen flex flex-col font-['Poppins',sans-serif]">
+    <div className="min-h-screen flex flex-col font-['Poppins',sans-serif] bg-gray-50">
       {/* Custom CSS for fonts */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
+      
         body {
-          font-family: 'Poppins', sans-serif;
+          font-family: 'Raleway', sans-serif;
         }
         
         h1, h2, h3, h4, h5, h6 {
-          font-family: 'Poppins', sans-serif;
+          font-family: 'Montserrat', sans-serif;
+        }
+        
+        /* Line clamp utilities */
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .line-clamp-3 {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        /* Carousel animation */
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        
+        .carousel-item {
+          opacity: 0;
+          position: absolute;
+          transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+          width: 100%;
+        }
+        
+        .carousel-item.active {
+          opacity: 1;
+          position: relative;
+          animation: fadeIn 0.6s ease-in-out;
+        }
+
+        /*   */ 
+        button, 
+        a,
+        [role="button"],
+        .cursor-pointer,
+        input[type="submit"],
+        input[type="button"] {
+          cursor: pointer;
+        }
+
+         
+        .hover\:bg-gray-100:hover,
+        .hover\:bg-gray-200:hover,
+        .hover\:bg-gray-800:hover,
+        .hover\:text-white:hover,
+        .hover\:text-black:hover,
+        .hover\:bg-red-100:hover,
+        .hover\:text-red-500:hover,
+        .hover\:text-red-600:hover,
+        .hover\:scale-105:hover,
+        .hover\:shadow-xl:hover {
+          cursor: pointer;
         }
       `}</style>
 
@@ -433,7 +494,7 @@ export default function SportsEquipmentStore() {
               </button>
               <Link href="/" className="flex items-center">
                 <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 text-transparent bg-clip-text">
-                  BeSporty
+                  PenPal
                 </span>
               </Link>
             </div>
@@ -441,25 +502,25 @@ export default function SportsEquipmentStore() {
             <div className="hidden md:flex items-center space-x-8">
               <button
                 onClick={() => scrollToSection(featuredRef)}
-                className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
                 Featured
               </button>
               <button
                 onClick={() => scrollToSection(productsRef)}
-                className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
                 Products
               </button>
               <button
                 onClick={() => scrollToSection(aboutRef)}
-                className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
                 About
               </button>
               <button
                 onClick={() => scrollToSection(contactRef)}
-                className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                className="text-gray-700 hover:text-black transition-colors cursor-pointer"
               >
                 Contact
               </button>
@@ -477,10 +538,19 @@ export default function SportsEquipmentStore() {
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </form>
 
+              <button className="relative text-gray-700 cursor-pointer" onClick={() => setIsWishlistOpen(true)}>
+                <Heart className={`h-6 w-6 ${wishlist.length > 0 ? "fill-red-500 text-red-500" : ""}`} />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {wishlist.length}
+                  </span>
+                )}
+              </button>
+
               <button className="relative text-gray-700 cursor-pointer" onClick={() => setIsCartOpen(true)}>
                 <ShoppingCart className="h-6 w-6" />
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-gray-900 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {cartItemCount}
                   </span>
                 )}
@@ -494,25 +564,25 @@ export default function SportsEquipmentStore() {
               <div className="flex flex-col space-y-4">
                 <button
                   onClick={() => scrollToSection(featuredRef)}
-                  className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   Featured
                 </button>
                 <button
                   onClick={() => scrollToSection(productsRef)}
-                  className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   Products
                 </button>
                 <button
                   onClick={() => scrollToSection(aboutRef)}
-                  className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   About
                 </button>
                 <button
                   onClick={() => scrollToSection(contactRef)}
-                  className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                  className="text-gray-700 hover:text-black transition-colors cursor-pointer"
                 >
                   Contact
                 </button>
@@ -533,105 +603,157 @@ export default function SportsEquipmentStore() {
       </header>
 
       {/* Hero section*/} 
-      <div ref={heroRef} className="relative h-[80vh] flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=3270&auto=format&fit=crop')",
-            transform: `translateY(${scrollY * 0.5}px) scale(${1 + scrollY * 0.0005})`,
-            transition: "transform 0.1s ease-out",
-          }}
-        ></div>
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-black/90 to-gray-800/90"
-          style={{
-            transform: `translateY(${scrollY * 0.3}px)`,
-          }}
-        ></div>
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          <h1
-            className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight"
-            style={{
-              transform: `translateY(${scrollY * -0.2}px)`,
-              opacity: 1 - scrollY * 0.001,
-            }}
-          >
-            <span className="block">Elevate Your Game</span>
-            <span className="bg-gradient-to-r from-gray-100 to-gray-300 text-transparent bg-clip-text">
-              With Premium Gear
-            </span>
-          </h1>
-          <p
-            className="text-xl md:text-2xl text-white mb-10 max-w-2xl mx-auto"
-            style={{
-              transform: `translateY(${scrollY * -0.1}px)`,
-              opacity: 1 - scrollY * 0.002,
-            }}
-          >
-            Professional sports equipment for athletes who demand excellence at every level
-          </p>
-          <button
-            onClick={() => scrollToSection(productsRef)}
-            className="inline-block bg-gray-900 text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg cursor-pointer"
-            style={{
-              transform: `translateY(${scrollY * -0.05}px)`,
-            }}
-          >
-            Explore Collection
-          </button>
+      <div ref={heroRef} className="bg-white py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="order-2 md:order-1">
+              <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+                Elevate Your Creativity with Premium Stationery
+              </h1>
+              <p className="text-lg text-gray-600 mb-8">
+                Discover our curated collection of high-quality stationery for writers, artists, and creative
+                professionals.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={() => scrollToSection(productsRef)}
+                  className="bg-black text-white px-8 py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
+                >
+                  Shop Now
+                </button>
+                <button
+                  onClick={() => scrollToSection(featuredRef)}
+                  className="bg-white text-black px-8 py-3 rounded-md font-medium border border-gray-300 hover:bg-gray-100 transition-all cursor-pointer"
+                >
+                  Featured Items
+                </button>
+              </div>
+            </div>
+            <div className="order-1 md:order-2 grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="h-40 md:h-48 rounded-lg overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?q=80&w=2787&auto=format&fit=crop"
+                    alt="Fountain pen"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="h-40 md:h-48 rounded-lg overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=2787&auto=format&fit=crop"
+                    alt="Leather journal"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div className="h-full">
+                <div className="h-full rounded-lg overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2942&auto=format&fit=crop"
+                    alt="Art supplies"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div
-          className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent"
-          style={{
-            transform: `translateY(${Math.min(scrollY * 0.2, 0)}px)`,
-          }}
-        ></div>
       </div>
 
       {/* Featured products */}
-      <section ref={featuredRef} id="featured" className="py-20 bg-gray-50 transition-colors duration-300">
+      <section ref={featuredRef} id="featured" className="py-20 bg-gray-100 transition-colors duration-300">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-gray-900">Featured Collection</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto"></div>
             <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
-              Discover our handpicked selection of premium sports equipment designed for peak performance
+              Discover our handpicked selection of premium stationery designed for creativity and productivity
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {featuredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+
+          {/*carousel */}
+          <div className="relative max-w-4xl mx-auto">
+            {/* Carousel items */}
+            <div className="relative min-h-[500px]">
+              {featuredProducts.map((product, index) => (
+                <div key={product.id} className={`carousel-item ${currentSlide === index ? "active" : ""}`}>
+                  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="md:flex">
+                      <div className="md:w-1/2">
+                        <div className="h-64 md:h-96 overflow-hidden">
+                          <img
+                            src={product.image || "/placeholder.svg"}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                          />
+                        </div>
+                      </div>
+                      <div className="md:w-1/2 p-8 flex flex-col justify-between">
+                        <div>
+                          <div className="mb-2 text-gray-500 text-sm uppercase tracking-wider">{product.category}</div>
+                          <h3 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h3>
+                          <p className="text-gray-600 mb-6">{product.description}</p>
+                          <div className="text-2xl font-bold text-gray-900 mb-6">${product.price.toFixed(2)}</div>
+                        </div>
+                        <div className="flex gap-4">
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="flex-1 bg-black text-white py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
+                          >
+                            Add to Cart
+                          </button>
+                          <button
+                            onClick={() => toggleWishlist(product)}
+                            className={`p-3 rounded-md cursor-pointer ${
+                              isInWishlist(product.id)
+                                ? "bg-red-100 text-red-500"
+                                : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500"
+                            } transition-colors`}
+                          >
+                            <Heart className={`h-6 w-6 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Carousel controls */}
+            <div className="absolute inset-0 flex justify-between items-center pointer-events-none z-20">
+              <button
+                onClick={() => changeSlide((currentSlide - 1 + featuredProducts.length) % featuredProducts.length)}
+                className="bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 cursor-pointer pointer-events-auto ml-6"
+                disabled={isAnimating}
+                style={{ marginTop: '-160px' }}
               >
-                <div className="relative h-80 overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                    style={{ backgroundImage: `url(${product.image})` }}
-                  ></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-6 py-3 rounded-full font-semibold text-sm hover:bg-gray-900 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 shadow-lg cursor-pointer"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-semibold">{product.name}</h3>
-                    <span className="text-xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
-                  </div>
-                  <p className="text-gray-600 mb-4">{product.description}</p>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <span className="capitalize mr-2">{product.category}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-400 mr-2"></span>
-                    <span className="text-gray-900">Premium Quality</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={() => changeSlide((currentSlide + 1) % featuredProducts.length)}
+                className="bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 cursor-pointer pointer-events-auto mr-6"
+                disabled={isAnimating}
+                style={{ marginTop: '-160px' }}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Carousel indicators */}
+            <div className="flex justify-center mt-8 space-x-2">
+              {featuredProducts.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => changeSlide(index)}
+                  className={`w-3 h-3 rounded-full transition-colors cursor-pointer ${
+                    currentSlide === index ? "bg-gray-900" : "bg-gray-300"
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                  disabled={isAnimating}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -639,11 +761,11 @@ export default function SportsEquipmentStore() {
       {/* Products section */}
       <section ref={productsRef} id="products" className="py-20 transition-colors duration-300">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-gray-900">Our Products</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto"></div>
             <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
-              Browse our complete collection of high-quality sports equipment for every athlete
+              Browse our complete collection of high-quality stationery for every creative need
             </p>
           </div>
 
@@ -653,9 +775,9 @@ export default function SportsEquipmentStore() {
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-6 py-3 rounded-full capitalize transition-all duration-300 cursor-pointer ${
+                className={`px-6 py-3 rounded-md capitalize transition-all duration-300 cursor-pointer ${
                   activeCategory === category
-                    ? "bg-gray-900 text-white shadow-md"
+                    ? "bg-black text-white shadow-md"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -681,25 +803,46 @@ export default function SportsEquipmentStore() {
               filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
+                  className="group bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
                 >
-                  <div className="relative h-64 overflow-hidden flex-shrink-0">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                      style={{ backgroundImage: `url(${product.image})` }}
-                    ></div>
+                  <div className="relative h-64 overflow-hidden">
+                    <img
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute top-3 right-3 z-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleWishlist(product)
+                        }}
+                        className={`p-2 rounded-full ${
+                          isInWishlist(product.id)
+                            ? "bg-red-100 text-red-500"
+                            : "bg-white/80 text-gray-500 hover:bg-red-100 hover:text-red-500"
+                        } transition-colors`}
+                      >
+                        <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
+                      </button>
+                    </div>
                   </div>
                   <div className="p-5 flex flex-col flex-grow">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-lg font-semibold flex-grow pr-2">{product.name}</h3>
-                      <span className="text-lg font-bold text-gray-900 flex-shrink-0">${product.price.toFixed(2)}</span>
+                    <div className="mb-1 text-gray-500 text-xs uppercase tracking-wider">{product.category}</div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{product.name}</h3>
+                    <p className="text-gray-600 text-sm mb-4 flex-grow line-clamp-3">{product.description}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-2xl font-bold text-gray-900">
+                        ${product.price.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Free shipping
+                      </div>
                     </div>
-                    <p className="text-gray-500 text-sm mb-3 capitalize">{product.category}</p>
-                    <p className="text-gray-600 text-sm mb-6 flex-grow line-clamp-3">{product.description}</p>
                     <button
                       onClick={() => addToCart(product)}
-                      className="w-full bg-gray-900 text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-800 transition-all transform hover:scale-[1.02] cursor-pointer mt-auto"
+                      className="w-full bg-black text-white py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-all cursor-pointer mt-auto"
                     >
                       Add to Cart
                     </button>
@@ -716,38 +859,28 @@ export default function SportsEquipmentStore() {
       </section>
 
       {/* About section */}
-      <section ref={aboutRef} id="about" className="py-24 text-white relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=3456&auto=format&fit=crop')",
-            transform: `translateY(${(scrollY - 1500) * 0.1}px)`,
-            backgroundAttachment: "fixed",
-          }}
-        ></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 to-gray-800/90"></div>
-        <div className="container mx-auto px-4 relative z-10">
+      <section ref={aboutRef} id="about" className="py-24 bg-gray-100">
+        <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl font-bold mb-6">About BeSporty</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-gray-300 to-gray-500 mx-auto mb-8"></div>
-            <p className="text-lg mb-10 leading-relaxed">
-              Founded in 2010, BeSporty has been providing high-quality sports equipment to athletes of all levels. Our
-              mission is to help you achieve your athletic goals with the best gear on the market, designed for
-              performance, durability, and style.
+            <h2 className="text-4xl font-bold mb-6 text-gray-900">About PenPal</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-gray-900 to-gray-600 mx-auto mb-8"></div>
+            <p className="text-lg mb-10 leading-relaxed text-gray-600">
+              Founded in 2015, PenPal has been providing high-quality stationery to writers, artists, and creative
+              professionals. Our mission is to help you express your creativity with the finest tools and materials,
+              designed for performance, durability, and style.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 transform transition-transform hover:scale-105">
-                <div className="text-5xl font-bold mb-3 text-gray-200">1000+</div>
-                <div className="text-gray-300 font-medium">Premium Products</div>
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">1000+</div>
+                <div className="text-gray-600 font-medium">Premium Products</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 transform transition-transform hover:scale-105">
-                <div className="text-5xl font-bold mb-3 text-gray-200">50k+</div>
-                <div className="text-gray-300 font-medium">Happy Athletes</div>
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">30k+</div>
+                <div className="text-gray-600 font-medium">Happy Customers</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 transform transition-transform hover:scale-105">
-                <div className="text-5xl font-bold mb-3 text-gray-200">20+</div>
-                <div className="text-gray-300 font-medium">Sports Categories</div>
+              <div className="bg-white rounded-lg p-8 shadow-md transform transition-transform hover:scale-105">
+                <div className="text-5xl font-bold mb-3 text-gray-900">15+</div>
+                <div className="text-gray-600 font-medium">Product Categories</div>
               </div>
             </div>
           </div>
@@ -755,7 +888,7 @@ export default function SportsEquipmentStore() {
       </section>
 
       {/* Contact section */}
-      <section ref={contactRef} id="contact" className="py-20 bg-gray-50 transition-colors duration-300">
+      <section ref={contactRef} id="contact" className="py-20 bg-white transition-colors duration-300">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4 text-gray-900">Contact Us</h2>
@@ -765,11 +898,11 @@ export default function SportsEquipmentStore() {
             </p>
           </div>
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="bg-white p-8 rounded-2xl shadow-xl">
+            <div className="bg-white p-8 rounded-lg shadow-md">
               <h3 className="text-2xl font-semibold mb-6 text-gray-900">Get in Touch</h3>
               <p className="text-gray-600 mb-8">
                 Have questions about our products or need assistance with your order? Our customer service team is here
-                to help you find the perfect equipment for your needs.
+                to help you find the perfect stationery for your needs.
               </p>
               <div className="space-y-6">
                 <div className="flex items-start">
@@ -797,7 +930,7 @@ export default function SportsEquipmentStore() {
                   </div>
                   <div>
                     <h4 className="font-medium text-lg mb-1">Address</h4>
-                    <p className="text-gray-600">123 Sports Avenue, Athleticville, SP 12345</p>
+                    <p className="text-gray-600">123 Stationery Street, Creativeville, CP 12345</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -841,12 +974,12 @@ export default function SportsEquipmentStore() {
                   </div>
                   <div>
                     <h4 className="font-medium text-lg mb-1">Email</h4>
-                    <p className="text-gray-600">info@besporty.example</p>
+                    <p className="text-gray-600">info@penpal.example</p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-8 rounded-2xl shadow-xl">
+            <div className="bg-white p-8 rounded-lg shadow-md">
               <h3 className="text-2xl font-semibold mb-6 text-gray-900">Send a Message</h3>
               <form className="space-y-6" onSubmit={handleContactSubmit}>
                 <div>
@@ -858,7 +991,7 @@ export default function SportsEquipmentStore() {
                     id="name"
                     value={contactForm.name}
                     onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                     required
                   />
                 </div>
@@ -871,7 +1004,7 @@ export default function SportsEquipmentStore() {
                     id="email"
                     value={contactForm.email}
                     onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                     required
                   />
                 </div>
@@ -884,17 +1017,17 @@ export default function SportsEquipmentStore() {
                     rows={4}
                     value={contactForm.message}
                     onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                     required
                   ></textarea>
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-all transform hover:scale-[1.02] flex items-center justify-center cursor-pointer"
+                  className="w-full bg-black text-white py-3 rounded-md font-medium hover:bg-gray-800 transition-all cursor-pointer"
                 >
                   {isMessageSent ? (
                     <>
-                      <CheckCircle className="mr-2 h-5 w-5" /> Message Sent!
+                      <CheckCircle className="mr-2 h-5 w-5 inline" /> Message Sent!
                     </>
                   ) : (
                     "Send Message"
@@ -906,14 +1039,50 @@ export default function SportsEquipmentStore() {
         </div>
       </section>
 
+      {/* Newsletter section */}
+      <section className="py-16 bg-gray-100">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl font-bold mb-4 text-gray-900">Join Our Newsletter</h2>
+            <p className="text-gray-600 mb-8">
+              Subscribe to our newsletter for the latest product updates, creative inspiration, and exclusive offers.
+            </p>
+            <form className="flex flex-col sm:flex-row gap-4 justify-center" onSubmit={handleSubscribe}>
+              <input
+                type="email"
+                placeholder="Your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="px-6 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent flex-grow max-w-md"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-black text-white px-8 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                {isSubscribed ? (
+                  <>
+                    <CheckCircle className="mr-2 h-5 w-5 inline" /> Subscribed!
+                  </>
+                ) : (
+                  "Subscribe"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16 transition-colors duration-300">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             <div>
-              <h3 className="text-2xl font-bold mb-6 text-gray-300">BeSporty</h3>
-              <p className="text-gray-400 mb-6">
-                Your one-stop shop for high-quality sports equipment and accessories designed for champions.
+              <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-300 to-gray-500 text-transparent bg-clip-text">
+                PenPal
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Your one-stop shop for high-quality stationery and creative supplies designed for inspiration.
               </p>
               <div className="flex space-x-4">
                 <a
@@ -956,7 +1125,7 @@ export default function SportsEquipmentStore() {
                 <li>
                   <button
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    className="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
                   >
                     Home
                   </button>
@@ -964,7 +1133,7 @@ export default function SportsEquipmentStore() {
                 <li>
                   <button
                     onClick={() => scrollToSection(featuredRef)}
-                    className="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
                   >
                     Featured
                   </button>
@@ -972,7 +1141,7 @@ export default function SportsEquipmentStore() {
                 <li>
                   <button
                     onClick={() => scrollToSection(productsRef)}
-                    className="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
                   >
                     Products
                   </button>
@@ -980,7 +1149,7 @@ export default function SportsEquipmentStore() {
                 <li>
                   <button
                     onClick={() => scrollToSection(aboutRef)}
-                    className="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
                   >
                     About
                   </button>
@@ -988,7 +1157,7 @@ export default function SportsEquipmentStore() {
                 <li>
                   <button
                     onClick={() => scrollToSection(contactRef)}
-                    className="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-gray-300 hover:text-white transition-colors cursor-pointer"
                   >
                     Contact
                   </button>
@@ -1005,7 +1174,7 @@ export default function SportsEquipmentStore() {
                         scrollToSection(productsRef)
                         setActiveCategory(category)
                       }}
-                      className="text-gray-400 hover:text-gray-300 transition-colors capitalize cursor-pointer"
+                      className="text-gray-300 hover:text-white transition-colors capitalize cursor-pointer"
                     >
                       {category}
                     </button>
@@ -1014,36 +1183,38 @@ export default function SportsEquipmentStore() {
               </ul>
             </div>
             <div>
-              <h4 className="text-lg font-semibold mb-6">Newsletter</h4>
-              <p className="text-gray-400 mb-6">
-                Subscribe to our newsletter for the latest updates and exclusive offers.
-              </p>
-              <form className="flex flex-col space-y-4" onSubmit={handleSubscribe}>
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="px-4 py-3 rounded-lg w-full border border-gray-700 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent shadow-sm"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="bg-gray-800 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center cursor-pointer"
-                >
-                  {isSubscribed ? (
-                    <>
-                      <CheckCircle className="mr-2 h-5 w-5" /> Subscribed!
-                    </>
-                  ) : (
-                    "Subscribe"
-                  )}
-                </button>
-              </form>
+              <h4 className="text-lg font-semibold mb-6">Customer Service</h4>
+              <ul className="space-y-3">
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Shipping Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Returns & Refunds
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                    Terms of Service
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; {new Date().getFullYear()} BeSporty. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} PenPal. All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -1077,7 +1248,7 @@ export default function SportsEquipmentStore() {
                     setIsCartOpen(false)
                     scrollToSection(productsRef)
                   }}
-                  className="bg-gray-900 text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors cursor-pointer"
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   Continue Shopping
                 </button>
@@ -1086,10 +1257,13 @@ export default function SportsEquipmentStore() {
               <div className="space-y-6">
                 {cart.map((item) => (
                   <div key={item.id} className="flex border-b pb-6">
-                    <div
-                      className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0"
-                      style={{ backgroundImage: `url(${item.image})` }}
-                    ></div>
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0">
+                      <img
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <div className="ml-4 flex-1">
                       <div className="flex justify-between">
                         <h3 className="font-medium">{item.name}</h3>
@@ -1139,21 +1313,89 @@ export default function SportsEquipmentStore() {
                 <span className="text-lg font-bold">${cartTotal.toFixed(2)}</span>
               </div>
               <button
-                onClick={() => {
-                  setIsCartOpen(false)
-                  addToast({
-                    title: "Order placed!",
-                    description: "Thank you for your purchase. Your order has been placed successfully.",
-                    type: "success",
-                  })
-                  setCart([])
-                }}
-                className="w-full bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-all transform hover:scale-[1.02] flex items-center justify-center cursor-pointer"
+                onClick={handleCheckout}
+                className="w-full bg-black text-white py-3 rounded-md font-semibold hover:bg-gray-800 transition-all cursor-pointer"
               >
-                Checkout <ChevronRight className="ml-2 h-5 w-5" />
+                Checkout <ChevronRight className="ml-2 h-5 w-5 inline" />
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Wishlist Sidebar */}
+      <div
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity ${isWishlistOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      >
+        <div
+          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform ${isWishlistOpen ? "translate-x-0" : "translate-x-full"}`}
+        >
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-xl font-semibold">Your Wishlist ({wishlist.length})</h2>
+            <button
+              onClick={() => setIsWishlistOpen(false)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700 cursor-pointer"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="p-6 overflow-y-auto max-h-[calc(100vh-180px)]">
+            {wishlist.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Heart className="h-12 w-12 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-6">Your wishlist is empty</p>
+                <button
+                  onClick={() => {
+                    setIsWishlistOpen(false)
+                    scrollToSection(productsRef)
+                  }}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                >
+                  Explore Products
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {wishlist.map((item) => (
+                  <div key={item.id} className="flex border-b pb-6">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0">
+                      <img
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <button
+                          onClick={() => toggleWishlist(item)}
+                          className="text-red-500 hover:text-red-600 cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <p className="text-gray-500 text-sm">${item.price.toFixed(2)}</p>
+                      <div className="flex items-center mt-3">
+                        <button
+                          onClick={() => {
+                            addToCart(item)
+                            toggleWishlist(item)
+                          }}
+                          className="bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors cursor-pointer"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
