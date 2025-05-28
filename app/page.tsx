@@ -1,2863 +1,2554 @@
-"use client";
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import {
-  DollarSign,
-  TrendingUp,
-  Calendar,
-  Clock,
-  PieChart,
-  BarChart3,
-  Plus,
-  X,
-  Menu,
-  LogOut,
-  User,
-  Target,
-  Briefcase,
-  Globe,
-  ChevronDown,
-  Eye,
-  EyeOff,
-  Download,
-  Filter,
-  Moon,
-  Sun,
-  Bell,
-  Settings,
-  Users,
-  FileText,
-  CreditCard,
-  TrendingDown,
-  ArrowUp,
-  ArrowDown,
-  Search,
-  RefreshCw,
-  Award,
-  Shield,
-  Zap,
-  Check,
-  Star,
-  ArrowRight,
-  PlayCircle,
-  Activity,
-  Smartphone,
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Cell,
-  BarChart,
-  Bar,
-  Pie,
-  AreaChart,
-  Area,
-} from "recharts";
+"use client"
+
+import type React from "react"
+import { useState, useEffect, createContext, useContext, useMemo } from "react"
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts" 
+import { ArrowDown, ArrowUp, Search, TrendingUp, BarChart2, Moon, Sun, Sparkles, Menu, X, Bitcoin } from "lucide-react"
+
+// Theme
+type Theme = "light" | "dark"
+
+const ThemeContext = createContext<{
+  theme: Theme
+  setTheme: (theme: Theme) => void
+  toggleTheme: () => void
+}>({
+  theme: "light",
+  setTheme: () => {},
+  toggleTheme: () => {},
+})
 
 // Types
-interface IncomeEntry {
-  id: string;
-  platform: "Upwork" | "Fiverr" | "Direct Client" | "Freelancer" | "Toptal";
-  amount: number;
-  date: string;
-  projectType: string;
-  hours: number;
-  description: string;
-  clientName: string;
-  status: "Paid" | "Pending" | "Overdue";
+interface CryptoData {
+  symbol: string
+  name: string
+  price: number
+  change: number
+  changePercent: number
+  marketCap: number
+  volume: number
 }
 
-interface User {
-  email: string;
-  name: string;
+interface HistoricalDataPoint {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
 }
 
-interface Goal {
-  id: string;
-  title: string;
-  target: number;
-  current: number;
-  deadline: string;
-  type: "monthly" | "yearly" | "project" | "quarterly";
+interface ComparisonCrypto {
+  symbol: string
+  data: HistoricalDataPoint[]
 }
 
-// Google Fonts component
-const GoogleFontsLink = () => {
+//data
+const mockCryptos: CryptoData[] = [
+  {
+    symbol: "BTC",
+    name: "Bitcoin",
+    price: 68432.21,
+    change: 1542.35,
+    changePercent: 2.31,
+    marketCap: 1350000000000,
+    volume: 28900000000,
+  },
+  {
+    symbol: "ETH",
+    name: "Ethereum",
+    price: 3421.87,
+    change: -78.43,
+    changePercent: -2.24,
+    marketCap: 410000000000,
+    volume: 15600000000,
+  },
+  {
+    symbol: "SOL",
+    name: "Solana",
+    price: 142.56,
+    change: 8.32,
+    changePercent: 6.2,
+    marketCap: 62000000000,
+    volume: 3400000000,
+  },
+  {
+    symbol: "ADA",
+    name: "Cardano",
+    price: 0.45,
+    change: -0.02,
+    changePercent: -4.26,
+    marketCap: 16000000000,
+    volume: 412000000,
+  },
+  {
+    symbol: "DOT",
+    name: "Polkadot",
+    price: 6.78,
+    change: 0.34,
+    changePercent: 5.28,
+    marketCap: 8500000000,
+    volume: 298000000,
+  },
+  {
+    symbol: "MATIC",
+    name: "Polygon",
+    price: 0.89,
+    change: 0.12,
+    changePercent: 15.73,
+    marketCap: 8200000000,
+    volume: 485000000,
+  },
+  {
+    symbol: "AVAX",
+    name: "Avalanche",
+    price: 24.67,
+    change: -2.45,
+    changePercent: -9.03,
+    marketCap: 9800000000,
+    volume: 320000000,
+  },
+]
+
+// Real-time price simulation function
+const simulatePriceChange = (currentPrice: number, volatility: number = 0.02): number => {
+  // Generate a random change between -volatility and +volatility
+  const changePercent = (Math.random() - 0.5) * 2 * volatility
+  const newPrice = currentPrice * (1 + changePercent)
+  return Math.max(newPrice, currentPrice * 0.5) // Prevent price from going too low
+}
+
+// Calculate change and change percent
+const calculateChange = (currentPrice: number, previousPrice: number) => {
+  const change = currentPrice - previousPrice
+  const changePercent = (change / previousPrice) * 100
+  return { change, changePercent }
+}
+
+//historical data
+const generateHistoricalData = (basePrice: number, days: number): HistoricalDataPoint[] => {
+  const data: HistoricalDataPoint[] = []
+  let currentPrice = basePrice
+
+  for (let i = days; i >= 0; i--) {
+    const date = new Date()
+    date.setDate(date.getDate() - i)
+    const dateStr = date.toISOString().split("T")[0]
+
+    //price movement 
+    const change = (Math.random() - 0.5) * (basePrice * 0.05)
+    currentPrice = Math.max(currentPrice + change, basePrice * 0.6)
+
+    const open = currentPrice
+    const high = open * (1 + Math.random() * 0.03)
+    const low = open * (1 - Math.random() * 0.03)
+    const close = (open + high + low) / 3 + (Math.random() - 0.5) * (high - low)
+    const volume = Math.floor(Math.random() * 1000000000) + 50000000
+
+    data.push({
+      date: dateStr,
+      open,
+      high,
+      low,
+      close,
+      volume,
+    })
+  }
+
+  return data
+}
+
+// Format large numbers
+const formatNumber = (num: number): string => {
+  if (num >= 1000000000000) {
+    return `$${(num / 1000000000000).toFixed(2)}T`
+  }
+  if (num >= 1000000000) {
+    return `$${(num / 1000000000).toFixed(2)}B`
+  }
+  if (num >= 1000000) {
+    return `$${(num / 1000000).toFixed(2)}M`
+  }
+  return `$${num.toLocaleString()}`
+}
+
+// Format crypto price
+const formatCryptoPrice = (price: number): string => {
+  if (price >= 1000) {
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  if (price >= 1) {
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+  }
+  return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}`
+}
+
+// Format date for display
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>("light")
+
+  // Apply theme class to document element
   useEffect(() => {
-    // Check if the font link already exists
-    const existingLink = document.querySelector('link[href*="fonts.googleapis.com"]');
-    if (!existingLink) {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
+    if (typeof window !== "undefined") {
+      const root = document.documentElement
+
+      // Remove both classes first
+      root.classList.remove("light", "dark")
+
+      // Add the current theme class
+      root.classList.add(theme)
+
+      // Store theme preference
+      localStorage.setItem("theme", theme)
     }
-    
-    // Apply font to body
-    document.body.style.fontFamily = "'Poppins', sans-serif";
-    
-    return () => {
-      // Don't remove the link on cleanup to avoid re-downloading
-      document.body.style.fontFamily = '';
-    };
-  }, []);
-  
-  return null;
-};
+  }, [theme])
 
-const IncomeDashboard: React.FC = () => {
-  // Add Google Fonts component
-  GoogleFontsLink();
-  
-  // Add global styles for Poppins font
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"))
+  }
+
+  return <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>{children}</ThemeContext.Provider>
+}
+
+function useTheme() {
+  const context = useContext(ThemeContext)
+  if (context === undefined) {
+    throw new Error("useTheme must be used within a ThemeProvider")
+  }
+  return context
+}
+
+export default function CryptoDashboard() {
+  // Add global styles
   useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      * {
-        font-family: 'Poppins', sans-serif !important;
+    const styleElement = document.createElement("style")
+    styleElement.innerHTML = `
+      @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap');
+
+      :root {
+        /* color palette */
+        --color-f1f1f5: 241, 241, 245; 
+        --color-5f8b4c: 95, 139, 76;   
+        --color-ff9a9a: 255, 154, 154; 
+        --color-945034: 148, 80, 52; 
+        --color-030303: 3, 3, 3;  
+
+        /* Light theme */
+        --background-light: rgb(var(--color-f1f1f5));
+        --card-light: rgba(255, 255, 255, 0.8);
+        --card-light-accent: rgba(255, 255, 255, 0.6);
+        --text-primary: rgb(var(--color-030303));
+        --text-secondary: rgb(60, 60, 67);
+        --text-muted: rgb(120, 120, 128);
+        --border-light: rgba(0, 0, 0, 0.1);
+        --input-light: rgba(255, 255, 255, 0.8);
+        --primary-light: rgb(var(--color-5f8b4c));
+        --primary-light-hover: rgba(var(--color-5f8b4c), 0.9);
+        --accent-light: rgb(var(--color-945034));
+        --accent-light-hover: rgba(var(--color-945034), 0.9);
+        --highlight-light: rgb(var(--color-ff9a9a));
+
+        /* Dark theme*/
+        --background-dark: rgb(18, 18, 22);
+        --card-dark: rgba(30, 30, 35, 0.7);
+        --card-dark-accent: rgba(40, 40, 45, 0.7);
+        --text-primary-dark: rgb(255, 255, 255);
+        --text-secondary-dark: rgba(255, 255, 255, 0.85);
+        --text-muted-dark: rgba(255, 255, 255, 0.6);
+        --border-dark: rgba(255, 255, 255, 0.15);
+        --input-dark: rgba(40, 40, 45, 0.7);
+        --primary-dark: rgb(var(--color-5f8b4c));
+        --primary-dark-hover: rgba(var(--color-5f8b4c), 0.9);
+        --accent-dark: rgb(var(--color-ff9a9a));
+        --accent-dark-hover: rgba(var(--color-ff9a9a), 0.9);
+        --highlight-dark: rgb(var(--color-945034));
+
+        /* Font family */
+        --font-sans: "Comfortaa", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
+
+      /* Base styles */
       body {
-        font-family: 'Poppins', sans-serif !important;
+        font-family: var(--font-sans);
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        letter-spacing: -0.01em;
+        font-weight: 400;
       }
-    `;
-    document.head.appendChild(style);
-    
+
+      .light {
+        --background: var(--background-light);
+        --card: var(--card-light);
+        --card-accent: var(--card-light-accent);
+        --text-primary: var(--text-primary);
+        --text-secondary: var(--text-secondary);
+        --text-muted: var(--text-muted);
+        --border: var(--border-light);
+        --input: var(--input-light);
+        --primary: var(--primary-light);
+        --primary-hover: var(--primary-light-hover);
+        --accent: var(--accent-light);
+        --accent-hover: var(--accent-light-hover);
+        --highlight: var(--highlight-light);
+      }
+
+      .dark {
+        --background: var(--background-dark);
+        --card: var(--card-dark);
+        --card-accent: var(--card-dark-accent);
+        --text-primary: var(--text-primary-dark);
+        --text-secondary: var(--text-secondary-dark);
+        --text-muted: var(--text-muted-dark);
+        --border: var(--border-dark);
+        --input: var(--input-dark);
+        --primary: var(--primary-dark);
+        --primary-hover: var(--primary-dark-hover);
+        --accent: var(--accent-dark);
+        --accent-hover: var(--accent-dark-hover);
+        --highlight: var(--highlight-dark);
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(var(--color-f1f1f5), 0.5);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(var(--color-5f8b4c), 0.7);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(var(--color-5f8b4c), 0.9);
+      }
+
+      /* Hide scrollbar for dropdown elements */
+      .dropdown-no-scrollbar {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* Internet Explorer 10+ */
+      }
+
+      .dropdown-no-scrollbar::-webkit-scrollbar {
+        display: none; /* WebKit */
+      }
+
+      /* Custom styles for charts */
+      .recharts-cartesian-grid-horizontal line,
+      .recharts-cartesian-grid-vertical line {
+        stroke-opacity: 0.2;
+      }
+
+      .recharts-tooltip-wrapper {
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+      }
+
+      .recharts-default-tooltip {
+        border-radius: 0.5rem !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+        backdrop-filter: blur(8px) !important;
+        background-color: rgba(255, 255, 255, 0.8) !important;
+      }
+
+      .dark .recharts-default-tooltip {
+        background-color: rgba(30, 30, 35, 0.8) !important;
+      }
+
+      /*button styling */
+      .accent-button {
+        color: white !important;
+        font-weight: 500;
+      }
+
+      .dark .accent-button {
+        color: white !important;
+        font-weight: 500;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 640px) {
+        .recharts-legend-item {
+          font-size: 10px !important;
+        }
+
+        .recharts-legend-item-text {
+          margin-right: 5px !important;
+        }
+
+        .recharts-tooltip {
+          font-size: 10px !important;
+        }
+      }
+
+      /* Animation for loading spinner */
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Animation for real-time pulse */
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      /* Smooth transitions for real-time data */
+      .smooth-transition {
+        transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .price-flash-up {
+        background-color: rgba(16, 185, 129, 0.2) !important;
+        transition: background-color 0.3s ease;
+      }
+
+      .price-flash-down {
+        background-color: rgba(239, 68, 68, 0.2) !important;
+        transition: background-color 0.3s ease;
+      }
+
+      /* Glassmorphism effects */
+      .glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      .dark .glass {
+        background: rgba(30, 30, 35, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Flat design elements */
+      .flat-button {
+        border: none;
+        background: var(--primary);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .flat-button:hover {
+        background: var(--primary-hover);
+      }
+    `
+    document.head.appendChild(styleElement)
+
     return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-  
-  // Page state
-  const [currentPage, setCurrentPage] = useState<"landing" | "dashboard">(
-    "landing"
-  );
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+      document.head.removeChild(styleElement)
+    }
+  }, [])
 
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  return (
+    <ThemeProvider>
+      <CryptoDashboardContent />
+    </ThemeProvider>
+  )
+}
 
-  // Theme and UI state
-  const [darkMode, setDarkMode] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "analytics" | "goals" | "clients"
-  >("overview");
+function CryptoDashboardContent() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [cryptoData, setCryptoData] = useState<CryptoData[]>(mockCryptos)
+  const [selectedCrypto, setSelectedCrypto] = useState<CryptoData>(mockCryptos[0])
+  const [timeRange, setTimeRange] = useState("1M")
+  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [comparisonCryptos, setComparisonCryptos] = useState<ComparisonCrypto[]>([])
+  const [showComparison, setShowComparison] = useState(false)
+  const [activeTab, setActiveTab] = useState<"line" | "volume">("line")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024)
+  const [isRealTimeActive, setIsRealTimeActive] = useState(true)
+  const [priceFlash, setPriceFlash] = useState<{[key: string]: 'up' | 'down' | null}>({})
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
 
-  // Dashboard state
-  const [incomeEntries, setIncomeEntries] = useState<IncomeEntry[]>([
-    {
-      id: "1",
-      platform: "Upwork",
-      amount: 2500,
-      date: "2024-01-15",
-      projectType: "UI/UX",
-      hours: 40,
-      description: "E-commerce website",
-      clientName: "TechCorp Inc.",
-      status: "Paid",
-    },
-    {
-      id: "2",
-      platform: "Fiverr",
-      amount: 800,
-      date: "2024-01-20",
-      projectType: "Design",
-      hours: 16,
-      description: "Logo design package",
-      clientName: "StartupXYZ",
-      status: "Paid",
-    },
-    {
-      id: "3",
-      platform: "Direct Client",
-      amount: 3200,
-      date: "2024-02-01",
-      projectType: "Tooling",
-      hours: 32,
-      description: "Technical consultation",
-      clientName: "Enterprise Solutions",
-      status: "Paid",
-    },
-    {
-      id: "4",
-      platform: "Upwork",
-      amount: 1800,
-      date: "2024-02-10",
-      projectType: "UiUx",
-      hours: 24,
-      description: "React dashboard",
-      clientName: "DigitalFlow",
-      status: "Paid",
-    },
-    {
-      id: "5",
-      platform: "Fiverr",
-      amount: 600,
-      date: "2024-02-15",
-      projectType: "Writing",
-      hours: 12,
-      description: "Content creation",
-      clientName: "ContentHub",
-      status: "Pending",
-    },
-    {
-      id: "6",
-      platform: "Direct Client",
-      amount: 4500,
-      date: "2024-03-01",
-      projectType: "UiUx",
-      hours: 60,
-      description: "Full-stack application",
-      clientName: "InnovateLab",
-      status: "Paid",
-    },
-    {
-      id: "7",
-      platform: "Toptal",
-      amount: 5200,
-      date: "2024-03-05",
-      projectType: "Consult",
-      hours: 52,
-      description: "System architecture",
-      clientName: "GlobalTech",
-      status: "Paid",
-    },
-    {
-      id: "8",
-      platform: "Freelancer",
-      amount: 950,
-      date: "2024-03-10",
-      projectType: "Mobile",
-      hours: 19,
-      description: "iOS app development",
-      clientName: "MobileFirst",
-      status: "Pending",
-    },
-  ]);
+  const { theme, toggleTheme } = useTheme()
 
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: "1",
-      title: "Monthly Revenue Goal",
-      target: 8000,
-      current: 6500,
-      deadline: "2024-03-31",
-      type: "monthly",
-    },
-    {
-      id: "2",
-      title: "Annual Income Target",
-      target: 120000,
-      current: 22650,
-      deadline: "2024-12-31",
-      type: "yearly",
-    },
-    {
-      id: "3",
-      title: "New Client Acquisition",
-      target: 10,
-      current: 6,
-      deadline: "2024-06-30",
-      type: "project",
-    },
-    {
-      id: "4",
-      title: "Social Media Growth",
-      target: 5000,
-      current: 3200,
-      deadline: "2024-08-31",
-      type: "monthly",
-    },
-    {
-      id: "5",
-      title: "Product Launch Completion",
-      target: 1,
-      current: 0,
-      deadline: "2024-09-15",
-      type: "project",
-    },
-    {
-      id: "6",
-      title: "Customer Retention Rate",
-      target: 90,
-      current: 75,
-      deadline: "2024-07-31",
-      type: "monthly",
-    },
-    {
-      id: "7",
-      title: "Quarterly Training Hours",
-      target: 40,
-      current: 28,
-      deadline: "2024-06-30",
-      type: "quarterly",
-    },
-    {
-      id: "8",
-      title: "Website Traffic Increase",
-      target: 100000,
-      current: 76500,
-      deadline: "2024-10-31",
-      type: "monthly",
-    },
-  ]);
-
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [dateFilter, setDateFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const [newEntry, setNewEntry] = useState({
-    platform: "Upwork" as const,
-    amount: "",
-    date: "",
-    projectType: "",
-    hours: "",
-    description: "",
-    clientName: "",
-    status: "Paid" as const,
-  });
-
-  const [newGoal, setNewGoal] = useState({
-    title: "",
-    target: "",
-    deadline: "",
-    type: "monthly" as const,
-  });
-
-  // Add body scroll lock effect
+  // Real-time price updates
   useEffect(() => {
-    if (showLoginModal || showAddModal || showGoalModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showLoginModal, showAddModal, showGoalModal]);
+    if (!isRealTimeActive) return
 
-  // Smooth scroll to section
-  const scrollToSection = useCallback((sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-      setShowMobileMenu(false);
-    }
-  }, []);
+    const interval = setInterval(() => {
+      setCryptoData(prevData => {
+        const newData = prevData.map(crypto => {
+          const previousPrice = crypto.price
+          const newPrice = simulatePriceChange(crypto.price, 0.008) // Reduced volatility for smoother changes
+          const { change, changePercent } = calculateChange(newPrice, previousPrice)
+          
+          // Track price direction for flash effect (only for significant changes)
+          if (Math.abs(newPrice - previousPrice) > previousPrice * 0.002) { // Flash for changes > 0.2%
+            if (newPrice > previousPrice) {
+              setPriceFlash(prev => ({ ...prev, [crypto.symbol]: 'up' }))
+            } else if (newPrice < previousPrice) {
+              setPriceFlash(prev => ({ ...prev, [crypto.symbol]: 'down' }))
+            }
+          }
+          
+          // Update market cap and volume slightly
+          const marketCapChange = (Math.random() - 0.5) * 0.005 // Reduced to 0.5% max change
+          const volumeChange = (Math.random() - 0.5) * 0.02 // Reduced to 2% max change
+          
+          return {
+            ...crypto,
+            price: newPrice,
+            change,
+            changePercent,
+            marketCap: crypto.marketCap * (1 + marketCapChange),
+            volume: crypto.volume * (1 + volumeChange),
+          }
+        })
+        
+        // Update selected crypto if it matches one of the updated cryptos
+        const updatedSelectedCrypto = newData.find(crypto => crypto.symbol === selectedCrypto.symbol)
+        if (updatedSelectedCrypto) {
+          setSelectedCrypto(updatedSelectedCrypto)
+        }
+        
+        return newData
+      })
+      
+      // Clear flash effect after a short delay
+      setTimeout(() => {
+        setPriceFlash({})
+      }, 1200) // Longer flash duration for smoother effect
+    }, 5000) // Update every 5 seconds instead of 3 for smoother experience
 
-  // Email validation function
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+    return () => clearInterval(interval)
+  }, [isRealTimeActive, selectedCrypto.symbol])
 
-  // Password validation function
-  const validatePassword = (password: string) => {
-    return password.length >= 6;
-  };
-
-  // Handle email input change with validation
-  const handleEmailChange = (email: string) => {
-    setLoginForm((prev) => ({ ...prev, email }));
-    
-    if (email.trim() === "") {
-      setEmailError("");
-    } else if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email address");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  // Handle password input change with validation
-  const handlePasswordChange = (password: string) => {
-    setLoginForm((prev) => ({ ...prev, password }));
-    
-    if (password === "") {
-      setPasswordError("");
-    } else if (!validatePassword(password)) {
-      setPasswordError("Password must be at least 6 characters long");
-    } else {
-      setPasswordError("");
-    }
-  };
-
-  // Login handler - Updated to accept any credentials
-  const handleLogin = useCallback(() => {
-    if (!loginForm.email.trim()) {
-      setEmailError("Email is required");
-      return;
-    }
-    
-    if (!validateEmail(loginForm.email)) {
-      setEmailError("Please enter a valid email address");
-      return;
-    }
-    
-    if (!loginForm.password.trim()) {
-      setPasswordError("Password is required");
-      return;
+  // Update window width on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
     }
 
-    if (!validatePassword(loginForm.password)) {
-      setPasswordError("Password must be at least 6 characters long");
-      return;
-    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
-    setIsAuthenticated(true);
-    setUser({ 
-      email: loginForm.email, 
-      name: loginForm.email.split('@')[0].charAt(0).toUpperCase() + loginForm.email.split('@')[0].slice(1)
-    });
-    setCurrentPage("dashboard");
-    setShowLoginModal(false);
-    setLoginForm({ email: "", password: "" });
-    setEmailError("");
-    setPasswordError("");
-  }, [loginForm, validateEmail, validatePassword]);
+  // Filter cryptos based on search term
+  const filteredCryptos = cryptoData.filter(
+    (crypto) =>
+      crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      crypto.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
-  // Logout handler
-  const handleLogout = useCallback(() => {
-    setIsAuthenticated(false);
-    setUser(null);
-    setCurrentPage("landing");
-    setMobileMenuOpen(false);
-  }, []);
+  //data when selected crypto or time range changes
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
 
-  // Export to Excel
-  // const handleExportToExcel = useCallback(() => {
-  //     try {
-  //         const exportData = filteredEntries.map(entry => ({
-  //             Date: new Date(entry.date).toLocaleDateString(),
-  //             Platform: entry.platform,
-  //             Client: entry.clientName,
-  //             'Project Type': entry.projectType,
-  //             Description: entry.description,
-  //             Amount: entry.amount,
-  //             Hours: entry.hours,
-  //             'Hourly Rate': (entry.amount / entry.hours).toFixed(2),
-  //             Status: entry.status
-  //         }));
-
-  //         const worksheet = XLSX.utils.json_to_sheet(exportData);
-  //         const workbook = XLSX.utils.book_new();
-
-  //         // Add some styling and formatting
-  //         const colWidths = [
-  //             { wch: 12 }, // Date
-  //             { wch: 15 }, // Platform
-  //             { wch: 20 }, // Client
-  //             { wch: 18 }, // Project Type
-  //             { wch: 30 }, // Description
-  //             { wch: 12 }, // Amount
-  //             { wch: 8 },  // Hours
-  //             { wch: 12 }, // Hourly Rate
-  //             { wch: 10 }  // Status
-  //         ];
-
-  //         worksheet['!cols'] = colWidths;
-
-  //         XLSX.utils.book_append_sheet(workbook, worksheet, 'Income Data');
-
-  //         const fileName = `freelance-income-${new Date().toISOString().split('T')[0]}.xlsx`;
-  //         XLSX.writeFile(workbook, fileName);
-  //     } catch (error) {
-  //         console.error('Export failed:', error);
-  //         alert('Export failed. Please try again.');
-  //     }
-  // }, [filteredEntries]);
-
-  // Add new income entry
-  const handleAddEntry = useCallback(() => {
-    if (
-      newEntry.amount &&
-      newEntry.date &&
-      newEntry.projectType &&
-      newEntry.hours &&
-      newEntry.description &&
-      newEntry.clientName
-    ) {
-      const entry: IncomeEntry = {
-        id: Date.now().toString(),
-        platform: newEntry.platform,
-        amount: parseFloat(newEntry.amount),
-        date: newEntry.date,
-        projectType: newEntry.projectType,
-        hours: parseFloat(newEntry.hours),
-        description: newEntry.description,
-        clientName: newEntry.clientName,
-        status: newEntry.status,
-      };
-      setIncomeEntries((prev) => [...prev, entry]);
-      setNewEntry({
-        platform: "Upwork",
-        amount: "",
-        date: "",
-        projectType: "",
-        hours: "",
-        description: "",
-        clientName: "",
-        status: "Paid",
-      });
-      setShowAddModal(false);
-    }
-  }, [newEntry]);
-
-  // Add new goal
-  const handleAddGoal = useCallback(() => {
-    if (newGoal.title && newGoal.target && newGoal.deadline) {
-      const goal: Goal = {
-        id: Date.now().toString(),
-        title: newGoal.title,
-        target: parseFloat(newGoal.target),
-        current: 0,
-        deadline: newGoal.deadline,
-        type: newGoal.type,
-      };
-      setGoals((prev) => [...prev, goal]);
-      setNewGoal({
-        title: "",
-        target: "",
-        deadline: "",
-        type: "monthly",
-      });
-      setShowGoalModal(false);
-    }
-  }, [newGoal]);
-
-  // Filter entries based on date and search
-  const filteredEntries = useMemo(() => {
-    let filtered = [...incomeEntries];
-
-    // Apply date filter
-    if (dateFilter !== "all") {
-      const now = new Date();
-      let filterDate = new Date();
-
-      switch (dateFilter) {
-        case "week":
-          filterDate.setDate(now.getDate() - 7);
-          break;
-        case "month":
-          filterDate.setMonth(now.getMonth() - 1);
-          break;
-        case "quarter":
-          filterDate.setMonth(now.getMonth() - 3);
-          break;
-        case "year":
-          filterDate.setFullYear(now.getFullYear() - 1);
-          break;
-        default:
-          filterDate = new Date(0); // Beginning of time for 'all'
+      // Determine days based on time range
+      let days = 30
+      switch (timeRange) {
+        case "1W":
+          days = 7
+          break
+        case "1M":
+          days = 30
+          break
+        case "3M":
+          days = 90
+          break
+        case "6M":
+          days = 180
+          break
+        case "1Y":
+          days = 365
+          break
+        case "5Y":
+          days = 1825
+          break
       }
 
-      filtered = filtered.filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= filterDate && entryDate <= now;
-      });
+      // Simulate API call with timeout
+      setTimeout(() => {
+        setHistoricalData(generateHistoricalData(selectedCrypto.price, days))
+        setIsLoading(false)
+      }, 500)
     }
 
-    // Apply search filter
-    if (searchTerm && searchTerm.trim().length > 0) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        (entry) =>
-          entry.description.toLowerCase().includes(searchLower) ||
-          entry.clientName.toLowerCase().includes(searchLower) ||
-          entry.projectType.toLowerCase().includes(searchLower) ||
-          entry.platform.toLowerCase().includes(searchLower)
-      );
-    }
+    fetchData()
+  }, [selectedCrypto.symbol, timeRange]) // Only update when crypto symbol or time range changes, not price
 
-    return filtered.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [incomeEntries, dateFilter, searchTerm]);
+  // Add crypto to comparison
+  const addCryptoToComparison = (crypto: CryptoData) => {
+    if (comparisonCryptos.some((s) => s.symbol === crypto.symbol)) return
 
-  // Memoized calculations to prevent re-renders
-  const dashboardStats = useMemo(() => {
-    const totalEarnings = filteredEntries.reduce(
-      (sum, entry) => sum + entry.amount,
-      0
-    );
-    const totalHours = filteredEntries.reduce(
-      (sum, entry) => sum + entry.hours,
-      0
-    );
-    const averageHourlyRate = totalHours > 0 ? totalEarnings / totalHours : 0;
+    const days =
+      timeRange === "1W"
+        ? 7
+        : timeRange === "1M"
+          ? 30
+          : timeRange === "3M"
+            ? 90
+            : timeRange === "6M"
+              ? 180
+              : timeRange === "1Y"
+                ? 365
+                : 1825
 
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    setComparisonCryptos([
+      ...comparisonCryptos,
+      {
+        symbol: crypto.symbol,
+        data: generateHistoricalData(crypto.price, days),
+      },
+    ])
 
-    const thisMonthEarnings = incomeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return (
-          entryDate.getMonth() === currentMonth &&
-          entryDate.getFullYear() === currentYear
-        );
-      })
-      .reduce((sum, entry) => sum + entry.amount, 0);
+    setShowComparison(true)
+  }
 
-    const lastMonthEarnings = incomeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return (
-          entryDate.getMonth() === lastMonth &&
-          entryDate.getFullYear() === lastMonthYear
-        );
-      })
-      .reduce((sum, entry) => sum + entry.amount, 0);
+  // Remove crypto from comparison
+  const removeCryptoFromComparison = (symbol: string) => {
+    setComparisonCryptos(comparisonCryptos.filter((s) => s.symbol !== symbol))
+    if (comparisonCryptos.length <= 1) setShowComparison(false)
+  }
 
-    const monthlyGrowth =
-      lastMonthEarnings > 0
-        ? ((thisMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100
-        : 0;
+  // Prepare comparison crypto options
+  const comparisonCryptoOptions = useMemo(() => {
+    return cryptoData
+      .filter((s) => s.symbol !== selectedCrypto.symbol && !comparisonCryptos.some((cs) => cs.symbol === s.symbol))
+      .map((crypto) => ({
+        value: crypto.symbol,
+        label: `${crypto.symbol} - ${crypto.name}`,
+      }))
+  }, [selectedCrypto, comparisonCryptos, cryptoData])
 
-    const pendingAmount = incomeEntries
-      .filter((entry) => entry.status === "Pending")
-      .reduce((sum, entry) => sum + entry.amount, 0);
+  // Prepare data for comparison chart
+  const prepareComparisonData = () => {
+    const result: any[] = []
 
-    return {
-      totalEarnings,
-      averageHourlyRate,
-      thisMonthEarnings,
-      lastMonthEarnings,
-      monthlyGrowth,
-      totalHours,
-      pendingAmount,
-      totalClients: new Set(incomeEntries.map((e) => e.clientName)).size,
-    };
-  }, [filteredEntries, incomeEntries]);
+    // Find the earliest start date among all cryptos
+    const allDates = new Set<string>()
 
-  // Monthly data for charts
-  const monthlyData = useMemo(() => {
-    const monthlyStats: { [key: string]: { earnings: number; hours: number } } =
-      {};
+    // Add the selected crypto's dates
+    historicalData.forEach((point) => allDates.add(point.date))
 
-    incomeEntries.forEach((entry) => {
-      const date = new Date(entry.date);
-      const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}`;
-      if (!monthlyStats[monthKey]) {
-        monthlyStats[monthKey] = { earnings: 0, hours: 0 };
+    // Add comparison cryptos' dates
+    comparisonCryptos.forEach((crypto) => {
+      crypto.data.forEach((point) => allDates.add(point.date))
+    })
+
+    // Sort dates
+    const sortedDates = Array.from(allDates).sort()
+
+    // Create data points for each date
+    sortedDates.forEach((date) => {
+      const dataPoint: any = { date: formatDate(date) }
+
+      // Add selected crypto data
+      const mainCryptoPoint = historicalData.find((p) => p.date === date)
+      if (mainCryptoPoint) {
+        dataPoint[selectedCrypto.symbol] = mainCryptoPoint.close
       }
-      monthlyStats[monthKey].earnings += entry.amount;
-      monthlyStats[monthKey].hours += entry.hours;
-    });
 
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
+      // Add comparison cryptos data
+      comparisonCryptos.forEach((crypto) => {
+        const cryptoPoint = crypto.data.find((p) => p.date === date)
+        if (cryptoPoint) {
+          dataPoint[crypto.symbol] = cryptoPoint.close
+        }
+      })
 
-    return Object.entries(monthlyStats)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => {
-        const [year, month] = key.split("-");
-        return {
-          month: months[parseInt(month) - 1],
-          earnings: value.earnings,
-          hours: value.hours,
-          rate: value.hours > 0 ? value.earnings / value.hours : 0,
-        };
-      });
-  }, [incomeEntries]);
+      result.push(dataPoint)
+    })
 
-  // Platform distribution for pie chart
-  const platformData = useMemo(() => {
-    const platformStats: { [key: string]: number } = {};
+    return result
+  }
 
-    filteredEntries.forEach((entry) => {
-      platformStats[entry.platform] =
-        (platformStats[entry.platform] || 0) + entry.amount;
-    });
+  // Prepare data for line chart
+  const prepareLineData = () => {
+    return historicalData.map((point) => ({
+      date: formatDate(point.date),
+      price: point.close,
+    }))
+  }
 
-    const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
+  // Prepare data for volume chart
+  const prepareVolumeData = () => {
+    return historicalData.map((point) => ({
+      date: formatDate(point.date),
+      volume: point.volume,
+    }))
+  }
 
-    return Object.entries(platformStats).map(([platform, amount], index) => ({
-      name: platform,
-      value: amount,
-      color: colors[index % colors.length],
-    }));
-  }, [filteredEntries]);
+  // Colors for charts based on theme
+  const chartColors = useMemo(
+    () => ({
+      line: "#5F8B4C",
+      candleUp: "#10b981",
+      candleDown: "#ef4444",
+      volume: "#945034",
+      grid: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+      text: theme === "dark" ? "#FFFFFF" : "#030303",
+    }),
+    [theme],
+  )
 
-  // Project type distribution
-  const projectTypeData = useMemo(() => {
-    const typeStats: { [key: string]: number } = {};
+  //colors for each cryptocurrency 
+  const cryptoColors = {
+    BTC: "#5F8B4C", 
+    ETH: "#945034", 
+    SOL: "#FF9A9A", 
+    ADA: "#6A7FDB", 
+    DOT: "#F7B32B", 
+    MATIC: "#8247E5",
+    AVAX: "#E84142",
+  }
 
-    filteredEntries.forEach((entry) => {
-      typeStats[entry.projectType] =
-        (typeStats[entry.projectType] || 0) + entry.amount;
-    });
+  return (
+    <div
+      style={{
+        backgroundColor: theme === "dark" ? "var(--background-dark)" : "var(--background-light)",
+        color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundImage:
+          theme === "dark"
+            ? "radial-gradient(circle at 10% 20%, rgba(95, 139, 76, 0.1) 0%, transparent 20%), radial-gradient(circle at 80% 70%, rgba(148, 80, 52, 0.05) 0%, transparent 20%)"
+            : "radial-gradient(circle at 10% 20%, rgba(95, 139, 76, 0.05) 0%, transparent 20%), radial-gradient(circle at 80% 70%, rgba(255, 154, 154, 0.03) 0%, transparent 20%)",
+      }}
+    >
+      {/* Header */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.7)" : "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderBottom: `1px solid ${theme === "dark" ? "var(--border-dark)" : "var(--border-light)"}`,
+          padding: "1rem",
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            maxWidth: "1200px",
+            margin: "0 auto",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "700",
+              color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+              display: "flex",
+              alignItems: "center",
+              margin: 0,
+            }}
+          >
+            <Bitcoin
+              style={{
+                marginRight: "0.5rem",
+                height: "1.5rem",
+                width: "1.5rem",
+                color: "#5F8B4C",
+              }}
+            />
+            <span style={{ display: windowWidth < 640 ? "none" : "inline" }}>Crypto</span>
+            <span style={{ display: windowWidth < 640 ? "inline" : "none" }}>C</span>
+            <span
+              style={{
+                marginLeft: "0.25rem",
+                color: "#FF9A9A",
+                fontWeight: "700",
+              }}
+            >
+              FCX
+            </span>
+          </h1>
 
-    return Object.entries(typeStats).map(([type, amount]) => ({
-      type,
-      amount,
-    }));
-  }, [filteredEntries]);
+          {/* Desktop search */}
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: "28rem",
+              margin: "0 1rem",
+              display: windowWidth < 768 ? "none" : "block",
+            }}
+          >
+            <Search
+              style={{
+                position: "absolute",
+                left: "0.875rem",
+                top: "0.75rem",
+                height: "1.25rem",
+                width: "1.25rem",
+                color: theme === "dark" ? "var(--text-muted-dark)" : "var(--text-muted)",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search cryptocurrencies..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)} // Delay to allow click on dropdown items
+              style={{
+                width: "100%",
+                padding: "0.75rem 0.75rem 0.75rem 2.75rem",
+                backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: `1px solid ${theme === "dark" ? "var(--border-dark)" : "var(--border-light)"}`,
+                borderRadius: "0.5rem",
+                color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                fontSize: "0.875rem",
+                outline: "none",
+                fontFamily: "Comfortaa, sans-serif",
+              }}
+            />
+            {(searchTerm || isSearchFocused) && (
+              <div
+                className="dropdown-no-scrollbar"
+                style={{
+                  marginTop: "0.25rem",
+                  width: "100%",
+                  backgroundColor: theme === "dark" ? "rgb(30, 30, 35)" : "rgb(255, 255, 255)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  borderRadius: "0.5rem",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+                  border: `1px solid ${theme === "dark" ? "var(--border-dark)" : "var(--border-light)"}`,
+                  maxHeight: "15rem",
+                  overflowY: "auto",
+                }}
+              >
+                {(searchTerm ? filteredCryptos : cryptoData).length > 0 ? (
+                  (searchTerm ? filteredCryptos : cryptoData).map((crypto) => (
+                    <div
+                      key={crypto.symbol}
+                      onClick={() => {
+                        setSelectedCrypto(crypto)
+                        setSearchTerm("")
+                        setIsSearchFocused(false)
+                      }}
+                      style={{
+                        padding: "0.75rem",
+                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        backgroundColor: "transparent",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor =
+                          theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)"
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent"
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 600 }}>{crypto.symbol}</span>
+                        <span
+                          style={{
+                            color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                            marginLeft: "0.5rem",
+                          }}
+                        >
+                          {crypto.name}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color: crypto.change >= 0 ? "#10b981" : "#ef4444",
+                          }}
+                        >
+                          {formatCryptoPrice(crypto.price)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    style={{
+                      padding: "0.75rem",
+                      color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                    }}
+                  >
+                    No cryptocurrencies found
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-  // Top clients data
-  const topClientsData = useMemo(() => {
-    const clientStats: { [key: string]: number } = {};
-
-    incomeEntries.forEach((entry) => {
-      clientStats[entry.clientName] =
-        (clientStats[entry.clientName] || 0) + entry.amount;
-    });
-
-    return Object.entries(clientStats)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
-      .map(([client, amount]) => ({ client, amount }));
-  }, [incomeEntries]);
-
-  const themeClasses = darkMode ? "dark bg-gray-900" : "bg-gray-50";
-  const cardClasses = darkMode
-    ? "bg-gray-800 text-white"
-    : "bg-white text-gray-900";
-  const textClasses = darkMode ? "text-gray-300" : "text-gray-600";
-
-  // Landing Page
-  if (currentPage === "landing") {
-    return (
-      <div className="min-h-screen bg-white">
-        {/* Navigation */}
-        <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-200 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900">
-                  FreelanceTracker Pro
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {/* Real-time indicator */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "9999px",
+                  backgroundColor: theme === "dark" ? "rgba(16, 185, 129, 0.1)" : "rgba(16, 185, 129, 0.1)",
+                  border: `1px solid #10b981`,
+                  opacity: isRealTimeActive ? 1 : 0.4,
+                  transition: "opacity 0.3s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: "0.5rem",
+                    height: "0.5rem",
+                    borderRadius: "50%",
+                    backgroundColor: "#10b981",
+                    animation: isRealTimeActive ? "pulse 2s infinite" : "none",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: "500",
+                    color: "#10b981",
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                >
+                  LIVE
                 </span>
               </div>
-
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-8">
-                <button
-                  onClick={() => scrollToSection("home")}
-                  className="text-gray-700 hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Home
-                </button>
-                <button
-                  onClick={() => scrollToSection("features")}
-                  className="text-gray-700 hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Features
-                </button>
-                <button
-                  onClick={() => scrollToSection("pricing")}
-                  className="text-gray-700 hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Pricing
-                </button>
-                <button
-                  onClick={() => scrollToSection("about")}
-                  className="text-gray-700 hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  About
-                </button>
-                <button
-                  onClick={() => scrollToSection("contact")}
-                  className="text-gray-700 hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Contact
-                </button>
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
-                >
-                  Sign In
-                </button>
-              </div>
-
-              {/* Mobile Menu Button */}
               <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="md:hidden text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+                onClick={() => setIsRealTimeActive(!isRealTimeActive)}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderRadius: "9999px",
+                  padding: "0.5rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                }}
+                title={isRealTimeActive ? "Pause real-time updates" : "Resume real-time updates"}
               >
-                <Menu className="w-6 h-6" />
+                {isRealTimeActive ? (
+                  <svg style={{ height: "1.25rem", width: "1.25rem" }} fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg style={{ height: "1.25rem", width: "1.25rem" }} fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                  </svg>
+                )}
               </button>
             </div>
+            <button
+              onClick={toggleTheme}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                borderRadius: "9999px",
+                padding: "0.5rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+              }}
+            >
+              {theme === "dark" ? (
+                <Sun style={{ height: "1.5rem", width: "1.5rem", color: "#FF9A9A" }} />
+              ) : (
+                <Moon style={{ height: "1.5rem", width: "1.5rem", color: "#945034" }} />
+              )}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                borderRadius: "9999px",
+                padding: "0.5rem",
+                cursor: "pointer",
+                display: windowWidth < 768 ? "flex" : "none",
+                alignItems: "center",
+                justifyContent: "center",
+                color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+              }}
+            >
+              <Menu style={{ height: "1.5rem", width: "1.5rem" }} />
+            </button>
+          </div>
+        </div>
+      </header>
 
-            {/* Mobile Menu */}
-            {showMobileMenu && (
-              <div className="md:hidden border-t border-gray-200 py-4">
-                <div className="flex flex-col space-y-4">
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            backgroundColor: theme === "dark" ? "rgba(18, 18, 22, 0.95)" : "rgba(241, 241, 245, 0.95)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            transition: "transform 0.3s ease-in-out",
+            transform: mobileMenuOpen ? "translateX(0)" : "translateX(100%)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "1rem" }}>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                padding: "0.5rem",
+                borderRadius: "9999px",
+                backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              <X style={{ height: "1.5rem", width: "1.5rem" }} />
+            </button>
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.5rem", gap: "1.5rem" }}
+          >
+            <div style={{ width: "100%", maxWidth: "28rem", marginBottom: "1.5rem" }}>
+              <div style={{ position: "relative" }}>
+                <Search
+                  style={{
+                    position: "absolute",
+                    left: "0.875rem",
+                    top: "0.75rem",
+                    height: "1.25rem",
+                    width: "1.25rem",
+                    color: theme === "dark" ? "var(--text-muted-dark)" : "var(--text-muted)",
+                    zIndex: 1,
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search cryptocurrencies..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)} // Delay to allow click on dropdown items
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.75rem 0.75rem 2.75rem",
+                    backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                    backdropFilter: "blur(10px)",
+                    WebkitBackdropFilter: "blur(10px)",
+                    border: `1px solid ${theme === "dark" ? "var(--border-dark)" : "var(--border-light)"}`,
+                    borderRadius: "0.5rem",
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    fontSize: "0.875rem",
+                    outline: "none",
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                />
+              </div>
+              {(searchTerm || isSearchFocused) && (
+                <div
+                  className="dropdown-no-scrollbar"
+                  style={{
+                    marginTop: "0.25rem",
+                    width: "100%",
+                    backgroundColor: theme === "dark" ? "rgb(30, 30, 35)" : "rgb(255, 255, 255)",
+                    backdropFilter: "blur(10px)",
+                    WebkitBackdropFilter: "blur(10px)",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+                    border: `1px solid ${theme === "dark" ? "var(--border-dark)" : "var(--border-light)"}`,
+                    maxHeight: "15rem",
+                    overflowY: "auto",
+                  }}
+                >
+                  {(searchTerm ? filteredCryptos : cryptoData).length > 0 ? (
+                    (searchTerm ? filteredCryptos : cryptoData).map((crypto) => (
+                      <div
+                        key={crypto.symbol}
+                        onClick={() => {
+                          setSelectedCrypto(crypto)
+                          setSearchTerm("")
+                          setMobileMenuOpen(false)
+                          setIsSearchFocused(false)
+                        }}
+                        style={{
+                          padding: "0.75rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          backgroundColor: "transparent",
+                          transition: "background-color 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)"
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontWeight: 600 }}>{crypto.symbol}</span>
+                          <span
+                            style={{
+                              color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                              marginLeft: "0.5rem",
+                            }}
+                          >
+                            {crypto.name}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: crypto.change >= 0 ? "#10b981" : "#ef4444",
+                            }}
+                          >
+                            {formatCryptoPrice(crypto.price)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        padding: "0.75rem",
+                        color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                      }}
+                    >
+                      No cryptocurrencies found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div style={{ width: "100%", marginBottom: "1rem" }}>
+              <h2
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: "600",
+                  color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                  marginBottom: "1rem",
+                }}
+              >
+                Time Range
+              </h2>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "0.5rem",
+                  width: "100%",
+                }}
+              >
+                {["1W", "1M", "3M", "6M", "1Y", "5Y"].map((range) => (
                   <button
-                    onClick={() => scrollToSection("home")}
-                    className="text-left text-gray-700 hover:text-blue-600 transition-colors px-4 cursor-pointer"
+                    key={range}
+                    onClick={() => {
+                      setTimeRange(range)
+                      setMobileMenuOpen(false)
+                    }}
+                    style={{
+                      padding: "0.5rem",
+                      backgroundColor: timeRange === range ? "#5F8B4C" : "transparent",
+                      color:
+                        timeRange === range
+                          ? "white"
+                          : theme === "dark"
+                            ? "var(--text-primary-dark)"
+                            : "var(--text-primary)",
+                      border: `1px solid ${
+                        timeRange === range
+                          ? "transparent"
+                          : theme === "dark"
+                            ? "var(--border-dark)"
+                            : "var(--border-light)"
+                      }`,
+                      borderRadius: "0.75rem",
+                      fontSize: "0.875rem",
+                      fontWeight: timeRange === range ? 600 : 400,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
                   >
-                    Home
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {comparisonCryptos.length > 0 && (
+              <div style={{ width: "100%", marginBottom: "1rem" }}>
+                <h2
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: "600",
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  View Mode
+                </h2>
+                <div style={{ display: "flex", gap: "0.5rem", width: "100%" }}>
+                  <button
+                    onClick={() => {
+                      setShowComparison(false)
+                      setMobileMenuOpen(false)
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem",
+                      backgroundColor: !showComparison ? "#5F8B4C" : "transparent",
+                      color: !showComparison
+                        ? "white"
+                        : theme === "dark"
+                          ? "var(--text-primary-dark)"
+                          : "var(--text-primary)",
+                      border: `1px solid ${
+                        !showComparison
+                          ? "transparent"
+                          : theme === "dark"
+                            ? "var(--border-dark)"
+                            : "var(--border-light)"
+                      }`,
+                      borderRadius: "0.75rem",
+                      fontSize: "0.875rem",
+                      fontWeight: !showComparison ? 600 : 400,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    Single View
                   </button>
                   <button
-                    onClick={() => scrollToSection("features")}
-                    className="text-left text-gray-700 hover:text-blue-600 transition-colors px-4 cursor-pointer"
+                    onClick={() => {
+                      setShowComparison(true)
+                      setMobileMenuOpen(false)
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem",
+                      backgroundColor: showComparison ? "#5F8B4C" : "transparent",
+                      color: showComparison
+                        ? "white"
+                        : theme === "dark"
+                          ? "var(--text-primary-dark)"
+                          : "var(--text-primary)",
+                      border: `1px solid ${
+                        showComparison ? "transparent" : theme === "dark" ? "var(--border-dark)" : "var(--border-light)"
+                      }`,
+                      borderRadius: "0.75rem",
+                      fontSize: "0.875rem",
+                      fontWeight: showComparison ? 600 : 400,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
                   >
-                    Features
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("pricing")}
-                    className="text-left text-gray-700 hover:text-blue-600 transition-colors px-4 cursor-pointer"
-                  >
-                    Pricing
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("about")}
-                    className="text-left text-gray-700 hover:text-blue-600 transition-colors px-4 cursor-pointer"
-                  >
-                    About
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("contact")}
-                    className="text-left text-gray-700 hover:text-blue-600 transition-colors px-4 cursor-pointer"
-                  >
-                    Contact
-                  </button>
-                  <button
-                    onClick={() => setShowLoginModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors mx-4 cursor-pointer"
-                  >
-                    Sign In
+                    Comparison
                   </button>
                 </div>
               </div>
             )}
           </div>
-        </nav>
+        </div>
+      )}
 
-        {/* Hero Section */}
-        <section
-          id="home"
-          className="pt-16 min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 md:flex md:items-center"
+      {/* Main content */}
+      <main style={{ flex: 1, padding: "1rem", maxWidth: "1200px", margin: "0 auto", width: "100%" }}>
+        {/* Crypto info */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: windowWidth < 1024 ? "1fr" : "1fr 1fr",
+            gap: "1rem",
+            marginBottom: "2rem",
+          }}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center py-20">
-              <div>
-                <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                  Track Your
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {" "}
-                    Freelance
-                  </span>
-                  <br />
-                  Income Like a Pro
-                </h1>
-                <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                  The ultimate income tracking platform for professional
-                  freelancers. Monitor earnings, analyze trends, and maximize
-                  your revenue across all platforms.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={() => setShowLoginModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer"
-                  >
-                    Start Free Trial
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("features")}
-                    className="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 cursor-pointer"
-                  >
-                    Learn More
-                  </button>
-                </div>
-                <div className="flex items-center space-x-6 mt-8 flex-wrap">
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span className="text-gray-600">14-day free trial</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span className="text-gray-600">
-                      No credit card required
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-3xl blur-3xl opacity-20"></div>
-                <img
-                  src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-                  alt="Professional Dashboard"
-                  className="relative rounded-3xl shadow-2xl"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section id="features" className="py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Powerful Features for Modern Freelancers
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Everything you need to track, analyze, and optimize your
-                freelancing income
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-blue-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Advanced Analytics
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Comprehensive insights into your income patterns, hourly
-                  rates, and platform performance with interactive charts
-                </p>
-              </div>
-
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-green-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Target className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Goal Tracking
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Set and monitor income goals, track progress, and achieve your
-                  financial targets with visual progress indicators
-                </p>
-              </div>
-
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-purple-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Globe className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Multi-Platform Support
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Track income from Upwork, Fiverr, Toptal, direct clients, and
-                  any other platform in one unified dashboard
-                </p>
-              </div>
-
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-orange-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Shield className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Secure & Private
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Bank-level security with encrypted data storage and
-                  privacy-first approach to protect your financial information
-                </p>
-              </div>
-
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-red-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Real-time Updates
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Instant synchronization and real-time updates across all your
-                  devices with automatic data backup
-                </p>
-              </div>
-
-              <div className="group p-8 rounded-2xl bg-gradient-to-b from-indigo-50 to-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Smartphone className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-                  Mobile Optimized
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Fully responsive design that works perfectly on all devices,
-                  from desktop to mobile phones
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="py-20 bg-blue-600">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-4 gap-8 text-center">
-              <div>
-                <div className="text-4xl font-bold text-white mb-2">50K+</div>
-                <div className="text-blue-100">Active Freelancers</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-white mb-2">$2B+</div>
-                <div className="text-blue-100">Income Tracked</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-white mb-2">99.9%</div>
-                <div className="text-blue-100">Uptime</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-white mb-2">4.9★</div>
-                <div className="text-blue-100">User Rating</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing Section */}
-        <section id="pricing" className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Simple, Transparent Pricing
-              </h2>
-              <p className="text-xl text-gray-600">
-                Choose the plan that fits your freelancing needs
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-white rounded-2xl p-8 shadow-lg">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    Starter
-                  </h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-gray-900">$9</span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-                  <p className="text-gray-600">Perfect for new freelancers</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Track up to 50 projects</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Basic analytics</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Email support</span>
-                  </li>
-                </ul>
-                <button
-                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition-colors cursor-pointer"
-                  onClick={() => setShowLoginModal(true)}
-                >
-                  Get Started
-                </button>
-              </div>
-
-              <div className="bg-blue-600 rounded-2xl p-8 shadow-xl text-white relative">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                    Most Popular
-                  </span>
-                </div>
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold mb-4">Professional</h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold">$29</span>
-                    <span className="text-blue-200">/month</span>
-                  </div>
-                  <p className="text-blue-200">For serious freelancers</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-400" />
-                    <span>Unlimited projects</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-400" />
-                    <span>Advanced analytics</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-400" />
-                    <span>Goal tracking</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-400" />
-                    <span>Priority support</span>
-                  </li>
-                </ul>
-                <button
-                  className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => setShowLoginModal(true)}
-                >
-                  Start Free Trial
-                </button>
-              </div>
-
-              <div className="bg-white rounded-2xl p-8 shadow-lg">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    Enterprise
-                  </h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-gray-900">
-                      $99
-                    </span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-                  <p className="text-gray-600">For agencies and teams</p>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Everything in Pro</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Team collaboration</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>Custom integrations</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500" />
-                    <span>24/7 phone support</span>
-                  </li>
-                </ul>
-                <button
-                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition-colors cursor-pointer"
-                  onClick={() => setShowLoginModal(true)}
-                >
-                  Get Started
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* About Section */}
-        <section id="about" className="py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                  Built by Freelancers, for Freelancers
-                </h2>
-                <p className="text-lg text-gray-600 mb-6">
-                  We understand the challenges of freelancing because we've been
-                  there. Our team of experienced freelancers and developers
-                  created FreelanceTracker Pro to solve the real problems we
-                  faced managing our own income.
-                </p>
-                <p className="text-lg text-gray-600 mb-8">
-                  From tracking multiple income streams to understanding
-                  seasonal patterns, our platform provides the insights you need
-                  to build a sustainable freelancing business.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={() => setShowLoginModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors cursor-pointer"
-                  >
-                    Try It Free
-                  </button>
-                </div>
-              </div>
-              <div>
-                <img
-                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80"
-                  alt="Team collaboration"
-                  className="rounded-2xl shadow-xl"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Section */}
-        <section id="contact" className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Get in Touch
-              </h2>
-              <p className="text-xl text-gray-600">
-                Have questions? We'd love to hear from you.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Email Us
-                </h3>
-                <p className="text-gray-600">support@freelancetracker.com</p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Phone className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Call Us
-                </h3>
-                <p className="text-gray-600">+1 (555) 123-4567</p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Visit Us
-                </h3>
-                <p className="text-gray-600">San Francisco, CA</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="bg-gray-900 text-white py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-4 gap-8">
-              <div>
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Briefcase className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-xl font-bold">
-                    FreelanceTracker Pro
-                  </span>
-                </div>
-                <p className="text-gray-400">
-                  The ultimate income tracking platform for professional
-                  freelancers.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Product</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li>
-                    <button
-                      onClick={() => scrollToSection("features")}
-                      className="hover:text-white transition-colors cursor-pointer"
-                    >
-                      Features
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => scrollToSection("pricing")}
-                      className="hover:text-white transition-colors cursor-pointer"
-                    >
-                      Pricing
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-white transition-colors cursor-pointer">
-                      API
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Company</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li>
-                    <button
-                      onClick={() => scrollToSection("about")}
-                      className="hover:text-white transition-colors cursor-pointer"
-                    >
-                      About
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-white transition-colors cursor-pointer">
-                      Blog
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-white transition-colors cursor-pointer">
-                      Careers
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-lg font-semibold mb-4">Support</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li>
-                    <button
-                      onClick={() => scrollToSection("contact")}
-                      className="hover:text-white transition-colors cursor-pointer"
-                    >
-                      Contact
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-white transition-colors cursor-pointer">
-                      Help Center
-                    </button>
-                  </li>
-                  <li>
-                    <button className="hover:text-white transition-colors cursor-pointer">
-                      Privacy Policy
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-              <p>&copy; 2024 FreelanceTracker Pro. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
-
-        {/* Login Modal */}
-        {showLoginModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
-                <button
-                  onClick={() => {
-                    setShowLoginModal(false);
-                    setEmailError("");
-                    setPasswordError("");
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
+          <div
+            className="glass"
+            style={{
+              backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              borderRadius: "1rem",
+              border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={loginForm.email}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                      emailError 
-                        ? "border-red-500 focus:ring-red-500" 
-                        : "border-gray-300 focus:ring-blue-500"
+                  <h3
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "700",
+                      color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                      margin: 0,
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    {selectedCrypto.symbol}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                      margin: "0.25rem 0 0 0",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    {selectedCrypto.name}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div
+                    className={`smooth-transition ${
+                      priceFlash[selectedCrypto.symbol] === 'up' 
+                        ? 'price-flash-up' 
+                        : priceFlash[selectedCrypto.symbol] === 'down' 
+                        ? 'price-flash-down' 
+                        : ''
                     }`}
-                    placeholder="Enter your email"
-                    required
-                  />
-                  {emailError && (
-                    <p className="mt-2 text-sm text-red-600">{emailError}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={loginForm.password}
-                      onChange={(e) => handlePasswordChange(e.target.value)}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 pr-12 ${
-                        passwordError 
-                          ? "border-red-500 focus:ring-red-500" 
-                          : "border-gray-300 focus:ring-blue-500"
-                      }`}
-                      placeholder="Enter your password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
+                    style={{
+                      fontSize: "1.875rem",
+                      fontWeight: "700",
+                      color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                      fontFamily: "Comfortaa, sans-serif",
+                      padding: "0.25rem 0.5rem",
+                      borderRadius: "0.375rem",
+                      backgroundColor: "transparent",
+                    }}
+                  >
+                    {formatCryptoPrice(selectedCrypto.price)}
                   </div>
-                  {passwordError && (
-                    <p className="mt-2 text-sm text-red-600">{passwordError}</p>
-                  )}
+                  <div
+                    className="smooth-transition"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      fontSize: "1.125rem",
+                      color: selectedCrypto.change >= 0 ? "#10b981" : "#ef4444",
+                      fontWeight: "600",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    {selectedCrypto.change >= 0 ? (
+                      <ArrowUp style={{ height: "1.25rem", width: "1.25rem", marginRight: "0.25rem" }} />
+                    ) : (
+                      <ArrowDown style={{ height: "1.25rem", width: "1.25rem", marginRight: "0.25rem" }} />
+                    )}
+                    <span>
+                      ${Math.abs(selectedCrypto.change).toFixed(2)} ({Math.abs(selectedCrypto.changePercent).toFixed(2)}
+                      %)
+                    </span>
+                  </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleLogin}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors duration-200 cursor-pointer"
+              </div>
+            </div>
+            <div style={{ padding: "1.25rem" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                  marginTop: "1rem",
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                    padding: "0.75rem",
+                    borderRadius: "0.75rem",
+                    backdropFilter: "blur(5px)",
+                    WebkitBackdropFilter: "blur(5px)",
+                    border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                  }}
                 >
-                  Sign In
-                </button>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                      fontWeight: "500",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    Market Cap
+                  </div>
+                  <div
+                    className="smooth-transition"
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "1.125rem",
+                      color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    {formatNumber(selectedCrypto.marketCap)}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                    padding: "0.75rem",
+                    borderRadius: "0.75rem",
+                    backdropFilter: "blur(5px)",
+                    WebkitBackdropFilter: "blur(5px)",
+                    border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                      fontWeight: "500",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    24h Volume
+                  </div>
+                  <div
+                    className="smooth-transition"
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "1.125rem",
+                      color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    {formatNumber(selectedCrypto.volume)}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    );
-  }
 
-  // Dashboard (existing code remains the same)
-  return (
-    <div className={`min-h-screen ${themeClasses}`}>
-      {/* Navigation */}
-      <nav
-        className={`${cardClasses} shadow-lg border-b ${
-          darkMode ? "border-gray-700" : "border-gray-200"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-white" />
-                </div>
-                <span
-                  className={`text-xl font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  FreelanceTracker Pro
-                </span>
-              </div>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-6">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-lg ${
-                  darkMode
-                    ? "text-gray-300 hover:text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                } transition-colors cursor-pointer`}
-              >
-                {darkMode ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )}
-              </button>
-
-              <div className="relative">
-                {/* <button
-                                    onClick={() => setShowNotifications(!showNotifications)}
-                                    className={`p-2 rounded-lg ${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors relative cursor-pointer`}
-                                >
-                                    <Bell className="w-5 h-5" />
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                                </button> */}
-
-                {/* {showNotifications && (
-                                    <div className={`absolute right-0 mt-2 w-80 ${cardClasses} rounded-lg shadow-xl z-50 border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                                        <div className="p-4">
-                                            <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
-                                            <div className="space-y-3">
-                                                <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                                                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>Payment received from TechCorp Inc. - $2,500</p>
-                                                    <p className={`text-xs ${textClasses} mt-1`}>2 hours ago</p>
-                                                </div>
-                                                <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-yellow-50'}`}>
-                                                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-yellow-800'}`}>Invoice overdue from StartupXYZ - $800</p>
-                                                    <p className={`text-xs ${textClasses} mt-1`}>1 day ago</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )} */}
-              </div>
-
-              <div className={`flex items-center space-x-2 ${textClasses}`}>
-                <User className="w-4 h-4" />
-                <span className="font-medium">{user?.name}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className={`flex items-center space-x-2 ${textClasses} hover:text-red-600 transition-colors cursor-pointer`}
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`md:hidden ${textClasses} hover:${
-                darkMode ? "text-white" : "text-gray-900"
-              } transition-colors cursor-pointer`}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: windowWidth < 640 ? "1fr" : "1fr 1fr",
+              gap: "1rem",
+            }}
+          >
+            <div
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+              }}
             >
-              <Menu className="w-6 h-6" />
+              <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+                <h3
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    margin: 0,
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                >
+                  <Sparkles
+                    style={{
+                      height: "1rem",
+                      width: "1rem",
+                      marginRight: "0.5rem",
+                      color: "#5F8B4C",
+                    }}
+                  />
+                  Market Overview
+                </h3>
+              </div>
+              <div style={{ padding: "1.25rem", paddingTop: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "0.5rem",
+                      borderRadius: "0.75rem",
+                      backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                      backdropFilter: "blur(5px)",
+                      WebkitBackdropFilter: "blur(5px)",
+                      border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "0.875rem", fontWeight: "500", fontFamily: "Comfortaa, sans-serif" }}>
+                      BTC Dominance
+                    </span>
+                    <span
+                      style={{
+                        color: "#10b981",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        fontFamily: "Comfortaa, sans-serif",
+                      }}
+                    >
+                      42.8%
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "0.5rem",
+                      borderRadius: "0.75rem",
+                      backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                      backdropFilter: "blur(5px)",
+                      WebkitBackdropFilter: "blur(5px)",
+                      border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "0.875rem", fontWeight: "500", fontFamily: "Comfortaa, sans-serif" }}>
+                      Total Market Cap
+                    </span>
+                    <span
+                      style={{
+                        color: "#10b981",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        fontFamily: "Comfortaa, sans-serif",
+                      }}
+                    >
+                      $2.47T
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "0.5rem",
+                      borderRadius: "0.75rem",
+                      backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                      backdropFilter: "blur(5px)",
+                      WebkitBackdropFilter: "blur(5px)",
+                      border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "0.875rem", fontWeight: "500", fontFamily: "Comfortaa, sans-serif" }}>
+                      24h Volume
+                    </span>
+                    <span
+                      style={{
+                        color: "#ef4444",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        fontFamily: "Comfortaa, sans-serif",
+                      }}
+                    >
+                      $98.6B
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+                minHeight: "12rem", // Ensure consistent height with other cards
+              }}
+            >
+              <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+                <h3
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    margin: 0,
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                >
+                  <BarChart2
+                    style={{
+                      height: "1rem",
+                      width: "1rem",
+                      marginRight: "0.5rem",
+                      color: "#5F8B4C",
+                    }}
+                  />
+                  Compare
+                </h3>
+              </div>
+              <div style={{ padding: "1.25rem", paddingTop: 0 }}>
+                <div style={{ position: "relative" }}>
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value) {
+                        const crypto = cryptoData.find((s) => s.symbol === value)
+                        if (crypto) addCryptoToComparison(crypto)
+                        e.target.value = "" // Reset select after selection
+                      }
+                    }}
+                    disabled={comparisonCryptoOptions.length === 0}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      paddingRight: "2.5rem",
+                      backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                      backdropFilter: "blur(5px)",
+                      WebkitBackdropFilter: "blur(5px)",
+                      border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                      borderRadius: "0.75rem",
+                      color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                      fontSize: "0.875rem",
+                      appearance: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                      transition: "all 0.2s",
+                      outline: "none",
+                      fontWeight: "500",
+                      fontFamily: "Comfortaa, sans-serif",
+                    }}
+                  >
+                    <option value="" disabled>
+                      Add cryptocurrency
+                    </option>
+                    {comparisonCryptoOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div
+                    style={{
+                      pointerEvents: "none",
+                      position: "absolute",
+                      inset: "0 0 0 auto",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 0.75rem",
+                      color: theme === "dark" ? "var(--text-muted-dark)" : "var(--text-muted)",
+                    }}
+                  >
+                    <svg
+                      style={{ height: "1rem", width: "1rem" }}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div 
+                  className="dropdown-no-scrollbar"
+                  style={{ 
+                    marginTop: "0.75rem", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "0.5rem",
+                    maxHeight: "8rem", // Fixed height to match other card content areas
+                    overflowY: "auto", // Make it scrollable
+                    paddingRight: "0.25rem" // Small padding to account for hidden scrollbar
+                  }}
+                >
+                  {comparisonCryptos.map((crypto) => (
+                    <div
+                      key={crypto.symbol}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: "0.875rem",
+                        padding: "0.5rem 0.75rem",
+                        borderRadius: "0.75rem",
+                        backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                        backdropFilter: "blur(5px)",
+                        WebkitBackdropFilter: "blur(5px)",
+                        border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = "#FF9A9A"
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor =
+                          theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontFamily: "Comfortaa, sans-serif" }}>{crypto.symbol}</span>
+                      <button
+                        onClick={() => removeCryptoFromComparison(crypto.symbol)}
+                        style={{
+                          height: "1.5rem",
+                          padding: "0 0.5rem",
+                          backgroundColor: "transparent",
+                          color: "#ef4444",
+                          border: "none",
+                          borderRadius: "0.375rem",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          fontFamily: "Comfortaa, sans-serif",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            theme === "dark" ? "rgba(239, 68, 68, 0.1)" : "#fee2e2"
+                          e.currentTarget.style.color = "#b91c1c"
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                          e.currentTarget.style.color = "#ef4444"
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Time range selector*/}
+        <div
+          style={{
+            display: windowWidth < 768 ? "none" : "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1.5rem",
+            gap: "0.5rem",
+          }}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {["1W", "1M", "3M", "6M", "1Y", "5Y"].map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: timeRange === range ? "#5F8B4C" : "transparent",
+                  color:
+                    timeRange === range
+                      ? "white"
+                      : theme === "dark"
+                        ? "var(--text-primary-dark)"
+                        : "var(--text-primary)",
+                  border: `1px solid ${
+                    timeRange === range
+                      ? "transparent"
+                      : theme === "dark"
+                        ? "var(--border-dark)"
+                        : "var(--border-light)"
+                  }`,
+                  borderRadius: "0.75rem",
+                  fontSize: "0.875rem",
+                  fontWeight: timeRange === range ? 600 : 400,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontFamily: "Comfortaa, sans-serif",
+                }}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <button
+              onClick={() => setShowComparison(false)}
+              disabled={comparisonCryptos.length === 0}
+              style={{
+                padding: "0.5rem 1rem",
+                backgroundColor: !showComparison ? "#5F8B4C" : "transparent",
+                color: !showComparison
+                  ? "white"
+                  : theme === "dark"
+                    ? "var(--text-primary-dark)"
+                    : "var(--text-primary)",
+                border: `1px solid ${
+                  !showComparison ? "transparent" : theme === "dark" ? "var(--border-dark)" : "var(--border-light)"
+                }`,
+                borderRadius: "0.75rem",
+                fontSize: "0.875rem",
+                fontWeight: !showComparison ? 600 : 400,
+                cursor: comparisonCryptos.length === 0 ? "not-allowed" : "pointer",
+                opacity: comparisonCryptos.length === 0 ? 0.5 : 1,
+                transition: "all 0.2s",
+                fontFamily: "Comfortaa, sans-serif",
+              }}
+            >
+              Single View
+            </button>
+            <button
+              onClick={() => setShowComparison(true)}
+              disabled={comparisonCryptos.length === 0}
+              style={{
+                padding: "0.5rem 1rem",
+                backgroundColor: showComparison ? "#5F8B4C" : "transparent",
+                color: showComparison ? "white" : theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                border: `1px solid ${
+                  showComparison ? "transparent" : theme === "dark" ? "var(--border-dark)" : "var(--border-light)"
+                }`,
+                borderRadius: "0.75rem",
+                fontSize: "0.875rem",
+                fontWeight: showComparison ? 600 : 400,
+                cursor: comparisonCryptos.length === 0 ? "not-allowed" : "pointer",
+                opacity: comparisonCryptos.length === 0 ? 0.5 : 1,
+                transition: "all 0.2s",
+                fontFamily: "Comfortaa, sans-serif",
+              }}
+            >
+              Comparison
             </button>
           </div>
+        </div>
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
+        {/* Charts */}
+        <div style={{ marginBottom: "2rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1rem",
+            }}
+          >
             <div
-              className={`md:hidden border-t ${
-                darkMode ? "border-gray-700" : "border-gray-200"
-              } py-4`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "0.75rem",
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                padding: "0.25rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+              }}
             >
-              <div className="flex flex-col space-y-4">
-                <div
-                  className={`flex items-center space-x-2 ${textClasses} px-4`}
+              <button
+                onClick={() => setActiveTab("line")}
+                style={{
+                  padding: "0.5rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "0.5rem",
+                  transition: "all 0.2s",
+                  backgroundColor:
+                    activeTab === "line"
+                      ? theme === "dark"
+                        ? "rgba(40, 40, 45, 0.7)"
+                        : "rgba(255, 255, 255, 0.7)"
+                      : "transparent",
+                  color:
+                    activeTab === "line"
+                      ? theme === "dark"
+                        ? "var(--text-primary-dark)"
+                        : "var(--text-primary)"
+                      : theme === "dark"
+                        ? "var(--text-secondary-dark)"
+                        : "var(--text-secondary)",
+                  boxShadow: activeTab === "line" ? "0 1px 2px 0 rgba(0, 0, 0, 0.05)" : "none",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  cursor: "pointer",
+                  border: "none",
+                  fontFamily: "Comfortaa, sans-serif",
+                }}
+              >
+                <TrendingUp style={{ height: "1rem", width: "1rem", marginRight: "0.5rem" }} />
+                Price
+              </button>
+              <button
+                onClick={() => setActiveTab("volume")}
+                style={{
+                  padding: "0.5rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "0.5rem",
+                  transition: "all 0.2s",
+                  backgroundColor:
+                    activeTab === "volume"
+                      ? theme === "dark"
+                        ? "rgba(40, 40, 45, 0.7)"
+                        : "rgba(255, 255, 255, 0.7)"
+                      : "transparent",
+                  color:
+                    activeTab === "volume"
+                      ? theme === "dark"
+                        ? "var(--text-primary-dark)"
+                        : "var(--text-primary)"
+                      : theme === "dark"
+                        ? "var(--text-secondary-dark)"
+                        : "var(--text-secondary)",
+                  boxShadow: activeTab === "volume" ? "0 1px 2px 0 rgba(0, 0, 0, 0.05)" : "none",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  cursor: "pointer",
+                  border: "none",
+                  fontFamily: "Comfortaa, sans-serif",
+                }}
+              >
+                <BarChart2 style={{ height: "1rem", width: "1rem", marginRight: "0.5rem" }} />
+                Volume
+              </button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div
+              className="glass"
+              style={{
+                height: "24rem",
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <svg
+                  style={{
+                    height: "2.5rem",
+                    width: "2.5rem",
+                    color: "#5F8B4C",
+                    animation: "spin 1s linear infinite",
+                  }}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
                 >
-                  <User className="w-4 h-4" />
-                  <span className="font-medium">{user?.name}</span>
-                </div>
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className={`flex items-center space-x-2 ${textClasses} hover:${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } transition-colors px-4 cursor-pointer`}
+                  <circle
+                    style={{ opacity: 0.25 }}
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    style={{ opacity: 0.75 }}
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <p
+                  style={{
+                    marginTop: "1rem",
+                    color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                    fontSize: "0.875rem",
+                    fontWeight: "500",
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
                 >
-                  {darkMode ? (
-                    <Sun className="w-4 h-4" />
-                  ) : (
-                    <Moon className="w-4 h-4" />
-                  )}
-                  <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className={`flex items-center space-x-2 ${textClasses} hover:text-red-600 transition-colors px-4 cursor-pointer`}
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
+                  Loading chart data...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ padding: "1rem 1.5rem" }}>
+                {activeTab === "line" && (
+                  <div style={{ height: "24rem" }}>
+                    {!showComparison ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={prepareLineData()} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                          <XAxis
+                            dataKey="date"
+                            stroke={chartColors.text}
+                            tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                            tickFormatter={(value) => {
+                              // On small screens, show fewer ticks
+                              return windowWidth < 640 && value.length > 3 ? value.substring(0, 3) : value
+                            }}
+                          />
+                          <YAxis
+                            domain={["auto", "auto"]}
+                            tickFormatter={(value) => `$${value.toFixed(0)}`}
+                            stroke={chartColors.text}
+                            tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                            width={40}
+                          />
+                          <Tooltip
+                            formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Price"]}
+                            labelFormatter={(label) => `Date: ${label}`}
+                            contentStyle={{
+                              backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.8)" : "rgba(255, 255, 255, 0.8)",
+                              backdropFilter: "blur(10px)",
+                              WebkitBackdropFilter: "blur(10px)",
+                              borderColor: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                              color: theme === "dark" ? "#FFFFFF" : "#030303",
+                              borderRadius: "0.5rem",
+                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                              padding: "0.5rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="price"
+                            stroke={chartColors.line}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 6, fill: chartColors.line }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={prepareComparisonData()} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                          <XAxis
+                            dataKey="date"
+                            stroke={chartColors.text}
+                            tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                            tickFormatter={(value) => {
+                              // On small screens, show fewer ticks
+                              return windowWidth < 640 && value.length > 3 ? value.substring(0, 3) : value
+                            }}
+                          />
+                          <YAxis
+                            domain={["auto", "auto"]}
+                            tickFormatter={(value) => `$${value.toFixed(0)}`}
+                            stroke={chartColors.text}
+                            tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                            width={40}
+                          />
+                          <Tooltip
+                            formatter={(value: any) => [`$${Number(value).toFixed(2)}`, ""]}
+                            labelFormatter={(label) => `Date: ${label}`}
+                            contentStyle={{
+                              backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.8)" : "rgba(255, 255, 255, 0.8)",
+                              backdropFilter: "blur(10px)",
+                              WebkitBackdropFilter: "blur(10px)",
+                              borderColor: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                              color: theme === "dark" ? "#FFFFFF" : "#030303",
+                              borderRadius: "0.5rem",
+                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                              padding: "0.5rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          />
+                          <Legend
+                            iconType="circle"
+                            wrapperStyle={{
+                              paddingTop: "0.5rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                            layout={windowWidth < 640 ? "horizontal" : "vertical"}
+                            verticalAlign={windowWidth < 640 ? "bottom" : "middle"}
+                            align={windowWidth < 640 ? "center" : "right"}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey={selectedCrypto.symbol}
+                            stroke={cryptoColors[selectedCrypto.symbol as keyof typeof cryptoColors] || "#5F8B4C"}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 6 }}
+                          />
+                          {comparisonCryptos.map((crypto) => (
+                            <Line
+                              key={crypto.symbol}
+                              type="monotone"
+                              dataKey={crypto.symbol}
+                              stroke={cryptoColors[crypto.symbol as keyof typeof cryptoColors] || "#FF9A9A"}
+                              strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 6 }}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "volume" && (
+                  <div style={{ height: "24rem" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={prepareVolumeData()} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                        <XAxis
+                          dataKey="date"
+                          stroke={chartColors.text}
+                          tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                          tickFormatter={(value) => {
+                            // On small screens, show fewer ticks
+                            return windowWidth < 640 && value.length > 3 ? value.substring(0, 3) : value
+                          }}
+                        />
+                        <YAxis
+                          tickFormatter={(value) => {
+                            if (value >= 1000000000) return `${(value / 1000000000).toFixed(0)}B`
+                            if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`
+                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`
+                            return value
+                          }}
+                          stroke={chartColors.text}
+                          tick={{ fontSize: 10, fontWeight: 500, fontFamily: "Comfortaa, sans-serif" }}
+                          width={40}
+                        />
+                        <Tooltip
+                          formatter={(value: any) => {
+                            const val = Number(value)
+                            if (val >= 1000000000) return [`${(val / 1000000000).toFixed(2)}B`, "Volume"]
+                            if (val >= 1000000) return [`${(val / 1000000).toFixed(2)}M`, "Volume"]
+                            if (val >= 1000) return [`${(val / 1000).toFixed(2)}K`, "Volume"]
+                            return [val, "Volume"]
+                          }}
+                          labelFormatter={(label) => `Date: ${label}`}
+                          contentStyle={{
+                            backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.8)" : "rgba(255, 255, 255, 0.8)",
+                            backdropFilter: "blur(10px)",
+                            WebkitBackdropFilter: "blur(10px)",
+                            borderColor: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                            color: theme === "dark" ? "#FFFFFF" : "#030303",
+                            borderRadius: "0.5rem",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                            padding: "0.5rem",
+                            fontSize: "0.75rem",
+                            fontWeight: "500",
+                            fontFamily: "Comfortaa, sans-serif",
+                          }}
+                        />
+                        <Bar dataKey="volume" name="Volume">
+                          {prepareVolumeData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={chartColors.volume} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
-      </nav>
 
-      {/* Tab Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[
-            { id: "overview", label: "Overview", icon: BarChart3 },
-            { id: "goals", label: "Goals", icon: Target },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
-                activeTab === tab.id
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : darkMode
-                  ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-        {activeTab === "overview" && (
-          <>
-            {/* Header with Controls */}
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 space-y-4 lg:space-y-0">
-              <div>
-                <h1
-                  className={`text-3xl font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } mb-2`}
-                >
-                  Income Dashboard
-                </h1>
-                <p className={textClasses}>
-                  Track and analyze your freelancing income across all platforms
-                  {(searchTerm || dateFilter !== "all") && (
-                    <span className="ml-2 text-blue-600">
-                      • {filteredEntries.length} filtered results
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative">
-                  <Search
-                    className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textClasses}`}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search entries..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`pl-10 pr-4 py-2 rounded-lg border ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    } focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64`}
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm("")}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 ${textClasses} hover:${
-                        darkMode ? "text-white" : "text-gray-900"
-                      } cursor-pointer`}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* <div className="relative">
-                                    <select
-                                        value={dateFilter}
-                                        onChange={(e) => setDateFilter(e.target.value)}
-                                        className={`pl-4 pr-10 py-2 rounded-lg border ${darkMode
-                                                ? 'bg-gray-800 border-gray-700 text-white'
-                                                : 'bg-white border-gray-300 text-gray-900'
-                                            } focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer ${dateFilter !== 'all' ? 'ring-2 ring-blue-500' : ''
-                                            }`}
-                                    >
-                                        <option value="all">All Time</option>
-                                        <option value="week">Last Week</option>
-                                        <option value="month">Last Month</option>
-                                        <option value="quarter">Last Quarter</option>
-                                        <option value="year">Last Year</option>
-                                    </select>
-                                    <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textClasses} pointer-events-none`} />
-                                </div> */}
-
-                {(searchTerm || dateFilter !== "all") && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setDateFilter("all");
-                    }}
-                    className={`px-3 hidden md:block py-2 rounded-lg text-sm ${textClasses} hover:${
-                      darkMode ? "text-white" : "text-gray-900"
-                    } border ${
-                      darkMode ? "border-gray-700" : "border-gray-300"
-                    } hover:border-gray-400 transition-colors cursor-pointer`}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Income</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div
-                className={`${cardClasses} rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium ${textClasses}`}>
-                      Total Earnings
-                    </p>
-                    <p
-                      className={`text-3xl font-bold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      ${dashboardStats.totalEarnings.toLocaleString()}
-                    </p>
-                    <div className="flex items-center mt-2">
-                      {dashboardStats.monthlyGrowth >= 0 ? (
-                        <ArrowUp className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <ArrowDown className="w-4 h-4 text-red-500" />
-                      )}
-                      <span
-                        className={`text-sm ml-1 ${
-                          dashboardStats.monthlyGrowth >= 0
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {Math.abs(dashboardStats.monthlyGrowth).toFixed(1)}%
-                      </span>
-                      <span className={`text-sm ml-1 ${textClasses}`}>
-                        vs last month
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`${cardClasses} rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium ${textClasses}`}>
-                      This Month
-                    </p>
-                    <p
-                      className={`text-3xl font-bold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      ${dashboardStats.thisMonthEarnings.toLocaleString()}
-                    </p>
-                    <p className={`text-sm ${textClasses} mt-2`}>
-                      Last: ${dashboardStats.lastMonthEarnings.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`${cardClasses} rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium ${textClasses}`}>
-                      Avg. Hourly Rate
-                    </p>
-                    <p
-                      className={`text-3xl font-bold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      ${dashboardStats.averageHourlyRate.toFixed(0)}
-                    </p>
-                    <p className={`text-sm ${textClasses} mt-2`}>
-                      {dashboardStats.totalHours} total hours
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-purple-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`${cardClasses} rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium ${textClasses}`}>
-                      Pending Amount
-                    </p>
-                    <p
-                      className={`text-3xl font-bold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      ${dashboardStats.pendingAmount.toLocaleString()}
-                    </p>
-                    <p className={`text-sm ${textClasses} mt-2`}>
-                      {dashboardStats.totalClients} active clients
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <CreditCard className="w-6 h-6 text-orange-600" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Monthly Earnings Area Chart */}
-              <div className={`${cardClasses} rounded-xl p-6 shadow-lg`}>
-                <div className="flex items-center justify-between mb-6">
-                  <h3
-                    className={`text-lg font-semibold ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    Monthly Earnings
-                  </h3>
-                  <BarChart3 className={`w-5 h-5 ${textClasses}`} />
-                </div>
-                <div className="h-64 sm:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyData}>
-                      <defs>
-                        <linearGradient
-                          id="colorEarnings"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#2563eb"
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#2563eb"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        className="opacity-30"
-                      />
-                      <XAxis dataKey="month" className="text-sm" />
-                      <YAxis className="text-sm" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: darkMode ? "#1f2937" : "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                          color: darkMode ? "white" : "#1f2937",
-                        }}
-                        formatter={(value: number) => [
-                          `$${value.toLocaleString()}`,
-                          "Earnings",
-                        ]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="earnings"
-                        stroke="#2563eb"
-                        strokeWidth={3}
-                        fill="url(#colorEarnings)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Platform Distribution Fixed */}
-              <div className={`${cardClasses} rounded-xl p-6 shadow-lg`}>
-                <div className="flex items-center justify-between mb-6">
-                  <h3
-                    className={`text-lg font-semibold ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    Platform Distribution
-                    {(searchTerm || dateFilter !== "all") && (
-                      <span className="text-sm font-normal text-blue-600 ml-2">
-                        (Filtered)
-                      </span>
-                    )}
-                  </h3>
-                  <PieChart className={`w-5 h-5 ${textClasses}`} />
-                </div>
-                {platformData.length === 0 ? (
-                  <div className="h-64 sm:h-80 flex items-center justify-center">
-                    <div className="text-center">
-                      <PieChart
-                        className={`w-12 h-12 ${textClasses} mx-auto mb-4`}
-                      />
-                      <p className={`text-sm ${textClasses}`}>
-                        No data available for current filters
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-64 sm:h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          {/* Only show tooltip on desktop screens */}
-                          <Pie
-                            data={platformData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={window.innerWidth < 640 ? 30 : 40}
-                            outerRadius={window.innerWidth < 640 ? 60 : 80}
-                            paddingAngle={5}
-                            dataKey="value"
-                          >
-                            {platformData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    
-                    {/* Platform Legend */}
-                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {platformData.map((platform, index) => (
-                        <div key={platform.name} className="flex items-center space-x-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: platform.color }}
-                          ></div>
-                          <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {platform.name}: ${platform.value.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Top Clients and Project Types */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Top Clients */}
-              <div className={`${cardClasses} rounded-xl p-6 shadow-lg`}>
-                <h3
-                  className={`text-lg font-semibold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } mb-6`}
-                >
-                  Top Clients
-                </h3>
-                <div className="space-y-4">
-                  {topClientsData.map((client, index) => (
-                    <div
-                      key={client.client}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold ${
-                            [
-                              "bg-blue-500",
-                              "bg-green-500",
-                              "bg-purple-500",
-                              "bg-orange-500",
-                              "bg-red-500",
-                              "bg-indigo-500",
-                              "bg-pink-500",
-                              "bg-teal-500",
-                            ][index]
-                          }`}
-                        >
-                          {client.client.charAt(0)}
-                        </div>
-                        <span
-                          className={`font-medium ${
-                            darkMode ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          {client.client}
-                        </span>
-                      </div>
-                      <span
-                        className={`font-semibold ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}
-                      >
-                        ${client.amount.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Project Types */}
-              <div className={`${cardClasses} rounded-xl p-6 shadow-lg`}>
-                <h3
-                  className={`text-lg font-semibold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } mb-6`}
-                >
-                  Income by Project Type
-                  {(searchTerm || dateFilter !== "all") && (
-                    <span className="text-sm font-normal text-blue-600 ml-2">
-                      (Filtered)
-                    </span>
-                  )}
-                </h3>
-                {projectTypeData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="text-center">
-                      <BarChart3
-                        className={`w-12 h-12 ${textClasses} mx-auto mb-4`}
-                      />
-                      <p className={`text-sm ${textClasses}`}>
-                        No project data available for current filters
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={projectTypeData}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            className="opacity-30"
-                          />
-                          <XAxis
-                            dataKey="type"
-                            className="text-sm"
-                            angle={-45}
-                            textAnchor="end"
-                            height={60}
-                            interval={0}
-                          />
-                          <YAxis className="text-sm" />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: darkMode ? "#1f2937" : "white",
-                              border: "none",
-                              borderRadius: "8px",
-                              boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                              color: darkMode ? "white" : "#1f2937",
-                            }}
-                            formatter={(value: number) => [
-                              `$${value.toLocaleString()}`,
-                              "Earnings",
-                            ]}
-                          />
-                          <Bar
-                            dataKey="amount"
-                            fill="#10b981"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Show project type summary below chart */}
-                    <div className="mt-4 space-y-2">
-                      {projectTypeData.slice(0, 3).map((item, index) => (
-                        <div
-                          key={item.type}
-                          className="flex justify-between items-center"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                index === 0
-                                  ? "bg-green-500"
-                                  : index === 1
-                                  ? "bg-green-400"
-                                  : "bg-green-300"
-                              }`}
-                            ></div>
-                            <span
-                              className={`text-sm ${
-                                darkMode ? "text-gray-300" : "text-gray-600"
-                              }`}
-                            >
-                              {item.type}
-                            </span>
-                          </div>
-                          <span
-                            className={`text-sm font-semibold ${
-                              darkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            ${item.amount.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            {/* Recent Entries */}
+        {/* Crypto movers */}
+        <div style={{ marginTop: "2rem" }}>
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "700",
+              marginBottom: "1.5rem",
+              color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+              display: "flex",
+              alignItems: "center",
+              fontFamily: "Comfortaa, sans-serif",
+            }}
+          >
+            <Sparkles
+              style={{
+                height: "1.25rem",
+                width: "1.25rem",
+                marginRight: "0.5rem",
+                color: "#5F8B4C",
+              }}
+            />
+            Crypto Movers
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: windowWidth < 768 ? "1fr" : "repeat(3, 1fr)",
+              gap: "1rem",
+            }}
+          >
             <div
-              className={`${cardClasses} rounded-xl p-6 shadow-lg overflow-x-auto`}
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+              }}
             >
-              <table className="w-full table-auto">
-                <thead className="hidden sm:table-header-group">
-                  <tr
-                    className={`border-b ${
-                      darkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                  >
-                    <th
-                      className={`text-center py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Platform
-                    </th>
-                    <th
-                      className={`text-left py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Client
-                    </th>
-                    <th
-                      className={`text-left py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Project
-                    </th>
-                    <th
-                      className={`text-left py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Amount
-                    </th>
-                    <th
-                      className={`text-left py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Status
-                    </th>
-                    <th
-                      className={`text-left py-3 px-4 font-medium ${textClasses}`}
-                    >
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEntries.slice(0, 10).map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className={`block sm:table-row border-b ${
-                        darkMode
-                          ? "border-gray-700 hover:bg-gray-800"
-                          : "border-gray-200 hover:bg-gray-50"
-                      } transition-colors mb-4 sm:mb-0`}
-                    >
-                      {/* Mobile Card Layout */}
-                      <td className="block sm:table-cell sm:py-3 sm:px-4 pb-4 sm:pb-0 sm:text-center sm:align-middle">
-                        <div className={`sm:hidden p-4 rounded-lg ${
-                          darkMode ? "bg-gray-800" : "bg-gray-50"
-                        }`}>
-                          {/* Platform */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${textClasses}`}>Platform</span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                entry.platform === "Upwork"
-                                  ? "bg-green-100 text-green-800"
-                                  : entry.platform === "Fiverr"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : entry.platform === "Toptal"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : entry.platform === "Freelancer"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {entry.platform}
-                            </span>
-                          </div>
-                          
-                          {/* Client */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${textClasses}`}>Client</span>
-                            <span className={`text-sm font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                              {entry.clientName}
-                            </span>
-                          </div>
-                          
-                          {/* Project */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${textClasses}`}>Project</span>
-                            <span className={`text-sm ${textClasses}`}>
-                              {entry.projectType}
-                            </span>
-                          </div>
-                          
-                          {/* Amount */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${textClasses}`}>Amount</span>
-                            <span className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                              ${entry.amount.toLocaleString()}
-                            </span>
-                          </div>
-                          
-                          {/* Status */}
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${textClasses}`}>Status</span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                entry.status === "Paid"
-                                  ? "bg-green-100 text-green-800"
-                                  : entry.status === "Pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {entry.status}
-                            </span>
-                          </div>
-                          
-                          {/* Date */}
-                          <div className="flex items-center justify-between">
-                            <span className={`text-sm font-medium ${textClasses}`}>Date</span>
-                            <span className={`text-sm ${textClasses}`}>
-                              {new Date(entry.date).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Desktop Table Cell */}
-                        <div className="hidden sm:flex sm:justify-center sm:items-center sm:h-full">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              entry.platform === "Upwork"
-                                ? "bg-green-100 text-green-800"
-                                : entry.platform === "Fiverr"
-                                ? "bg-blue-100 text-blue-800"
-                                : entry.platform === "Toptal"
-                                ? "bg-purple-100 text-purple-800"
-                                : entry.platform === "Freelancer"
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {entry.platform}
-                          </span>
-                        </div>
-                      </td>
-                      
-                      {/* Desktop Table Cells */}
-                      <td className={`hidden sm:table-cell py-3 px-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
-                        {entry.clientName}
-                      </td>
-                      <td className={`hidden sm:table-cell py-3 px-4 ${textClasses}`}>
-                        {entry.projectType}
-                      </td>
-                      <td className={`hidden sm:table-cell py-3 px-4 font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                        ${entry.amount.toLocaleString()}
-                      </td>
-                      <td className="hidden sm:table-cell py-3 px-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            entry.status === "Paid"
-                              ? "bg-green-100 text-green-800"
-                              : entry.status === "Pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {entry.status}
-                        </span>
-                      </td>
-                      <td className={`hidden sm:table-cell py-3 px-4 ${textClasses}`}>
-                        {new Date(entry.date).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        {activeTab === "goals" && (
-          <>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8">
-              <div>
-                <h1
-                  className={`text-3xl font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } mb-2`}
+              <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+                <h3
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    margin: 0,
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
                 >
-                  Income Goals
-                </h1>
-                <p className={textClasses}>
-                  Set and track your financial targets
-                </p>
+                  <ArrowUp style={{ height: "1rem", width: "1rem", marginRight: "0.5rem", color: "#10b981" }} />
+                  Top Gainers
+                </h3>
               </div>
-              <button
-                onClick={() => setShowGoalModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 mt-4 sm:mt-0 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Goal</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {goals.map((goal) => {
-                const progress = (goal.current / goal.target) * 100;
-                const isOverdue =
-                  new Date(goal.deadline) < new Date() && progress < 100;
-
-                return (
-                  <div
-                    key={goal.id}
-                    className={`${cardClasses} rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3
-                        className={`font-semibold ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}
-                      >
-                        {goal.title}
-                      </h3>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          goal.type === "monthly"
-                            ? "bg-blue-100 text-blue-800"
-                            : goal.type === "yearly"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                      >
-                        {goal.type}
-                      </span>
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className={textClasses}>Progress</span>
-                        <span
-                          className={`font-semibold ${
-                            darkMode ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          {progress.toFixed(1)}%
-                        </span>
-                      </div>
+              <div style={{ padding: "1.25rem", paddingTop: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {cryptoData
+                    .filter((crypto) => crypto.change > 0)
+                    .sort((a, b) => b.changePercent - a.changePercent)
+                    .slice(0, 3)
+                    .map((crypto) => (
                       <div
-                        className={`w-full bg-gray-200 ${
-                          darkMode ? "bg-gray-700" : ""
-                        } rounded-full h-3`}
+                        key={crypto.symbol}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: "0.75rem",
+                          backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                          backdropFilter: "blur(5px)",
+                          WebkitBackdropFilter: "blur(5px)",
+                          border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                          transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.borderColor = "#10b981"
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.borderColor =
+                            theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"
+                        }}
                       >
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.symbol}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.name}
+                          </div>
+                        </div>
                         <div
-                          className={`h-3 rounded-full transition-all duration-300 ${
-                            progress >= 100
-                              ? "bg-green-500"
-                              : isOverdue
-                              ? "bg-red-500"
-                              : "bg-blue-500"
-                          }`}
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className={textClasses}>Current</span>
-                        <span
-                          className={`font-semibold ${
-                            darkMode ? "text-white" : "text-gray-900"
-                          }`}
+                          className="smooth-transition"
+                          style={{
+                            color: "#10b981",
+                            fontWeight: 600,
+                            fontSize: "1.125rem",
+                            fontFamily: "Comfortaa, sans-serif",
+                          }}
                         >
-                          ${goal.current.toLocaleString()}
-                        </span>
+                          +{crypto.changePercent.toFixed(2)}%
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textClasses}>Target</span>
-                        <span
-                          className={`font-semibold ${
-                            darkMode ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          ${goal.target.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className={textClasses}>Deadline</span>
-                        <span
-                          className={`font-semibold ${
-                            isOverdue
-                              ? "text-red-500"
-                              : darkMode
-                              ? "text-white"
-                              : "text-gray-900"
-                          }`}
-                        >
-                          {new Date(goal.deadline).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* Add Income Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div
-              className={`${cardClasses} rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 max-h-[90vh] overflow-y-auto`}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2
-                  className={`text-2xl font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  Add Income Entry
-                </h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className={`${textClasses} hover:${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } transition-colors cursor-pointer`}
-                >
-                  <X className="w-6 h-6" />
-                </button>
+                    ))}
+                </div>
               </div>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Platform
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={newEntry.platform}
-                      onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          platform: e.target.value as any,
-                        }))
-                      }
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer ${
-                        darkMode
-                          ? "bg-gray-800 border-gray-700 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      <option value="Upwork">Upwork</option>
-                      <option value="Fiverr">Fiverr</option>
-                      <option value="Direct Client">Direct Client</option>
-                      <option value="Toptal">Toptal</option>
-                      <option value="Freelancer">Freelancer</option>
-                    </select>
-                    <ChevronDown
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textClasses} pointer-events-none`}
-                    />
-                  </div>
+            <div
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+                <h3
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    margin: 0,
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                >
+                  <ArrowDown style={{ height: "1rem", width: "1rem", marginRight: "0.5rem", color: "#ef4444" }} />
+                  Top Losers
+                </h3>
+              </div>
+              <div style={{ padding: "1.25rem", paddingTop: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {cryptoData
+                    .filter((crypto) => crypto.change < 0)
+                    .sort((a, b) => a.changePercent - b.changePercent)
+                    .slice(0, 3)
+                    .map((crypto) => (
+                      <div
+                        key={crypto.symbol}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: "0.75rem",
+                          backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                          backdropFilter: "blur(5px)",
+                          WebkitBackdropFilter: "blur(5px)",
+                          border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                          transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.borderColor = "#ef4444"
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.borderColor =
+                            theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.symbol}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.name}
+                          </div>
+                        </div>
+                        <div
+                          className="smooth-transition"
+                          style={{
+                            color: "#ef4444",
+                            fontWeight: 600,
+                            fontSize: "1.125rem",
+                            fontFamily: "Comfortaa, sans-serif",
+                          }}
+                        >
+                          {crypto.changePercent.toFixed(2)}%
+                        </div>
+                      </div>
+                    ))}
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Client Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newEntry.clientName}
-                    onChange={(e) =>
-                      setNewEntry((prev) => ({
-                        ...prev,
-                        clientName: e.target.value,
-                      }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    placeholder="e.g., Web Development"
-                    required
+            <div
+              className="glass"
+              style={{
+                backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.5)" : "rgba(255, 255, 255, 0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderRadius: "1rem",
+                border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)"}`,
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ padding: "1.25rem", paddingBottom: "0.5rem" }}>
+                <h3
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                    margin: 0,
+                    fontFamily: "Comfortaa, sans-serif",
+                  }}
+                >
+                  <BarChart2
+                    style={{
+                      height: "1rem",
+                      width: "1rem",
+                      marginRight: "0.5rem",
+                      color: "#5F8B4C",
+                    }}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className={`block text-sm font-medium ${
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      } mb-2`}
-                    >
-                      Amount ($)
-                    </label>
-                    <input
-                      type="number"
-                      value={newEntry.amount}
-                      onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          amount: e.target.value,
-                        }))
-                      }
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        darkMode
-                          ? "bg-gray-800 border-gray-700 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                      placeholder="2500"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      className={`block text-sm font-medium ${
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      } mb-2`}
-                    >
-                      Hours
-                    </label>
-                    <input
-                      type="number"
-                      value={newEntry.hours}
-                      onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          hours: e.target.value,
-                        }))
-                      }
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        darkMode
-                          ? "bg-gray-800 border-gray-700 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                      placeholder="40"
-                      min="0"
-                      step="0.5"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newEntry.date}
-                    onChange={(e) =>
-                      setNewEntry((prev) => ({ ...prev, date: e.target.value }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Status
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={newEntry.status}
-                      onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          status: e.target.value as any,
-                        }))
-                      }
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer ${
-                        darkMode
-                          ? "bg-gray-800 border-gray-700 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      <option value="Paid">Paid</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Overdue">Overdue</option>
-                    </select>
-                    <ChevronDown
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textClasses} pointer-events-none`}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    value={newEntry.description}
-                    onChange={(e) =>
-                      setNewEntry((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    rows={3}
-                    placeholder="Brief description of the project"
-                    required
-                  />
-                </div>
-
-                <div className="flex space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className={`flex-1 py-3 rounded-lg font-semibold transition-colors duration-200 cursor-pointer ${
-                      darkMode
-                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                        : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddEntry}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors duration-200 cursor-pointer"
-                  >
-                    Add Entry
-                  </button>
+                  Most Active
+                </h3>
+              </div>
+              <div style={{ padding: "1.25rem", paddingTop: 0 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {cryptoData
+                    .sort((a, b) => b.volume - a.volume)
+                    .slice(0, 3)
+                    .map((crypto) => (
+                      <div
+                        key={crypto.symbol}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: "0.75rem",
+                          backgroundColor: theme === "dark" ? "rgba(40, 40, 45, 0.5)" : "rgba(241, 241, 245, 0.5)",
+                          backdropFilter: "blur(5px)",
+                          WebkitBackdropFilter: "blur(5px)",
+                          border: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"}`,
+                          transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.borderColor = "#5F8B4C"
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.borderColor =
+                            theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.3)"
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.symbol}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+                              fontFamily: "Comfortaa, sans-serif",
+                            }}
+                          >
+                            {crypto.name}
+                          </div>
+                        </div>
+                        <div
+                          className="smooth-transition"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "1.125rem",
+                            color: theme === "dark" ? "var(--text-primary-dark)" : "var(--text-primary)",
+                            fontFamily: "Comfortaa, sans-serif",
+                          }}
+                        >
+                          {formatNumber(crypto.volume)}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      </main>
 
-        {/* Add Goal Modal */}
-        {showGoalModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div
-              className={`${cardClasses} rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300`}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2
-                  className={`text-2xl font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  Add Income Goal
-                </h2>
-                <button
-                  onClick={() => setShowGoalModal(false)}
-                  className={`${textClasses} hover:${
-                    darkMode ? "text-white" : "text-gray-900"
-                  } transition-colors cursor-pointer`}
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Goal Title
-                  </label>
-                  <input
-                    type="text"
-                    value={newGoal.title}
-                    onChange={(e) =>
-                      setNewGoal((prev) => ({ ...prev, title: e.target.value }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    placeholder="e.g., Q2 Revenue Target"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Target Amount ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={newGoal.target}
-                    onChange={(e) =>
-                      setNewGoal((prev) => ({
-                        ...prev,
-                        target: e.target.value,
-                      }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    placeholder="10000"
-                    min="0"
-                    step="100"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Goal Type
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={newGoal.type}
-                      onChange={(e) =>
-                        setNewGoal((prev) => ({
-                          ...prev,
-                          type: e.target.value as any,
-                        }))
-                      }
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer ${
-                        darkMode
-                          ? "bg-gray-800 border-gray-700 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                      <option value="project">Project-based</option>
-                    </select>
-                    <ChevronDown
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textClasses} pointer-events-none`}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    className={`block text-sm font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    } mb-2`}
-                  >
-                    Deadline
-                  </label>
-                  <input
-                    type="date"
-                    value={newGoal.deadline}
-                    onChange={(e) =>
-                      setNewGoal((prev) => ({
-                        ...prev,
-                        deadline: e.target.value,
-                      }))
-                    }
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      darkMode
-                        ? "bg-gray-800 border-gray-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                    required
-                  />
-                </div>
-
-                <div className="flex space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowGoalModal(false)}
-                    className={`flex-1 py-3 rounded-lg font-semibold transition-colors duration-200 cursor-pointer ${
-                      darkMode
-                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                        : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddGoal}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors duration-200 cursor-pointer"
-                  >
-                    Add Goal
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Footer */}
+      <footer
+        style={{
+          backgroundColor: theme === "dark" ? "rgba(30, 30, 35, 0.7)" : "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderTop: `1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+          padding: "1rem",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: theme === "dark" ? "var(--text-secondary-dark)" : "var(--text-secondary)",
+              fontWeight: "500",
+              fontFamily: "Comfortaa, sans-serif",
+            }}
+          >
+            © {new Date().getFullYear()} Crypto FCX. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
-  );
-};
-
-export default IncomeDashboard;
-
-// Zod Schema
-export const Schema = {
-    "commentary": "This code generates a dashboard to track freelancing income across multiple platforms. It includes features such as total earnings, monthly breakdowns, and average hourly rate using graphs and number cards. Users can tag income sources with project types and view pie charts of income distribution. The layout is smooth and responsive, built with TypeScript and Next.js, and the UI is self-contained in a single .tsx file.",
-    "template": "nextjs-developer",
-    "title": "Freelance Dashboard",
-    "description": "A dashboard to track freelancing income across multiple platforms.",
-    "additional_dependencies": ["lucide-react"],
-    "has_additional_dependencies": true,
-    "install_dependencies_command": "npm install lucide-react",
-    "port": 3000,
-    "file_path": "pages/index.tsx",
-    "code": "<see code above>"
+  )
 }
