@@ -1,1952 +1,2922 @@
-"use client"
-import type React from "react"
-import { useState, useEffect } from "react"
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import {
-Star, Clock, Calendar, Play, X, Search, TrendingUp, Film, Award, ChevronRight, Heart, Share2, ChevronDown, ChevronLeft, 
-} from "lucide-react"
-import { toast, Toaster } from "sonner"
+  Search,
+  Menu,
+  X,
+  ChevronDown,
+  Bookmark,
+  Share2,
+  Heart,
+  MessageCircle,
+  ArrowRight,
+  BookOpen,
+  Clock,
+  Tag,
+  Rss,
+  Mail,
+  Twitter,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Github,
+  ChevronUp,
+  Send,
+} from "lucide-react";
 
-// Types
-interface Review {
-  id: number
-  title: string
-  content: string
-  rating: number
-  userId: number
-  userName: string
-  userAvatar: string
-  likes: number
-  createdAt: string
-  criticScore: number
-  imageUrl: string
-  genres: string[]
-  duration: string
-  releaseDate: string
-  userLiked?: boolean
-  type: "movie" | "series"
-  isTopRated?: boolean
-}
-
-interface Show {
-  id: number
-  title: string
-  posterUrl: string
-  genre: string
-  rating: number
-  reviews: number
-}
-
-interface CarouselItem {
-  id: number
-  title: string
-  description: string
-  imageUrl: string
-  posterUrl: string
-}
-
-// Data 
-const mockReviews: Review[] = [
-  {
-    id: 1,
-    title: "A Masterpiece of Modern Cinema",
-    content:
-      "An exceptional film that redefines the boundaries of storytelling and visual artistry. The performances are outstanding and the cinematography is breathtaking. A must-see experience that will leave you pondering long after the credits roll.",
-    rating: 9.5,
-    userId: 101,
-    userName: "Emily Johnson",
-    userAvatar: "https://randomuser.me/api/portraits/women/11.jpg",
-    likes: 42,
-    createdAt: "2025-01-15",
-    criticScore: 92,
-    imageUrl: "https://images.unsplash.com/photo-1726137569906-14f8079861fa?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDF8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxfHx8ZW58MHx8fHx8",
-    genres: ["Drama", "Mystery", "Sci-Fi"],
-    duration: "2h 37m",
-    releaseDate: "2025",
-    type: "movie",
-    isTopRated: true,
-  },
-  {
-    id: 2,
-    title: "Underwhelming Experience",
-    content:
-      "Despite the impressive cast and promising premise, this film failed to deliver on multiple fronts. The pacing was inconsistent and the plot twists felt forced. While some performances were good, the overall execution fell short of expectations.",
-    rating: 6.0,
-    userId: 102,
-    userName: "Marcus Chen",
-    userAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    likes: 15,
-    createdAt: "2025-01-12",
-    criticScore: 68,
-    imageUrl: "https://images.unsplash.com/photo-1743484977289-22999cb8c001?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw0fHx8ZW58MHx8fHx8",
-    genres: ["Action", "Thriller"],
-    duration: "1h 55m",
-    releaseDate: "2025",
-    type: "movie",
-  },
-  {
-    id: 3,
-    title: "Brilliant Series Finale",
-    content:
-      "After five seasons of incredible storytelling, this series delivers a satisfying conclusion that ties up all loose ends. The character development throughout the series has been phenomenal, and this final season is no exception.",
-    rating: 9.2,
-    userId: 103,
-    userName: "Sarah Williams",
-    userAvatar: "https://randomuser.me/api/portraits/women/25.jpg",
-    likes: 67,
-    createdAt: "2025-01-20",
-    criticScore: 89,
-    imageUrl: "https://images.unsplash.com/photo-1743423054685-4b109da0403a?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw5fHx8ZW58MHx8fHx8",
-    genres: ["Drama", "Crime", "Thriller"],
-    duration: "8 episodes",
-    releaseDate: "2025",
-    type: "series",
-    isTopRated: true,
-  },
-  {
-    id: 4,
-    title: "Visually Stunning but Hollow",
-    content:
-      "This movie is a feast for the eyes with incredible special effects and cinematography. However, the story lacks depth and the characters feel one-dimensional. It's entertainment value is high, but don't expect profound storytelling.",
-    rating: 7.3,
-    userId: 104,
-    userName: "David Rodriguez",
-    userAvatar: "https://randomuser.me/api/portraits/men/45.jpg",
-    likes: 28,
-    createdAt: "2025-01-18",
-    criticScore: 74,
-    imageUrl: "https://images.unsplash.com/photo-1743917836519-44f2b58deed3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxM3x8fGVufDB8fHx8fA%3D%3D",
-    genres: ["Action", "Adventure", "Sci-Fi"],
-    duration: "2h 15m",
-    releaseDate: "2025",
-    type: "movie",
-  },
-  {
-    id: 5,
-    title: "Addictive Binge-Watch",
-    content:
-      "This series hooks you from the first episode and doesn't let go. The writing is sharp, the acting is superb, and each episode ends with a cliffhanger that makes it impossible to stop watching. Highly recommended for thriller fans.",
-    rating: 8.7,
-    userId: 105,
-    userName: "Lisa Thompson",
-    userAvatar: "https://randomuser.me/api/portraits/women/33.jpg",
-    likes: 54,
-    createdAt: "2025-01-22",
-    criticScore: 85,
-    imageUrl: "https://plus.unsplash.com/premium_photo-1744395627449-fc1cc8c1fa7e?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwxOXx8fGVufDB8fHx8fA%3D%3D",
-    genres: ["Thriller", "Mystery", "Drama"],
-    duration: "10 episodes",
-    releaseDate: "2025",
-    type: "series",
-  },
-  {
-    id: 6,
-    title: "Emotional Rollercoaster",
-    content:
-      "Rarely does a film manage to balance humor and heartbreak so perfectly. This movie will make you laugh, cry, and everything in between. The performances are raw and authentic, making every emotion feel genuine.",
-    rating: 9.1,
-    userId: 106,
-    userName: "Michael Brown",
-    userAvatar: "https://randomuser.me/api/portraits/men/28.jpg",
-    likes: 73,
-    createdAt: "2025-01-25",
-    criticScore: 91,
-    imageUrl: "https://images.unsplash.com/photo-1745236781096-be405b87d05c?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwyNXx8fGVufDB8fHx8fA%3D%3D",
-    genres: ["Drama", "Comedy", "Romance"],
-    duration: "2h 8m",
-    releaseDate: "2025",
-    type: "movie",
-    isTopRated: true,
-  },
-  {
-    id: 7,
-    title: "Disappointing Follow-up",
-    content:
-      "After the success of the first season, expectations were high. Unfortunately, this second season feels rushed and lacks the charm that made the original so special. Some good moments, but overall a letdown.",
-    rating: 5.8,
-    userId: 107,
-    userName: "Jennifer Davis",
-    userAvatar: "https://randomuser.me/api/portraits/women/42.jpg",
-    likes: 12,
-    createdAt: "2025-01-10",
-    criticScore: 62,
-    imageUrl: "https://images.unsplash.com/photo-1726607424623-6d9fee974241?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDF8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzMXx8fGVufDB8fHx8fA%3D%3D",
-    genres: ["Comedy", "Drama"],
-    duration: "8 episodes",
-    releaseDate: "2025",
-    type: "series",
-  },
-  {
-    id: 8,
-    title: "Genre-Defining Masterpiece",
-    content:
-      "This film sets a new standard for its genre. Every aspect from direction to sound design is meticulously crafted. It's not just entertainment; it's art. This will be studied in film schools for years to come.",
-    rating: 9.8,
-    userId: 108,
-    userName: "Robert Wilson",
-    userAvatar: "https://randomuser.me/api/portraits/men/55.jpg",
-    likes: 89,
-    createdAt: "2025-01-23",
-    criticScore: 96,
-    imageUrl: "https://images.unsplash.com/photo-1745770998338-eb50b0c89b16?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHwzOHx8fGVufDB8fHx8fA%3D%3D",
-    genres: ["Drama", "Thriller", "Mystery"],
-    duration: "2h 42m",
-    releaseDate: "2025",
-    type: "movie",
-    isTopRated: true,
-  },
-]
-
-const mockShows: Show[] = [
-  {
-    id: 201,
-    title: "Quantum Shadows",
-    posterUrl:
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=750&q=80",
-    genre: "Sci-Fi",
-    rating: 9.3,
-    reviews: 124,
-  },
-  {
-    id: 202,
-    title: "Moonlight Serenade",
-    posterUrl:
-      "https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=750&q=80",
-    genre: "Romance",
-    rating: 9.0,
-    reviews: 89,
-  },
-  {
-    id: 203,
-    title: "Cyber Nexus",
-    posterUrl:
-      "https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=750&q=80",
-    genre: "Action",
-    rating: 8.7,
-    reviews: 156,
-  },
-  {
-    id: 204,
-    title: "The Lost Kingdom",
-    posterUrl:
-      "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=750&q=80",
-    genre: "Advent",
-    rating: 9.1,
-    reviews: 112,
-  },
-]
-
-const carouselItems: CarouselItem[] = [
-  {
-    id: 1,
-    title: "Quantum Shadows",
-    description: "A mind-bending sci-fi thriller that explores the boundaries of reality and consciousness.",
-    imageUrl: "https://images.unsplash.com/photo-1745905932716-431e50eac74b?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw0NHx8fGVufDB8fHx8fA%3D%3D",
-    posterUrl:
-      "https://images.unsplash.com/photo-1745905932716-431e50eac74b?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw0NHx8fGVufDB8fHx8fA%3D%3D",
-  },
-  {
-    id: 2,
-    title: "Moonlight Serenade",
-    description: "A romantic drama that captures the essence of love in the digital age.",
-    imageUrl: "https://images.unsplash.com/photo-1735825764485-93a381fd5779?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDF8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1MXx8fGVufDB8fHx8fA%3D%3D",
-    posterUrl:
-      "https://images.unsplash.com/photo-1735825764485-93a381fd5779?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDF8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1MXx8fGVufDB8fHx8fA%3D%3D",
-  },
-  {
-    id: 3,
-    title: "Cyber Nexus",
-    description: "An action-packed adventure through virtual worlds and digital landscapes.",
-    imageUrl: "https://images.unsplash.com/photo-1745750747233-c09276a878b3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1N3x8fGVufDB8fHx8fA%3D%3D",
-    posterUrl:
-      "https://images.unsplash.com/photo-1745750747233-c09276a878b3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxmZWF0dXJlZC1waG90b3MtZmVlZHw1N3x8fGVufDB8fHx8fA%3D%3D",
-  },
-]
-
-// Helper Functions
-const formatDate = (dateString: string) => {
-  const options: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+// Import Poppins font from Google Fonts
+const fontImport = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+  
+  * {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-  return new Date(dateString).toLocaleDateString(undefined, options)
-}
+  
+  body {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+`;
 
-const scrollToSection = (sectionId: string) => {
-  const element = document.getElementById(sectionId)
-  if (element) {
-    element.scrollIntoView({ behavior: "smooth" })
+// Inject font styles
+if (typeof document !== 'undefined') {
+  const existingStyle = document.getElementById('poppins-font');
+  if (!existingStyle) {
+    const style = document.createElement('style');
+    style.id = 'poppins-font';
+    style.textContent = fontImport;
+    document.head.appendChild(style);
   }
 }
 
-// Components
-const RatingBar = ({ score, size = "md" }: { score: number; size?: "sm" | "md" | "lg" }) => {
-  const getSizeClasses = () => {
-    switch (size) {
-      case "sm":
-        return "h-1.5 text-xs"
-      case "lg":
-        return "h-3 text-base"
-      default:
-        return "h-2 text-sm"
-    }
-  }
+// Type definitions
+type Post = {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  date: string;
+  readTime: string;
+  author: Author;
+  category: Category;
+  tags: string[];
+  image: string;
+  featured?: boolean;
+  likes: number;
+  comments: number;
+};
 
-  const getColorClasses = () => {
-    if (score >= 7.5) return "from-emerald-400 to-teal-500"
-    if (score >= 5) return "from-amber-400 to-yellow-500"
-    return "from-red-400 to-rose-500"
-  }
+type Author = {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  bio: string;
+};
 
-  return (
-    <div
-      className="w-full bg-gray-700 rounded-full overflow-hidden border border-gray-600"
-      role="progressbar"
-      aria-valuenow={score}
-      aria-valuemin={0}
-      aria-valuemax={10}
-    >
-      <div
-        className={`bg-gradient-to-r ${getColorClasses()} font-medium text-white text-center leading-none rounded-full flex items-center justify-center ${getSizeClasses()}`}
-        style={{ width: `${score * 10}%` }}
-      >
-        {size === "lg" && <span className="px-1">{score.toFixed(1)}</span>}
-      </div>
-    </div>
-  )
-}
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
-const GenreTag = ({ genre }: { genre: string }) => (
-  <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-medium bg-gray-800 text-white transition-colors duration-200 hover:bg-gray-700">
-    {genre}
-  </span>
-)
+type Comment = {
+  id: string;
+  author: Author;
+  content: string;
+  date: string;
+  likes: number;
+  replies?: Comment[];
+  postId: string; // ← add this
+};
 
-const CustomDropdown = ({
-  options,
-  value,
-  onChange,
-  placeholder = "Select option",
-  className = "",
-}: {
-  options: string[]
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  className?: string
-}) => {
-  const [isOpen, setIsOpen] = useState(false)
+// ====== Mock Data ======
+const authors: Author[] = [
+  {
+    id: "author-1",
+    name: "Alex Morgan",
+    avatar: "https://randomuser.me/api/portraits/women/32.jpg",
+    role: "Senior Editor",
+    bio: "Writing about technology and future trends for over a decade.",
+  },
+  {
+    id: "author-2",
+    name: "Jamie Chen",
+    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+    role: "Tech Writer",
+    bio: "Passionate about emerging technologies and their impact on society.",
+  },
+  {
+    id: "author-3",
+    name: "Sam Wilson",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+    role: "Guest Writer",
+    bio: "Entrepreneur and tech enthusiast with a focus on AI and machine learning.",
+  },
+];
 
-  return (
-    <div className={`relative ${className}`}>
-      <button
-        type="button"
-        className="w-full px-4 py-3 rounded-2xl bg-gray-800 border border-gray-600 text-white text-left flex items-center justify-between cursor-pointer hover:bg-gray-700 transition-all duration-300"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span>{value || placeholder}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
-      </button>
+const categories: Category[] = [
+  { id: "cat-1", name: "Technology", slug: "technology" },
+  { id: "cat-2", name: "Design", slug: "design" },
+  { id: "cat-3", name: "Business", slug: "business" },
+  { id: "cat-4", name: "Science", slug: "science" },
+  { id: "cat-5", name: "Productivity", slug: "productivity" },
+];
 
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-2 bg-gray-800 border border-gray-600 rounded-2xl shadow-2xl max-h-60 overflow-y-auto">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="w-full px-4 py-3 text-left hover:bg-gray-700 cursor-pointer transition-all duration-300 first:rounded-t-2xl last:rounded-b-2xl text-white"
-              onClick={() => {
-                onChange(option)
-                setIsOpen(false)
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+const posts: Post[] = [
+  {
+    id: "post-1",
+    title: "The Future of AI in Everyday Applications in World",
+    excerpt:
+      "Exploring how artificial intelligence is transforming the way we interact with technology on a daily basis.",
+    content: `<p>Artificial intelligence has come a long way in recent years, evolving from a sci-fi concept to an integral part of our daily lives. From voice assistants to recommendation algorithms, AI is silently powering many of the tools we use every day.</p>
+              <p>One of the most significant impacts of AI has been in personalization. Services like Netflix, Spotify, and Amazon have leveraged machine learning algorithms to understand user preferences and deliver tailored content recommendations. This level of personalization not only enhances user experience but also drives engagement and retention.</p>
+              <h2>The Rise of Conversational AI</h2>
+              <p>Conversational AI, which includes chatbots and virtual assistants, has seen remarkable improvements. These systems are no longer limited to following predefined scripts; they can now understand context, remember previous interactions, and even detect emotional cues.</p>
+              <p>Tools like ChatGPT have demonstrated that AI can engage in meaningful conversations, assist with creative tasks, and solve complex problems. This has opened up new possibilities for customer service, education, and accessibility.</p>
+              <h2>Challenges and Considerations</h2>
+              <p>Despite these advancements, there are legitimate concerns about privacy, bias, and the potential misuse of AI technologies. As these tools become more integrated into our lives, it's crucial to establish ethical guidelines and regulatory frameworks.</p>
+              <p>The path forward involves balancing innovation with responsibility, ensuring that AI remains a tool that enhances human capabilities rather than diminishes them.</p>`,
+    date: "May 15, 2025",
+    readTime: "5 min read",
+    author: authors[0],
+    category: categories[0],
+    tags: ["AI", "Machine Learning", "Technology Trends"],
+    image: "https://picsum.photos/seed/ai-future/600/400",
+    featured: true,
+    likes: 245,
+    comments: 37,
+  },
+  {
+    id: "post-2",
+    title: "Designing for Accessibility: A Comprehensive Guide",
+    excerpt:
+      "Learn how inclusive design principles can make your products accessible to a wider audience.",
+    content: "Full content for the accessibility article would go here...",
+    date: "May 12, 2025",
+    readTime: "7 min read",
+    author: authors[1],
+    category: categories[1],
+    tags: ["Accessibility", "UX Design", "Inclusive Design"],
+    image: "https://picsum.photos/seed/accessibility/600/400",
+    featured: true,
+    likes: 189,
+    comments: 24,
+  },
+  {
+    id: "post-3",
+    title:
+      "Sustainable Tech: Balancing Innovation and Environmental Responsibility",
+    excerpt:
+      "Examining how tech companies are addressing environmental concerns while pushing technological boundaries.",
+    content: "Full content for the sustainable tech article would go here...",
+    date: "May 10, 2025",
+    readTime: "6 min read",
+    author: authors[2],
+    category: categories[0],
+    tags: ["Sustainability", "Green Tech", "Innovation"],
+    image: "https://picsum.photos/seed/sustainable-tech/600/400",
+    featured: false,
+    likes: 210,
+    comments: 31,
+  },
+  {
+    id: "post-4",
+    title: "The Remote Work Revolution: Tools for Distributed Teams",
+    excerpt:
+      "A curated list of essential tools and practices for effective remote collaboration.",
+    content: "Full content for the remote work article would go here...",
+    date: "May 8, 2025",
+    readTime: "4 min read",
+    author: authors[0],
+    category: categories[4],
+    tags: ["Remote Work", "Productivity", "Collaboration"],
+    image: "https://picsum.photos/seed/remote-work/600/400",
+    featured: false,
+    likes: 176,
+    comments: 19,
+  },
+  {
+    id: "post-5",
+    title: `Understanding Quantum Computing: A Beginner's Guide`,
+    excerpt:
+      "Breaking down complex quantum concepts into digestible explanations for non-physicists.",
+    content: "Full content for the quantum computing article would go here...",
+    date: "May 5, 2025",
+    readTime: "8 min read",
+    author: authors[1],
+    category: categories[3],
+    tags: ["Quantum Computing", "Science", "Technology"],
+    image: "https://picsum.photos/seed/quantum/600/400",
+    featured: false,
+    likes: 231,
+    comments: 42,
+  },
+  {
+    id: "post-6",
+    title: "The Psychology of User Interaction",
+    excerpt:
+      "How understanding human behavior can lead to more effective digital products.",
+    content: "Full content for the psychology of UX article would go here...",
+    date: "May 3, 2025",
+    readTime: "5 min read",
+    author: authors[2],
+    category: categories[1],
+    tags: ["UX Design", "Psychology", "User Behavior"],
+    image: "https://picsum.photos/seed/psychology-ux/600/400",
+    featured: false,
+    likes: 198,
+    comments: 27,
+  },
+];
 
-const Carousel = ({ items }: { items: CarouselItem[] }) => {
-  const [currentIndex, setCurrentIndex] = useState(0)
+// ====== Main App Component ======
+const ModernBlogApp = () => {
+  // UI State
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentPost, setCurrentPost] = useState<Post | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>(posts);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([
+    {
+      id: "comment-1",
+      author: {
+        id: "reader-1",
+        name: "Taylor Reed",
+        avatar: "https://randomuser.me/api/portraits/men/22.jpg",
+        role: "Reader",
+        bio: "Tech enthusiast and early adopter",
+      },
+      content:
+        "This article really opened my eyes to how pervasive AI has become in our daily lives. I wonder about the privacy implications though.",
+      date: "May 16, 2025",
+      likes: 12,
+      postId: "post-1",
+      replies: [
+        {
+          id: "reply-1",
+          postId: "post-1",
+          author: authors[0],
+          content: `Great point about privacy, Taylor. That's definitely one of the key challenges we need to address as AI becomes more integrated into our lives.`,
+          date: "May 16, 2025",
+          likes: 5,
+        },
+      ],
+    },
+    {
+      id: "comment-2",
+      postId: "post-1",
+      author: {
+        id: "reader-2",
+        name: "Jordan Smith",
+        avatar: "https://randomuser.me/api/portraits/women/57.jpg",
+        role: "Reader",
+        bio: "Software developer and AI researcher",
+      },
+      content:
+        "I work in the AI field, and I appreciate how this article makes complex concepts accessible without oversimplifying. Looking forward to more articles in this series!",
+      date: "May 17, 2025",
+      likes: 8,
+    },
 
-  const nextSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length)
-  }
+    // Comments for post-2
+    {
+      id: "comment-3",
+      postId: "post-2",
+      author: {
+        id: "reader-3",
+        name: "Samuel Brooks",
+        avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+        role: "Product Manager",
+        bio: "Always thinking about user experience.",
+      },
+      content:
+        "The UI case studies were spot on. I've forwarded this to my design team!",
+      date: "May 18, 2025",
+      likes: 9,
+    },
 
-  const prevSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + items.length) % items.length)
-  }
+    // Comments for post-3
+    {
+      id: "comment-4",
+      postId: "post-3",
+      author: {
+        id: "reader-4",
+        name: "Lena Torres",
+        avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+        role: "UX Designer",
+        bio: "Designing with empathy and data.",
+      },
+      content:
+        "Loved the section on cognitive load—this is often overlooked in fast-paced projects.",
+      date: "May 19, 2025",
+      likes: 6,
+    },
 
+    // Comments for post-4
+    {
+      id: "comment-5",
+      postId: "post-4",
+      author: {
+        id: "reader-5",
+        name: "Dev Patel",
+        avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+        role: "Full Stack Developer",
+        bio: "Building SaaS and writing clean code.",
+      },
+      content:
+        "Nice breakdown of microservices. Would love a follow-up post on deployment strategies.",
+      date: "May 20, 2025",
+      likes: 10,
+    },
+
+    // Comments for post-5
+    {
+      id: "comment-6",
+      postId: "post-5",
+      author: {
+        id: "reader-6",
+        name: "Emily Zhang",
+        avatar: "https://randomuser.me/api/portraits/women/22.jpg",
+        role: "Cloud Architect",
+        bio: "Helping teams scale on the cloud.",
+      },
+      content:
+        "This was a good refresher on Kubernetes fundamentals. Thanks for including diagrams!",
+      date: "May 21, 2025",
+      likes: 11,
+    },
+
+    // Comments for post-6
+    {
+      id: "comment-7",
+      postId: "post-6",
+      author: {
+        id: "reader-7",
+        name: "Marcus Lee",
+        avatar: "https://randomuser.me/api/portraits/men/78.jpg",
+        role: "Security Analyst",
+        bio: "Keeping the web safe one firewall at a time.",
+      },
+      content:
+        "The security checklist is gold. Every startup should bookmark this.",
+      date: "May 21, 2025",
+      likes: 14,
+    },
+  ]);
+  const [replyText, setReplyText] = useState("");
+
+  // Form State
+  const [comment, setComment] = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+
+  // Auth State
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [currentUser, setCurrentUser] = useState<Author | null>(null);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+  const [showSavedPosts, setShowSavedPosts] = useState(false);
+
+  // Post Creation State
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [newPost, setNewPost] = useState<Partial<Post>>({
+    title: "",
+    excerpt: "",
+    content: "",
+    category: categories[0],
+    tags: [],
+    image: "",
+  });
+  const [allPosts, setAllPosts] = useState<Post[]>(posts);
+
+  // Refs
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // New state for scrolling to comments
+  const [scrollToCommentsFlag, setScrollToCommentsFlag] = useState(false);
+
+  // Toast state
+  const [toasts, setToasts] = useState<Array<{id: string, message: string, type: 'success' | 'error' | 'info'}>>([]);
+
+  // Function to show toast
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 4000);
+  };
+
+  // Handle scroll to show/hide back to top button
   useEffect(() => {
-    const interval = setInterval(nextSlide, 5000)
-    return () => clearInterval(interval)
-  }, [])
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 500);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Filter posts based on search query and selected category
+  useEffect(() => {
+    const filtered = allPosts.filter((post) => {
+      const matchesQuery =
+        searchQuery === "" ||
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.tags.some((tag) =>
+          tag.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      const matchesCategory =
+        selectedCategory === null || post.category.id === selectedCategory;
+
+      return matchesQuery && matchesCategory;
+    });
+
+    setFilteredPosts(filtered);
+  }, [searchQuery, selectedCategory, allPosts]);
+
+  // Focus search input when search is opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+      // Prevent background scrolling
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore background scrolling
+      document.body.style.overflow = 'unset';
+    }
+
+    // Add keyboard event listeners
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isSearchOpen) {
+        if (e.key === 'Escape') {
+          setIsSearchOpen(false);
+        } else if (e.key === 'Enter' && searchQuery && filteredPosts.length > 0) {
+          handlePostClick(filteredPosts[0]);
+          setIsSearchOpen(false);
+        }
+      }
+    };
+
+    if (isSearchOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    // Cleanup function to restore scrolling if component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSearchOpen, searchQuery, filteredPosts]);
+
+  // Prevent background scrolling when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      // Prevent background scrolling
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restore background scrolling
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scrolling if component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMenuOpen]);
+
+  const handlePostClick = (post: Post, scrollToComments = false) => {
+    setCurrentPost(post);
+    setScrollToCommentsFlag(scrollToComments);
+    if (!scrollToComments) {
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handleBackToList = () => {
+    setCurrentPost(null);
+  };
+
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
+    setCurrentPost(null); // Close single post view when navigating to categories
+    setShowSavedPosts(false); // Also close saved posts view if open
+    window.scrollTo(0, 0); // Scroll to top when changing views
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      // Clear search when opening
+      setSearchQuery("");
+    }
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // Sign in handling
+  const handleSignIn = () => {
+    // Mock authentication
+    if (username && password) {
+      // In a real app, this would validate against a backend
+      setIsSignedIn(true);
+
+      // Create a mock user based on the username
+      const user: Author = {
+        id: "current-user",
+        name: username,
+        avatar: `https://randomuser.me/api/portraits/${
+          Math.random() > 0.5 ? "men" : "women"
+        }/${Math.floor(Math.random() * 99)}.jpg`,
+        role: "Member",
+        bio: "Blog member",
+      };
+
+      setCurrentUser(user);
+      setIsSignInModalOpen(false);
+
+      // Clear form
+      setUsername("");
+      setPassword("");
+    }
+  };
+
+  const handleSignOut = () => {
+    setIsSignedIn(false);
+    setCurrentUser(null);
+  };
+
+  // Post creation handling
+  const handleCreatePost = () => {
+    if (!isSignedIn || !currentUser) {
+      setIsSignInModalOpen(true);
+      return;
+    }
+
+    // Validate required fields
+    if (!newPost.title || !newPost.excerpt || !newPost.content) {
+      showToast("Please fill in all required fields", "error");
+      return;
+    }
+
+    // Create a new post
+    const postId = `post-${allPosts.length + 1}`;
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Generate image if none provided
+    const imageUrl =
+      newPost.image || `https://picsum.photos/seed/${postId}/600/400`;
+
+    // Create full post object
+    const fullPost: Post = {
+      id: postId,
+      title: newPost.title,
+      excerpt: newPost.excerpt,
+      content: newPost.content,
+      date: formattedDate,
+      readTime: `${Math.max(
+        2,
+        Math.ceil(newPost.content.length / 1000)
+      )} min read`,
+      author: currentUser,
+      category: newPost.category || categories[0],
+      tags: newPost.tags || [],
+      image: imageUrl,
+      likes: 0,
+      comments: 0,
+    };
+
+    // Add to posts and reset form
+    setAllPosts([fullPost, ...allPosts]);
+    setIsCreatePostModalOpen(false);
+    setNewPost({
+      title: "",
+      excerpt: "",
+      content: "",
+      category: categories[0],
+      tags: [],
+      image: "",
+    });
+  };
+
+  // Comment handling
+  const handleSubmitComment = () => {
+    if (!currentPost) return;
+
+    if (!isSignedIn) {
+      setIsSignInModalOpen(true);
+      return;
+    }
+
+    if (!comment.trim()) {
+      showToast("Please enter a comment", "error");
+      return;
+    }
+
+    // Create a new comment
+    const newComment: Comment = {
+      id: `comment-${Date.now()}`,
+      author: currentUser!,
+      content: comment,
+      date: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      likes: 0,
+      postId: currentPost.id,
+    };
+
+    // Add comment to the current post
+    const updatedPosts = allPosts.map((post) => {
+      if (post.id === currentPost.id) {
+        // Create a new post object with updated comment count
+        return {
+          ...post,
+          comments: post.comments + 1,
+        };
+      }
+      return post;
+    });
+
+    // Update the current post's comments count
+    if (currentPost) {
+      setCurrentPost({
+        ...currentPost,
+        comments: currentPost.comments + 1,
+      });
+    }
+
+    // Update posts
+    setAllPosts(updatedPosts);
+
+    // Add comment to the global comments
+    setComments((prev) => [newComment, ...prev]);
+
+    // Clear comment field
+    setComment("");
+  };
+
+  const handleSubscribe = () => {
+    // Mock subscribe functionality
+    if (!email.trim()) {
+      showToast("Please enter your email", "error");
+      return;
+    }
+
+    setEmail("");
+    setName("");
+    showToast("Thanks for subscribing!", "success");
+  };
+
+  // Add these functions to ModernBlogApp
+  const handleSavePost = (post: Post) => {
+    setSavedPosts((prev) => {
+      if (!prev.some((p) => p.id === post.id)) {
+        return [...prev, post];
+      }
+      return prev;
+    });
+  };
+
+  const handleRemoveSavedPost = (postId: string) => {
+    setSavedPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
 
   return (
-    <div className="relative rounded-xl md:rounded-2xl overflow-hidden">
-      <div className="relative aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] w-full">
-        {items.map((item, index) => (
-          <div
-            key={item.id}
-            className={`absolute inset-0 transition-opacity duration-500 ${
-              index === currentIndex ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${item.posterUrl})` }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/90 via-black/60 sm:via-black/50 to-transparent z-10" />
-
-            <div className="absolute inset-0 z-20 flex flex-col justify-center p-3 sm:p-4 md:p-8 lg:p-16 text-white">
-              <div className="max-w-2xl">
-                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">{item.title}</h1>
-                <p className="text-xs sm:text-sm md:text-lg lg:text-xl text-gray-200 mb-3 sm:mb-4 md:mb-6 max-w-xl line-clamp-2 sm:line-clamp-3 md:line-clamp-none">
-                  {item.description}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4">
-                  <button
-                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium transition-colors duration-200 flex items-center justify-center cursor-pointer text-sm md:text-base"
-                    onClick={() => toast.info(`Viewing details for ${item.title}`)}
-                  >
-                    <Play className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2" />
-                    View Details
-                  </button>
-                  <button
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium transition-colors duration-200 cursor-pointer text-sm md:text-base"
-                    onClick={() => scrollToSection("reviews")}
-                  >
-                    Read Reviews
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={prevSlide}
-        className="absolute left-1 sm:left-2 md:left-4 top-1/2 transform -translate-y-1/2 z-30 bg-gray-800 hover:bg-gray-700 text-white p-1.5 sm:p-2 md:p-3 rounded-xl transition-colors duration-200 cursor-pointer"
-        aria-label="Previous slide"
+    <motion.div 
+      className="min-h-screen bg-gray-50 text-gray-900"
+      style={{ fontFamily: 'Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+    >
+      {/* Navigation */}
+      <motion.nav 
+        className="bg-white shadow-sm fixed w-full z-10 transition-all duration-300"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
       >
-        <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6" />
-      </button>
-      <button
-        onClick={nextSlide}
-        className="absolute right-1 sm:right-2 md:right-4 top-1/2 transform -translate-y-1/2 z-30 bg-gray-800 hover:bg-gray-700 text-white p-1.5 sm:p-2 md:p-3 rounded-xl transition-colors duration-200 cursor-pointer"
-        aria-label="Next slide"
-      >
-        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 md:w-6 md:h-6" />
-      </button>
-
-      <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2 z-30 flex space-x-1 sm:space-x-2">
-        {items.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 rounded-full transition-colors duration-200 cursor-pointer ${
-              index === currentIndex ? "bg-white" : "bg-white/50"
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-const ReviewCard = ({
-  review,
-  onOpen,
-  onLike,
-  variant = "standard",
-}: {
-  review: Review
-  onOpen: (id: number) => void
-  onLike: (id: number) => void
-  variant?: "standard" | "featured"
-}) => {
-  if (variant === "featured") {
-    return (
-      <article className="group relative overflow-hidden rounded-2xl cursor-pointer transition-colors duration-200 hover:bg-gray-800/50 bg-gray-900 border border-gray-700">
-        <div className="flex flex-col lg:flex-row h-full min-h-[400px] lg:h-[300px]" onClick={() => onOpen(review.id)}>
-          {/* Image Section */}
-          <div 
-            className="relative w-full lg:w-2/5 h-48 lg:h-full overflow-hidden bg-cover bg-center bg-gray-800"
-            style={{
-              backgroundImage: `url(${review.imageUrl}), url('https://picsum.photos/600/400?random=${review.id}')`
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-gray-900/90 via-gray-900/30 to-transparent"></div>
-            
-            {/* Rating Badge */}
-            <div className="absolute top-3 left-3 lg:top-4 lg:left-4 flex items-center bg-gray-900 text-white px-3 py-2 rounded-xl z-10">
-              <Star className="w-4 h-4 lg:w-5 lg:h-5 text-amber-400 fill-amber-400 mr-2" />
-              <span className="font-bold text-sm lg:text-lg">{review.rating.toFixed(1)}</span>
-            </div>
-
-            {/* Genre Tags - Mobile Only */}
-            <div className="absolute bottom-3 left-3 lg:hidden flex flex-wrap gap-1">
-              {review.genres.slice(0, 2).map((genre, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-900 text-white"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Section */}
-          <div className="flex-1 p-6 lg:p-8 flex flex-col">
-            {/* Header */}
-            <div className="flex-1">
-              {/* Genre Tags - Desktop Only */}
-              <div className="hidden lg:flex flex-wrap gap-2 mb-4">
-                {review.genres.map((genre, index) => (
-                  <GenreTag key={index} genre={genre} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <a
+                href="#"
+                className="flex-shrink-0 flex items-center cursor-pointer"
+                onClick={() => {
+                  setCurrentPost(null);
+                  setSelectedCategory(null);
+                  setShowSavedPosts(false);
+                  setSearchQuery("");
+                  setIsSearchOpen(false);
+                  window.scrollTo(0, 0);
+                }}
+              >
+                <span className="font-bold text-xl text-blue-600">Insight</span>
+                <span className="font-bold text-xl text-gray-900">Blog</span>
+              </a>
+              <div className="hidden md:ml-6 md:flex md:space-x-8">
+                {categories.slice(0, 4).map((category) => (
+                  <a
+                    key={category.id}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleCategorySelect(category.id);
+                    }}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                      selectedCategory === category.id
+                        ? "border-blue-500 text-gray-900"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {category.name}
+                  </a>
                 ))}
-              </div>
-
-              <h2 className="text-2xl lg:text-3xl font-bold mb-3 text-white group-hover:text-emerald-400 transition-colors duration-200 line-clamp-2">
-                {review.title}
-              </h2>
-
-              <div className="flex flex-wrap items-center gap-4 mb-4 text-sm text-gray-300">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  <span>{review.duration}</span>
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  <span>{review.releaseDate}</span>
-                </div>
-                <div className="text-gray-400">{formatDate(review.createdAt)}</div>
-              </div>
-
-              <p className="text-gray-300 line-clamp-3 lg:line-clamp-2 leading-relaxed">
-                {review.content}
-              </p>
-            </div>
-
-            {/* Footer - Profile and Actions */}
-            <div className="flex justify-between items-center gap-3 lg:gap-4 mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-gray-700">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <img
-                  src={review.userAvatar || "/placeholder.svg"}
-                  alt={review.userName}
-                  className="w-8 h-8 lg:w-10 lg:h-10 rounded-full"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.onerror = null
-                    target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName)
-                  }}
-                />
-                <div>
-                  <span className="font-medium text-white text-sm lg:text-base">{review.userName}</span>
-                  <div className="text-xs text-gray-400">Critic Score: {review.criticScore}/100</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 lg:gap-4">
-                <button
-                  className="flex items-center gap-1 lg:gap-2 text-gray-300 hover:text-rose-400 transition-colors duration-200 cursor-pointer text-sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onLike(review.id)
-                  }}
-                >
-                  <Heart className={`w-4 h-4 lg:w-5 lg:h-5 ${review.userLiked ? "fill-rose-500 text-rose-500" : ""}`} />
-                  <span>{review.likes}</span>
-                </button>
-                <button
-                  className="flex items-center gap-1 lg:gap-2 text-gray-300 hover:text-emerald-400 transition-colors duration-200 cursor-pointer text-sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toast.success("Review shared!")
-                  }}
-                >
-                  <Share2 className="w-4 h-4 lg:w-5 lg:h-5" />
-                  <span className="hidden sm:inline">Share</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </article>
-    )
-  }
-
-  return (
-    <article className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden transition-colors duration-200 hover:bg-gray-800/50">
-      <div className="flex flex-col md:flex-row min-h-[280px] md:min-h-[300px]">
-        <div 
-          className="w-full md:w-56 h-48 md:h-auto md:min-h-full relative bg-cover bg-center bg-gray-800"
-          style={{
-            backgroundImage: `url(${review.imageUrl}), url('https://picsum.photos/400/600?random=${review.id}')`
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-gray-900/80 via-gray-900/20 to-transparent"></div>
-          <div className="absolute top-3 left-3 md:top-4 md:left-4 flex items-center gap-1 bg-gray-900 text-white px-3 py-2 rounded-xl z-10">
-            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-            <span className="text-sm font-bold">{review.rating.toFixed(1)}</span>
-          </div>
-        </div>
-
-        <div className="p-4 md:p-6 flex-1 flex flex-col">
-          {/* Header Content */}
-          <div className="flex-1">
-            <div className="flex justify-between items-start mb-3 md:mb-4">
-              <div className="flex-1">
-                <h2
-                  className="text-lg md:text-xl font-bold text-white group-hover:text-emerald-400 transition-colors duration-200 cursor-pointer line-clamp-2"
-                  onClick={() => onOpen(review.id)}
-                >
-                  {review.title}
-                </h2>
-                <div className="flex items-center mt-2 gap-2">
-                  <div className="flex gap-0.5 text-amber-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3 h-3 md:w-4 md:h-4 ${i < Math.round(review.rating / 2) ? "fill-current" : "text-gray-600"}`}
-                      />
+                <div className="relative group">
+                  <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200 cursor-pointer">
+                    More <ChevronDown className="ml-1 h-4 w-4" />
+                  </button>
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                    {categories.slice(4).map((category) => (
+                      <a
+                        key={category.id}
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleCategorySelect(category.id);
+                        }}
+                        className={`block px-4 py-2 text-sm cursor-pointer ${
+                          selectedCategory === category.id
+                            ? "bg-gray-100 text-gray-900"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        {category.name}
+                      </a>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end ml-3 md:ml-4">
-                <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
-                <div className="mt-2 flex gap-1 flex-wrap">
-                  {review.genres.slice(0, 2).map((genre, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-200"
-                    >
-                      {genre}
-                    </span>
-                  ))}
-                  {review.genres.length > 2 && (
-                    <span className="text-xs text-gray-400 self-center">+{review.genres.length - 2}</span>
-                  )}
-                </div>
-              </div>
             </div>
-
-            <p className="text-gray-300 line-clamp-2 md:line-clamp-3 text-sm leading-relaxed">{review.content}</p>
-          </div>
-
-          {/* Footer - Profile and Actions */}
-          <div className="flex justify-between items-center gap-3 md:gap-4 mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-700">
-            <div className="flex items-center gap-2 md:gap-3">
-              <img
-                src={review.userAvatar || "/placeholder.svg"}
-                alt={review.userName}
-                className="w-7 h-7 md:w-8 md:h-8 rounded-full"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.onerror = null
-                  target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName)
-                }}
-              />
-              <span className="text-sm font-medium text-gray-300">{review.userName}</span>
-            </div>
-
-            <div className="flex items-center gap-3 md:gap-6">
-              <button
-                className={`flex items-center gap-1 text-sm transition-colors duration-200 cursor-pointer ${
-                  review.userLiked ? "text-rose-400" : "text-gray-400 hover:text-rose-400"
-                }`}
-                onClick={() => onLike(review.id)}
-                aria-label="Like Review"
-              >
-                <Heart className={`w-4 h-4 ${review.userLiked ? "fill-rose-500" : ""}`} />
-                <span>{review.likes}</span>
-              </button>
-
-              <button
-                className="flex items-center gap-1 text-sm text-gray-400 hover:text-emerald-400 transition-colors duration-200 cursor-pointer"
-                onClick={() => toast.success("Review shared!")}
-                aria-label="Share Review"
-              >
-                <Share2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-const ShowCard = ({ show }: { show: Show }) => {
-  const [imageError, setImageError] = useState(false)
-
-  const backupImages = [
-    "https://picsum.photos/400/600?random=1",
-    "https://picsum.photos/400/600?random=2", 
-    "https://picsum.photos/400/600?random=3",
-    "https://picsum.photos/400/600?random=4",
-  ]
-
-  const handleImageError = () => {
-    if (!imageError) {
-      setImageError(true)
-    }
-  }
-
-  return (
-    <div className="group relative overflow-hidden rounded-xl md:rounded-2xl transition-colors duration-200 hover:bg-gray-800/30 cursor-pointer bg-gray-900 border border-gray-700">
-      <div 
-        className="relative aspect-[3/4] overflow-hidden bg-cover bg-center bg-gray-800"
-        style={{
-          backgroundImage: `url(${imageError ? backupImages[show.id % backupImages.length] : show.posterUrl}), url('https://picsum.photos/400/600?random=${show.id}')`
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-200"></div>
-
-        {/* Rating Badge */}
-        <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-gray-900 text-white text-xs md:text-sm font-bold px-2 py-1 md:px-3 md:py-2 rounded-lg md:rounded-xl z-10">
-          <div className="flex items-center">
-            <Star className="w-3 h-3 md:w-4 md:h-4 text-amber-400 fill-amber-400 mr-1" />
-            <span>{show.rating.toFixed(1)}</span>
-          </div>
-        </div>
-
-        {/* Hover Overlay Content */}
-        <div className="absolute inset-0 flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 bg-black/40">
-          <button
-            className="flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white py-2 px-4 md:py-3 md:px-6 rounded-xl transition-colors duration-200 cursor-pointer mb-3 md:mb-4 text-sm md:text-base"
-            onClick={() => toast.info(`Opening show details for ${show.title}`)}
-            aria-label={`View ${show.title}`}
-          >
-            <Play className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
-            <span>View Details</span>
-          </button>
-
-          <button
-            className="p-2 md:p-3 bg-gray-900 rounded-full hover:bg-gray-800 transition-colors duration-200 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation()
-              toast.success(`Shared ${show.title}!`)
-            }}
-            aria-label={`Share ${show.title}`}
-          >
-            <Share2 className="w-3 h-3 md:w-4 md:h-4 text-white" />
-          </button>
-        </div>
-
-        {/* Bottom Content - Always Visible */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 md:p-4 z-10 bg-gradient-to-t from-black/80 to-transparent">
-          <h3 className="font-bold text-white text-sm md:text-lg mb-1 md:mb-2 line-clamp-1 group-hover:text-emerald-300 transition-colors duration-200">
-            {show.title}
-          </h3>
-          
-          <div className="flex justify-between items-center">
-            <span className="inline-flex items-center px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-medium bg-gray-900 text-white">
-              {show.genre}
-            </span>
-            <span className="text-xs text-gray-300 bg-gray-900 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full">
-              {show.reviews} reviews
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const FilterBar = ({
-  filters,
-  currentFilter,
-  onFilterChange,
-}: {
-  filters: { id: string; label: string }[]
-  currentFilter: string
-  onFilterChange: (filter: string) => void
-}) => {
-  return (
-    <div className="flex overflow-x-auto space-x-3 py-4 scrollbar-hide">
-      {filters.map((filter) => (
-        <button
-          key={filter.id}
-          className={`px-6 py-3 rounded-xl font-medium text-sm whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-            currentFilter === filter.id
-              ? "bg-emerald-600 text-white"
-              : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-          }`}
-          onClick={() => onFilterChange(filter.id)}
-          aria-label={`Filter by ${filter.label}`}
-        >
-          {filter.id === "all" && <Film className="w-4 h-4 mr-2 inline-block" />}
-          {filter.id === "movies" && <Film className="w-4 h-4 mr-2 inline-block" />}
-          {filter.id === "series" && <Play className="w-4 h-4 mr-2 inline-block" />}
-          {filter.id === "top-rated" && <Award className="w-4 h-4 mr-2 inline-block" />}
-          {filter.id === "recent" && <TrendingUp className="w-4 h-4 mr-2 inline-block" />}
-          {filter.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-const Trailer = ({ url, title }: { url: string; title: string }) => {
-  const [error, setError] = useState(false)
-
-  return error ? (
-    <div className="w-full h-full flex items-center justify-center bg-gray-900">
-      <div className="text-center p-4">
-        <Film className="w-12 h-12 mx-auto mb-2 text-gray-500" />
-        <p className="text-white text-sm">Image unavailable</p>
-        <button
-          className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm cursor-pointer"
-          onClick={() => setError(false)}
-        >
-          Retry
-        </button>
-      </div>
-    </div>
-  ) : (
-    <img 
-      className="w-full h-full object-cover" 
-      src={url} 
-      alt={title}
-      onError={() => setError(true)}
-    />
-  )
-}
-
-const ReviewForm = ({
-  onClose,
-  onSubmit,
-}: {
-  onClose: () => void
-  onSubmit: (
-    review: Omit<Review, "id" | "userId" | "userAvatar" | "userName" | "likes" | "createdAt" | "userLiked">,
-  ) => void
-}) => {
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [rating, setRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
-  const [criticScore, setCriticScore] = useState(75)
-  const [imageUrl, setImageUrl] = useState("")
-  const [genres, setGenres] = useState<string[]>([])
-  const [duration, setDuration] = useState("")
-  const [releaseDate, setReleaseDate] = useState("")
-  const [type, setType] = useState<"movie" | "series">("movie")
-  const [newGenre, setNewGenre] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const availableGenres = [
-    "Action",
-    "Adventure",
-    "Animation",
-    "Comedy",
-    "Crime",
-    "Documentary",
-    "Drama",
-    "Fantasy",
-    "Horror",
-    "Mystery",
-    "Romance",
-    "Sci-Fi",
-    "Thriller",
-    "Western",
-  ]
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!title.trim()) newErrors.title = "Title is required"
-    if (!content.trim()) newErrors.content = "Review content is required"
-    if (rating === 0) newErrors.rating = "Rating is required"
-    if (!imageUrl.trim()) newErrors.imageUrl = "Image URL is required"
-    if (!imageUrl.includes("unsplash.com")) newErrors.imageUrl = "Please provide a valid Unsplash URL"
-    if (genres.length === 0) newErrors.genres = "At least one genre is required"
-    if (!duration.trim()) newErrors.duration = "Duration is required"
-    if (!releaseDate.trim()) newErrors.releaseDate = "Release date is required"
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (validate()) {
-      setIsSubmitting(true)
-      onSubmit({
-        title,
-        content,
-        rating,
-        criticScore,
-        imageUrl,
-        genres,
-        duration,
-        releaseDate,
-        type,
-        isTopRated: rating >= 8.5,
-      })
-      setIsSubmitting(false)
-    }
-  }
-
-  const addGenre = () => {
-    if (newGenre && !genres.includes(newGenre)) {
-      setGenres([...genres, newGenre])
-      setNewGenre("")
-    }
-  }
-
-  const removeGenre = (genre: string) => {
-    setGenres(genres.filter((g) => g !== genre))
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-gray-900 border border-gray-700 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-        <button
-          className="absolute top-6 right-6 text-gray-400 hover:text-gray-200 z-10 bg-gray-800 border border-gray-600 hover:bg-gray-700 rounded-full p-3 transition-all duration-300 cursor-pointer"
-          onClick={onClose}
-          aria-label="Close Form"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="p-8">
-          <h2 className="text-3xl font-bold text-white mb-8">Write a Review</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
-                Title
-              </label>
-              <input
-                type="text"
-                id="title"
-                className={`w-full px-4 py-3 rounded-2xl bg-gray-800 border ${
-                  errors.title ? "border-red-500" : "border-gray-600"
-                } text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300`}
-                placeholder="Give your review a compelling title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-              {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label htmlFor="rating" className="block text-sm font-medium text-gray-300 mb-2">
-                  Your Rating
-                </label>
-                <div className="flex items-center">
-                  {[...Array(10)].map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`w-8 h-8 cursor-pointer ${
-                        i < (hoverRating || rating) ? "text-amber-400" : "text-gray-600"
-                      } transition-colors`}
-                      onClick={() => setRating(i + 1)}
-                      onMouseEnter={() => setHoverRating(i + 1)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      aria-label={`Rate ${i + 1} stars`}
-                    >
-                      <Star className="w-full h-full fill-current" />
-                    </button>
-                  ))}
-                  <span className="ml-3 text-gray-300 font-medium">{rating > 0 ? `${rating}/10` : ""}</span>
-                </div>
-                {errors.rating && <p className="mt-1 text-sm text-red-500">{errors.rating}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="criticScore" className="block text-sm font-medium text-gray-300 mb-2">
-                  Critic Score (0-100)
-                </label>
-                <input
-                  type="number"
-                  id="criticScore"
-                  min="0"
-                  max="100"
-                  className="w-full px-4 py-3 rounded-2xl bg-gray-800 border border-gray-600 text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300"
-                  value={criticScore}
-                  onChange={(e) => setCriticScore(Number.parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="type" className="block text-sm font-medium text-gray-300 mb-2">
-                  Type
-                </label>
-                <select
-                  id="type"
-                  className="w-full px-4 py-3 rounded-2xl bg-gray-800 border border-gray-600 text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300"
-                  value={type}
-                  onChange={(e) => setType(e.target.value as "movie" | "series")}
-                >
-                  <option value="movie">Movie</option>
-                  <option value="series">Series</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-2">
-                Review Content
-              </label>
-              <textarea
-                id="content"
-                rows={6}
-                className={`w-full px-4 py-3 rounded-2xl bg-gray-800 border ${
-                  errors.content ? "border-red-500" : "border-gray-600"
-                } text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300`}
-                placeholder="Share your thoughts about this film or show..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              ></textarea>
-              {errors.content && <p className="mt-1 text-sm text-red-500">{errors.content}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-300 mb-2">
-                Image URL (Unsplash)
-              </label>
-              <input
-                type="text"
-                id="imageUrl"
-                className={`w-full px-4 py-3 rounded-2xl bg-gray-800 border ${
-                  errors.imageUrl ? "border-red-500" : "border-gray-600"
-                } text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300`}
-                placeholder="https://images.unsplash.com/photo-..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-              {errors.imageUrl && <p className="mt-1 text-sm text-red-500">{errors.imageUrl}</p>}
-              <p className="mt-1 text-xs text-gray-400">
-                Use an Unsplash image URL for the best quality
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-2">
-                  Duration
-                </label>
-                <input
-                  type="text"
-                  id="duration"
-                  className={`w-full px-4 py-3 rounded-2xl bg-gray-800 border ${
-                    errors.duration ? "border-red-500" : "border-gray-600"
-                  } text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300`}
-                  placeholder="2h 15m or 8 episodes"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                />
-                {errors.duration && <p className="mt-1 text-sm text-red-500">{errors.duration}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="releaseDate" className="block text-sm font-medium text-gray-300 mb-2">
-                  Release Year
-                </label>
-                <input
-                  type="text"
-                  id="releaseDate"
-                  className={`w-full px-4 py-3 rounded-2xl bg-gray-800 border ${
-                    errors.releaseDate ? "border-red-500" : "border-gray-600"
-                  } text-white focus:ring-2 focus:ring-emerald-500 transition-all duration-300`}
-                  placeholder="2025"
-                  value={releaseDate}
-                  onChange={(e) => setReleaseDate(e.target.value)}
-                />
-                {errors.releaseDate && <p className="mt-1 text-sm text-red-500">{errors.releaseDate}</p>}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Genres</label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {genres.map((genre) => (
-                  <div
-                    key={genre}
-                    className="bg-emerald-600 text-white border border-emerald-500 px-4 py-2 rounded-full text-sm flex items-center"
-                  >
-                    {genre}
-                    <button
-                      type="button"
-                      onClick={() => removeGenre(genre)}
-                      className="ml-2 text-emerald-200 hover:text-white cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <CustomDropdown
-                  options={availableGenres}
-                  value={newGenre}
-                  onChange={setNewGenre}
-                  placeholder="Select a genre"
-                  className="flex-1"
-                />
-                <button
-                  type="button"
-                  className="px-6 py-3 bg-emerald-600 border border-emerald-500 text-white rounded-2xl hover:bg-emerald-700 transition-all duration-300 cursor-pointer"
-                  onClick={addGenre}
-                >
-                  Add
-                </button>
-              </div>
-              {errors.genres && <p className="mt-1 text-sm text-red-500">{errors.genres}</p>}
-            </div>
-
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-700">
-              <button
-                type="button"
-                className="px-6 py-3 bg-gray-800 border border-gray-600 text-gray-200 rounded-2xl hover:bg-gray-700 transition-all duration-300 cursor-pointer"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-8 py-3 bg-emerald-600 border border-emerald-500 text-white rounded-2xl hover:bg-emerald-700 transition-all duration-300 cursor-pointer"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Publish Review"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Main Page Component
-export default function FilmReviewPage() {
-  const [reviews, setReviews] = useState<Review[]>(mockReviews)
-  const [trendingShows] = useState<Show[]>(mockShows)
-  const [activeFilter, setActiveFilter] = useState("all")
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null)
-  const [userRating, setUserRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showReviewForm, setShowReviewForm] = useState(false)
-  const [filteredReviews, setFilteredReviews] = useState<Review[]>(mockReviews)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [showMobileSearch, setShowMobileSearch] = useState(false)
-
-  // Search functionality
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredReviews(reviews)
-    } else {
-      const filtered = reviews.filter(
-        (review) =>
-          review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.genres.some((genre) => genre.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-      setFilteredReviews(filtered)
-    }
-  }, [searchQuery, reviews])
-
-  // Filter functionality
-  useEffect(() => {
-    let filtered = reviews
-
-    if (searchQuery.trim() !== "") {
-      filtered = reviews.filter(
-        (review) =>
-          review.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          review.genres.some((genre) => genre.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-    }
-
-    switch (activeFilter) {
-      case "movies":
-        filtered = filtered.filter((review) => review.type === "movie")
-        break
-      case "series":
-        filtered = filtered.filter((review) => review.type === "series")
-        break
-      case "top-rated":
-        filtered = filtered.filter((review) => review.isTopRated || review.rating >= 8.5)
-        break
-      case "recent":
-        filtered = filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        break
-      default:
-        // "all" - no additional filtering
-        break
-    }
-
-    setFilteredReviews(filtered)
-  }, [activeFilter, searchQuery, reviews])
-
-  const handleLike = (reviewId: number) => {
-    setReviews(
-      reviews.map((review) => {
-        if (review.id === reviewId) {
-          const liked = !review.userLiked
-          return {
-            ...review,
-            likes: liked ? review.likes + 1 : review.likes - 1,
-            userLiked: liked,
-          }
-        }
-        return review
-      }),
-    )
-  }
-
-  const handleOpenReview = (id: number) => {
-    const review = reviews.find((r) => r.id === id)
-    if (review) {
-      setSelectedReview(review)
-      setUserRating(0)
-      setHoverRating(0)
-    }
-  }
-
-  const handleCloseReview = () => {
-    setSelectedReview(null)
-  }
-
-  const handleFilterChange = (filter: string) => {
-    setActiveFilter(filter)
-  }
-
-  const handleUserRate = (rating: number) => {
-    setUserRating(rating)
-  }
-
-  const handleHoverRate = (rating: number) => {
-    setHoverRating(rating)
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      toast.info(`Searching for: ${searchQuery}`)
-    }
-  }
-
-  const handleOpenReviewForm = () => {
-    setShowReviewForm(true)
-  }
-
-  const handleSubmitReview = (
-    reviewData: Omit<Review, "id" | "userId" | "userAvatar" | "userName" | "likes" | "createdAt" | "userLiked">,
-  ) => {
-    const newReview: Review = {
-      id: reviews.length + 1,
-      userId: 103,
-      userName: "Current User",
-      userAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
-      likes: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-      userLiked: false,
-      ...reviewData,
-    }
-
-    setReviews([newReview, ...reviews])
-    setActiveFilter("all") // Reset filter to show the new review
-    setShowReviewForm(false)
-    toast.success("Your review has been published!")
-  }
-
-  useEffect(() => {
-    document.body.style.overflow = selectedReview || showReviewForm || showMobileMenu ? "hidden" : ""
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [selectedReview, showReviewForm, showMobileMenu])
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 quicksand-font">
-      <Toaster richColors position="top-center" />
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
-        
-        .quicksand-font {
-          font-family: "Quicksand", sans-serif;
-          font-optical-sizing: auto;
-          font-weight: 400;
-          font-style: normal;
-        }
-
-        .quicksand-light {
-          font-family: "Quicksand", sans-serif;
-          font-optical-sizing: auto;
-          font-weight: 300;
-          font-style: normal;
-        }
-
-        .quicksand-medium {
-          font-family: "Quicksand", sans-serif;
-          font-optical-sizing: auto;
-          font-weight: 500;
-          font-style: normal;
-        }
-
-        .quicksand-semibold {
-          font-family: "Quicksand", sans-serif;
-          font-optical-sizing: auto;
-          font-weight: 600;
-          font-style: normal;
-        }
-
-        .quicksand-bold {
-          font-family: "Quicksand", sans-serif;
-          font-optical-sizing: auto;
-          font-weight: 700;
-          font-style: normal;
-        }
-
-        /* Remove number input arrows */
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
-
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-
-        .line-clamp-1 {
-          overflow: hidden;
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 1;
-        }
-
-        .line-clamp-2 {
-          overflow: hidden;
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-        }
-      `}</style>
-
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-gray-900 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-2xl quicksand-bold text-emerald-400">
-                  CineCritic
-                </span>
-              </div>
-
-              <nav className="hidden md:ml-8 md:flex space-x-6">
-                <button
-                  onClick={() => scrollToSection("hero")}
-                  className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-lg text-sm quicksand-medium cursor-pointer transition-colors duration-200"
-                >
-                  Home
-                </button>
-                <button
-                  onClick={() => scrollToSection("featured")}
-                  className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-lg text-sm quicksand-medium cursor-pointer transition-colors duration-200"
-                >
-                  Featured
-                </button>
-                <button
-                  onClick={() => scrollToSection("trending")}
-                  className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-lg text-sm quicksand-medium cursor-pointer transition-colors duration-200"
-                >
-                  Trending
-                </button>
-                <button
-                  onClick={() => scrollToSection("reviews")}
-                  className="text-gray-300 hover:text-emerald-400 px-3 py-2 rounded-lg text-sm quicksand-medium cursor-pointer transition-colors duration-200"
-                >
-                  Reviews
-                </button>
-              </nav>
-            </div>
-
-            <div className="flex items-center gap-4">
               <button
-                onClick={handleOpenReviewForm}
-                className="hidden md:flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl quicksand-medium transition-colors duration-200 cursor-pointer"
+                onClick={toggleSearch}
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
               >
-                <Film className="w-4 h-4 mr-2" />
-                Post Review
+                <Search className="h-5 w-5" />
               </button>
 
-              <form onSubmit={handleSearch} className="hidden md:block">
+              {/* Create new post button */}
+              {isSignedIn && (
+                <button
+                  onClick={() => setIsCreatePostModalOpen(true)}
+                  className="hidden md:block ml-4 px-4 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 cursor-pointer"
+                >
+                  New Post
+                </button>
+              )}
+
+              <div className="hidden md:ml-4 md:flex md:items-center">
+                {!isSignedIn ? (
+                  <button
+                    onClick={() => setIsSignInModalOpen(true)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                ) : (
+                  <div className="relative ml-3 group">
+                    <div className="flex items-center">
+                      <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
+                        <img
+                          className="h-8 w-8 rounded-full"
+                          src={currentUser?.avatar}
+                          alt={currentUser?.name}
+                        />
+                        <span className="ml-2 text-gray-700">
+                          {currentUser?.name}
+                        </span>
+                        <ChevronDown className="ml-1 h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setIsCreatePostModalOpen(true);
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      >
+                        New Post
+                      </a>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowSavedPosts(true);
+                          setCurrentPost(null);
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      >
+                        Saved Posts
+                      </a>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSignOut();
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      >
+                        Sign Out
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {!isSignedIn && (
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsSignInModalOpen(true);
+                    }}
+                    className="ml-3 px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                  >
+                    Subscribe
+                  </a>
+                )}
+              </div>
+              <div className="ml-4 md:hidden">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
+                >
+                  {isMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <Menu className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              className="md:hidden bg-white shadow-lg"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              style={{ overflow: "hidden" }}
+            >
+              {/* Categories Section */}
+              <motion.div 
+                className="px-4 py-4 border-b border-gray-100"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Categories
+                </h3>
+                <div className="space-y-1">
+                  {categories.map((category, index) => (
+                    <motion.button
+                      key={category.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCategorySelect(category.id);
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-base font-medium transition-all duration-200 cursor-pointer touch-manipulation ${
+                        selectedCategory === category.id
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.15 + index * 0.05 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {category.name}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* User Section */}
+              <motion.div 
+                className="px-4 py-4"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                {!isSignedIn ? (
+                  <>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                      Account
+                    </h3>
+                    <div className="space-y-2">
+                      <motion.button
+                        onClick={() => {
+                          setIsSignInModalOpen(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 cursor-pointer touch-manipulation"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.35 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Sign In
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          setIsSignInModalOpen(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-3 rounded-lg text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 cursor-pointer touch-manipulation text-center"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.4 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Subscribe
+                      </motion.button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* User Info */}
+                    <motion.div 
+                      className="flex items-center mb-4 p-3 bg-gray-50 rounded-lg"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.4, delay: 0.35 }}
+                    >
+                      <img
+                        className="h-10 w-10 rounded-full mr-3"
+                        src={currentUser?.avatar}
+                        alt={currentUser?.name}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{currentUser?.name}</div>
+                        <div className="text-sm text-gray-500">{currentUser?.role}</div>
+                      </div>
+                    </motion.div>
+
+                    {/* User Actions */}
+                    <div className="space-y-2">
+                      <motion.button
+                        onClick={() => {
+                          setIsCreatePostModalOpen(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-base font-medium text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 cursor-pointer touch-manipulation"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.4 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <span className="mr-2">+</span>
+                        New Post
+                      </motion.button>
+                      
+                      <motion.button
+                        onClick={() => {
+                          setShowSavedPosts(true);
+                          setCurrentPost(null);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer touch-manipulation"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.45 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Bookmark className="h-5 w-5 mr-3" />
+                        Saved Posts
+                      </motion.button>
+
+                      <motion.button
+                        onClick={() => {
+                          handleSignOut();
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center px-4 py-3 rounded-lg text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200 cursor-pointer touch-manipulation"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.5 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <X className="h-5 w-5 mr-3" />
+                        Sign Out
+                      </motion.button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Search overlay */}
+        <div
+          className={`fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-start justify-center pt-4 sm:pt-20 px-4 transition-all duration-300 ease-out ${
+            isSearchOpen ? "opacity-100 visible" : "opacity-0 invisible"
+          }`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsSearchOpen(false);
+            }
+          }}
+        >
+          <div className={`w-full max-w-2xl transform transition-all duration-300 ease-out ${
+            isSearchOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'
+          }`}>
+            <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 overflow-hidden max-h-[90vh] flex flex-col">
+              {/* Search Header */}
+              <div className="px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border-b border-gray-100/50 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg sm:rounded-xl">
+                      <Search className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Search Articles</h2>
+                      <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Find the perfect article for you</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSearchOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer group touch-manipulation"
+                  >
+                    <X className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Input */}
+              <div className="px-4 sm:px-8 py-4 sm:py-6 flex-shrink-0">
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   </div>
                   <input
-                    className="bg-gray-800 border border-gray-600 h-10 pl-10 pr-4 rounded-xl text-sm w-60 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors duration-200 text-white placeholder-gray-400 quicksand-font"
-                    type="search"
-                    placeholder="Search films & shows..."
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search by title, content, tags, or author..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 text-base sm:text-lg border-0 rounded-xl sm:rounded-2xl bg-gray-50/80 placeholder-gray-400 focus:outline-none focus:ring-2 sm:focus:ring-3 focus:ring-blue-500/30 focus:bg-white transition-all duration-300 shadow-sm touch-manipulation"
                   />
-                </div>
-              </form>
-
-              {/* Mobile menu and search */}
-              <div className="flex items-center gap-2 md:hidden">
-                <button
-                  className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-800 cursor-pointer hover:bg-gray-700 transition-colors duration-200"
-                  onClick={() => setShowMobileSearch(!showMobileSearch)}
-                >
-                  <Search className="h-5 w-5 text-gray-300" />
-                </button>
-
-                <button
-                  className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-800 cursor-pointer hover:bg-gray-700 transition-colors duration-200"
-                  onClick={() => setShowMobileMenu(!showMobileMenu)}
-                >
-                  <div className="flex flex-col space-y-1">
-                    <span className="block w-4 h-0.5 bg-gray-300"></span>
-                    <span className="block w-4 h-0.5 bg-gray-300"></span>
-                    <span className="block w-4 h-0.5 bg-gray-300"></span>
+                  <div className="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center">
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className={`text-gray-400 hover:text-gray-600 focus:outline-none transition-all duration-200 cursor-pointer p-1.5 sm:p-2 rounded-lg sm:rounded-xl hover:bg-gray-100 touch-manipulation ${
+                        searchQuery ? "opacity-100 visible scale-100" : "opacity-0 invisible scale-75"
+                      }`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Search Bar */}
-      {showMobileSearch && (
-        <div className="md:hidden bg-gray-900 border-b border-gray-700 px-4 py-3">
-          <form onSubmit={handleSearch}>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                className="bg-gray-800 border border-gray-600 h-10 pl-10 pr-4 rounded-xl text-sm w-full focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors duration-200 text-white placeholder-gray-400 quicksand-font"
-                type="search"
-                placeholder="Search films & shows..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Mobile Menu */}
-      {showMobileMenu && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="fixed inset-0 bg-black/70" onClick={() => setShowMobileMenu(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-80 bg-gray-900 border-l border-gray-700">
-            <div className="flex flex-col h-full">
-              {/* Header */}
-              <div className="flex justify-between items-center p-6 border-b border-gray-700">
-                <span className="text-2xl quicksand-bold text-emerald-400">
-                  Menu
-                </span>
-                <button
-                  onClick={() => setShowMobileMenu(false)}
-                  className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors duration-200"
-                >
-                  <X className="w-5 h-5 text-gray-300" />
-                </button>
-              </div>
-
-              {/* Navigation */}
-              <nav className="flex-1 p-6 space-y-2">
-                <button
-                  onClick={() => {
-                    scrollToSection("hero")
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white transition-colors duration-200 quicksand-medium text-lg"
-                >
-                  Home
-                </button>
-                <button
-                  onClick={() => {
-                    scrollToSection("featured")
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white transition-colors duration-200 quicksand-medium text-lg"
-                >
-                  Featured
-                </button>
-                <button
-                  onClick={() => {
-                    scrollToSection("trending")
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white transition-colors duration-200 quicksand-medium text-lg"
-                >
-                  Trending
-                </button>
-                <button
-                  onClick={() => {
-                    scrollToSection("reviews")
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white transition-colors duration-200 quicksand-medium text-lg"
-                >
-                  Reviews
-                </button>
-                
-                {/* Divider */}
-                <div className="py-3">
-                  <div className="h-px bg-gray-700"></div>
                 </div>
-                
-                <button
-                  onClick={() => {
-                    handleOpenReviewForm()
-                    setShowMobileMenu(false)
-                  }}
-                  className="w-full text-left px-6 py-4 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors duration-200 quicksand-semibold text-lg flex items-center"
-                >
-                  <Film className="w-5 h-5 mr-3" />
-                  Post Review
-                </button>
-              </nav>
+
+                {/* Search Results */}
+                {searchQuery && (
+                  <div className="mt-4 sm:mt-6 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center">
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-1.5 sm:mr-2"></div>
+                        Search Results
+                      </h3>
+                      <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">
+                        {filteredPosts.length} found
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 sm:space-y-3 max-h-60 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                      {filteredPosts.length > 0 ? (
+                        filteredPosts.slice(0, 6).map((post) => (
+                          <div
+                            key={post.id}
+                            onClick={() => {
+                              handlePostClick(post);
+                              setIsSearchOpen(false);
+                            }}
+                            className="group p-3 sm:p-4 hover:bg-gray-50 rounded-lg sm:rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-200 hover:shadow-md transform hover:-translate-y-0.5 touch-manipulation"
+                          >
+                            <div className="flex items-start space-x-3 sm:space-x-4">
+                              <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg sm:rounded-xl overflow-hidden shadow-sm">
+                                <img 
+                                  src={post.image} 
+                                  alt={post.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 mb-1">
+                                  {post.title}
+                                </h4>
+                                <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 mb-2">
+                                  {post.excerpt.substring(0, 120)}...
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center text-xs text-gray-400">
+                                    <span className="font-medium truncate max-w-20 sm:max-w-none">{post.author.name}</span>
+                                    <span className="mx-1 sm:mx-2">•</span>
+                                    <span className="flex-shrink-0">{post.readTime}</span>
+                                  </div>
+                                  <div className="flex space-x-1 flex-shrink-0 ml-2">
+                                    {post.tags.slice(0, 1).map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 max-w-16 sm:max-w-none truncate"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {post.tags.length > 1 && (
+                                      <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
+                                        +{post.tags.length - 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 sm:py-12 animate-in fade-in duration-500">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                            <Search className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No articles found</h3>
+                          <p className="text-sm sm:text-base text-gray-500 max-w-xs sm:max-w-sm mx-auto px-4">
+                            We couldn't find any articles matching "<span className="font-medium text-gray-700">{searchQuery}</span>". Try different keywords.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Actions */}
+                {!searchQuery && (
+                  <div className="mt-4 sm:mt-6 animate-in fade-in duration-300">
+                    <h3 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full mr-1.5 sm:mr-2"></div>
+                      Popular Categories
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      {categories.slice(0, 4).map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            handleCategorySelect(category.id);
+                            setIsSearchOpen(false);
+                          }}
+                          className="p-2.5 sm:p-3 text-left bg-gradient-to-br from-gray-50 to-gray-100 hover:from-blue-50 hover:to-blue-100 rounded-lg sm:rounded-xl transition-all duration-200 cursor-pointer group border border-gray-200 hover:border-blue-200 touch-manipulation"
+                        >
+                          <div className="font-medium text-sm sm:text-base text-gray-900 group-hover:text-blue-700 transition-colors duration-200 truncate">
+                            {category.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5 sm:mt-1">
+                            {posts.filter(p => p.category.id === category.id).length} articles
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Footer */}
-              <div className="p-6 border-t border-gray-700">
-                <div className="text-center">
-                  <p className="text-sm text-gray-400 quicksand-medium">
-                    CineCritic
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1 quicksand-font">
-                    Discover amazing films & shows
-                  </p>
+              <div className="px-4 sm:px-8 py-3 sm:py-4 bg-gray-50/80 border-t border-gray-100/50 flex-shrink-0">
+                <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500">
+                  <div className="flex items-center space-x-2 sm:space-x-4">
+                    <span className="hidden sm:inline">Press <kbd className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white rounded border text-xs font-mono">Esc</kbd> to close</span>
+                    <span className="sm:hidden">Tap outside to close</span>
+                  </div>
+                  <div>
+                    {searchQuery && filteredPosts.length > 0 && (
+                      <span className="hidden sm:inline">Press <kbd className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white rounded border text-xs font-mono">Enter</kbd> to select first result</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </motion.nav>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10">
-        {/* Show hero, featured, and trending sections only when not searching */}
-        {!searchQuery.trim() && (
-          <>
-            {/* Hero Section with Carousel */}
-            <section id="hero" className="mb-8 sm:mb-12 md:mb-16">
-              <Carousel items={carouselItems} />
-            </section>
-
-            {/* Featured Reviews */}
-            <section id="featured" className="mb-8 sm:mb-12 md:mb-16">
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl quicksand-bold text-white">Featured Reviews</h2>
-                  <p className="text-gray-400 mt-1 quicksand-font">Handpicked reviews from our top critics</p>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-                {filteredReviews.slice(0, 2).map((review) => (
-                  <ReviewCard
-                    key={review.id}
-                    review={review}
-                    onOpen={handleOpenReview}
-                    onLike={handleLike}
-                    variant="featured"
-                  />
-                ))}
-              </div>
-            </section>
-
-            {/* Trending Shows */}
-            <section id="trending" className="mb-8 sm:mb-12 md:mb-16">
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl quicksand-bold text-white">Trending Now</h2>
-                  <p className="text-gray-400 mt-1 quicksand-font">The most popular films and shows this week</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-                {trendingShows.map((show) => (
-                  <ShowCard key={show.id} show={show} />
-                ))}
-              </div>
-            </section>
-          </>
-        )}
-
-        {/* Archive Section - Always visible */}
-        <section id="reviews" className="mb-10">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl quicksand-bold text-white">
-                {searchQuery.trim() ? `Search Results for "${searchQuery}"` : "Review Archive"}
-              </h2>
-              <p className="text-gray-400 mt-1 quicksand-font">
-                {searchQuery.trim() ? `Found ${filteredReviews.length} result${filteredReviews.length !== 1 ? 's' : ''}` : "Browse our collection of thoughtful analyses"}
-              </p>
-            </div>
-          </div>
-
-          <FilterBar
-            filters={[
-              { id: "all", label: "All" },
-              { id: "movies", label: "Movies" },
-              { id: "series", label: "Series" },
-              { id: "top-rated", label: "Top Rated" },
-              { id: "recent", label: "Recent" },
-            ]}
-            currentFilter={activeFilter}
-            onFilterChange={handleFilterChange}
+      <motion.main 
+        className="pt-24 pb-16"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+      >
+        {currentPost ? (
+          <SinglePostView
+            post={currentPost}
+            comments={comments.filter((c) => c.postId === currentPost.id)}
+            onBack={handleBackToList}
+            comment={comment}
+            setComment={setComment}
+            handleSubmitComment={handleSubmitComment}
+            isSignedIn={isSignedIn}
+            currentUser={currentUser}
+            setIsSignInModalOpen={setIsSignInModalOpen}
+            setComments={setComments}
+            replyText={replyText}
+            setReplyText={setReplyText}
+            onSavePost={handleSavePost}
+            onRemoveSavedPost={handleRemoveSavedPost}
+            scrollToComments={scrollToCommentsFlag}
+            onScrollToCommentsComplete={() => setScrollToCommentsFlag(false)}
+            showToast={showToast}
           />
-
-          <div className="mt-2 grid gap-6">
-            {filteredReviews.map((review) => (
-              <ReviewCard key={`archive-${review.id}`} review={review} onOpen={handleOpenReview} onLike={handleLike} />
-            ))}
-          </div>
-
-          {filteredReviews.length === 0 && searchQuery && (
-            <div className="text-center py-12">
-              <Search className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg quicksand-semibold text-white mb-2">No results found</h3>
-              <p className="text-gray-400 quicksand-font">Try adjusting your search terms or browse all reviews</p>
-            </div>
-          )}
-        </section>
-      </div>
+        ) : showSavedPosts ? (
+          <SavedPostsView
+            posts={savedPosts}
+            onPostClick={handlePostClick}
+            onBack={() => setShowSavedPosts(false)}
+            onUnsavePost={handleRemoveSavedPost}
+          />
+        ) : (
+          <BlogListView
+            posts={filteredPosts}
+            onPostClick={handlePostClick}
+            selectedCategory={selectedCategory}
+            categories={categories}
+            onCategorySelect={handleCategorySelect}
+            email={email}
+            setEmail={setEmail}
+            name={name}
+            setName={setName}
+            handleSubscribe={handleSubscribe}
+            comments={comments}
+          />
+        )}
+      </motion.main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 border-t border-gray-700 py-12 mt-16">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg quicksand-bold mb-4 text-white">CineCritic</h3>
-              <p className="text-sm text-gray-400 quicksand-font">
-                Discover, rate, and review your favorite movies and shows.
+      <footer className="bg-gray-900 text-white">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center mb-4">
+                <span className="font-bold text-xl text-blue-400">Insight</span>
+                <span className="font-bold text-xl text-white">Blog</span>
+              </div>
+              <p className="text-gray-300 mb-4 max-w-md">
+                Insightful perspectives on technology, design, business, and
+                more. Join our community of forward-thinking readers.
               </p>
+              <div className="flex space-x-4">
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                >
+                  <Twitter className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                >
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
+                >
+                  <Github className="h-5 w-5" />
+                </a>
+              </div>
             </div>
             <div>
-              <h3 className="text-sm quicksand-semibold uppercase tracking-wider text-gray-400 mb-4">Categories</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Movies section")}
-                  >
-                    Movies
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to TV Shows section")}
-                  >
-                    TV Shows
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Documentaries section")}
-                  >
-                    Documentaries
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Coming Soon section")}
-                  >
-                    Coming Soon
-                  </button>
-                </li>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                Categories
+              </h3>
+              <ul className="space-y-2">
+                {categories.map((category) => (
+                  <li key={category.id}>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCategorySelect(category.id);
+                        setCurrentPost(null);
+                        window.scrollTo(0, 0);
+                      }}
+                      className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
+                    >
+                      {category.name}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
-              <h3 className="text-sm quicksand-semibold uppercase tracking-wider text-gray-400 mb-4">Community</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Critics section")}
-                  >
-                    Critics
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Forums section")}
-                  >
-                    Forums
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Events section")}
-                  >
-                    Events
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to News section")}
-                  >
-                    News
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm quicksand-semibold uppercase tracking-wider text-gray-400 mb-4">About</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to About Us section")}
-                  >
-                    About Us
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Contact section")}
-                  >
-                    Contact
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Privacy Policy section")}
-                  >
-                    Privacy Policy
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="text-gray-300 hover:text-emerald-400 cursor-pointer transition-colors quicksand-font"
-                    onClick={() => toast.info("Navigating to Terms of Service section")}
-                  >
-                    Terms of Service
-                  </button>
-                </li>
-              </ul>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                Subscribe
+              </h3>
+              <p className="text-gray-300 mb-4">
+                Get the latest posts delivered right to your inbox.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="px-4 py-2 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleSubscribe}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                >
+                  Subscribe
+                </button>
+              </div>
             </div>
           </div>
-          <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-400 quicksand-font">© 2025 CineCritic. All rights reserved.</p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <button
-                className="text-gray-400 hover:text-emerald-400 cursor-pointer transition-colors"
-                onClick={() => toast.info("Navigating to Facebook page")}
-              >
-                <span className="sr-only">Facebook</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fillRule="evenodd"
-                    d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-              <button
-                className="text-gray-400 hover:text-emerald-400 cursor-pointer transition-colors"
-                onClick={() => toast.info("Navigating to Twitter page")}
-              >
-                <span className="sr-only">Twitter</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-                </svg>
-              </button>
-              <button
-                className="text-gray-400 hover:text-emerald-400 cursor-pointer transition-colors"
-                onClick={() => toast.info("Navigating to Instagram page")}
-              >
-                <span className="sr-only">Instagram</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fillRule="evenodd"
-                    d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
+          <div className="mt-12 pt-8 border-t border-gray-800">
+            <p className="text-gray-400 text-sm text-center">
+              © {new Date().getFullYear()} InsightBlog. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
 
-      {/* Review Modal */}
-      {selectedReview && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-start md:items-center justify-center p-2 md:p-4 bg-black/80 backdrop-blur-sm scrollbar-hide">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl md:rounded-3xl max-w-5xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl relative scrollbar-hide mt-2 md:mt-0">
-            <button
-              className="absolute top-3 right-3 md:top-6 md:right-6 text-gray-400 hover:text-gray-200 z-10 bg-gray-800 border border-gray-600 hover:bg-gray-700 rounded-full p-2 md:p-3 transition-all duration-300 cursor-pointer"
-              onClick={handleCloseReview}
-              aria-label="Close Review"
-            >
-              <X className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
+      {/* Back to top button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            onClick={scrollToTop}
+            className="fixed right-6 bottom-6 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-all duration-300 cursor-pointer"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <ChevronUp className="h-5 w-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-            <div className="relative h-64 md:h-80 lg:h-96">
-              <Trailer url={selectedReview.imageUrl} title="Review Image" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex items-end">
-                <div className="p-4 md:p-8 w-full">
-                  <div className="flex flex-wrap gap-1 md:gap-2 mb-2 md:mb-3">
-                    {selectedReview.genres.map((genre, index) => (
-                      <GenreTag key={index} genre={genre} />
-                    ))}
-                  </div>
-                  <h1 className="text-2xl md:text-4xl quicksand-bold text-white mb-2 md:mb-4 leading-tight">{selectedReview.title}</h1>
-                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                    <div className="flex items-center text-white bg-gray-800 border border-gray-600 px-3 py-1.5 md:px-4 md:py-2 rounded-full">
-                      <Star className="w-4 h-4 md:w-5 md:h-5 text-amber-400 fill-amber-400 mr-1 md:mr-2" />
-                      <span className="quicksand-semibold text-sm md:text-lg">{selectedReview.rating.toFixed(1)}</span>
-                    </div>
-                    <div className="flex items-center text-white bg-gray-800 border border-gray-600 px-3 py-1.5 md:px-4 md:py-2 rounded-full">
-                      <Clock className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
-                      <span className="quicksand-font text-sm md:text-base">{selectedReview.duration}</span>
-                    </div>
-                    <div className="flex items-center text-white bg-gray-800 border border-gray-600 px-3 py-1.5 md:px-4 md:py-2 rounded-full">
-                      <Calendar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
-                      <span className="quicksand-font text-sm md:text-base">{selectedReview.releaseDate}</span>
-                    </div>
-                  </div>
-                </div>
+      {/* Toast notifications */}
+      <div className="fixed top-20 right-4 z-50 space-y-2">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              className={`px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium ${
+                toast.type === 'success' ? 'bg-green-500' :
+                toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              }`}
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {toast.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Sign In Modal */}
+      <AnimatePresence>
+        {isSignInModalOpen && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsSignInModalOpen(false);
+              }
+            }}
+          >
+            <motion.div 
+              className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
+                <motion.button
+                  onClick={() => setIsSignInModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-500 cursor-pointer"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="h-6 w-6" />
+                </motion.button>
               </div>
+
+              <div className="space-y-4">
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                >
+                  <label
+                    htmlFor="username"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your username"
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your password"
+                  />
+                </motion.div>
+
+                <motion.div 
+                  className="flex items-center justify-between"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                >
+                  <div className="flex items-center">
+                    <input
+                      id="remember-me"
+                      type="checkbox"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label
+                      htmlFor="remember-me"
+                      className="ml-2 block text-sm text-gray-700 cursor-pointer"
+                    >
+                      Remember me
+                    </label>
+                  </div>
+
+
+                </motion.div>
+
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.4 }}
+                >
+                  <motion.button
+                    onClick={handleSignIn}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Sign In
+                  </motion.button>
+                </motion.div>
+
+                <motion.div 
+                  className="text-center"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.5 }}
+                >
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Post Modal */}
+      {isCreatePostModalOpen && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                Create New Post
+              </h2>
+              <button
+                onClick={() => setIsCreatePostModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500 cursor-pointer"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
 
-            <div className="p-4 md:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-6 md:mb-10">
-                <div className="bg-gray-800 border border-gray-600 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm">
-                  <h3 className="text-xs md:text-sm text-gray-400 uppercase tracking-wider quicksand-semibold mb-2">
-                    Critic Score
-                  </h3>
-                  <div className="flex items-center mb-3">
-                    <span className="text-2xl md:text-4xl quicksand-bold text-emerald-400">{selectedReview.criticScore}</span>
-                    <span className="text-lg md:text-xl ml-1 text-gray-400 quicksand-font">/ 100</span>
-                  </div>
-                  <RatingBar score={selectedReview.criticScore / 10} size="lg" />
-                </div>
-                <div className="bg-gray-800 border border-gray-600 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm">
-                  <h3 className="text-xs md:text-sm text-gray-400 uppercase tracking-wider quicksand-semibold mb-2">
-                    User Rating
-                  </h3>
-                  <div className="flex items-center mb-3">
-                    <span className="text-2xl md:text-4xl quicksand-bold text-emerald-400">{selectedReview.rating.toFixed(1)}</span>
-                    <span className="text-lg md:text-xl ml-1 text-gray-400 quicksand-font">/ 10</span>
-                  </div>
-                  <RatingBar score={selectedReview.rating} size="lg" />
-                </div>
-                <div className="bg-gray-800 border border-gray-600 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm">
-                  <h3 className="text-xs md:text-sm text-gray-400 uppercase tracking-wider quicksand-semibold mb-2">Rate This</h3>
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-center mb-3 md:mb-4">
-                      {[...Array(10)].map((_, i) => (
-                        <button
-                          key={i}
-                          className={`w-6 h-6 md:w-8 md:h-8 cursor-pointer ${
-                            i < (hoverRating || userRating) ? "text-amber-400" : "text-gray-600"
-                          } transition-colors`}
-                          onClick={() => handleUserRate(i + 1)}
-                          onMouseEnter={() => handleHoverRate(i + 1)}
-                          onMouseLeave={() => handleHoverRate(0)}
-                          aria-label={`Rate ${i + 1} stars`}
-                        >
-                          <Star className="w-full h-full fill-current" />
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      className="bg-emerald-600 border border-emerald-500 hover:bg-emerald-700 text-white py-2 md:py-3 px-3 md:px-4 rounded-xl md:rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer quicksand-medium text-sm md:text-base"
-                      onClick={() => {
-                        if (userRating > 0) {
-                          toast.success(`You rated ${selectedReview.title} ${userRating} stars!`)
-                        }
-                      }}
-                      disabled={userRating === 0}
-                      aria-label="Submit Rating"
-                    >
-                      Submit Rating
-                    </button>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="post-title"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Title *
+                </label>
+                <input
+                  id="post-title"
+                  type="text"
+                  value={newPost.title}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, title: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter post title"
+                />
               </div>
 
-              <div className="prose dark:prose-invert max-w-none">
-                <h2 className="text-2xl md:text-3xl quicksand-bold mb-4 md:mb-6 text-white">Review</h2>
-                <p className="text-gray-300 mb-6 md:mb-8 text-base md:text-lg leading-relaxed quicksand-font">{selectedReview.content}</p>
+              <div>
+                <label
+                  htmlFor="post-excerpt"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Excerpt *
+                </label>
+                <textarea
+                  id="post-excerpt"
+                  value={newPost.excerpt}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, excerpt: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter a brief excerpt of your post"
+                  rows={2}
+                />
+              </div>
 
-                <div className="flex justify-between items-center gap-4 md:gap-6 text-sm text-gray-400 mt-8 md:mt-12 pt-6 md:pt-8 border-t border-gray-700">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <img
-                      src={selectedReview.userAvatar || "/placeholder.svg"}
-                      alt={selectedReview.userName}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-gray-600"
-                    />
-                    <div>
-                      <div className="quicksand-semibold text-white text-sm md:text-base">{selectedReview.userName}</div>
-                      <div className="text-xs md:text-sm quicksand-font">Published {formatDate(selectedReview.createdAt)}</div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-4 md:space-x-8">
-                    <button
-                      className={`flex items-center gap-2 transition-colors cursor-pointer quicksand-font ${
-                        reviews.find(r => r.id === selectedReview.id)?.userLiked ? "text-rose-400" : "hover:text-rose-400"
-                      }`}
-                      onClick={() => handleLike(selectedReview.id)}
-                    >
-                      <Heart className={`w-4 h-4 md:w-5 md:h-5 ${reviews.find(r => r.id === selectedReview.id)?.userLiked ? "fill-rose-500" : ""}`} />
-                      <span className="hidden sm:inline">{reviews.find(r => r.id === selectedReview.id)?.likes || selectedReview.likes}</span>
-                    </button>
-                    <button
-                      className="flex items-center gap-2 hover:text-emerald-400 transition-colors cursor-pointer quicksand-font"
-                      onClick={() => toast.success("Review shared!")}
-                    >
-                      <Share2 className="w-4 h-4 md:w-5 md:h-5" />
-                      <span className="hidden sm:inline">Share</span>
-                    </button>
-                  </div>
-                </div>
+              <div>
+                <label
+                  htmlFor="post-content"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Content *
+                </label>
+                <textarea
+                  id="post-content"
+                  value={newPost.content}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, content: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Write your post content here. HTML formatting is supported."
+                  rows={10}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="post-category"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Category
+                </label>
+                <select
+                  id="post-category"
+                  value={newPost.category?.id || categories[0].id}
+                  onChange={(e) => {
+                    const selectedCategory = categories.find(
+                      (cat) => cat.id === e.target.value
+                    );
+                    setNewPost({
+                      ...newPost,
+                      category: selectedCategory || categories[0],
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="post-tags"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Tags (comma separated)
+                </label>
+                <input
+                  id="post-tags"
+                  type="text"
+                  value={newPost.tags?.join(", ") || ""}
+                  onChange={(e) => {
+                    const tagsInput = e.target.value;
+                    const tagsArray = tagsInput
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag);
+                    setNewPost({ ...newPost, tags: tagsArray });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. Technology, AI, Design"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="post-image"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Featured Image URL (optional)
+                </label>
+                <input
+                  id="post-image"
+                  type="text"
+                  value={newPost.image}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, image: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter image URL or leave blank for a random image"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setIsCreatePostModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePost}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  Publish Post
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
+    </motion.div>
+  );
+};
 
-      {/* Review*/} 
-      {showReviewForm && <ReviewForm onClose={() => setShowReviewForm(false)} onSubmit={handleSubmitReview} />}
+// ====== Blog List View Component ======
+const BlogListView = ({
+  posts,
+  onPostClick,
+  selectedCategory,
+  categories,
+  onCategorySelect,
+  email,
+  setEmail,
+  name,
+  setName,
+  handleSubscribe,
+  comments,
+}: {
+  posts: Post[];
+  onPostClick: (post: Post, scrollToComments?: boolean) => void;
+  selectedCategory: string | null;
+  categories: Category[];
+  onCategorySelect: (categoryId: string) => void;
+  email: string;
+  setEmail: (email: string) => void;
+  name: string;
+  setName: (name: string) => void;
+  handleSubscribe: () => void;
+  comments: Comment[];
+}) => {
+  const featuredPosts = posts.filter((post) => post.featured);
+  const regularPosts = posts.filter((post) => !post.featured);
+
+  const [locallyLikedPosts, setLocallyLikedPosts] = useState<Record<string, boolean>>({});
+  const [localLikeCounts, setLocalLikeCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const initialCounts: Record<string, number> = {};
+    const initialLikedStatus: Record<string, boolean> = {};
+    posts.forEach(p => {
+      initialCounts[p.id] = p.likes;
+      initialLikedStatus[p.id] = false; // Assume not liked initially on card view
+    });
+    setLocalLikeCounts(initialCounts);
+    setLocallyLikedPosts(initialLikedStatus);
+  }, [posts]);
+
+  const handleToggleLike = (postId: string) => {
+    const currentlyLiked = locallyLikedPosts[postId];
+    setLocallyLikedPosts(prevLikedStatus => ({
+      ...prevLikedStatus,
+      [postId]: !currentlyLiked,
+    }));
+    setLocalLikeCounts(prevCounts => ({
+      ...prevCounts,
+      [postId]: currentlyLiked
+        ? (prevCounts[postId] || 0) - 1 // If it was liked, decrement
+        : (prevCounts[postId] || 0) + 1, // If it was not liked, increment
+    }));
+  };
+
+  // Selected category name for display
+  const selectedCategoryName = selectedCategory
+    ? categories.find((cat) => cat.id === selectedCategory)?.name
+    : null;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Hero/Featured section */}
+      {selectedCategory === null ? (
+        <section className="mb-16">
+          <h1 className="text-4xl font-bold text-center mb-12">
+            <span className="text-blue-600">Insights</span> for the Modern World
+          </h1>
+
+          {featuredPosts.length > 0 ? (
+            <motion.div 
+              className="grid grid-cols-1 lg:grid-cols-1 gap-8"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {featuredPosts.slice(0, 2).map((post, index) => (
+                  <motion.div
+                    key={post.id}
+                    className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+                    onClick={() => onPostClick(post, false)}
+                  >
+                    <div className="relative h-64 w-full overflow-hidden">
+                      <img
+                        src={post.image}
+                        alt={post.title}
+                        className="h-full w-full object-cover object-center"
+                        style={{ objectPosition: 'center' }}
+                      />
+                      <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs uppercase py-1 px-2 rounded-md">
+                        Featured
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-3">
+                        <div className="flex items-center mb-1">
+                          <img
+                            src={post.author.avatar}
+                            alt={post.author.name}
+                            className="h-6 w-6 rounded-full mr-2"
+                          />
+                          <span className="font-medium text-gray-900">{post.author.name}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500 ml-8">
+                          <span>{post.date}</span>
+                          <span className="mx-2">•</span>
+                          <span className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {post.readTime}
+                          </span>
+                        </div>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-bold mb-2 text-gray-900 line-clamp-2">
+                        {post.title}
+                      </h2>
+                      <p className="text-gray-600 mb-4 line-clamp-3 text-sm sm:text-base">{post.excerpt}</p>
+                      <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          {post.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {post.tags.length > 2 && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                              +{post.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
+                            className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                            aria-label="Like post"
+                          >
+                            <Heart className={`h-4 w-4 mr-1 ${locallyLikedPosts[post.id] ? 'fill-current' : ''}`} />
+                            {localLikeCounts[post.id] !== undefined ? localLikeCounts[post.id] : post.likes}
+                          </button>
+                          <span 
+                            className="flex items-center cursor-pointer" 
+                            onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
+                            role="button"
+                            aria-label="View comments"
+                          >
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            {comments.filter((c) => c.postId === post.id).length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              className="text-center py-12"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <p className="text-gray-500">No featured posts available.</p>
+            </motion.div>
+          )}
+        </section>
+      ) : (
+        <section className="mb-12">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {selectedCategoryName} Articles
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Explore our collection of articles about{" "}
+              {selectedCategoryName?.toLowerCase()}, covering the latest trends,
+              insights, and practical knowledge.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Category filters for mobile */}
+      <div className="md:hidden mb-8">
+        <div className="flex overflow-x-auto py-2 space-x-2 no-scrollbar">
+          <button
+            onClick={() => onCategorySelect(selectedCategory || "")}
+            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 flex-shrink-0 cursor-pointer ${
+              selectedCategory === null
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            All
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => onCategorySelect(category.id)}
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 flex-shrink-0 cursor-pointer ${
+                selectedCategory === category.id
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Posts list */}
+        <div className="md:col-span-2">
+          <h2 className="text-2xl font-bold mb-6">
+            {selectedCategory
+              ? `${selectedCategoryName} Posts`
+              : "Latest Articles"}
+          </h2>
+
+          {posts.length > 0 ? (
+            <div className="space-y-8">
+              {regularPosts.map((post) => (
+                <article
+                  key={post.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer flex flex-col sm:flex-row h-auto"
+                  onClick={() => onPostClick(post, false)}
+                >
+                  <div className="sm:w-1/3 h-48 sm:h-auto sm:min-h-full overflow-hidden flex-shrink-0">
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="h-full w-full object-cover object-center transition-transform duration-300 hover:scale-105"
+                      style={{ objectPosition: 'center', minHeight: '100%' }}
+                    />
+                  </div>
+                  <div className="p-4 sm:p-6 sm:w-2/3 flex-1 flex flex-col justify-between">
+                    <div className="mb-3">
+                      <div className="flex items-center mb-1">
+                        <img
+                          src={post.author.avatar}
+                          alt={post.author.name}
+                          className="h-6 w-6 rounded-full mr-2"
+                        />
+                        <span className="font-medium text-gray-900">{post.author.name}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500 ml-8">
+                        <span>{post.date}</span>
+                        <span className="mx-2">•</span>
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {post.readTime}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-900 line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4 line-clamp-2 text-sm sm:text-base">{post.excerpt}</p>
+                    <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {post.tags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {post.tags.length > 2 && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                            +{post.tags.length - 2}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
+                         <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
+                          className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                          aria-label="Like post"
+                        >
+                          <Heart className={`h-4 w-4 mr-1 ${locallyLikedPosts[post.id] ? 'fill-current' : ''}`} />
+                          {localLikeCounts[post.id] !== undefined ? localLikeCounts[post.id] : post.likes}
+                        </button>
+                        <span 
+                          className="flex items-center cursor-pointer" 
+                          onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
+                          role="button"
+                          aria-label="View comments"
+                        >
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          {comments.filter((c) => c.postId === post.id).length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                No posts found
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {selectedCategory
+                  ? "There are no posts in this category yet."
+                  : "There are no posts matching your criteria."}
+              </p>
+              {selectedCategory && (
+                <button
+                  onClick={() => onCategorySelect(selectedCategory)}
+                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 cursor-pointer"
+                >
+                  View all posts
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="md:col-span-1">
+          <div className="space-y-8">
+            {/* Categories */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-bold mb-4 text-gray-900">
+                Categories
+              </h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onCategorySelect(selectedCategory || "");
+                    }}
+                    className={`flex items-center justify-between py-2 px-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                      selectedCategory === null
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>All Categories</span>
+                    <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                      {posts.length}
+                    </span>
+                  </a>
+                </li>
+                {categories.map((category) => {
+                  const categoryPostCount = posts.filter(
+                    (post) => post.category.id === category.id
+                  ).length;
+
+                  return (
+                    <li key={category.id}>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onCategorySelect(category.id);
+                        }}
+                        className={`flex items-center justify-between py-2 px-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                          selectedCategory === category.id
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span>{category.name}</span>
+                        <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {categoryPostCount}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div
+              id="subscribe-newsletter"
+              className="bg-blue-600 rounded-lg shadow-md p-6 text-white"
+            >
+              <h3 className="text-lg font-bold mb-2">
+                Refer to our newsletter
+              </h3>
+              <p className="text-blue-100 mb-4">
+                Get the latest posts delivered right to your inbox.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Enter referral name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 border border-blue-500 bg-blue-500 rounded-md placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Enter referral email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-blue-500 bg-blue-500 rounded-md placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white"
+                  />
+                </div>
+                <button
+                  onClick={handleSubscribe}
+                  className="w-full bg-white text-blue-600 font-medium py-2 px-4 rounded-md hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
+                >
+                  Subscribe
+                </button>
+              </div>
+              <p className="text-blue-200 text-xs mt-3">
+                We respect your privacy. No spam, ever.
+              </p>
+            </div>
+
+            {/* Popular tags */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-bold mb-4 text-gray-900">
+                Popular Tags
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(new Set(posts.flatMap((post) => post.tags)))
+                  .slice(0, 12)
+                  .map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer transition-colors duration-200"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
+};
+
+// Add this new component
+const SavedPostsView = ({
+  posts,
+  onPostClick,
+  onBack,
+  onUnsavePost,
+}: {
+  posts: Post[];
+  onPostClick: (post: Post, scrollToComments?: boolean) => void;
+  onBack: () => void;
+  onUnsavePost: (postId: string) => void;
+}) => {
+  const [locallyLikedSavedPosts, setLocallyLikedSavedPosts] = useState<Record<string, boolean>>({});
+  const [localSavedLikeCounts, setLocalSavedLikeCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const initialCounts: Record<string, number> = {};
+    const initialLikedStatus: Record<string, boolean> = {};
+    posts.forEach(p => {
+      initialCounts[p.id] = p.likes;
+      initialLikedStatus[p.id] = false; // Assume not liked initially on card view
+    });
+    setLocalSavedLikeCounts(initialCounts);
+    setLocallyLikedSavedPosts(initialLikedStatus);
+  }, [posts]);
+
+  const handleToggleLike = (postId: string) => {
+    const currentlyLiked = locallyLikedSavedPosts[postId];
+    setLocallyLikedSavedPosts(prevLikedStatus => ({
+      ...prevLikedStatus,
+      [postId]: !currentlyLiked,
+    }));
+    setLocalSavedLikeCounts(prevCounts => ({
+      ...prevCounts,
+      [postId]: currentlyLiked
+        ? (prevCounts[postId] || 0) - 1
+        : (prevCounts[postId] || 0) + 1,
+    }));
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="mb-6 inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+      >
+        <ArrowRight className="h-4 w-4 mr-1 transform rotate-180" />
+        Back to all articles
+      </button>
+
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Saved Posts</h1>
+        <p className="text-gray-600 mt-2">
+          Your bookmarked articles for later reading
+        </p>
+      </header>
+
+      {posts.length > 0 ? (
+        <div className="space-y-8">
+          {posts.map((post) => (
+            <article
+              key={post.id}
+              className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer flex flex-col sm:flex-row h-auto"
+              onClick={() => onPostClick(post, false)}
+            >
+              <div className="sm:w-1/3 h-48 sm:h-auto sm:min-h-full overflow-hidden flex-shrink-0">
+                <img
+                  src={post.image}
+                  alt={post.title}
+                  className="h-full w-full object-cover object-center transition-transform duration-300 hover:scale-105"
+                  style={{ objectPosition: 'center', minHeight: '100%' }}
+                />
+              </div>
+              <div className="p-4 sm:p-6 sm:w-2/3 flex-1 flex flex-col justify-between">
+                <div className="mb-3">
+                  <div className="flex items-center mb-1">
+                    <img
+                      src={post.author.avatar}
+                      alt={post.author.name}
+                      className="h-6 w-6 rounded-full mr-2"
+                    />
+                    <span className="font-medium text-gray-900">{post.author.name}</span>
+                  </div>
+                  <div className="flex items-center text-sm text-gray-500 ml-8">
+                    <span>{post.date}</span>
+                    <span className="mx-2">•</span>
+                    <span className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {post.readTime}
+                    </span>
+                  </div>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-900 line-clamp-2">
+                  {post.title}
+                </h3>
+                <p className="text-gray-600 mb-4 line-clamp-2 text-sm sm:text-base">{post.excerpt}</p>
+                <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {post.tags.slice(0, 2).map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {post.tags.length > 2 && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                        +{post.tags.length - 2}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
+                      className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedSavedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                      aria-label="Like post"
+                    >
+                      <Heart className={`h-4 w-4 mr-1 ${locallyLikedSavedPosts[post.id] ? 'fill-current' : ''}`} />
+                      {localSavedLikeCounts[post.id] !== undefined ? localSavedLikeCounts[post.id] : post.likes}
+                    </button>
+                    <span 
+                      className="flex items-center cursor-pointer" 
+                      onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
+                      role="button"
+                      aria-label="View comments"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      {post.comments} {/* Assuming comments count on post object is fine for saved view */}
+                    </span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onUnsavePost(post.id); }}
+                      className="flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+                      aria-label="Unsave post"
+                    >
+                      <Bookmark className="h-4 w-4 mr-1 fill-current" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            No saved posts yet
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Bookmark articles that interest you to read them later.
+          </p>
+          <button
+            onClick={onBack}
+            className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 cursor-pointer"
+          >
+            Browse all articles
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ====== Single Post View Component ======
+const SinglePostView = ({
+  post,
+  comments,
+  onBack,
+  comment,
+  setComment,
+  handleSubmitComment,
+  isSignedIn = false,
+  currentUser = null,
+  setIsSignInModalOpen,
+  setComments,
+  replyText,
+  setReplyText,
+  onSavePost,
+  onRemoveSavedPost,
+  scrollToComments,
+  onScrollToCommentsComplete,
+  showToast,
+}: {
+  post: Post;
+  comments: Comment[];
+  onBack: () => void;
+  comment: string;
+  setComment: (comment: string) => void;
+  handleSubmitComment: () => void;
+  isSignedIn?: boolean;
+  currentUser?: Author | null;
+  setIsSignInModalOpen: (isOpen: boolean) => void;
+  setComments: React.Dispatch<React.SetStateAction<Comment[]>>;
+  replyText: string;
+  setReplyText: React.Dispatch<React.SetStateAction<string>>;
+  onSavePost: (post: Post) => void;
+  onRemoveSavedPost: (postId: string) => void;
+  scrollToComments: boolean;
+  onScrollToCommentsComplete: () => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+}) => {
+  const [showShareOptions, setShowShareOptions] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
+
+  const handleLike = () => {
+    if (isLiked) {
+      setLikeCount(likeCount - 1);
+    } else {
+      setLikeCount(likeCount + 1);
+    }
+    setIsLiked(!isLiked);
+  };
+
+  const handleBookmark = () => {
+    setIsBookmarked(!isBookmarked);
+    if (!isBookmarked) {
+      onSavePost(post); // Add post to saved posts
+    } else {
+      onRemoveSavedPost(post.id); // Remove post from saved posts
+    }
+  };
+
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const handleCommentLike = (id: string) => {
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, likes: likedComments.has(id) ? c.likes - 1 : c.likes + 1 }
+          : c
+      )
+    );
+    setLikedComments((pc) => {
+      const next = new Set(pc);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleReplyLike = (replyId: string, parentCommentId: string) => {
+    setComments(prevComments => 
+      prevComments.map(comment => {
+        if (comment.id === parentCommentId) {
+          return {
+            ...comment,
+            replies: (comment.replies || []).map(reply => {
+              if (reply.id === replyId) {
+                const alreadyLiked = likedComments.has(replyId);
+                return {
+                  ...reply,
+                  likes: alreadyLiked ? reply.likes - 1 : reply.likes + 1,
+                };
+              }
+              return reply;
+            }),
+          };
+        }
+        return comment;
+      })
+    );
+
+    setLikedComments(prevLiked => {
+      const next = new Set(prevLiked);
+      if (next.has(replyId)) {
+        next.delete(replyId);
+      } else {
+        next.add(replyId);
+      }
+      return next;
+    });
+  };
+
+  // And for "Reply", you'll need to track which comment is in "reply mode":
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (scrollToComments) {
+      document.getElementById("comments-section")?.scrollIntoView({ behavior: "smooth" });
+      onScrollToCommentsComplete();
+    }
+  }, [scrollToComments, onScrollToCommentsComplete]);
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="mb-6 inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+      >
+        <ArrowRight className="h-4 w-4 mr-1 transform rotate-180" />
+        Back to articles
+      </button>
+
+      {/* Article header */}
+      <header className="mb-8">
+        <div className="flex items-center text-sm text-gray-500 mb-3">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+            {post.category.name}
+          </span>
+          <span>{post.date}</span>
+          <span className="mx-2">•</span>
+          <span className="flex items-center">
+            <Clock className="h-4 w-4 mr-1" />
+            {post.readTime}
+          </span>
+        </div>
+
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          {post.title}
+        </h1>
+
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center">
+            <img
+              src={post.author.avatar}
+              alt={post.author.name}
+              className="h-10 w-10 rounded-full mr-3"
+            />
+            <div>
+              <div className="font-medium text-gray-900">
+                {post.author.name}
+              </div>
+              <div className="text-sm text-gray-500">{post.author.role}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <button
+                onClick={() => setShowShareOptions(!showShareOptions)}
+                className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200 cursor-pointer"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
+
+              {/* Share dropdown */}
+              <div
+                className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 ${
+                  showShareOptions
+                    ? "opacity-100 visible"
+                    : "opacity-0 invisible"
+                } transition-all duration-200`}
+              >
+                <a
+                  href="#"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  <Twitter className="h-4 w-4 inline mr-2" /> Twitter
+                </a>
+                <a
+                  href="#"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  <Facebook className="h-4 w-4 inline mr-2" /> Facebook
+                </a>
+                <a
+                  href="#"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  <Linkedin className="h-4 w-4 inline mr-2" /> LinkedIn
+                </a>
+                <a
+                  href="#"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  <Mail className="h-4 w-4 inline mr-2" /> Email
+                </a>
+              </div>
+            </div>
+
+            <button
+              onClick={handleBookmark}
+              className={`p-2 rounded-full ${
+                isBookmarked
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              } transition-colors duration-200 cursor-pointer`}
+            >
+              <Bookmark
+                className={`h-5 w-5 ${isBookmarked ? "fill-current" : ""}`}
+              />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Featured image */}
+      <div className="mb-8 rounded-lg overflow-hidden">
+        <img
+          src={post.image}
+          alt={post.title}
+          className="w-full h-auto object-cover"
+        />
+      </div>
+
+      {/* Article content */}
+      <article className="prose prose-lg max-w-none mb-12">
+        <div dangerouslySetInnerHTML={{ __html: post.content }} />
+      </article>
+
+      {/* Tags */}
+      <div className="mb-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-3">Tags</h3>
+        <div className="flex flex-wrap gap-2">
+          {post.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer transition-colors duration-200"
+            >
+              <Tag className="h-4 w-4 mr-1" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Article actions */}
+      <div className="flex items-center justify-between border-t border-b border-gray-200 py-4 mb-8">
+        <div className="flex space-x-4">
+          <button
+            onClick={handleLike}
+            className={`flex items-center ${
+              isLiked ? "text-red-500" : "text-gray-600 hover:text-red-500"
+            } transition-colors duration-200 cursor-pointer`}
+          >
+            <Heart
+              className={`h-5 w-5 mr-1 ${isLiked ? "fill-current" : ""}`}
+            />
+            <span>{likeCount}</span>
+          </button>
+          <button
+            onClick={() =>
+              document
+                .getElementById("comments-section")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+          >
+            <MessageCircle className="h-5 w-5 mr-1" />
+            <span>{comments.length}</span>
+          </button>
+        </div>
+
+        <div className="flex space-x-2">
+          <button
+            onClick={handleBookmark}
+            className={`flex items-center ${
+              isBookmarked
+                ? "text-blue-600"
+                : "text-gray-600 hover:text-blue-600"
+            } transition-colors duration-200 cursor-pointer`}
+          >
+            <Bookmark
+              className={`h-5 w-5 mr-1 ${isBookmarked ? "fill-current" : ""}`}
+            />
+            <span>Save</span>
+          </button>
+          <button
+            onClick={() => setShowShareOptions(!showShareOptions)}
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+          >
+            <Share2 className="h-5 w-5 mr-1" />
+            <span>Share</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Author bio */}
+      <div className="bg-gray-50 rounded-lg p-6 mb-8">
+        <div className="flex items-center mb-4">
+          <img
+            src={post.author.avatar}
+            alt={post.author.name}
+            className="h-12 w-12 rounded-full mr-4"
+          />
+          <div>
+            <h3 className="font-bold text-lg text-gray-900">
+              {post.author.name}
+            </h3>
+            <p className="text-sm text-gray-600">{post.author.role}</p>
+          </div>
+        </div>
+        <p className="text-gray-700 mb-4">{post.author.bio}</p>
+        <div className="flex space-x-4">
+          <a
+            href="#"
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+          >
+            <Twitter className="h-5 w-5" />
+          </a>
+          <a
+            href="#"
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+          >
+            <Linkedin className="h-5 w-5" />
+          </a>
+          <a
+            href="#"
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+          >
+            <Mail className="h-5 w-5" />
+          </a>
+        </div>
+      </div>
+
+      {/* Related articles would go here */}
+
+      {/* Comments section */}
+      <section id="comments-section" className="mb-8">
+        <h2 className="text-2xl font-bold mb-6">
+          Comments ({comments.length})
+        </h2>
+
+        {/* Comment form */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h3 className="text-lg font-medium mb-4">Leave a comment</h3>
+          {isSignedIn ? (
+            <div>
+              <div className="flex items-center mb-4">
+                <img
+                  src={currentUser?.avatar}
+                  alt={currentUser?.name}
+                  className="h-10 w-10 rounded-full mr-3"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {currentUser?.name}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Commenting as {currentUser?.role}
+                  </div>
+                </div>
+              </div>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Share your thoughts..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                rows={4}
+              ></textarea>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSubmitComment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center cursor-pointer"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Post Comment
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-600 mb-4">
+                You need to sign in to leave a comment.
+              </p>
+              <button
+                onClick={() => setIsSignInModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+              >
+                Sign In to Comment
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Comments list */}
+        <div className="space-y-6">
+          {comments.map((comment) => (
+            <div key={comment.id} className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center mb-4">
+                <img
+                  src={comment.author.avatar}
+                  alt={comment.author.name}
+                  className="h-10 w-10 rounded-full mr-3"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {comment.author.name}
+                  </div>
+                  <div className="text-sm text-gray-500">{comment.date}</div>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-4">{comment.content}</p>
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() =>
+                    setReplyingTo(replyingTo === comment.id ? null : comment.id)
+                  }
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+                >
+                  Reply
+                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleCommentLike(comment.id)}
+                    className={`text-gray-500 transition-colors duration-200 ${
+                      likedComments.has(comment.id)
+                        ? "text-red-500"
+                        : "hover:text-red-500 text-gray-600"
+                    } cursor-pointer`}
+                  >
+                    <Heart
+                      className={`h-4 w-4 mr-1 ${
+                        likedComments.has(comment.id) ? "fill-current" : ""
+                      }`}
+                    />
+                  </button>
+                  <span className="text-gray-500 text-sm ml-1">
+                    {comment.likes}
+                  </span>
+                </div>
+              </div>
+
+              {/* Conditionally render a reply box - MOVED AND RESTYLED */}
+              {replyingTo === comment.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+                    placeholder={`Replying to ${comment.author.name}...`}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    rows={3}
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center text-sm font-medium cursor-pointer"
+                      onClick={() => {
+                        if (!currentUser) {
+                          setIsSignInModalOpen(true);
+                          return;
+                        }
+                        if (!replyText.trim()) {
+                          showToast("Reply cannot be empty.", "error");
+                          return;
+                        }
+                        // append a new reply to this comment
+                        setComments((prev) =>
+                          prev.map((c) =>
+                            c.id === comment.id
+                              ? {
+                                  ...c,
+                                  replies: [
+                                    ...(c.replies || []),
+                                    {
+                                      id: `reply-${Date.now()}`,
+                                      author: currentUser!,
+                                      content: replyText,
+                                      postId: post.id,
+                                      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                                      likes: 0,
+                                    },
+                                  ],
+                                }
+                              : c
+                          )
+                        );
+                        setReplyText("");
+                        setReplyingTo(null);
+                      }}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Post Reply
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Replies */}
+              {comment.replies && comment.replies.length > 0 && (
+                <div className="mt-4 pl-6 border-l-2 border-gray-100">
+                  {comment.replies.map((reply) => (
+                    <div key={reply.id} className="mt-4">
+                      <div className="flex items-center mb-2">
+                        <img
+                          src={reply.author.avatar}
+                          alt={reply.author.name}
+                          className="h-8 w-8 rounded-full mr-2"
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">
+                            {reply.author.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {reply.date}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 text-sm mb-2">
+                        {reply.content}
+                      </p>
+                      {/* Add Like button for reply */}
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => handleReplyLike(reply.id, comment.id)}
+                          className={`text-gray-500 transition-colors duration-200 ${
+                            likedComments.has(reply.id)
+                              ? "text-red-500"
+                              : "hover:text-red-500 text-gray-600"
+                          } cursor-pointer flex items-center text-xs`}
+                        >
+                          <Heart
+                            className={`h-3 w-3 mr-1 ${
+                              likedComments.has(reply.id) ? "fill-current" : ""
+                            }`}
+                          />
+                           {reply.likes}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default ModernBlogApp;
+
+// Zod Schema
+export const Schema = {
+    "commentary": "Creating a modern blog website interface using Next.js and TypeScript.",
+    "template": "nextjs-developer",
+    "title": "Modern Blog Interface",
+    "description": "A modern blog website interface to share thoughts.",
+    "additional_dependencies": [
+        "lucide-react"
+    ],
+    "has_additional_dependencies": true,
+    "install_dependencies_command": "npm install lucide-react",
+    "port": 3000,
+    "file_path": "pages/index.tsx",
+    "code": "<see code above>"
 }
