@@ -1,2117 +1,1565 @@
 "use client";
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  memo,
-  useRef,
-} from "react";
+
+import { useEffect, useState } from "react";
 import {
-  ChartBarIcon,
-  BellIcon,
-  UserIcon,
-  Bars3Icon,
-  XMarkIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  ExclamationTriangleIcon,
-  InformationCircleIcon,
-  CheckCircleIcon,
-  ArrowDownTrayIcon,
-  FunnelIcon,
-  MagnifyingGlassIcon,
-  PlusIcon,
-  TrashIcon,
-  PencilIcon,
-  DocumentTextIcon,
-  ChartPieIcon,
-  CurrencyDollarIcon,
-  AdjustmentsHorizontalIcon,
-  LockClosedIcon,
-} from "@heroicons/react/24/outline";
+  FiPlus,
+  FiTrash,
+  FiFilter,
+  FiX,
+  FiEdit,
+  FiCalendar,
+  FiFlag,
+  FiBarChart2,
+  FiCheck,
+  FiClock,
+  FiChevronDown,
+  FiChevronUp,
+  FiHome,
+  FiList,
+  FiTrendingUp,
+  FiSettings,
+  FiMenu,
+  FiArrowRight,
+  FiCheckCircle,
+  FiTarget,
+  FiZap,
+  FiUsers,
+} from "react-icons/fi";
 
-// Types
-interface User {
-  email: string;
-  isAuthenticated: boolean;
+interface Task {
+  id: number;
+  text: string;
+  completed: boolean;
+  createdAt: Date;
+  dueDate?: Date | null;
+  priority: "low" | "medium" | "high";
+  category: string;
 }
 
-interface StockData {
-  date: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
-interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  sentiment: "positive" | "negative" | "neutral";
-  score: number;
-  source: string;
-  timestamp: string;
-}
-
-interface RiskMetric {
-  id: string;
+interface CategorySummary {
   name: string;
-  value: number;
-  change: number;
-  status: "good" | "warning" | "danger";
-  description: string;
+  count: number;
+  completed: number;
 }
 
-interface Portfolio {
-  id: string;
-  name: string;
-  value: number;
-  change: number;
-  allocation: { [key: string]: number };
-}
-
-interface Alert {
-  id: string;
-  title: string;
-  message: string;
-  type: "info" | "warning" | "success" | "error";
-  timestamp: string;
-  read: boolean;
-}
-
-// Mock data generators
-const generateStockData = (): StockData[] => {
-  const data: StockData[] = [];
-  let basePrice = 150;
-
-  for (let i = 30; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-
-    const open = basePrice + (Math.random() - 0.5) * 10;
-    const close = open + (Math.random() - 0.5) * 8;
-    const high = Math.max(open, close) + Math.random() * 5;
-    const low = Math.min(open, close) - Math.random() * 5;
-
-    data.push({
-      date: date.toISOString().split("T")[0],
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      close: Math.round(close * 100) / 100,
-      volume: Math.floor(Math.random() * 1000000) + 500000,
-    });
-
-    basePrice = close;
-  }
-
-  return data;
-};
-
-const generateNewsData = (): NewsItem[] => {
-  const words = [
-    "Growth",
-    "Innovation",
-    "Market",
-    "Technology",
-    "Profit",
-    "Revenue",
-    "Expansion",
-    "Investment",
-    "Risk",
-    "Opportunity",
-  ];
-  const sources = [
-    "Reuters",
-    "Bloomberg",
-    "CNBC",
-    "MarketWatch",
-    "Financial Times",
-  ];
-  const contents = [
-    "Market analysts are optimistic about the upcoming quarter with strong earnings expected across multiple sectors.",
-    "Technology stocks continue to show resilience despite market volatility and regulatory concerns.",
-    "Investment flows into emerging markets have increased significantly this month.",
-    "Risk assessment models suggest a cautious approach to portfolio allocation in current conditions.",
-    "Revenue growth in the financial sector exceeds expectations for the third consecutive quarter.",
-  ];
-
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: `news-${i}`,
-    title: `${words[Math.floor(Math.random() * words.length)]} ${
-      words[Math.floor(Math.random() * words.length)]
-    } Report`,
-    content: contents[Math.floor(Math.random() * contents.length)],
-    sentiment: ["positive", "negative", "neutral"][
-      Math.floor(Math.random() * 3)
-    ] as "positive" | "negative" | "neutral",
-    score: Math.random(),
-    source: sources[Math.floor(Math.random() * sources.length)],
-    timestamp: new Date(
-      Date.now() - Math.random() * 86400000 * 7
-    ).toISOString(),
-  }));
-};
-
-const generateRiskMetrics = (): RiskMetric[] => [
-  {
-    id: "var",
-    name: "Value at Risk",
-    value: 2.35,
-    change: -0.12,
-    status: "good",
-    description:
-      "Maximum potential loss over a given time period at a specified confidence level",
-  },
-  {
-    id: "sharpe",
-    name: "Sharpe Ratio",
-    value: 1.42,
-    change: 0.08,
-    status: "good",
-    description:
-      "Risk-adjusted return measure comparing excess return to volatility",
-  },
-  {
-    id: "beta",
-    name: "Portfolio Beta",
-    value: 1.15,
-    change: 0.03,
-    status: "warning",
-    description: "Measure of portfolio sensitivity to market movements",
-  },
-  {
-    id: "volatility",
-    name: "Volatility",
-    value: 18.5,
-    change: 2.1,
-    status: "danger",
-    description:
-      "Standard deviation of returns indicating price fluctuation magnitude",
-  },
-];
-
-const generatePortfolios = (): Portfolio[] => [
-  {
-    id: "growth",
-    name: "Growth Portfolio",
-    value: 125000,
-    change: 5.2,
-    allocation: { Stocks: 70, Bonds: 20, Cash: 10 },
-  },
-  {
-    id: "conservative",
-    name: "Conservative Portfolio",
-    value: 85000,
-    change: 2.1,
-    allocation: { Stocks: 40, Bonds: 50, Cash: 10 },
-  },
-  {
-    id: "aggressive",
-    name: "Aggressive Portfolio",
-    value: 95000,
-    change: -1.5,
-    allocation: { Stocks: 85, Bonds: 10, Cash: 5 },
-  },
-];
-
-const generateAlerts = (): Alert[] => [
-  {
-    id: "alert-1",
-    title: "Portfolio Rebalancing",
-    message:
-      "Your Growth Portfolio allocation has drifted beyond target ranges",
-    type: "warning",
-    timestamp: new Date().toISOString(),
-    read: false,
-  },
-  {
-    id: "alert-2",
-    title: "Market Update",
-    message: "Significant market movement detected in your watchlist",
-    type: "info",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    read: false,
-  },
-  {
-    id: "alert-3",
-    title: "Risk Threshold",
-    message: "Portfolio volatility has exceeded your risk tolerance",
-    type: "error",
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    read: true,
-  },
-];
-
-// Smooth scroll utility
-const scrollToSection = (sectionId: string, offset = 80) => {
-  const element = document.getElementById(sectionId);
-  if (element) {
-    const elementPosition =
-      element.getBoundingClientRect().top + window.pageYOffset;
-    const offsetPosition = elementPosition - offset;
-
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: "smooth",
-    });
-  }
-};
-
-// Authentication Guard Component
-const AuthGuard = memo(
-  ({
-    children,
-    isAuthenticated,
-    onLoginRequired,
-  }: {
-    children: React.ReactNode;
-    isAuthenticated: boolean;
-    onLoginRequired: () => void;
-  }) => {
-    if (!isAuthenticated) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <LockClosedIcon className="w-8 h-8 text-blue-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Authentication Required
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Please log in to access your portfolio dashboard and analytics
-              tools.
-            </p>
-            <button
-              onClick={onLoginRequired}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              Sign In to Continue
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return <>{children}</>;
-  }
-);
-
-// Memoized Components
-const CandlestickChart = memo(
-  ({
-    data,
-    width,
-    height,
-  }: {
-    data: StockData[];
-    width: number;
-    height: number;
-  }) => {
-    const [selectedRange, setSelectedRange] = useState<[number, number]>([
-      0,
-      data.length - 1,
-    ]);
-    const [tooltip, setTooltip] = useState<{
-      x: number;
-      y: number;
-      data: StockData | null;
-    }>({ x: 0, y: 0, data: null });
-    const [chartType, setChartType] = useState<"candlestick" | "line">(
-      "candlestick"
-    );
-
-    const visibleData = useMemo(() => {
-      return data.slice(selectedRange[0], selectedRange[1] + 1);
-    }, [data, selectedRange]);
-
-    const { minPrice, maxPrice, priceRange } = useMemo(() => {
-      const prices = visibleData.flatMap((d) => [d.high, d.low]);
-      const min = Math.min(...prices);
-      const max = Math.max(...prices);
-      return { minPrice: min, maxPrice: max, priceRange: max - min };
-    }, [visibleData]);
-
-    const handleMouseMove = useCallback(
-      (e: React.MouseEvent<SVGElement>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const dataIndex = Math.floor((x / width) * visibleData.length);
-
-        if (dataIndex >= 0 && dataIndex < visibleData.length) {
-          setTooltip({
-            x: e.clientX,
-            y: e.clientY,
-            data: visibleData[dataIndex],
-          });
-        }
-      },
-      [width, visibleData]
-    );
-
-    const handleMouseLeave = useCallback(() => {
-      setTooltip({ x: 0, y: 0, data: null });
-    }, []);
-
-    const exportChart = useCallback(() => {
-      const csvContent =
-        "data:text/csv;charset=utf-8," +
-        "Date,Open,High,Low,Close,Volume\n" +
-        visibleData
-          .map(
-            (row) =>
-              `${row.date},${row.open},${row.high},${row.low},${row.close},${row.volume}`
-          )
-          .join("\n");
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "chart_data.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }, [visibleData]);
-
-    return (
-      <div className="relative">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setChartType("candlestick")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-300 shadow-sm ${
-                chartType === "candlestick"
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              Candlestick
-            </button>
-            <button
-              onClick={() => setChartType("line")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-300 shadow-sm ${
-                chartType === "line"
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              Line
-            </button>
-            <button
-              onClick={exportChart}
-              className="flex md:hidden items-center space-x-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-800 cursor-pointer transition-all duration-300 shadow-md"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Export</span>
-            </button>
-          </div>
-          <button
-            onClick={exportChart}
-            className="hidden md:flex items-center space-x-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-800 cursor-pointer transition-all duration-300 shadow-md"
-          >
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            <span>Export</span>
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <svg
-            width={width}
-            height={height}
-            className="border border-gray-200 rounded-lg bg-white cursor-crosshair min-w-full shadow-sm"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          >
-            {/* Grid lines */}
-            {Array.from({ length: 5 }, (_, i) => (
-              <line
-                key={i}
-                x1={0}
-                y1={(height / 4) * i}
-                x2={width}
-                y2={(height / 4) * i}
-                stroke="#e5e7eb"
-                strokeWidth={1}
-              />
-            ))}
-
-            {chartType === "candlestick" ? (
-              /* Candlesticks */
-              visibleData.map((item, index) => {
-                const x =
-                  (index / visibleData.length) * width +
-                  width / visibleData.length / 2;
-                const candleWidth = Math.max(
-                  2,
-                  (width / visibleData.length) * 0.6
-                );
-
-                const openY =
-                  height - ((item.open - minPrice) / priceRange) * height;
-                const closeY =
-                  height - ((item.close - minPrice) / priceRange) * height;
-                const highY =
-                  height - ((item.high - minPrice) / priceRange) * height;
-                const lowY =
-                  height - ((item.low - minPrice) / priceRange) * height;
-
-                const isGreen = item.close > item.open;
-                const color = isGreen ? "#10b981" : "#ef4444";
-
-                return (
-                  <g key={index}>
-                    {/* High-Low line */}
-                    <line
-                      x1={x}
-                      y1={highY}
-                      x2={x}
-                      y2={lowY}
-                      stroke={color}
-                      strokeWidth={1}
-                    />
-                    {/* Open-Close rectangle */}
-                    <rect
-                      x={x - candleWidth / 2}
-                      y={Math.min(openY, closeY)}
-                      width={candleWidth}
-                      height={Math.abs(closeY - openY) || 1}
-                      fill={isGreen ? color : "#ffffff"}
-                      stroke={color}
-                      strokeWidth={1}
-                    />
-                  </g>
-                );
-              })
-            ) : (
-              /* Line Chart */
-              <polyline
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth={2}
-                points={visibleData
-                  .map((item, index) => {
-                    const x =
-                      (index / visibleData.length) * width +
-                      width / visibleData.length / 2;
-                    const y =
-                      height - ((item.close - minPrice) / priceRange) * height;
-                    return `${x},${y}`;
-                  })
-                  .join(" ")}
-              />
-            )}
-          </svg>
-        </div>
-
-        {/* Brush selector */}
-        <div className="mt-4">
-          <input
-            type="range"
-            min={0}
-            max={data.length - 1}
-            value={selectedRange[0]}
-            onChange={(e) =>
-              setSelectedRange([parseInt(e.target.value), selectedRange[1]])
-            }
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>{data[selectedRange[0]]?.date}</span>
-            <span>{data[selectedRange[1]]?.date}</span>
-          </div>
-        </div>
-
-        {/* Tooltip */}
-        {tooltip.data && (
-          <div
-            className="fixed z-50 bg-black text-white p-2 rounded shadow-lg text-xs pointer-events-none"
-            style={{ left: tooltip.x + 10, top: tooltip.y - 10 }}
-          >
-            <div>Date: {tooltip.data.date}</div>
-            <div>Open: ${tooltip.data.open}</div>
-            <div>High: ${tooltip.data.high}</div>
-            <div>Low: ${tooltip.data.low}</div>
-            <div>Close: ${tooltip.data.close}</div>
-            <div>Volume: {tooltip.data.volume.toLocaleString()}</div>
-          </div>
-        )}
-      </div>
-    );
-  }
-);
-
-const WordCloud = memo(
-  ({
-    news,
-    onNewsClick,
-  }: {
-    news: NewsItem[];
-    onNewsClick: (news: NewsItem) => void;
-  }) => {
-    const [filter, setFilter] = useState<
-      "all" | "positive" | "negative" | "neutral"
-    >("all");
-
-    const filteredNews = useMemo(() => {
-      return filter === "all"
-        ? news
-        : news.filter((item) => item.sentiment === filter);
-    }, [news, filter]);
-
-    const wordFreq = useMemo(() => {
-      const freq: Record<
-        string,
-        {
-          count: number;
-          sentiment: "positive" | "negative" | "neutral";
-          news: NewsItem[];
-        }
-      > = {};
-
-      filteredNews.forEach((item) => {
-        const words = item.title.split(" ");
-        words.forEach((word) => {
-          if (word.length > 3) {
-            if (freq[word]) {
-              freq[word].count++;
-              freq[word].news.push(item);
-            } else {
-              freq[word] = {
-                count: 1,
-                sentiment: item.sentiment,
-                news: [item],
-              };
-            }
-          }
-        });
-      });
-
-      return Object.entries(freq)
-        .sort(([, a], [, b]) => b.count - a.count)
-        .slice(0, 20);
-    }, [filteredNews]);
-
-    return (
-      <div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-          <div className="flex flex-wrap gap-3">
-            {(["all", "positive", "negative", "neutral"] as const).map(
-              (type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilter(type)}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold cursor-pointer transition-all duration-300 capitalize shadow-sm ${
-                    filter === type
-                      ? type === "positive"
-                        ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-200"
-                        : type === "negative"
-                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200"
-                        : type === "neutral"
-                        ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-gray-200"
-                        : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-200"
-                      : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 hover:border-gray-400 hover:text-gray-900"
-                  }`}
-                >
-                  {type}
-                  {filter === type && (
-                    <span className="ml-2 bg-black bg-opacity-20 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                      {filteredNews.length}
-                    </span>
-                  )}
-                </button>
-              )
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-            <span className="text-xs text-gray-500">Positive</span>
-            <div className="h-2 w-2 bg-red-500 rounded-full"></div>
-            <span className="text-xs text-gray-500">Negative</span>
-            <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
-            <span className="text-xs text-gray-500">Neutral</span>
-          </div>
-        </div>
-
-        <div className="relative bg-gradient-to-br from-slate-50 via-white to-slate-100 rounded-xl border border-gray-200 p-8 min-h-[300px] overflow-hidden">
-          {/* Background decorative elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100 to-transparent rounded-full opacity-50 -translate-y-16 translate-x-16"></div>
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-green-100 to-transparent rounded-full opacity-50 translate-y-12 -translate-x-12"></div>
-          
-          <div className="relative flex flex-wrap gap-4 items-center justify-center">
-            {wordFreq.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <DocumentTextIcon className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 text-lg">No articles found for this filter</p>
-              </div>
-            ) : (
-              wordFreq.map(([word, data], index) => {
-                const size = Math.max(14, Math.min(36, 14 + data.count * 2.5));
-                const opacity = Math.max(0.7, Math.min(1, 0.5 + data.count * 0.1));
-                
-                const colors = {
-                  positive: "text-green-600 hover:text-green-700 shadow-green-100",
-                  negative: "text-red-600 hover:text-red-700 shadow-red-100", 
-                  neutral: "text-gray-600 hover:text-gray-700 shadow-gray-100",
-                };
-
-                const bgColors = {
-                  positive: "hover:bg-green-50",
-                  negative: "hover:bg-red-50",
-                  neutral: "hover:bg-gray-50",
-                };
-
-                return (
-                  <button
-                    key={word}
-                    onClick={() => onNewsClick(data.news[0])}
-                    className={`font-bold ${colors[data.sentiment]} ${bgColors[data.sentiment]} 
-                      transition-all duration-300 cursor-pointer hover:scale-110 hover:shadow-lg 
-                      px-3 py-2 rounded-lg border border-transparent hover:border-gray-200
-                      transform hover:-translate-y-1 active:scale-95`}
-                    style={{ 
-                      fontSize: `${size}px`,
-                      opacity: opacity,
-                      fontWeight: 600 + Math.min(300, data.count * 50),
-                    }}
-                    title={`${word} - ${data.count} mentions (${data.sentiment})`}
-                  >
-                    {word}
-                    <span className="ml-1 text-xs opacity-60 font-normal">
-                      {data.count > 1 ? `×${data.count}` : ''}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-          
-          {/* Bottom gradient overlay */}
-          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-        </div>
-
-        {filteredNews.length > 0 && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
-              Analyzing <span className="font-semibold text-blue-600">{filteredNews.length}</span> articles • 
-              Click on any word to read related news
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  }
-);
-
-const RiskCard = memo(
-  ({
-    metric,
-    onDetailsClick,
-  }: {
-    metric: RiskMetric;
-    onDetailsClick: (metric: RiskMetric) => void;
-  }) => {
-    const statusColors = {
-      good: "border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg hover:from-green-100 hover:to-green-200",
-      warning: "border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:shadow-lg hover:from-yellow-100 hover:to-yellow-200",
-      danger: "border-red-200 bg-gradient-to-br from-red-50 to-red-100 hover:shadow-lg hover:from-red-100 hover:to-red-200",
-    };
-
-    const statusIcons = {
-      good: <CheckCircleIcon className="w-5 h-5 text-green-600" />,
-      warning: <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />,
-      danger: <InformationCircleIcon className="w-5 h-5 text-red-600" />,
-    };
-
-    return (
-      <div
-        onClick={() => onDetailsClick(metric)}
-        className={`p-4 rounded-xl border shadow-md ${
-          statusColors[metric.status]
-        } transition-all duration-300 cursor-pointer`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {statusIcons[metric.status]}
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-              {metric.name}
-            </h3>
-          </div>
-          <div className="text-right">
-            <div className="text-xl sm:text-2xl font-bold text-gray-900">
-              {metric.value}
-            </div>
-            <div
-              className={`text-xs sm:text-sm flex items-center ${
-                metric.change >= 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {metric.change >= 0 ? (
-                <ArrowTrendingUpIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              ) : (
-                <ArrowTrendingDownIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              )}
-              {Math.abs(metric.change).toFixed(2)}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
-
-const Modal = memo(
-  ({
-    isOpen,
-    onClose,
-    title,
-    children,
-    size = "md",
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    children: React.ReactNode;
-    size?: "sm" | "md" | "lg" | "xl";
-  }) => {
-    const modalRef = useRef<HTMLDivElement>(null);
-
-    const sizeClasses = {
-      sm: "max-w-sm",
-      md: "max-w-md",
-      lg: "max-w-2xl",
-      xl: "max-w-4xl",
-    };
-
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          modalRef.current &&
-          !modalRef.current.contains(event.target as Node)
-        ) {
-          onClose();
-        }
-      };
-
-      const handleEscape = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
-          onClose();
-        }
-      };
-
-      if (isOpen) {
-        document.addEventListener("mousedown", handleClickOutside);
-        document.addEventListener("keydown", handleEscape);
-        document.body.style.overflow = "hidden";
-      }
-
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.removeEventListener("keydown", handleEscape);
-        document.body.style.overflow = "unset";
-      };
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-      >
-        <div
-          ref={modalRef}
-          className={`relative bg-white rounded-2xl shadow-2xl border border-gray-100 ${sizeClasses[size]} w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100`}
-        >
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-              {title}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
-          <div className="p-4 sm:p-6">{children}</div>
-        </div>
-      </div>
-    );
-  }
-);
-
-const LoginModal = memo(
-  ({
-    isOpen,
-    onClose,
-    onLogin,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    onLogin: (email: string, password: string) => void;
-  }) => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-      {}
-    );
-
-    const validateForm = useCallback(() => {
-      const newErrors: { email?: string; password?: string } = {};
-
-      if (!email.trim()) {
-        newErrors.email = "Email is required";
-      } else if (!/\S+@\S+\.\S+/.test(email)) {
-        newErrors.email = "Email is invalid";
-      }
-
-      if (!password) {
-        newErrors.password = "Password is required";
-      }
-
-      setErrors(newErrors);
-      return Object.keys(newErrors).length === 0;
-    }, [email, password]);
-
-    const handleSubmit = useCallback(() => {
-      if (validateForm()) {
-        onLogin(email.trim(), password);
-        setEmail("");
-        setPassword("");
-        setErrors({});
-      }
-    }, [email, password, onLogin, validateForm]);
-
-    const handleClose = useCallback(() => {
-      onClose();
-      setEmail("");
-      setPassword("");
-      setErrors({});
-    }, [onClose]);
-
-    return (
-      <Modal isOpen={isOpen} onClose={handleClose} title="Sign In">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.email ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="Enter your email"
-            />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 ${
-                  errors.password ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Enter password (hint: 12345678)"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <EyeIcon className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-            )}
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium cursor-pointer"
-          >
-            Sign In
-          </button>
-        </div>
-
-        <p className="mt-4 text-xs text-gray-500 text-center">
-          Use any email and any password to login
-        </p>
-      </Modal>
-    );
-  }
-);
-
-const PortfolioModal = ({
-  isOpen,
-  onClose,
-  portfolios,
-  onCreatePortfolio,
-  onDeletePortfolio,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  portfolios: Portfolio[];
-  onCreatePortfolio: (name: string) => void;
-  onDeletePortfolio: (id: string) => void;
-}) => {
-  const [newPortfolioName, setNewPortfolioName] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  const handleCreate = useCallback(() => {
-    if (newPortfolioName.trim()) {
-      onCreatePortfolio(newPortfolioName.trim());
-      setNewPortfolioName("");
-      setShowCreateForm(false);
-    }
-  }, [newPortfolioName, onCreatePortfolio]);
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Portfolio Management"
-      size="lg"
-    >
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Your Portfolios
-          </h3>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 cursor-pointer transition-colors w-full sm:w-auto justify-center"
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span>New Portfolio</span>
-          </button>
-        </div>
-
-        {showCreateForm && (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              <input
-                type="text"
-                value={newPortfolioName}
-                onChange={(e) => setNewPortfolioName(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleCreate()}
-                placeholder="Portfolio name"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleCreate}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 cursor-pointer transition-colors flex-1 sm:flex-none"
-                >
-                  Create
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setNewPortfolioName("");
-                  }}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 cursor-pointer transition-colors flex-1 sm:flex-none"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid gap-4">
-          {portfolios.map((portfolio) => (
-            <div
-              key={portfolio.id}
-              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
-                <h4 className="font-semibold text-gray-900">
-                  {portfolio.name}
-                </h4>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => onDeletePortfolio(portfolio.id)}
-                    className="text-red-600 hover:text-red-800 cursor-pointer"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <span className="text-2xl font-bold text-gray-900">
-                  ${portfolio.value.toLocaleString()}
-                </span>
-                <span
-                  className={`flex items-center ${
-                    portfolio.change >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {portfolio.change >= 0 ? (
-                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                  ) : (
-                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                  )}
-                  {Math.abs(portfolio.change).toFixed(2)}%
-                </span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600">
-                {Object.entries(portfolio.allocation).map(
-                  ([asset, percent]) => (
-                    <span key={asset}>
-                      {asset}: {percent.toFixed(2)}%
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Modal>
+export default function TaskManagerApp() {
+  const [currentView, setCurrentView] = useState<"landing" | "dashboard">(
+    "landing"
   );
-};
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTask, setNewTask] = useState<string>("");
+  const [filterOption, setFilterOption] = useState<string>("all");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showAddTaskInput, setShowAddTaskInput] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [dueDate, setDueDate] = useState<string>("");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [category, setCategory] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>([
+    "Work",
+    "Personal",
+    "Shopping",
+    "Health",
+  ]);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [showStats, setShowStats] = useState<boolean>(true);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [activeSection, setActiveSection] = useState<string>("tasks");
 
-const AlertsModal = memo(
-  ({
-    isOpen,
-    onClose,
-    alerts,
-    onMarkAsRead,
-    onDeleteAlert,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    alerts: Alert[];
-    onMarkAsRead: (id: string) => void;
-    onDeleteAlert: (id: string) => void;
-  }) => {
-    const alertColors = {
-      info: "border-blue-200 bg-blue-50",
-      warning: "border-yellow-200 bg-yellow-50",
-      success: "border-green-200 bg-green-50",
-      error: "border-red-200 bg-red-50",
-    };
+  // Initialize with some sample data for demo
+  useEffect(() => {
+    const sampleTasks: Task[] = [
+      {
+        id: 1,
+        text: "Complete project proposal",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        priority: "high",
+        category: "Work",
+      },
+      {
+        id: 2,
+        text: "Buy groceries",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        priority: "medium",
+        category: "Personal",
+      },
+      {
+        id: 3,
+        text: "Review quarterly reports",
+        completed: true,
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        dueDate: null,
+        priority: "low",
+        category: "Work",
+      },
+      {
+        id: 4,
+        text: "Call the dentist",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        priority: "high",
+        category: "Health",
+      },
+      {
+        id: 5,
+        text: "Finish UI design draft",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: null,
+        priority: "medium",
+        category: "Work",
+      },
+      {
+        id: 6,
+        text: "Plan weekend trip",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        priority: "low",
+        category: "Personal",
+      },
+      {
+        id: 7,
+        text: "Refill prescriptions",
+        completed: true,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        priority: "medium",
+        category: "Health",
+      },
+      {
+        id: 8,
+        text: "Update resume",
+        completed: false,
+        createdAt: new Date(),
+        dueDate: null,
+        priority: "high",
+        category: "Work",
+      },
+    ];
+    setTasks(sampleTasks);
+  }, []);
 
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Notifications & Alerts"
-        size="lg"
-      >
-        <div className="space-y-4">
-          {alerts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <BellIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No alerts at this time</p>
-            </div>
-          ) : (
-            alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className={`border rounded-lg p-4 ${alertColors[alert.type]} ${
-                  alert.read ? "opacity-60" : ""
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">
-                      {alert.title}
-                    </h4>
-                    <p className="text-gray-700 text-sm mb-2">
-                      {alert.message}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(alert.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2 ml-auto">
-                    {!alert.read && (
-                      <button
-                        onClick={() => onMarkAsRead(alert.id)}
-                        className="text-blue-600 hover:text-blue-800 cursor-pointer text-xs whitespace-nowrap"
-                      >
-                        Mark as read
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDeleteAlert(alert.id)}
-                      className="text-red-600 hover:text-red-800 cursor-pointer"
-                    >
-                      <XMarkIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </Modal>
-    );
-  }
-);
-
-const NewsDetailsModal = memo(
-  ({
-    isOpen,
-    onClose,
-    news,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    news: NewsItem | null;
-  }) => {
-    if (!news) return null;
-
-    const sentimentColors = {
-      positive: "text-green-600 bg-green-100",
-      negative: "text-red-600 bg-red-100",
-      neutral: "text-gray-600 bg-gray-100",
-    };
-
-    return (
-      <Modal isOpen={isOpen} onClose={onClose} title="News Article" size="lg">
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <span
-              className={`px-2 py-1 rounded text-xs font-medium ${
-                sentimentColors[news.sentiment]
-              }`}
-            >
-              {news.sentiment.toUpperCase()}
-            </span>
-            <span className="text-sm text-gray-500">{news.source}</span>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">{news.title}</h3>
-          <p className="text-gray-700">{news.content}</p>
-          <div className="text-xs text-gray-500">
-            {new Date(news.timestamp).toLocaleString()}
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-);
-
-const RiskDetailsModal = memo(
-  ({
-    isOpen,
-    onClose,
-    metric,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    metric: RiskMetric | null;
-  }) => {
-    if (!metric) return null;
-
-    return (
-      <Modal isOpen={isOpen} onClose={onClose} title={metric.name} size="lg">
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <span className="text-3xl font-bold text-gray-900">
-              {metric.value}
-            </span>
-            <span
-              className={`flex items-center ${
-                metric.change >= 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {metric.change >= 0 ? (
-                <ArrowTrendingUpIcon className="w-5 h-5 mr-1" />
-              ) : (
-                <ArrowTrendingDownIcon className="w-5 h-5 mr-1" />
-              )}
-              {Math.abs(metric.change).toFixed(2)}
-            </span>
-          </div>
-          <p className="text-gray-700">{metric.description}</p>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-900 mb-2">Risk Level</h4>
-            <div
-              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                metric.status === "good"
-                  ? "bg-green-100 text-green-800"
-                  : metric.status === "warning"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {metric.status.toUpperCase()}
-            </div>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
-);
-
-const Navbar = memo(
-  ({
-    user,
-    onLoginClick,
-    onLogout,
-    isMobileMenuOpen,
-    setIsMobileMenuOpen,
-    onPortfolioClick,
-    onAlertsClick,
-    unreadAlertsCount,
-  }: {
-    user: User;
-    onLoginClick: () => void;
-    onLogout: () => void;
-    isMobileMenuOpen: boolean;
-    setIsMobileMenuOpen: (open: boolean) => void;
-    onPortfolioClick: () => void;
-    onAlertsClick: () => void;
-    unreadAlertsCount: number;
-  }) => {
-    const navbarRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          navbarRef.current &&
-          !navbarRef.current.contains(event.target as Node) &&
-          isMobileMenuOpen
-        ) {
-          setIsMobileMenuOpen(false);
-        }
-      };
-
-      if (isMobileMenuOpen) {
-        document.addEventListener("mousedown", handleClickOutside);
-        document.body.style.overflow = "hidden";
+  // Set sidebar open by default on desktop, closed on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        // Desktop: always open, no toggle needed
+        setSidebarOpen(true);
       } else {
-        document.body.style.overflow = "unset";
+        // Mobile: closed by default
+        setSidebarOpen(false);
       }
+    };
 
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.body.style.overflow = "unset";
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen && window.innerWidth < 768) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const uniqueCategories = [
+      ...new Set(tasks.map((task) => task.category)),
+    ].filter(Boolean);
+    setCategories((prev) => [...new Set([...prev, ...uniqueCategories])]);
+  }, [tasks]);
+
+  const handleAddTask = () => {
+    if (newTask.trim() === "") return;
+
+    setIsLoading(true);
+
+    setTimeout(() => {
+      const task: Task = {
+        id: Date.now(),
+        text: newTask,
+        completed: false,
+        createdAt: new Date(),
+        dueDate: dueDate ? new Date(dueDate) : null,
+        priority: priority,
+        category: category.trim() || "General",
       };
-    }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
-    const handleNavClick = (sectionId: string) => {
-      scrollToSection(sectionId);
-      setIsMobileMenuOpen(false);
-    };
+      setTasks([...tasks, task]);
+      setNewTask("");
+      setDueDate("");
+      setPriority("medium");
+      setCategory("");
+      setShowAddTaskInput(false);
+      setIsLoading(false);
+    }, 300);
+  };
 
-    return (
-      <nav ref={navbarRef} className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-sm">P</span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
-                  Portfolio<span className="text-blue-600">Analyzer</span>
-                </h1>
-              </div>
-            </div>
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setNewTask(task.text);
+    setDueDate(task.dueDate ? task.dueDate.toISOString().split("T")[0] : "");
+    setPriority(task.priority);
+    setCategory(task.category);
+    setShowAddTaskInput(true);
+  };
 
-            <div className="hidden md:flex items-center space-x-4">
-              <button
-                onClick={() => handleNavClick("dashboard")}
-                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
-              >
-                <ChartBarIcon className="w-4 h-4" />
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("analytics")}
-                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
-              >
-                <ChartPieIcon className="w-4 h-4" />
-                <span>Charts</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("insights")}
-                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
-              >
-                <DocumentTextIcon className="w-4 h-4" />
-                <span>Analysis</span>
-              </button>
+  const handleUpdateTask = () => {
+    if (editingTask && newTask.trim() !== "") {
+      setTasks(
+        tasks.map((task) =>
+          task.id === editingTask.id
+            ? {
+                ...task,
+                text: newTask,
+                dueDate: dueDate ? new Date(dueDate) : null,
+                priority: priority,
+                category: category.trim() || task.category,
+              }
+            : task
+        )
+      );
+      setEditingTask(null);
+      setNewTask("");
+      setDueDate("");
+      setPriority("medium");
+      setCategory("");
+      setShowAddTaskInput(false);
+    }
+  };
 
-              <button
-                onClick={onAlertsClick}
-                className="relative text-gray-600 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-all p-2 rounded-lg"
-              >
-                <BellIcon className="w-5 h-5" />
-                {unreadAlertsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium shadow-lg">
-                    {unreadAlertsCount}
-                  </span>
-                )}
-              </button>
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+    setNewTask("");
+    setDueDate("");
+    setPriority("medium");
+    setCategory("");
+    setShowAddTaskInput(false);
+  };
 
-              {user.isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600 hidden lg:inline">
-                    {user.email.length > 20
-                      ? `${user.email.substring(0, 20)}...`
-                      : user.email}
-                  </span>
-                  <button
-                    onClick={onLogout}
-                    className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-md cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={onLoginClick}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-md cursor-pointer"
-                >
-                  Login
-                </button>
-              )}
-            </div>
+  const handleDeleteTask = (taskId: number) => {
+    setTasks(tasks.filter((task) => task.id !== taskId));
+  };
 
-            <div className="md:hidden">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="text-gray-700 hover:text-blue-600 cursor-pointer"
-              >
-                {isMobileMenuOpen ? (
-                  <XMarkIcon className="w-6 h-6" />
-                ) : (
-                  <Bars3Icon className="w-6 h-6" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <button
-                onClick={() => handleNavClick("dashboard")}
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
-              >
-                <ChartBarIcon className="w-4 h-4" />
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("analytics")}
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
-              >
-                <ChartPieIcon className="w-4 h-4" />
-                <span>Charts</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("insights")}
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
-              >
-                <DocumentTextIcon className="w-4 h-4" />
-                <span>Analysis</span>
-              </button>
-              <button
-                onClick={() => {
-                  onAlertsClick();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
-              >
-                <BellIcon className="w-4 h-4" />
-                <span>
-                  Alerts {unreadAlertsCount > 0 && `(${unreadAlertsCount})`}
-                </span>
-              </button>
-
-              {user.isAuthenticated ? (
-                <div className="px-3 py-2">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Welcome, {user.email}
-                  </p>
-                  <button
-                    onClick={onLogout}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-md cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <div className="px-3 py-2">
-                  <button
-                    onClick={onLoginClick}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-md cursor-pointer"
-                  >
-                    Login
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </nav>
+  const handleToggleComplete = (taskId: number) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
     );
-  }
-);
+  };
 
-const Toast = memo(
-  ({
-    message,
-    type,
-    isVisible,
-    onClose,
-  }: {
-    message: string;
-    type: "success" | "error" | "info";
-    isVisible: boolean;
-    onClose: () => void;
-  }) => {
-    const colors = {
-      success: "bg-green-500",
-      error: "bg-red-500",
-      info: "bg-blue-500",
+  const handleFilterChange = (option: string) => {
+    setFilterOption(option);
+  };
+
+  const handleCategoryFilterChange = (option: string) => {
+    setCategoryFilter(option);
+  };
+
+  const handlePriorityFilterChange = (option: string) => {
+    setPriorityFilter(option);
+  };
+
+  const handleSortChange = (option: string) => {
+    if (sortBy === option) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(option);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleResetFilters = () => {
+    setFilterOption("all");
+    setCategoryFilter("all");
+    setPriorityFilter("all");
+    setSortBy("createdAt");
+    setSortDirection("desc");
+  };
+
+  const filteredTasks = () => {
+    return tasks
+      .filter((task) => {
+        if (filterOption === "completed" && !task.completed) return false;
+        if (filterOption === "pending" && task.completed) return false;
+        if (categoryFilter !== "all" && task.category !== categoryFilter)
+          return false;
+        if (priorityFilter !== "all" && task.priority !== priorityFilter)
+          return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "createdAt") {
+          return sortDirection === "asc"
+            ? a.createdAt.getTime() - b.createdAt.getTime()
+            : b.createdAt.getTime() - a.createdAt.getTime();
+        } else if (sortBy === "dueDate") {
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return sortDirection === "asc" ? 1 : -1;
+          if (!b.dueDate) return sortDirection === "asc" ? -1 : 1;
+
+          return sortDirection === "asc"
+            ? a.dueDate.getTime() - b.dueDate.getTime()
+            : b.dueDate.getTime() - a.dueDate.getTime();
+        } else if (sortBy === "priority") {
+          const priorityValues = { low: 1, medium: 2, high: 3 };
+          return sortDirection === "asc"
+            ? priorityValues[a.priority] - priorityValues[b.priority]
+            : priorityValues[b.priority] - priorityValues[a.priority];
+        }
+        return 0;
+      });
+  };
+
+  const completedCount = tasks.filter((task) => task.completed).length;
+  const remainingCount = tasks.length - completedCount;
+  const progressPercentage = tasks.length
+    ? Math.round((completedCount / tasks.length) * 100)
+    : 0;
+
+  const today = new Date();
+  const threeDaysFromNow = new Date();
+  threeDaysFromNow.setDate(today.getDate() + 3);
+
+  const dueSoonCount = tasks.filter(
+    (task) =>
+      !task.completed &&
+      task.dueDate &&
+      task.dueDate >= today &&
+      task.dueDate <= threeDaysFromNow
+  ).length;
+
+  const overdueCount = tasks.filter(
+    (task) => !task.completed && task.dueDate && task.dueDate < today
+  ).length;
+
+  const categorySummary: CategorySummary[] = categories.map((cat) => {
+    const categoryTasks = tasks.filter((task) => task.category === cat);
+    return {
+      name: cat,
+      count: categoryTasks.length,
+      completed: categoryTasks.filter((task) => task.completed).length,
     };
-
-    useEffect(() => {
-      if (isVisible) {
-        const timer = setTimeout(onClose, 3000);
-        return () => clearTimeout(timer);
-      }
-    }, [isVisible, onClose]);
-
-    if (!isVisible) return null;
-
-    return (
-      <div
-        className={`fixed top-10 md:top-20 right-4 z-50 ${
-          colors[type]
-        } text-white px-4 sm:px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 max-w-[300px] md:max-w-sm ${
-          isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
-        }`}
-      >
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">{message}</span>
-          <button onClick={onClose} className="ml-2 cursor-pointer">
-            <XMarkIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-);
-
-// Main Component
-export default function PortfolioAnalyzer() {
-  // State management
-  const [user, setUser] = useState<User>({ email: "", isAuthenticated: false });
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
-  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
-  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-  const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
-  const [selectedRiskMetric, setSelectedRiskMetric] =
-    useState<RiskMetric | null>(null);
-  const [isClient, setisClient] = useState(false);
-  const [stockData, setStockData] = useState(() => generateStockData());
-  const [newsData] = useState(() => generateNewsData());
-  const [riskMetrics, setRiskMetrics] = useState(() => generateRiskMetrics());
-  const [portfolios, setPortfolios] = useState(() => generatePortfolios());
-  const [alerts, setAlerts] = useState(() => generateAlerts());
-
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-    isVisible: boolean;
-  }>({
-    message: "",
-    type: "info",
-    isVisible: false,
   });
 
-  const unreadAlertsCount = useMemo(
-    () => alerts.filter((alert) => !alert.read).length,
-    [alerts]
-  );
+  const formatDate = (date: Date | null | undefined): string => {
+    if (!date) return "No due date";
 
-  useEffect(() => {
-    if (!isClient) {
-      setisClient(true);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
     }
-  }, []);
 
-  // Event handlers
-  const handleLogin = useCallback((email: string, password: string) => {
-    if (password) {
-      setUser({ email, isAuthenticated: true });
-      setIsLoginModalOpen(false);
-      setToast({
-        message: `Welcome back, ${email}!`,
-        type: "success",
-        isVisible: true,
-      });
-    } else {
-      setToast({
-        message: "Invalid credentials. Use password: 12345678",
-        type: "error",
-        isVisible: true,
-      });
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return "Tomorrow";
     }
-  }, []);
 
-  const handleLogout = useCallback(() => {
-    const userEmail = user.email;
-    setUser({ email: "", isAuthenticated: false });
-    setIsMobileMenuOpen(false);
-    setToast({
-      message: `Goodbye, ${userEmail}!`,
-      type: "info",
-      isVisible: true,
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: today.getFullYear() !== date.getFullYear() ? "numeric" : undefined,
     });
-  }, [user.email]);
+  };
 
-  const handleNewsClick = useCallback((news: NewsItem) => {
-    setSelectedNews(news);
-    setIsNewsModalOpen(true);
-  }, []);
+  const getPriorityColor = (priority: string): string => {
+    switch (priority) {
+      case "high":
+        return "text-red-500";
+      case "medium":
+        return "text-yellow-500";
+      case "low":
+        return "text-green-500";
+      default:
+        return "text-slate-500";
+    }
+  };
 
-  const handleRiskClick = useCallback((metric: RiskMetric) => {
-    setSelectedRiskMetric(metric);
-    setIsRiskModalOpen(true);
-  }, []);
+  const getPriorityBgColor = (priority: string): string => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100";
+      case "medium":
+        return "bg-yellow-100";
+      case "low":
+        return "bg-green-100";
+      default:
+        return "bg-slate-100";
+    }
+  };
 
-  const handleCreatePortfolio = useCallback((name: string) => {
-    const newPortfolio: Portfolio = {
-      id: `portfolio-${Date.now()}`,
-      name,
-      value: Math.floor(Math.random() * 100000) + 50000,
-      change: (Math.random() - 0.5) * 10,
-      allocation: { Stocks: 60, Bonds: 30, Cash: 10 },
-    };
-    setPortfolios((prev) => [...prev, newPortfolio]);
-    setToast({
-      message: `Portfolio "${name}" created successfully!`,
-      type: "success",
-      isVisible: true,
-    });
-  }, []);
-
-  const handleDeletePortfolio = useCallback((id: string) => {
-    setPortfolios((prev) => prev.filter((p) => p.id !== id));
-    setToast({
-      message: "Portfolio deleted successfully!",
-      type: "info",
-      isVisible: true,
-    });
-  }, []);
-
-  const handleMarkAsRead = useCallback((id: string) => {
-    setAlerts((prev) =>
-      prev.map((alert) => (alert.id === id ? { ...alert, read: true } : alert))
+  const isOverdue = (task: Task): boolean => {
+    return (
+      !task.completed &&
+      task.dueDate !== null &&
+      task.dueDate !== undefined &&
+      task.dueDate < new Date()
     );
-  }, []);
+  };
 
-  const handleDeleteAlert = useCallback((id: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== id));
-  }, []);
+  const isDueSoon = (task: Task): boolean => {
+    if (!task.dueDate || task.completed) return false;
 
-  const closeToast = useCallback(() => {
-    setToast((prev) => ({ ...prev, isVisible: false }));
-  }, []);
+    const today = new Date();
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(today.getDate() + 3);
 
-  // Add live data update mechanism
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Update stock data with new values
-      setStockData((prev: StockData[]) => {
-        const newData = [...prev];
-        const lastItem = newData[newData.length - 1];
-        const today = new Date().toISOString().split("T")[0];
-        
-        // Only add new data if it's a new day or update the last entry
-        if (lastItem.date !== today) {
-          const basePrice = lastItem.close;
-          const open = basePrice + (Math.random() - 0.5) * 5;
-          const close = open + (Math.random() - 0.5) * 4;
-          const high = Math.max(open, close) + Math.random() * 3;
-          const low = Math.min(open, close) - Math.random() * 3;
+    return task.dueDate >= today && task.dueDate <= threeDaysFromNow;
+  };
 
-          newData.push({
-            date: today,
-            open: Math.round(open * 100) / 100,
-            high: Math.round(high * 100) / 100,
-            low: Math.round(low * 100) / 100,
-            close: Math.round(close * 100) / 100,
-            volume: Math.floor(Math.random() * 1000000) + 500000,
-          });
-        } else {
-          // Update current day's data
-          const updatedClose = lastItem.close + (Math.random() - 0.5) * 2;
-          newData[newData.length - 1] = {
-            ...lastItem,
-            close: Math.round(updatedClose * 100) / 100,
-            high: Math.max(lastItem.high, updatedClose),
-            low: Math.min(lastItem.low, updatedClose),
-          };
-        }
-        
-        return newData;
-      });
+  if (currentView === "landing") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        {/* Navigation */}
+        <nav className="bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-200/60 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 md:w-10 h-8 md:h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <FiCheck className="text-white text-lg md:text-xl" />
+                </div>
+                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  TaskFlow Pro
+                </h1>
+              </div>
+              <button
+                onClick={() => setCurrentView("dashboard")}
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 md:px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl text-sm md:text-base cursor-pointer"
+              >
+                Get Started
+              </button>
+            </div>
+          </div>
+        </nav>
 
-      // Update risk metrics with slight variations
-      setRiskMetrics((prev: RiskMetric[]) => prev.map((metric: RiskMetric) => ({
-        ...metric,
-        value: Math.round((metric.value + (Math.random() - 0.5) * 0.1) * 100) / 100,
-        change: Math.round((Math.random() - 0.5) * 0.2 * 100) / 100,
-      })));
-
-      // Update portfolios with real-time changes
-      setPortfolios((prev: Portfolio[]) => prev.map((portfolio: Portfolio) => {
-        const changePercent = (Math.random() - 0.5) * 0.25; // Random change between -0.25% to +0.25%
-        const newValue = portfolio.value * (1 + changePercent / 100);
-        const newChange = portfolio.change + (Math.random() - 0.5) * 0.2; // Small random adjustment
-        
-        return {
-          ...portfolio,
-          value: Math.round(newValue),
-          change: Math.round(newChange * 100) / 100, // Format to 2 decimal places
-        };
-      }));
-
-    }, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!isClient) {
-    return "";
-  }
-  return (
-    <div
-      className="min-h-screen bg-gray-50"
-      style={{ fontFamily: "Roboto, sans-serif" }}
-    >
-      {user.isAuthenticated && (
-        <Navbar
-          user={user}
-          onLoginClick={() => setIsLoginModalOpen(true)}
-          onLogout={handleLogout}
-          isMobileMenuOpen={isMobileMenuOpen}
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
-          onPortfolioClick={() => setIsPortfolioModalOpen(true)}
-          onAlertsClick={() => setIsAlertsModalOpen(true)}
-          unreadAlertsCount={unreadAlertsCount}
-        />
-      )}
-
-      <AuthGuard
-        isAuthenticated={user.isAuthenticated}
-        onLoginRequired={() => setIsLoginModalOpen(true)}
-      >
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          {/* Hero Section */}
-          <div id="dashboard" className="mb-6 sm:mb-8">
-            <div className="relative h-64 sm:h-72 md:h-80 lg:h-[26rem] xl:h-[30rem] rounded-lg overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1563986768711-b3bde3dc821e?w=1200&h=400&fit=crop&crop=center"
-                alt="Financial Dashboard"
-                className="w-full h-full object-cover"
-              />
-              {/* <div
-                className="relative h-[60vh] md:h-[75vh] lg:h-[90vh] w-full bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('https://source.unsplash.com/1600x900/?stock,finance,analytics')`,
-                }}
-              > */}
-              {/* Black overlay */}
-              <div className="absolute inset-0 bg-black/50 bg-opacity-60 flex items-center justify-center p-4">
-                <div className="text-center text-white px-2">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4">
-                    Advanced Portfolio Analytics
+        {/* Hero Section */}
+        <section className="pt-12 md:pt-20 pb-20 md:pb-32 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
+              <div className="space-y-6 md:space-y-8">
+                <div className="space-y-4">
+                  <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                    Organize Your Life with
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block">
+                      Smart Task Management
+                    </span>
                   </h1>
-                  <p className="text-sm sm:text-lg md:text-xl opacity-90 mb-4 sm:mb-6">
-                    Real-time insights for informed investment decisions
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
+                    Boost your productivity with our intuitive task manager.
+                    Track progress, set priorities, and never miss a deadline
+                    again.
                   </p>
-                  <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
-                    <button
-                      onClick={() => setIsPortfolioModalOpen(true)}
-                      className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center space-x-2"
-                    >
-                      <ChartPieIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="text-sm sm:text-base">
-                        Manage Portfolios
-                      </span>
-                    </button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    onClick={() => setCurrentView("dashboard")}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-semibold text-base md:text-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center group cursor-pointer"
+                  >
+                    Start Managing Tasks
+                    <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-start sm:space-x-8 pt-6 md:pt-8">
+                  <div className="text-center">
+                    <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                      10K+
+                    </div>
+                    <div className="text-sm md:text-base text-gray-600">
+                      Active Users
+                    </div>
                   </div>
-                </div>
-                {/* </div> */}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Total Value
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                    $305K
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                  <CurrencyDollarIcon className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
-                </div>
-              </div>
-              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
-                <ArrowTrendingUpIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 mr-1" />
-                <span className="text-green-600">+5.2%</span>
-                <span className="text-gray-500 ml-1 hidden sm:inline">
-                  from last month
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Portfolios
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                    {portfolios.length}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-                  <ChartPieIcon className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />
-                </div>
-              </div>
-              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
-                <span className="text-gray-500">Diversified</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Risk Score
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                    7.2
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
-                  <ExclamationTriangleIcon className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" />
-                </div>
-              </div>
-              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
-                <span className="text-yellow-600">Moderate</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Alerts
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                    {unreadAlertsCount}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
-                  <BellIcon className="w-4 h-4 sm:w-6 sm:h-6 text-red-600" />
-                </div>
-              </div>
-              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
-                <span className="text-gray-500">Unread</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dashboard Grid */}
-          <div
-            id="analytics"
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"
-          >
-            {/* Candlestick Chart */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-all duration-300">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center">
-                    <ChartBarIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" />
-                    Stock Price Movement
-                  </h2>
-                  <div className="flex items-center space-x-2">
-                    <div className="text-xs sm:text-sm text-gray-500">
-                      Last 30 days
+                  <div className="text-center">
+                    <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                      99%
+                    </div>
+                    <div className="text-sm md:text-base text-gray-600">
+                      Satisfaction
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                      24/7
+                    </div>
+                    <div className="text-sm md:text-base text-gray-600">
+                      Support
                     </div>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <CandlestickChart
-                    data={stockData}
-                    width={Math.max(
-                      300,
-                      window.innerWidth > 1024
-                        ? 750
-                        : Math.min(window.innerWidth - 100, 500)
-                    )}
-                    height={250}
-                  />
+              </div>
+
+              <div className="relative">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 border border-slate-200">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Today's Tasks
+                      </h3>
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <FiCheck className="text-white" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <FiCheck className="text-white text-xs" />
+                        </div>
+                        <span className="text-gray-700 line-through">
+                          Complete morning workout
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div className="w-5 h-5 border-2 border-yellow-500 rounded-full"></div>
+                        <span className="text-gray-700">
+                          Review project proposal
+                        </span>
+                        <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                          High
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="w-5 h-5 border-2 border-blue-500 rounded-full"></div>
+                        <span className="text-gray-700">
+                          Team meeting at 3 PM
+                        </span>
+                        <span className="ml-auto text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                          Work
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-200">
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Progress</span>
+                        <span>67%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full w-2/3"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating elements */}
+                <div className="absolute -top-6 -right-6 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <FiZap className="text-white" />
+                </div>
+                <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <FiTarget className="text-white" />
                 </div>
               </div>
             </div>
-
-            {/* Risk Metrics */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Risk Metrics
-                </h2>
-              </div>
-              {riskMetrics.map((metric) => (
-                <RiskCard
-                  key={metric.id}
-                  metric={metric}
-                  onDetailsClick={handleRiskClick}
-                />
-              ))}
-            </div>
           </div>
+        </section>
 
-          {/* News Sentiment Word Cloud */}
-          <div className="mt-6 sm:mt-12">
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-all duration-300">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Market Sentiment Analysis
-                </h2>
-                <div className="flex items-center space-x-2"></div>
-              </div>
-              <WordCloud news={newsData} onNewsClick={handleNewsClick} />
-            </div>
-          </div>
-
-          {/* Additional Insights */}
-          <div
-            id="insights"
-            className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
-          >
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group">
-              <img
-                src="https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=200&fit=crop&crop=center"
-                alt="Market Analysis"
-                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
-              />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                Market Trends
-              </h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Comprehensive analysis of current market conditions and future
-                projections.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group">
-              <img
-                src="https://images.unsplash.com/photo-1553484771-371a605b060b?w=400&h=200&fit=crop&crop=center"
-                alt="Portfolio Management"
-                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
-              />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                Portfolio Optimization
-              </h3>
-              <p className="text-gray-600 text-sm mb-4">
-                AI-powered recommendations to optimize your investment portfolio
-                for maximum returns.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group md:col-span-2 lg:col-span-1">
-              <img
-                src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&h=200&fit=crop&crop=center"
-                alt="Risk Assessment"
-                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
-              />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                Risk Assessment
-              </h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Advanced risk modeling and stress testing for your investment
-                strategies.
-              </p>
-            </div>
-          </div>
-        </main>
-        <footer className="bg-gray-900 text-gray-400 py-12">
+        {/* Features Section */}
+        <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-center md:text-left">
-              {/* Brand + Social */}
-              <div>
-                <a
-                  href="#"
-                  className="text-xl font-bold text-white flex justify-center md:justify-start items-center mb-6"
-                >
-                  <span>
-                    Portfolio<span className="text-indigo-400">Analyzer</span>
-                  </span>
-                </a>
-                <p className="mb-6">
-                  Empowering businesses with next-generation automation and
-                  analytics tools. twitter facebook
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Everything You Need to Stay Organized
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Powerful features designed to help you manage tasks efficiently
+                and boost your productivity.
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-8 rounded-2xl border border-indigo-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiList className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Smart Organization
+                </h3>
+                <p className="text-gray-600">
+                  Organize tasks by categories, priorities, and due dates. Keep
+                  everything structured and easy to find.
                 </p>
               </div>
 
-              {/* Links */}
-              <div>
-                <h5 className="text-white font-medium mb-4">Product</h5>
-                <ul className="space-y-2">
-                  {[
-                    "Features",
-                    "Pricing",
-                    "Integrations",
-                    "Changelog",
-                    "Documentation",
-                  ].map((item, index) => (
-                    <li key={index}>
-                      <a
-                        href="#"
-                        className="hover:text-white transition-colors"
-                      >
-                        {item}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+              <div className="bg-gradient-to-br from-green-50 to-blue-50 p-8 rounded-2xl border border-green-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiBarChart2 className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Progress Tracking
+                </h3>
+                <p className="text-gray-600">
+                  Visual progress bars and statistics help you track your
+                  productivity and stay motivated.
+                </p>
               </div>
 
-              <div>
-                <h5 className="text-white font-medium mb-4">Company</h5>
-                <ul className="space-y-2">
-                  {["About", "Customers", "Careers", "Press", "Contact"].map(
-                    (item, index) => (
-                      <li key={index}>
-                        <a
-                          href="#"
-                          className="hover:text-white transition-colors"
-                        >
-                          {item}
-                        </a>
-                      </li>
-                    )
-                  )}
-                </ul>
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-8 rounded-2xl border border-yellow-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiClock className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Smart Reminders
+                </h3>
+                <p className="text-gray-600">
+                  Never miss a deadline with intelligent due date tracking and
+                  overdue task highlights.
+                </p>
               </div>
 
-              <div>
-                <h5 className="text-white font-medium mb-4">Resources</h5>
-                <ul className="space-y-2">
-                  {[
-                    "Blog",
-                    "Guides",
-                    "Webinars",
-                    "API Reference",
-                    "Support Center",
-                  ].map((item, index) => (
-                    <li key={index}>
-                      <a
-                        href="#"
-                        className="hover:text-white transition-colors"
-                      >
-                        {item}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-2xl border border-purple-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiFilter className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Advanced Filtering
+                </h3>
+                <p className="text-gray-600">
+                  Filter and sort tasks by status, category, priority, or due
+                  date to focus on what matters most.
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiUsers className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Team Collaboration
+                </h3>
+                <p className="text-gray-600">
+                  Share tasks and collaborate with team members to achieve
+                  common goals together.
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-pink-50 p-8 rounded-2xl border border-red-100">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center mb-6">
+                  <FiSettings className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Customizable
+                </h3>
+                <p className="text-gray-600">
+                  Personalize your workflow with custom categories, themes, and
+                  notification preferences.
+                </p>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Bottom Bar */}
-            <div className="border-t border-gray-800 mt-12 pt-6 text-center">
-              <p>
-                © {new Date().getFullYear()} PortfolioAnalyzer. All rights
-                reserved.
-              </p>
+        {/* CTA Section */}
+        <section className="py-20 bg-gradient-to-r from-indigo-600 to-purple-700">
+          <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h2 className="text-4xl font-bold text-white mb-6">
+              Ready to Transform Your Productivity?
+            </h2>
+            <p className="text-xl text-indigo-100 mb-8">
+              Join thousands of users who have already boosted their
+              productivity with TaskFlow Pro.
+            </p>
+            <button
+              onClick={() => setCurrentView("dashboard")}
+              className="bg-white hover:bg-gray-50 text-indigo-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center group cursor-pointer"
+            >
+              Start Your Free Trial
+              <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+            </button>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-white py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center space-x-3 mb-8">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <FiCheck className="text-white" />
+              </div>
+              <span className="text-xl font-bold">TaskFlow Pro</span>
+            </div>
+            <div className="text-center text-gray-400">
+              <p>&copy; 2024 TaskFlow Pro. All rights reserved.</p>
             </div>
           </div>
         </footer>
-      </AuthGuard>
+      </div>
+    );
+  }
 
-      {/* Modals */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLogin={handleLogin}
-      />
+  return (
+    <div className="min-h-screen bg-gray-50 flex font-['Roboto',sans-serif] overflow-hidden">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <PortfolioModal
-        isOpen={isPortfolioModalOpen}
-        onClose={() => setIsPortfolioModalOpen(false)}
-        portfolios={portfolios}
-        onCreatePortfolio={handleCreatePortfolio}
-        onDeletePortfolio={handleDeletePortfolio}
-      />
+      {/* Sidebar */}
+      <div
+        className={`bg-white shadow-xl transition-all duration-300 z-50 ${
+          // Mobile: fixed overlay that slides in from left
+          "md:relative fixed top-0 left-0 md:h-auto h-full " +
+          // Mobile: hidden by default, full width when open
+          (sidebarOpen ? "translate-x-0 w-80" : "-translate-x-full w-80") +
+          " " +
+          // Desktop: always visible with full width
+          "md:translate-x-0 md:w-80"
+        } flex-shrink-0 border-r border-gray-100 flex flex-col h-screen md:h-screen`}
+      >
+        {/* Header */}
+        <div className="py-3 px-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <FiCheck className="text-white text-lg" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  TaskFlow Pro
+                </h1>
+                <p className="text-sm text-gray-500">Stay organized</p>
+              </div>
+            </div>
+            {/* Only show close button on mobile */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-2 rounded-xl hover:bg-white/60 transition-all duration-200 cursor-pointer"
+            >
+              <FiX className="text-gray-600 w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
-      <AlertsModal
-        isOpen={isAlertsModalOpen}
-        onClose={() => setIsAlertsModalOpen(false)}
-        alerts={alerts}
-        onMarkAsRead={handleMarkAsRead}
-        onDeleteAlert={handleDeleteAlert}
-      />
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+          {/* Navigation */}
+          <nav className="p-4 space-y-2">
+            <button
+              onClick={() => {
+                setCurrentView("landing");
+                setSidebarOpen(false);
+              }}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-200 text-left group cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-600 flex items-center justify-center transition-all duration-200">
+                <FiHome className="text-gray-600 group-hover:text-white w-4 h-4 transition-colors duration-200" />
+              </div>
+              <span className="text-gray-700 font-medium group-hover:text-gray-900">Home</span>
+            </button>
 
-      <NewsDetailsModal
-        isOpen={isNewsModalOpen}
-        onClose={() => setIsNewsModalOpen(false)}
-        news={selectedNews}
-      />
+            <button
+              onClick={() => {
+                setActiveSection("tasks");
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 text-left group cursor-pointer ${
+                activeSection === "tasks"
+                  ? "bg-gradient-to-r from-indigo-100 to-purple-100 border border-indigo-200 shadow-sm"
+                  : "hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100"
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                activeSection === "tasks"
+                  ? "bg-gradient-to-br from-indigo-500 to-purple-600"
+                  : "bg-gray-100 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-600"
+              }`}>
+                <FiList className={`w-4 h-4 transition-colors duration-200 ${
+                  activeSection === "tasks"
+                    ? "text-white"
+                    : "text-gray-600 group-hover:text-white"
+                }`} />
+              </div>
+              <div className="flex-1 flex items-center justify-between">
+                <span className={`font-medium transition-colors duration-200 ${
+                  activeSection === "tasks"
+                    ? "text-indigo-700"
+                    : "text-gray-700 group-hover:text-gray-900"
+                }`}>
+                  All Tasks
+                </span>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all duration-200 ${
+                  activeSection === "tasks"
+                    ? "bg-indigo-200 text-indigo-700"
+                    : "bg-gray-200 text-gray-600 group-hover:bg-indigo-200 group-hover:text-indigo-700"
+                }`}>
+                  {tasks.length}
+                </span>
+              </div>
+            </button>
 
-      <RiskDetailsModal
-        isOpen={isRiskModalOpen}
-        onClose={() => setIsRiskModalOpen(false)}
-        metric={selectedRiskMetric}
-      />
+            <button
+              onClick={() => {
+                setActiveSection("analytics");
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 text-left group cursor-pointer ${
+                activeSection === "analytics"
+                  ? "bg-gradient-to-r from-indigo-100 to-purple-100 border border-indigo-200 shadow-sm"
+                  : "hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100"
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                activeSection === "analytics"
+                  ? "bg-gradient-to-br from-indigo-500 to-purple-600"
+                  : "bg-gray-100 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-600"
+              }`}>
+                <FiTrendingUp className={`w-4 h-4 transition-colors duration-200 ${
+                  activeSection === "analytics"
+                    ? "text-white"
+                    : "text-gray-600 group-hover:text-white"
+                }`} />
+              </div>
+              <span className={`font-medium transition-colors duration-200 ${
+                activeSection === "analytics"
+                  ? "text-indigo-700"
+                  : "text-gray-700 group-hover:text-gray-900"
+              }`}>
+                Analytics
+              </span>
+            </button>
+          </nav>
 
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={closeToast}
-      />
+          {/* Quick Stats */}
+          <div className="p-4">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-5 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+                  Quick Stats
+                </h3>
+                <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <FiBarChart2 className="text-white w-3 h-3" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <FiCheckCircle className="text-green-600 w-4 h-4" />
+                    </div>
+                    <span className="text-gray-700 font-medium">Completed</span>
+                  </div>
+                  <span className="font-bold text-green-600 text-lg">
+                    {completedCount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <FiClock className="text-amber-600 w-4 h-4" />
+                    </div>
+                    <span className="text-gray-700 font-medium">Remaining</span>
+                  </div>
+                  <span className="font-bold text-amber-600 text-lg">
+                    {remainingCount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                      <FiFlag className="text-red-600 w-4 h-4" />
+                    </div>
+                    <span className="text-gray-700 font-medium">Overdue</span>
+                  </div>
+                  <span className="font-bold text-red-600 text-lg">{overdueCount}</span>
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+                  <span className="text-sm font-bold text-indigo-600">{progressPercentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500 ease-in-out"
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 md:px-6 py-3 fixed top-0 left-0 md:left-80 right-0 z-40">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {/* Mobile Hamburger Menu */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+              >
+                <FiMenu className="text-gray-600" />
+              </button>
+
+              <div>
+                <h1 className="text-lg md:text-xl font-bold text-gray-900">
+                  {activeSection === "tasks"
+                    ? "Task Management"
+                    : "Analytics Dashboard"}
+                </h1>
+                <p className="text-gray-600 mt-0.5 text-xs md:text-sm">
+                  {activeSection === "tasks"
+                    ? `Manage your ${tasks.length} tasks efficiently`
+                    : "Track your productivity and progress"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pt-20 md:pt-24 scrollbar-hide">
+          {/* Progress and Add Task Section */}
+          <div className="max-w-7xl mx-auto mb-8">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                  {/* Progress Circle */}
+                  <div className="flex items-center justify-center">
+                    <div className="relative">
+                      <div className="w-20 h-20 md:w-24 md:h-24">
+                        <svg
+                          className="w-full h-full transform -rotate-90"
+                          viewBox="0 0 36 36"
+                        >
+                          <path
+                            d="M18,2.0845 a 15.9155,15.9155 0 0,1 0,31.831 a 15.9155,15.9155 0 0,1 0,-31.831"
+                            fill="none"
+                            stroke="#f3f4f6"
+                            strokeWidth="3"
+                          />
+                          <path
+                            d="M18,2.0845 a 15.9155,15.9155 0 0,1 0,31.831 a 15.9155,15.9155 0 0,1 0,-31.831"
+                            fill="none"
+                            stroke="#6366f1"
+                            strokeWidth="3"
+                            strokeDasharray={`${progressPercentage}, 100`}
+                            className="transition-all duration-1000 ease-in-out"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="text-xl md:text-2xl font-bold text-indigo-600">
+                              {progressPercentage}%
+                            </div>
+                            <div className="text-xs text-gray-500 font-medium">
+                              Complete
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-3 gap-4 md:gap-6 flex-1 min-w-0">
+                    <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="text-2xl md:text-3xl font-bold text-green-600 mb-1">
+                        {completedCount}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">
+                        Completed
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="text-2xl md:text-3xl font-bold text-amber-600 mb-1">
+                        {remainingCount}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">
+                        Remaining
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="text-2xl md:text-3xl font-bold text-red-600 mb-1">
+                        {overdueCount}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">
+                        Overdue
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Task Button */}
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      setShowAddTaskInput(true);
+                      setActiveSection("tasks");
+                    }}
+                    className="w-full lg:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl flex items-center justify-center space-x-2 transition-all duration-200 font-medium cursor-pointer group"
+                  >
+                    <FiPlus className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+                    <span>Add New Task</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {activeSection === "tasks" ? (
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Quick Actions */}
+              {showAddTaskInput && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    {editingTask ? "Edit Task" : "Add New Task"}
+                  </h3>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label
+                        htmlFor="task-text"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Task Description
+                      </label>
+                      <input
+                        id="task-text"
+                        type="text"
+                        className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                        placeholder="What needs to be done?"
+                        value={newTask}
+                        onChange={(e) => setNewTask(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <label
+                          htmlFor="due-date"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Due Date
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FiCalendar className="text-gray-400" />
+                          </div>
+                          <input
+                            id="due-date"
+                            type="date"
+                            className="w-full pl-12 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="priority"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Priority
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FiFlag className={getPriorityColor(priority)} />
+                          </div>
+                          <select
+                            id="priority"
+                            className="w-full pl-12 p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 cursor-pointer"
+                            value={priority}
+                            onChange={(e) =>
+                              setPriority(
+                                e.target.value as "low" | "medium" | "high"
+                              )
+                            }
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="category"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Category
+                        </label>
+                        <input
+                          id="category"
+                          type="text"
+                          className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+                          placeholder="e.g., Work, Personal"
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          list="categories"
+                        />
+                        <datalist id="categories">
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat} />
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-end gap-3">
+                      <button
+                        className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200 cursor-pointer font-medium"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className={`px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors duration-200 cursor-pointer font-medium ${
+                          isLoading || !newTask.trim()
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
+                        onClick={editingTask ? handleUpdateTask : handleAddTask}
+                        disabled={isLoading || !newTask.trim()}
+                      >
+                        {isLoading
+                          ? "Processing..."
+                          : editingTask
+                          ? "Update Task"
+                          : "Add Task"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters and Controls */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8">
+                <div className="space-y-6">
+                  {/* Filter Dropdowns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <select
+                      className="w-full p-4 bg-white text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 cursor-pointer font-medium"
+                      value={filterOption}
+                      onChange={(e) => handleFilterChange(e.target.value)}
+                    >
+                      <option value="all">All Tasks</option>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                    </select>
+
+                    <select
+                      className="w-full p-4 bg-white text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 cursor-pointer font-medium"
+                      value={categoryFilter}
+                      onChange={(e) =>
+                        handleCategoryFilterChange(e.target.value)
+                      }
+                    >
+                      <option value="all">All Categories</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="w-full p-4 bg-white text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 cursor-pointer font-medium"
+                      value={priorityFilter}
+                      onChange={(e) =>
+                        handlePriorityFilterChange(e.target.value)
+                      }
+                    >
+                      <option value="all">All Priorities</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+
+                  {/* Sort Buttons */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-3">
+                    <button
+                      className={`px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer text-sm md:text-base font-medium flex items-center justify-center space-x-2 ${
+                        sortBy === "createdAt"
+                          ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                          : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                      onClick={() => handleSortChange("createdAt")}
+                    >
+                      <span className="whitespace-nowrap">Date Added</span>
+                      {sortBy === "createdAt" &&
+                        (sortDirection === "asc" ? (
+                          <FiChevronUp className="w-4 h-4" />
+                        ) : (
+                          <FiChevronDown className="w-4 h-4" />
+                        ))}
+                    </button>
+                    <button
+                      className={`px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer text-sm md:text-base font-medium flex items-center justify-center space-x-2 ${
+                        sortBy === "dueDate"
+                          ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                          : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                      onClick={() => handleSortChange("dueDate")}
+                    >
+                      <span className="whitespace-nowrap">Due Date</span>
+                      {sortBy === "dueDate" &&
+                        (sortDirection === "asc" ? (
+                          <FiChevronUp className="w-4 h-4" />
+                        ) : (
+                          <FiChevronDown className="w-4 h-4" />
+                        ))}
+                    </button>
+                    <button
+                      className={`px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer text-sm md:text-base font-medium flex items-center justify-center space-x-2 ${
+                        sortBy === "priority"
+                          ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                          : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                      onClick={() => handleSortChange("priority")}
+                    >
+                      <span className="whitespace-nowrap">Priority</span>
+                      {sortBy === "priority" &&
+                        (sortDirection === "asc" ? (
+                          <FiChevronUp className="w-4 h-4" />
+                        ) : (
+                          <FiChevronDown className="w-4 h-4" />
+                        ))}
+                    </button>
+
+                    {/* Reset Button */}
+                    <button
+                      onClick={handleResetFilters}
+                      className="lg:ml-auto px-4 py-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-xl transition-all duration-200 cursor-pointer text-sm md:text-base font-medium flex items-center justify-center space-x-2 group col-span-2 sm:col-span-1"
+                    >
+                      <FiX className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                      <span className="whitespace-nowrap">Reset Filters</span>
+                    </button>
+                  </div>
+
+                  {/* Results Count */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 font-medium">
+                      Showing {filteredTasks().length} of {tasks.length} tasks
+                      {(filterOption !== "all" || categoryFilter !== "all" || priorityFilter !== "all" || sortBy !== "createdAt" || sortDirection !== "desc") && (
+                        <span className="ml-2 text-indigo-600">• Filters applied</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task List */}
+              <div className="bg-white rounded-2xl border border-gray-100">
+                <div className="p-6 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Your Tasks
+                  </h3>
+                </div>
+
+                <div className="divide-y divide-gray-200">
+                  {filteredTasks().length > 0 ? (
+                    filteredTasks().map((task) => (
+                      <div
+                        key={task.id}
+                        className={`p-6 transition-all duration-300 hover:bg-gray-50 group ${
+                          isOverdue(task)
+                            ? "bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100"
+                            : isDueSoon(task)
+                            ? "bg-yellow-50 border-l-4 border-l-yellow-500 hover:bg-yellow-100"
+                            : "hover:shadow-sm"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-4">
+                            <div className="pt-1">
+                              <div className="relative">
+                                <input
+                                  type="checkbox"
+                                  className="sr-only"
+                                  checked={task.completed}
+                                  onChange={() => handleToggleComplete(task.id)}
+                                />
+                                <div
+                                  onClick={() => handleToggleComplete(task.id)}
+                                  className={`w-6 h-6 rounded-full border-2 cursor-pointer transition-all duration-200 flex items-center justify-center ${
+                                    task.completed
+                                      ? "bg-green-500 border-green-500 scale-110"
+                                      : "border-gray-300 hover:border-indigo-400 hover:bg-indigo-50"
+                                  }`}
+                                >
+                                  {task.completed && (
+                                    <FiCheck className="w-4 h-4 text-white stroke-2" />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div
+                                className={`text-gray-900 font-semibold text-lg leading-tight mb-3 transition-all duration-200 ${
+                                  task.completed
+                                    ? "line-through text-gray-500"
+                                    : "group-hover:text-indigo-700"
+                                }`}
+                              >
+                                {task.text}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                {task.category && (
+                                  <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                    {task.category}
+                                  </span>
+                                )}
+
+                                <span
+                                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${
+                                    task.priority === "high"
+                                      ? "bg-red-100 text-red-800 border-red-200"
+                                      : task.priority === "medium"
+                                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                      : "bg-green-100 text-green-800 border-green-200"
+                                  }`}
+                                >
+                                  <FiFlag className="mr-1.5 w-3 h-3" />
+                                  {task.priority}
+                                </span>
+
+                                {task.dueDate && (
+                                  <span
+                                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${
+                                      isOverdue(task)
+                                        ? "bg-red-100 text-red-800 border-red-200"
+                                        : isDueSoon(task)
+                                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                        : "bg-gray-100 text-gray-700 border-gray-200"
+                                    }`}
+                                  >
+                                    <FiClock className="mr-1.5 w-3 h-3" />
+                                    {formatDate(task.dueDate)}
+                                    {isOverdue(task) && " (Overdue)"}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="text-sm text-gray-500 mt-2">
+                                Added {task.createdAt.toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button
+                              className="p-2.5 text-indigo-600 cursor-pointer hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-all duration-200 hover:scale-105"
+                              onClick={() => handleEditTask(task)}
+                              aria-label="Edit task"
+                            >
+                              <FiEdit size={18} />
+                            </button>
+                            <button
+                              className="p-2.5 text-red-600 cursor-pointer hover:text-red-800 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-105"
+                              onClick={() => handleDeleteTask(task.id)}
+                              aria-label="Delete task"
+                            >
+                              <FiTrash size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <FiCheckCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No tasks found
+                      </h3>
+                      <p className="text-gray-500 mb-6">
+                        {tasks.length > 0
+                          ? "Try adjusting your filters to see more tasks"
+                          : "Create your first task to get started"}
+                      </p>
+                      {tasks.length === 0 && (
+                        <button
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 inline-flex items-center cursor-pointer"
+                          onClick={() => setShowAddTaskInput(true)}
+                        >
+                          <FiPlus className="mr-2" /> Create Your First Task
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Analytics Section */
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Overview Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Tasks
+                      </p>
+                      <p className="text-2xl md:text-3xl font-bold text-gray-900">
+                        {tasks.length}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <FiList className="text-indigo-600 text-lg md:text-xl" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Completed
+                      </p>
+                      <p className="text-2xl md:text-3xl font-bold text-green-600">
+                        {completedCount}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <FiCheckCircle className="text-green-600 text-lg md:text-xl" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Due Soon
+                      </p>
+                      <p className="text-2xl md:text-3xl font-bold text-yellow-600">
+                        {dueSoonCount}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <FiClock className="text-yellow-600 text-lg md:text-xl" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Overdue
+                      </p>
+                      <p className="text-2xl md:text-3xl font-bold text-red-600">
+                        {overdueCount}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                      <FiFlag className="text-red-600 text-lg md:text-xl" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Overview */}
+              <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                  Overall Progress
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Completion Rate
+                    </span>
+                    <span className="text-sm font-bold text-indigo-600">
+                      {progressPercentage}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-4">
+                    <div
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all duration-500 ease-in-out"
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Statistics */}
+              <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                  Statistics by Category
+                </h3>
+                <div className="space-y-4">
+                  {categorySummary.map((cat) => (
+                    <div key={cat.name} className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium text-gray-900">
+                          {cat.name}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {cat.completed}/{cat.count} (
+                          {cat.count > 0
+                            ? Math.round((cat.completed / cat.count) * 100)
+                            : 0}
+                          %)
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500 ease-in-out"
+                          style={{
+                            width: `${
+                              cat.count > 0
+                                ? (cat.completed / cat.count) * 100
+                                : 0
+                            }%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+      
+      {/* Custom CSS for hiding scrollbars */}
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;  /* Internet Explorer 10+ */
+          scrollbar-width: none;  /* Firefox */
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;  /* Safari and Chrome */
+        }
+      `}</style>
     </div>
   );
 }
