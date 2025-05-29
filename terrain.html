@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural Terrain Generator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 200, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+            z-index: 2;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(15, 15, 35, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(120, 119, 198, 0.3);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            z-index: 30;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .main-layout {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(15, 15, 35, 0.85);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(120, 119, 198, 0.25);
+            border-right: 1px solid rgba(120, 119, 198, 0.4);
+            padding: 20px;
+            overflow-y: auto;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            max-height: 100%;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(120, 119, 198, 0.2),
+                inset 0 -1px 0 rgba(120, 119, 198, 0.1);
+            position: relative;
+        }
+        
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                rgba(120, 119, 198, 0.1) 0%,
+                rgba(255, 119, 198, 0.05) 50%,
+                rgba(120, 200, 255, 0.03) 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .btn {
+            background: rgba(120, 119, 198, 0.2);
+            backdrop-filter: blur(15px) saturate(120%);
+            -webkit-backdrop-filter: blur(15px) saturate(120%);
+            border: 1px solid rgba(120, 119, 198, 0.4);
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            box-shadow: 
+                0 2px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(120, 119, 198, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                rgba(120, 119, 198, 0.3) 0%,
+                rgba(255, 119, 198, 0.1) 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .btn:hover {
+            background: rgba(120, 119, 198, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 25px rgba(120, 119, 198, 0.4),
+                inset 0 1px 0 rgba(120, 119, 198, 0.5);
+            border-color: rgba(120, 119, 198, 0.6);
+        }
+        
+        .btn.primary {
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 50%, #78c8ff 100%);
+            border: 1px solid rgba(120, 119, 198, 0.6);
+            box-shadow: 
+                0 4px 15px rgba(120, 119, 198, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #terrainCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+        
+        #terrainCanvas:active {
+            cursor: grabbing;
+        }
+        
+        #terrainCanvas.painting {
+            cursor: crosshair;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-label-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .control-label {
+            color: white;
+            font-weight: 600;
+            font-size: 15px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .slider-container {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(120, 119, 198, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+            border: 2px solid white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(120, 119, 198, 0.4);
+            transition: transform 0.2s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+            border: 2px solid white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(120, 119, 198, 0.4);
+        }
+        
+        .slider-value {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            min-width: 35px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .paint-controls {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(120, 119, 198, 0.3);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(120, 119, 198, 0.2),
+                inset 0 -1px 0 rgba(120, 119, 198, 0.1);
+            position: relative;
+        }
+        
+        .paint-controls::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                rgba(120, 119, 198, 0.08) 0%,
+                rgba(255, 119, 198, 0.03) 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .paint-mode {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .paint-btn {
+            flex: 1;
+            background: rgba(120, 119, 198, 0.15);
+            border: 1px solid rgba(120, 119, 198, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .paint-btn.active {
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+            border-color: rgba(120, 119, 198, 0.6);
+            box-shadow: 0 2px 8px rgba(120, 119, 198, 0.3);
+        }
+        
+        .export-section {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(120, 119, 198, 0.3);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(120, 119, 198, 0.2),
+                inset 0 -1px 0 rgba(120, 119, 198, 0.1);
+            position: relative;
+        }
+        
+        .export-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                rgba(120, 119, 198, 0.08) 0%,
+                rgba(255, 119, 198, 0.03) 100%
+            );
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .toggle-sidebar {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            border: none;
+            display: none;
+        }
+        
+        .performance-indicator {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 10;
+            border: 1px solid rgba(120, 119, 198, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-weight: 500;
+            z-index: 100;
+        }
+        
+        .paint-indicator {
+            position: absolute;
+            top: 50px;
+            left: 16px;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 10;
+            display: none;
+            border: 1px solid rgba(120, 119, 198, 0.3);
+        }
+        
+        .paint-indicator.active {
+            display: block;
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+            border-color: rgba(120, 119, 198, 0.6);
+            box-shadow: 0 2px 8px rgba(120, 119, 198, 0.4);
+        }
+        
+        .paint-toggle {
+            width: 100%;
+            margin-bottom: 0;
+            background: rgba(120, 119, 198, 0.15);
+            border: 1px solid rgba(120, 119, 198, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+        
+        .paint-toggle.active {
+            background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+            border-color: rgba(120, 119, 198, 0.6);
+            box-shadow: 0 2px 8px rgba(120, 119, 198, 0.3);
+        }
+        
+        .brush-label-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .brush-label {
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Custom scrollbar styling */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(120, 119, 198, 0.1);
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(120, 119, 198, 0.4);
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(120, 119, 198, 0.6);
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 280px;
+            }
+            
+            .header {
+                padding: 12px 16px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .main-layout {
+                position: relative;
+            }
+            
+            .sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                z-index: 25;
+                width: 100%;
+                max-width: 320px;
+                transform: translateX(-100%);
+                overflow-y: auto;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                width: 100%;
+            }
+            
+            .logo {
+                font-size: 18px;
+            }
+            
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .header-controls {
+                gap: 8px;
+            }
+            
+            .toggle-sidebar {
+                display: block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header {
+                padding: 8px 12px;
+            }
+            
+            .logo {
+                font-size: 16px;
+            }
+            
+            .btn {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            
+            .export-buttons {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .paint-mode {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .sidebar {
+                padding: 16px;
+                overflow-y: auto;
+                max-height: 100%;
+            }
+            
+            .control-group {
+                margin-bottom: 16px;
+            }
+            
+            .paint-controls, .export-section {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            .sidebar {
+                padding: 16px;
+                overflow-y: auto;
+            }
+            
+            .control-group {
+                margin-bottom: 16px;
+            }
+            
+            .paint-controls, .export-section {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .toggle-sidebar {
+                display: none;
+            }
+        }
+
+        .paint-toggle-container {
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <button class="toggle-sidebar" id="toggleSidebar">☰</button>
+                <div class="logo">Terrain Generator</div>
+            </div>
+            <div class="header-controls">
+                <button class="btn primary" id="randomize">⚡ Randomize</button>
+            </div>
+        </div>
+        
+        <div class="main-layout">
+            <div class="sidebar" id="sidebar">
+                <div class="control-group">
+                    <div class="control-label-container">
+                        <label class="control-label">Terrain Height</label>
+                        <span class="slider-value" id="heightValue">20</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="heightSlider" min="0" max="50" value="20" step="1">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="control-label-container">
+                        <label class="control-label">Roughness</label>
+                        <span class="slider-value" id="roughnessValue">0.8</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="roughnessSlider" min="0.1" max="2" value="0.8" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="control-label-container">
+                        <label class="control-label">Vegetation Density</label>
+                        <span class="slider-value" id="vegetationValue">30</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="vegetationSlider" min="0" max="100" value="30" step="5">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="control-label-container">
+                        <label class="control-label">Terrain Scale</label>
+                        <span class="slider-value" id="scaleValue">1</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="scaleSlider" min="0.5" max="3" value="1" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="paint-controls">
+                    <label class="control-label">Paint Mode</label>
+                    
+                    <div class="paint-mode">
+                        <button class="paint-btn active" data-mode="raise">↑ Raise</button>
+                        <button class="paint-btn" data-mode="lower">↓ Lower</button>
+                        <button class="paint-btn" data-mode="smooth">≈ Smooth</button>
+                    </div>
+                    
+                    <div class="brush-label-container">
+                        <label class="brush-label">Brush Size</label>
+                        <span class="slider-value" id="brushValue">5</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="brushSlider" min="1" max="20" value="5" step="1">
+                    </div>
+                    
+                    <div class="paint-toggle-container">
+                        <button class="btn paint-toggle" id="paintToggle">✎ Toggle Paint Mode</button>
+                    </div>
+                </div>
+                
+                <div class="export-section">
+                    <label class="control-label">Export Terrain</label>
+                    <div class="export-buttons">
+                        <button class="btn" id="exportOBJ">◊ OBJ</button>
+                        <button class="btn" id="exportSTL">⚙ STL</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="canvas-container">
+                    <canvas id="terrainCanvas"></canvas>
+                    <div class="performance-indicator" id="fpsCounter">FPS: 60</div>
+                    <div class="paint-indicator" id="paintIndicator">Paint Mode Active</div>
+                    <div class="loading" id="loading" style="display: none;">Generating terrain...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TerrainGenerator {
+            constructor() {
+                this.canvas = document.getElementById('terrainCanvas');
+                this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
+                
+                // WebGL fallback detection
+                this.webglSupported = !!this.gl;
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                if (!this.webglSupported) {
+                    this.initFallbackMode();
+                    return;
+                }
+                
+                // Set terrain resolution (keep higher resolution for better visuals)
+                this.width = 128;
+                this.height = 128;
+                
+                // Mobile optimizations without reducing terrain quality
+                if (this.isMobile) {
+                    this.gl.getExtension('OES_vertex_array_object'); // Mobile optimization
+                }
+                
+                this.heightData = new Float32Array(this.width * this.height);
+                this.vegetationData = new Float32Array(this.width * this.height);
+                
+                // Camera setup
+                this.camera = {
+                    x: 0, y: 30, z: 90,
+                    rotX: -0.2, rotY: 0,
+                    fov: 45, near: 0.1, far: 1000
+                };
+                
+                // Input handling
+                this.mouse = { x: 0, y: 0, down: false, lastX: 0, lastY: 0 };
+                this.paintMode = 'raise';
+                this.brushSize = 5;
+                this.painting = false;
+                this.paintActive = false;
+                this.paintToggleEnabled = false;
+                this.touchIdentifier = null;
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = 0;
+                this.lastRenderTime = 0;
+                this.fps = 60;
+                this.targetFPS = this.isMobile ? 45 : 60; // Slightly reduced for mobile but not too low
+                
+                // Lighting setup
+                this.lightDirection = [0.3, -0.8, 0.5];
+                this.lightColor = [1.0, 0.95, 0.8];
+                this.ambientLight = 0.25;
+                
+                // Initialize permutation table for noise
+                this.initPerlinNoise();
+                
+                this.initWebGL();
+                this.initEventListeners();
+                this.generateTerrain();
+                this.resizeCanvas();
+                this.render();
+            }
+            
+            initFallbackMode() {
+                // CSS-based fallback for non-WebGL devices
+                this.canvas.style.display = 'none';
+                const fallbackDiv = document.createElement('div');
+                fallbackDiv.className = 'fallback-terrain';
+                fallbackDiv.innerHTML = `
+                    <div class="fallback-message">
+                        <h3>WebGL Not Supported</h3>
+                        <p>Your device doesn't support WebGL. Please use a modern browser or device with WebGL support for the full 3D terrain experience.</p>
+                        <div class="fallback-terrain-preview"></div>
+                    </div>
+                `;
+                
+                // Add fallback CSS
+                const style = document.createElement('style');
+                style.textContent = `
+                    .fallback-terrain {
+                        width: 100%;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: linear-gradient(45deg, #2c3e50, #3498db);
+                    }
+                    .fallback-message {
+                        text-align: center;
+                        color: white;
+                        padding: 40px;
+                        background: rgba(0,0,0,0.5);
+                        border-radius: 16px;
+                        backdrop-filter: blur(10px);
+                    }
+                    .fallback-terrain-preview {
+                        width: 200px;
+                        height: 100px;
+                        margin: 20px auto;
+                        background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 30%, #228B22 60%, #8B4513 80%, #FFFFFF 100%);
+                        border-radius: 8px;
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .fallback-terrain-preview::after {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M0,25 Q25,10 50,25 T100,25 L100,50 L0,50 Z" fill="rgba(0,0,0,0.1)"/></svg>');
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                this.canvas.parentElement.appendChild(fallbackDiv);
+                
+                // Still allow parameter changes to show in the UI
+                this.initEventListeners();
+            }
+            
+            initPerlinNoise() {
+                // Permutation table for Perlin noise
+                const permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
+                
+                this.p = [];
+                for (let i = 0; i < 256; i++) {
+                    this.p[256 + i] = this.p[i] = permutation[i];
+                }
+            }
+            
+            initWebGL() {
+                const gl = this.gl;
+                
+                // Enhanced vertex shader
+                const vertexShaderSource = `
+                    attribute vec3 position;
+                    attribute vec3 normal;
+                    attribute vec2 texCoord;
+                    
+                    uniform mat4 modelMatrix;
+                    uniform mat4 viewMatrix;
+                    uniform mat4 projectionMatrix;
+                    uniform mat4 normalMatrix;
+                    uniform vec3 lightDirection;
+                    uniform vec3 cameraPosition;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec2 vTexCoord;
+                    varying vec3 vWorldPosition;
+                    varying vec3 vViewDirection;
+                    varying float vElevation;
+                    
+                    void main() {
+                        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                        
+                        vNormal = normalize((normalMatrix * vec4(normal, 0.0)).xyz);
+                        vPosition = position;
+                        vWorldPosition = worldPosition.xyz;
+                        vTexCoord = texCoord;
+                        vViewDirection = normalize(cameraPosition - worldPosition.xyz);
+                        vElevation = position.y;
+                    }
+                `;
+                
+                // Enhanced fragment shader
+                const fragmentShaderSource = `
+                    precision mediump float;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec2 vTexCoord;
+                    varying vec3 vWorldPosition;
+                    varying vec3 vViewDirection;
+                    varying float vElevation;
+                    
+                    uniform vec3 lightDirection;
+                    uniform vec3 lightColor;
+                    uniform float ambientLight;
+                    uniform float vegetationDensity;
+                    uniform sampler2D vegetationTexture;
+                    
+                    vec3 getTerrainColor(float height) {
+                        vec3 color;
+                        
+                        if (height < 1.0) {
+                            // Water/shore
+                            color = mix(vec3(0.1, 0.3, 0.7), vec3(0.8, 0.7, 0.5), height);
+                        } else if (height < 5.0) {
+                            // Beach/lowland
+                            color = mix(vec3(0.8, 0.7, 0.5), vec3(0.2, 0.6, 0.1), (height - 1.0) / 4.0);
+                        } else if (height < 15.0) {
+                            // Grass/forest
+                            color = mix(vec3(0.2, 0.6, 0.1), vec3(0.1, 0.4, 0.05), (height - 5.0) / 10.0);
+                        } else if (height < 25.0) {
+                            // Mountain/rock
+                            color = mix(vec3(0.1, 0.4, 0.05), vec3(0.4, 0.3, 0.2), (height - 15.0) / 10.0);
+                        } else {
+                            // Snow/peak
+                            color = mix(vec3(0.4, 0.3, 0.2), vec3(0.9, 0.9, 0.95), (height - 25.0) / 15.0);
+                        }
+                        
+                        return color;
+                    }
+                    
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        vec3 lightDir = normalize(-lightDirection);
+                        vec3 viewDir = normalize(vViewDirection);
+                        
+                        // Base terrain color
+                        vec3 baseColor = getTerrainColor(vElevation);
+                        
+                        // Add vegetation
+                        float vegetation = texture2D(vegetationTexture, vTexCoord).r;
+                        if (vegetation > 0.5 && vElevation > 2.0 && vElevation < 20.0) {
+                            float vegStrength = smoothstep(0.5, 1.0, vegetation);
+                            baseColor = mix(baseColor, vec3(0.05, 0.3, 0.02), vegStrength * 0.8);
+                        }
+                        
+                        // Lighting calculations
+                        float NdotL = max(0.0, dot(normal, lightDir));
+                        
+                        // Diffuse lighting
+                        vec3 diffuse = lightColor * NdotL;
+                        
+                        // Specular lighting
+                        vec3 halfVector = normalize(lightDir + viewDir);
+                        float NdotH = max(0.0, dot(normal, halfVector));
+                        float specular = pow(NdotH, 32.0) * 0.1;
+                        
+                        // Ambient occlusion
+                        float slope = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));
+                        float ao = 1.0 - slope * 0.3;
+                        
+                        // Shadow calculation
+                        float shadow = smoothstep(0.0, 0.3, NdotL);
+                        shadow = mix(0.3, 1.0, shadow);
+                        
+                        // Atmospheric perspective
+                        float distance = length(vWorldPosition);
+                        float fog = exp(-distance * 0.002);
+                        fog = clamp(fog, 0.0, 1.0);
+                        
+                        // Final color
+                        vec3 ambient = baseColor * ambientLight;
+                        vec3 lighting = ambient + (diffuse * baseColor + specular) * shadow;
+                        lighting *= ao;
+                        
+                        vec3 fogColor = vec3(0.7, 0.8, 1.0);
+                        vec3 finalColor = mix(fogColor, lighting, fog);
+                        
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `;
+                
+                this.shaderProgram = this.createShaderProgram(vertexShaderSource, fragmentShaderSource);
+                
+                // Get locations
+                this.programInfo = {
+                    attribLocations: {
+                        position: gl.getAttribLocation(this.shaderProgram, 'position'),
+                        normal: gl.getAttribLocation(this.shaderProgram, 'normal'),
+                        texCoord: gl.getAttribLocation(this.shaderProgram, 'texCoord'),
+                    },
+                    uniformLocations: {
+                        modelMatrix: gl.getUniformLocation(this.shaderProgram, 'modelMatrix'),
+                        viewMatrix: gl.getUniformLocation(this.shaderProgram, 'viewMatrix'),
+                        projectionMatrix: gl.getUniformLocation(this.shaderProgram, 'projectionMatrix'),
+                        normalMatrix: gl.getUniformLocation(this.shaderProgram, 'normalMatrix'),
+                        lightDirection: gl.getUniformLocation(this.shaderProgram, 'lightDirection'),
+                        lightColor: gl.getUniformLocation(this.shaderProgram, 'lightColor'),
+                        ambientLight: gl.getUniformLocation(this.shaderProgram, 'ambientLight'),
+                        cameraPosition: gl.getUniformLocation(this.shaderProgram, 'cameraPosition'),
+                        vegetationDensity: gl.getUniformLocation(this.shaderProgram, 'vegetationDensity'),
+                        vegetationTexture: gl.getUniformLocation(this.shaderProgram, 'vegetationTexture'),
+                    },
+                };
+                
+                gl.enable(gl.DEPTH_TEST);
+                gl.enable(gl.CULL_FACE);
+                gl.cullFace(gl.BACK);
+                
+                this.resizeCanvas();
+            }
+            
+            createShaderProgram(vertexSource, fragmentSource) {
+                const gl = this.gl;
+                
+                const vertexShader = this.loadShader(gl.VERTEX_SHADER, vertexSource);
+                const fragmentShader = this.loadShader(gl.FRAGMENT_SHADER, fragmentSource);
+                
+                const shaderProgram = gl.createProgram();
+                gl.attachShader(shaderProgram, vertexShader);
+                gl.attachShader(shaderProgram, fragmentShader);
+                gl.linkProgram(shaderProgram);
+                
+                if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                    console.error('Shader program link error:', gl.getProgramInfoLog(shaderProgram));
+                    return null;
+                }
+                
+                return shaderProgram;
+            }
+            
+            loadShader(type, source) {
+                const gl = this.gl;
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                    gl.deleteShader(shader);
+                    return null;
+                }
+                
+                return shader;
+            }
+            
+            generateTerrain() {
+                const heightScale = parseFloat(document.getElementById('heightSlider').value);
+                // Invert roughness value to fix the issue
+                const roughnessSlider = document.getElementById('roughnessSlider');
+                const roughnessValue = parseFloat(roughnessSlider.value);
+                document.getElementById('roughnessValue').textContent = roughnessSlider.value;
+
+                // Invert roughness so higher values = more rough
+                const invertedRoughness = 2.1 - roughnessValue;
+                
+                const vegetationDensity = parseFloat(document.getElementById('vegetationSlider').value) / 100;
+                
+                // Generate height data using Perlin noise
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const index = y * this.width + x;
+                        
+                        // Multi-octave noise
+                        let height = 0;
+                        let amplitude = 1;
+                        let frequency = 0.015;
+                        let maxValue = 0;
+                        
+                        for (let i = 0; i < 6; i++) {
+                            height += this.perlinNoise(x * frequency, y * frequency) * amplitude;
+                            maxValue += amplitude;
+                            amplitude *= 0.6;
+                            frequency *= 2.1;
+                        }
+                        
+                        height = height / maxValue;
+                        this.heightData[index] = Math.pow(Math.abs(height), invertedRoughness) * Math.sign(height) * heightScale;
+                        
+                        // Generate vegetation
+                        const vegNoise = this.perlinNoise(x * 0.03, y * 0.03);
+                        const heightFactor = Math.max(0, 1 - Math.abs(this.heightData[index] - 10) / 15);
+                        this.vegetationData[index] = (vegNoise > (0.3 - vegetationDensity * 0.7)) && heightFactor > 0.3 ? 1 : 0;
+                    }
+                }
+                
+                this.createMesh();
+                this.createVegetationTexture();
+            }
+            
+            perlinNoise(x, y) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+                
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+                
+                const u = this.fade(x);
+                const v = this.fade(y);
+                
+                const A = this.p[X] + Y;
+                const B = this.p[X + 1] + Y;
+                
+                return this.lerp(v, 
+                    this.lerp(u, this.grad(this.p[A], x, y), this.grad(this.p[B], x - 1, y)),
+                    this.lerp(u, this.grad(this.p[A + 1], x, y - 1), this.grad(this.p[B + 1], x - 1, y - 1))
+                );
+            }
+            
+            fade(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            }
+            
+            lerp(t, a, b) {
+                return a + t * (b - a);
+            }
+            
+            grad(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+            
+            createMesh() {
+                const vertices = [];
+                const normals = [];
+                const texCoords = [];
+                const indices = [];
+                
+                // Generate vertices
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const height = this.heightData[y * this.width + x];
+                        
+                        vertices.push(
+                            (x - this.width / 2) * 0.8,
+                            height,
+                            (y - this.height / 2) * 0.8
+                        );
+                        
+                        texCoords.push(x / (this.width - 1), y / (this.height - 1));
+                        
+                        const normal = this.calculateNormal(x, y);
+                        normals.push(normal.x, normal.y, normal.z);
+                    }
+                }
+                
+                // Generate indices
+                for (let y = 0; y < this.height - 1; y++) {
+                    for (let x = 0; x < this.width - 1; x++) {
+                        const topLeft = y * this.width + x;
+                        const topRight = topLeft + 1;
+                        const bottomLeft = (y + 1) * this.width + x;
+                        const bottomRight = bottomLeft + 1;
+                        
+                        indices.push(topLeft, bottomLeft, topRight);
+                        indices.push(topRight, bottomLeft, bottomRight);
+                    }
+                }
+                
+                this.buffers = this.initBuffers(vertices, normals, texCoords, indices);
+            }
+            
+            calculateNormal(x, y) {
+                const getHeight = (x, y) => {
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
+                    return this.heightData[y * this.width + x];
+                };
+                
+                const hL = getHeight(x - 1, y);
+                const hR = getHeight(x + 1, y);
+                const hD = getHeight(x, y - 1);
+                const hU = getHeight(x, y + 1);
+                
+                const normal = {
+                    x: (hL - hR) * 1.25,
+                    y: 2.5,
+                    z: (hD - hU) * 1.25
+                };
+                
+                const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                return {
+                    x: normal.x / length,
+                    y: normal.y / length,
+                    z: normal.z / length
+                };
+            }
+            
+            initBuffers(vertices, normals, texCoords, indices) {
+                const gl = this.gl;
+                
+                const positionBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+                
+                const normalBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+                
+                const texCoordBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+                
+                const indexBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+                
+                return {
+                    position: positionBuffer,
+                    normal: normalBuffer,
+                    texCoord: texCoordBuffer,
+                    indices: indexBuffer,
+                    vertexCount: indices.length,
+                };
+            }
+            
+            createVegetationTexture() {
+                const gl = this.gl;
+                const texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                
+                const data = new Uint8Array(this.width * this.height);
+                for (let i = 0; i < this.vegetationData.length; i++) {
+                    data[i] = this.vegetationData[i] * 255;
+                }
+                
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.width, this.height, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                
+                this.vegetationTexture = texture;
+            }
+            
+            initEventListeners() {
+                // Slider events
+                const sliders = ['height', 'roughness', 'vegetation', 'scale', 'brush'];
+                sliders.forEach(slider => {
+                    const element = document.getElementById(slider + 'Slider');
+                    const valueElement = document.getElementById(slider + 'Value');
+                    
+                    element.addEventListener('input', (e) => {
+                        valueElement.textContent = e.target.value;
+                        if (slider === 'brush') {
+                            this.brushSize = parseFloat(e.target.value);
+                        } else {
+                            this.generateTerrain();
+                        }
+                    });
+                });
+                
+                // Paint toggle
+                const paintToggle = document.getElementById('paintToggle');
+                paintToggle.addEventListener('click', () => {
+                    this.togglePaintMode();
+                });
+                
+                // Paint mode buttons
+                document.querySelectorAll('.paint-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.paint-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.paintMode = e.target.dataset.mode;
+                    });
+                });
+                
+                // Canvas events
+                this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+                this.canvas.addEventListener('wheel', this.onWheel.bind(this));
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+                
+                // Keyboard events
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Shift') {
+                        this.paintActive = true;
+                        this.canvas.classList.add('painting');
+                        document.getElementById('paintIndicator').classList.add('active');
+                        document.getElementById('paintToggle').classList.add('active');
+                        document.getElementById('paintToggle').textContent = '✎ Paint Mode ON';
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'Shift' && !this.paintToggleEnabled) {
+                        this.paintActive = false;
+                        this.painting = false;
+                        this.canvas.classList.remove('painting');
+                        document.getElementById('paintIndicator').classList.remove('active');
+                        document.getElementById('paintToggle').classList.remove('active');
+                        document.getElementById('paintToggle').textContent = '✎ Toggle Paint Mode';
+                    }
+                });
+                
+                // Touch events
+                this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+                this.canvas.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+                this.canvas.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
+                this.canvas.addEventListener('touchcancel', this.onTouchEnd.bind(this), { passive: false });
+                
+                // Button events
+                document.getElementById('randomize').addEventListener('click', () => {
+                    this.randomizeTerrain();
+                });
+                
+                document.getElementById('exportOBJ').addEventListener('click', () => this.exportOBJ());
+                document.getElementById('exportSTL').addEventListener('click', () => this.exportSTL());
+                
+                // Sidebar toggle (mobile only)
+                document.getElementById('toggleSidebar').addEventListener('click', () => {
+                    const sidebar = document.getElementById('sidebar');
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.toggle('open');
+                    }
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    this.handleResponsive();
+                });
+                
+                this.handleResponsive();
+            }
+            
+            togglePaintMode() {
+                this.paintActive = !this.paintActive;
+                this.paintToggleEnabled = this.paintActive;
+                
+                const toggleBtn = document.getElementById('paintToggle');
+                const indicator = document.getElementById('paintIndicator');
+                
+                if (this.paintActive) {
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '✎ Paint Mode ON';
+                    this.canvas.classList.add('painting');
+                    indicator.classList.add('active');
+                } else {
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.textContent = '✎ Toggle Paint Mode';
+                    this.canvas.classList.remove('painting');
+                    indicator.classList.remove('active');
+                    this.painting = false;
+                }
+            }
+            
+            randomizeTerrain() {
+                document.getElementById('heightSlider').value = Math.random() * 40 + 10;
+                document.getElementById('roughnessSlider').value = Math.random() * 1.5 + 0.5;
+                document.getElementById('vegetationSlider').value = Math.random() * 80 + 10;
+                document.getElementById('scaleSlider').value = Math.random() * 2 + 0.5;
+                
+                // Update displays
+                document.getElementById('heightValue').textContent = document.getElementById('heightSlider').value;
+                document.getElementById('roughnessValue').textContent = document.getElementById('roughnessSlider').value;
+                document.getElementById('vegetationValue').textContent = document.getElementById('vegetationSlider').value;
+                document.getElementById('scaleValue').textContent = document.getElementById('scaleSlider').value;
+                
+                this.showLoading();
+                setTimeout(() => {
+                    this.generateTerrain();
+                    this.hideLoading();
+                }, 100);
+            }
+            
+            handleResponsive() {
+                const sidebar = document.getElementById('sidebar');
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('collapsed');
+                    sidebar.classList.remove('open');
+                } else {
+                    sidebar.classList.remove('open');
+                }
+            }
+            
+            onMouseDown(e) {
+                this.mouse.down = true;
+                this.mouse.lastX = e.clientX;
+                this.mouse.lastY = e.clientY;
+                
+                if (this.paintActive) {
+                    this.painting = true;
+                    this.paintTerrain(e);
+                }
+            }
+            
+            onMouseMove(e) {
+                if (this.mouse.down && !this.painting) {
+                    const deltaX = e.clientX - this.mouse.lastX;
+                    const deltaY = e.clientY - this.mouse.lastY;
+                    
+                    this.camera.rotY += deltaX * 0.01;
+                    this.camera.rotX += deltaY * 0.01;
+                    
+                    this.camera.rotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotX));
+                }
+                
+                if (this.painting && this.paintActive) {
+                    this.paintTerrain(e);
+                }
+                
+                this.mouse.lastX = e.clientX;
+                this.mouse.lastY = e.clientY;
+            }
+            
+            onMouseUp() {
+                this.mouse.down = false;
+                if (!this.paintToggleEnabled) {
+                    this.painting = false;
+                }
+            }
+            
+            onWheel(e) {
+                e.preventDefault();
+                this.camera.z += e.deltaY * 0.1;
+                this.camera.z = Math.max(20, Math.min(200, this.camera.z));
+            }
+            
+            onTouchStart(e) {
+                e.preventDefault();
+                
+                if (this.paintActive) {
+                    // If paint mode is active, use the first touch for painting
+                    if (e.touches.length >= 1) {
+                        this.painting = true;
+                        this.touchIdentifier = e.touches[0].identifier;
+                        this.paintTerrain({ 
+                            clientX: e.touches[0].clientX, 
+                            clientY: e.touches[0].clientY 
+                        });
+                    }
+                } else {
+                    // If paint mode is not active, use the first touch for camera rotation
+                    if (e.touches.length === 1) {
+                        this.mouse.down = true;
+                        this.mouse.lastX = e.touches[0].clientX;
+                        this.mouse.lastY = e.touches[0].clientY;
+                    }
+                }
+            }
+            
+            onTouchMove(e) {
+                e.preventDefault();
+                
+                if (this.paintActive && this.painting) {
+                    // Find the touch with the saved identifier
+                    for (let i = 0; i < e.touches.length; i++) {
+                        const touch = e.touches[i];
+                        if (this.touchIdentifier === null || touch.identifier === this.touchIdentifier) {
+                            this.paintTerrain({ 
+                                clientX: touch.clientX, 
+                                clientY: touch.clientY 
+                            });
+                            break;
+                        }
+                    }
+                } else if (this.mouse.down && e.touches.length === 1) {
+                    // Camera rotation
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - this.mouse.lastX;
+                    const deltaY = touch.clientY - this.mouse.lastY;
+                    
+                    this.camera.rotY += deltaX * 0.01;
+                    this.camera.rotX += deltaY * 0.01;
+                    
+                    this.camera.rotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotX));
+                    
+                    this.mouse.lastX = touch.clientX;
+                    this.mouse.lastY = touch.clientY;
+                }
+            }
+            
+            onTouchEnd(e) {
+                e.preventDefault();
+                
+                // Check if the touch that ended was the one we were tracking
+                let touchFound = false;
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === this.touchIdentifier) {
+                        touchFound = true;
+                        break;
+                    }
+                }
+                
+                if (!touchFound) {
+                    // Our tracked touch ended
+                    this.mouse.down = false;
+                    if (!this.paintToggleEnabled) {
+                        this.painting = false;
+                    }
+                    this.touchIdentifier = null;
+                }
+            }
+            
+            paintTerrain(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                
+                // Simple direct mapping - account for camera rotation
+                let terrainX, terrainY;
+                
+                if (Math.abs(this.camera.rotY) < 0.1) {
+                    // Camera facing forward - direct mapping
+                    terrainX = Math.floor(x * this.width);
+                    terrainY = Math.floor(y * this.height);
+                } else {
+                    // Camera is rotated - adjust mapping
+                    const centerX = 0.5;
+                    const centerY = 0.5;
+                    
+                    // Translate to center
+                    const relX = x - centerX;
+                    const relY = y - centerY;
+                    
+                    // Apply inverse rotation
+                    const cosRot = Math.cos(-this.camera.rotY);
+                    const sinRot = Math.sin(-this.camera.rotY);
+                    
+                    const rotatedX = relX * cosRot - relY * sinRot;
+                    const rotatedY = relX * sinRot + relY * cosRot;
+                    
+                    // Translate back and convert to terrain coordinates
+                    terrainX = Math.floor((rotatedX + centerX) * this.width);
+                    terrainY = Math.floor((rotatedY + centerY) * this.height);
+                }
+                
+                // Clamp to terrain bounds
+                terrainX = Math.max(0, Math.min(this.width - 1, terrainX));
+                terrainY = Math.max(0, Math.min(this.height - 1, terrainY));
+                
+                if (terrainX >= 0 && terrainX < this.width && terrainY >= 0 && terrainY < this.height) {
+                    const brushRadius = this.brushSize;
+                    const strength = 0.8;
+                    
+                    for (let dy = -brushRadius; dy <= brushRadius; dy++) {
+                        for (let dx = -brushRadius; dx <= brushRadius; dx++) {
+                            const px = terrainX + dx;
+                            const py = terrainY + dy;
+                            
+                            if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
+                                const distance = Math.sqrt(dx * dx + dy * dy);
+                                if (distance <= brushRadius) {
+                                    const index = py * this.width + px;
+                                    const falloff = Math.cos((distance / brushRadius) * Math.PI * 0.5);
+                                    const effectStrength = strength * falloff;
+                                    
+                                    switch (this.paintMode) {
+                                        case 'raise':
+                                            this.heightData[index] += effectStrength;
+                                            break;
+                                        case 'lower':
+                                            this.heightData[index] -= effectStrength;
+                                            break;
+                                        case 'smooth':
+                                            let sum = 0;
+                                            let count = 0;
+                                            const smoothRadius = 2;
+                                            
+                                            for (let sy = -smoothRadius; sy <= smoothRadius; sy++) {
+                                                for (let sx = -smoothRadius; sx <= smoothRadius; sx++) {
+                                                    const nx = px + sx;
+                                                    const ny = py + sy;
+                                                    if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                                                        const dist = Math.sqrt(sx * sx + sy * sy);
+                                                        if (dist <= smoothRadius) {
+                                                            const weight = 1 - (dist / smoothRadius);
+                                                            sum += this.heightData[ny * this.width + nx] * weight;
+                                                            count += weight;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            const smoothedHeight = sum / count;
+                                            this.heightData[index] = this.heightData[index] * (1 - effectStrength) + smoothedHeight * effectStrength;
+                                            break;
+                                    }
+                                    
+                                    this.heightData[index] = Math.max(-20, Math.min(50, this.heightData[index]));
+                                }
+                            }
+                        }
+                    }
+                    
+                    this.createMesh();
+                }
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            }
+            
+            render() {
+                const currentTime = performance.now();
+                
+                // Simplified FPS throttling for mobile devices
+                if (this.isMobile && this.lastRenderTime && currentTime - this.lastRenderTime < (1000 / this.targetFPS)) {
+                    requestAnimationFrame(() => this.render());
+                    return;
+                }
+                this.lastRenderTime = currentTime;
+                
+                if (currentTime - this.lastTime >= 1000) {
+                    this.fps = Math.round(this.frameCount * 1000 / (currentTime - this.lastTime));
+                    document.getElementById('fpsCounter').textContent = `FPS: ${this.fps}`;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+                this.frameCount++;
+                
+                if (!this.webglSupported) {
+                    requestAnimationFrame(() => this.render());
+                    return;
+                }
+                
+                const gl = this.gl;
+                
+                if (!gl || !this.buffers) {
+                    requestAnimationFrame(() => this.render());
+                    return;
+                }
+                
+                gl.clearColor(0.6, 0.8, 1.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                
+                gl.useProgram(this.shaderProgram);
+                
+                // Set up matrices
+                const modelMatrix = this.createMatrix4();
+                const viewMatrix = this.createViewMatrix();
+                const projectionMatrix = this.createProjectionMatrix();
+                const normalMatrix = this.createMatrix4();
+                
+                const scale = parseFloat(document.getElementById('scaleSlider').value);
+                this.scaleMatrix(modelMatrix, scale, scale, scale);
+                
+                const cameraPos = [this.camera.x, this.camera.y, this.camera.z];
+                
+                gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+                gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+                gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                gl.uniformMatrix4fv(this.programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+                
+                gl.uniform3fv(this.programInfo.uniformLocations.lightDirection, this.lightDirection);
+                gl.uniform3fv(this.programInfo.uniformLocations.lightColor, this.lightColor);
+                gl.uniform1f(this.programInfo.uniformLocations.ambientLight, this.ambientLight);
+                gl.uniform3fv(this.programInfo.uniformLocations.cameraPosition, cameraPos);
+                gl.uniform1f(this.programInfo.uniformLocations.vegetationDensity, parseFloat(document.getElementById('vegetationSlider').value) / 100);
+                
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, this.vegetationTexture);
+                gl.uniform1i(this.programInfo.uniformLocations.vegetationTexture, 0);
+                
+                this.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position, this.programInfo.attribLocations.position, 3);
+                this.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normal, this.programInfo.attribLocations.normal, 3);
+                this.bindBuffer(gl.ARRAY_BUFFER, this.buffers.texCoord, this.programInfo.attribLocations.texCoord, 2);
+                
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
+                gl.drawElements(gl.TRIANGLES, this.buffers.vertexCount, gl.UNSIGNED_SHORT, 0);
+                
+                requestAnimationFrame(() => this.render());
+            }
+            
+            bindBuffer(target, buffer, location, size) {
+                const gl = this.gl;
+                gl.bindBuffer(target, buffer);
+                gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(location);
+            }
+            
+            createMatrix4() {
+                return new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1
+                ]);
+            }
+            
+            createViewMatrix() {
+                const matrix = this.createMatrix4();
+                this.translateMatrix(matrix, -this.camera.x, -this.camera.y, -this.camera.z);
+                this.rotateXMatrix(matrix, this.camera.rotX);
+                this.rotateYMatrix(matrix, this.camera.rotY);
+                return matrix;
+            }
+            
+            createProjectionMatrix() {
+                const aspect = this.canvas.width / this.canvas.height;
+                const fov = this.camera.fov * Math.PI / 180;
+                const f = 1.0 / Math.tan(fov / 2);
+                const rangeInv = 1 / (this.camera.near - this.camera.far);
+                
+                return new Float32Array([
+                    f / aspect, 0, 0, 0,
+                    0, f, 0, 0,
+                    0, 0, (this.camera.near + this.camera.far) * rangeInv, -1,
+                    0, 0, this.camera.near * this.camera.far * rangeInv * 2, 0
+                ]);
+            }
+            
+            translateMatrix(matrix, x, y, z) {
+                matrix[12] += matrix[0] * x + matrix[4] * y + matrix[8] * z;
+                matrix[13] += matrix[1] * x + matrix[5] * y + matrix[9] * z;
+                matrix[14] += matrix[2] * x + matrix[6] * y + matrix[10] * z;
+                matrix[15] += matrix[3] * x + matrix[7] * y + matrix[11] * z;
+            }
+            
+            rotateXMatrix(matrix, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                const mv1 = matrix[1], mv5 = matrix[5], mv9 = matrix[9];
+                
+                matrix[1] = matrix[1] * c - matrix[2] * s;
+                matrix[5] = matrix[5] * c - matrix[6] * s;
+                matrix[9] = matrix[9] * c - matrix[10] * s;
+                
+                matrix[2] = matrix[2] * c + mv1 * s;
+                matrix[6] = matrix[6] * c + mv5 * s;
+                matrix[10] = matrix[10] * c + mv9 * s;
+            }
+            
+            rotateYMatrix(matrix, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                const mv0 = matrix[0], mv4 = matrix[4], mv8 = matrix[8];
+                
+                matrix[0] = c * matrix[0] + s * matrix[2];
+                matrix[4] = c * matrix[4] + s * matrix[6];
+                matrix[8] = c * matrix[8] + s * matrix[10];
+                
+                matrix[2] = c * matrix[2] - s * mv0;
+                matrix[6] = c * matrix[6] - s * mv4;
+                matrix[10] = c * matrix[10] - s * mv8;
+            }
+            
+            scaleMatrix(matrix, x, y, z) {
+                matrix[0] *= x; matrix[1] *= x; matrix[2] *= x; matrix[3] *= x;
+                matrix[4] *= y; matrix[5] *= y; matrix[6] *= y; matrix[7] *= y;
+                matrix[8] *= z; matrix[9] *= z; matrix[10] *= z; matrix[11] *= z;
+            }
+            
+            exportOBJ() {
+                let obj = '# Terrain Generator Export\n';
+                
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const height = this.heightData[y * this.width + x];
+                        obj += `v ${(x - this.width / 2) * 0.8} ${height} ${(y - this.height / 2) * 0.8}\n`;
+                    }
+                }
+                
+                for (let y = 0; y < this.height - 1; y++) {
+                    for (let x = 0; x < this.width - 1; x++) {
+                        const topLeft = y * this.width + x + 1;
+                        const topRight = topLeft + 1;
+                        const bottomLeft = (y + 1) * this.width + x + 1;
+                        const bottomRight = bottomLeft + 1;
+                        
+                        obj += `f ${topLeft} ${bottomLeft} ${topRight}\n`;
+                        obj += `f ${topRight} ${bottomLeft} ${bottomRight}\n`;
+                    }
+                }
+                
+                const blob = new Blob([obj], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'terrain.obj';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            exportSTL() {
+                let stl = 'solid terrain\n';
+                
+                // Generate triangles for STL
+                for (let y = 0; y < this.height - 1; y++) {
+                    for (let x = 0; x < this.width - 1; x++) {
+                        const scale = 0.8;
+                        
+                        // Get heights for the quad
+                        const h1 = this.heightData[y * this.width + x];
+                        const h2 = this.heightData[y * this.width + (x + 1)];
+                        const h3 = this.heightData[(y + 1) * this.width + x];
+                        const h4 = this.heightData[(y + 1) * this.width + (x + 1)];
+                        
+                        // Vertices
+                        const v1 = [(x - this.width / 2) * scale, h1, (y - this.height / 2) * scale];
+                        const v2 = [(x + 1 - this.width / 2) * scale, h2, (y - this.height / 2) * scale];
+                        const v3 = [(x - this.width / 2) * scale, h3, (y + 1 - this.height / 2) * scale];
+                        const v4 = [(x + 1 - this.width / 2) * scale, h4, (y + 1 - this.height / 2) * scale];
+                        
+                        // First triangle (v1, v3, v2)
+                        const normal1 = this.calculateTriangleNormal(v1, v3, v2);
+                        stl += `  facet normal ${normal1[0].toFixed(6)} ${normal1[1].toFixed(6)} ${normal1[2].toFixed(6)}\n`;
+                        stl += `    outer loop\n`;
+                        stl += `      vertex ${v1[0].toFixed(6)} ${v1[1].toFixed(6)} ${v1[2].toFixed(6)}\n`;
+                        stl += `      vertex ${v3[0].toFixed(6)} ${v3[1].toFixed(6)} ${v3[2].toFixed(6)}\n`;
+                        stl += `      vertex ${v2[0].toFixed(6)} ${v2[1].toFixed(6)} ${v2[2].toFixed(6)}\n`;
+                        stl += `    endloop\n`;
+                        stl += `  endfacet\n`;
+                        
+                        // Second triangle (v2, v3, v4)
+                        const normal2 = this.calculateTriangleNormal(v2, v3, v4);
+                        stl += `  facet normal ${normal2[0].toFixed(6)} ${normal2[1].toFixed(6)} ${normal2[2].toFixed(6)}\n`;
+                        stl += `    outer loop\n`;
+                        stl += `      vertex ${v2[0].toFixed(6)} ${v2[1].toFixed(6)} ${v2[2].toFixed(6)}\n`;
+                        stl += `      vertex ${v3[0].toFixed(6)} ${v3[1].toFixed(6)} ${v3[2].toFixed(6)}\n`;
+                        stl += `      vertex ${v4[0].toFixed(6)} ${v4[1].toFixed(6)} ${v4[2].toFixed(6)}\n`;
+                        stl += `    endloop\n`;
+                        stl += `  endfacet\n`;
+                    }
+                }
+                
+                stl += 'endsolid terrain\n';
+                
+                const blob = new Blob([stl], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'terrain.stl';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            calculateTriangleNormal(v1, v2, v3) {
+                const a = [v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]];
+                const b = [v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]];
+                
+                const normal = [
+                    a[1] * b[2] - a[2] * b[1],
+                    a[2] * b[0] - a[0] * b[2],
+                    a[0] * b[1] - a[1] * b[0]
+                ];
+                
+                const length = Math.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+                return [normal[0] / length, normal[1] / length, normal[2] / length];
+            }
+            
+            showLoading() {
+                document.getElementById('loading').style.display = 'block';
+            }
+            
+            hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        const terrainGenerator = new TerrainGenerator();
+    </script>
+</body>
+</html>
