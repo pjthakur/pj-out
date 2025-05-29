@@ -1,2922 +1,2117 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  memo,
+  useRef,
+} from "react";
 import {
-  Search,
-  Menu,
-  X,
-  ChevronDown,
-  Bookmark,
-  Share2,
-  Heart,
-  MessageCircle,
-  ArrowRight,
-  BookOpen,
-  Clock,
-  Tag,
-  Rss,
-  Mail,
-  Twitter,
-  Facebook,
-  Instagram,
-  Linkedin,
-  Github,
-  ChevronUp,
-  Send,
-} from "lucide-react";
+  ChartBarIcon,
+  BellIcon,
+  UserIcon,
+  Bars3Icon,
+  XMarkIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  CheckCircleIcon,
+  ArrowDownTrayIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  TrashIcon,
+  PencilIcon,
+  DocumentTextIcon,
+  ChartPieIcon,
+  CurrencyDollarIcon,
+  AdjustmentsHorizontalIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/outline";
 
-// Import Poppins font from Google Fonts
-const fontImport = `
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
-  
-  * {
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  
-  body {
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-`;
-
-// Inject font styles
-if (typeof document !== 'undefined') {
-  const existingStyle = document.getElementById('poppins-font');
-  if (!existingStyle) {
-    const style = document.createElement('style');
-    style.id = 'poppins-font';
-    style.textContent = fontImport;
-    document.head.appendChild(style);
-  }
+// Types
+interface User {
+  email: string;
+  isAuthenticated: boolean;
 }
 
-// Type definitions
-type Post = {
+interface StockData {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+interface NewsItem {
   id: string;
   title: string;
-  excerpt: string;
   content: string;
-  date: string;
-  readTime: string;
-  author: Author;
-  category: Category;
-  tags: string[];
-  image: string;
-  featured?: boolean;
-  likes: number;
-  comments: number;
-};
+  sentiment: "positive" | "negative" | "neutral";
+  score: number;
+  source: string;
+  timestamp: string;
+}
 
-type Author = {
+interface RiskMetric {
   id: string;
   name: string;
-  avatar: string;
-  role: string;
-  bio: string;
-};
+  value: number;
+  change: number;
+  status: "good" | "warning" | "danger";
+  description: string;
+}
 
-type Category = {
+interface Portfolio {
   id: string;
   name: string;
-  slug: string;
-};
+  value: number;
+  change: number;
+  allocation: { [key: string]: number };
+}
 
-type Comment = {
+interface Alert {
   id: string;
-  author: Author;
-  content: string;
-  date: string;
-  likes: number;
-  replies?: Comment[];
-  postId: string; // ← add this
-};
+  title: string;
+  message: string;
+  type: "info" | "warning" | "success" | "error";
+  timestamp: string;
+  read: boolean;
+}
 
-// ====== Mock Data ======
-const authors: Author[] = [
-  {
-    id: "author-1",
-    name: "Alex Morgan",
-    avatar: "https://randomuser.me/api/portraits/women/32.jpg",
-    role: "Senior Editor",
-    bio: "Writing about technology and future trends for over a decade.",
-  },
-  {
-    id: "author-2",
-    name: "Jamie Chen",
-    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-    role: "Tech Writer",
-    bio: "Passionate about emerging technologies and their impact on society.",
-  },
-  {
-    id: "author-3",
-    name: "Sam Wilson",
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-    role: "Guest Writer",
-    bio: "Entrepreneur and tech enthusiast with a focus on AI and machine learning.",
-  },
-];
+// Mock data generators
+const generateStockData = (): StockData[] => {
+  const data: StockData[] = [];
+  let basePrice = 150;
 
-const categories: Category[] = [
-  { id: "cat-1", name: "Technology", slug: "technology" },
-  { id: "cat-2", name: "Design", slug: "design" },
-  { id: "cat-3", name: "Business", slug: "business" },
-  { id: "cat-4", name: "Science", slug: "science" },
-  { id: "cat-5", name: "Productivity", slug: "productivity" },
-];
+  for (let i = 30; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
 
-const posts: Post[] = [
-  {
-    id: "post-1",
-    title: "The Future of AI in Everyday Applications in World",
-    excerpt:
-      "Exploring how artificial intelligence is transforming the way we interact with technology on a daily basis.",
-    content: `<p>Artificial intelligence has come a long way in recent years, evolving from a sci-fi concept to an integral part of our daily lives. From voice assistants to recommendation algorithms, AI is silently powering many of the tools we use every day.</p>
-              <p>One of the most significant impacts of AI has been in personalization. Services like Netflix, Spotify, and Amazon have leveraged machine learning algorithms to understand user preferences and deliver tailored content recommendations. This level of personalization not only enhances user experience but also drives engagement and retention.</p>
-              <h2>The Rise of Conversational AI</h2>
-              <p>Conversational AI, which includes chatbots and virtual assistants, has seen remarkable improvements. These systems are no longer limited to following predefined scripts; they can now understand context, remember previous interactions, and even detect emotional cues.</p>
-              <p>Tools like ChatGPT have demonstrated that AI can engage in meaningful conversations, assist with creative tasks, and solve complex problems. This has opened up new possibilities for customer service, education, and accessibility.</p>
-              <h2>Challenges and Considerations</h2>
-              <p>Despite these advancements, there are legitimate concerns about privacy, bias, and the potential misuse of AI technologies. As these tools become more integrated into our lives, it's crucial to establish ethical guidelines and regulatory frameworks.</p>
-              <p>The path forward involves balancing innovation with responsibility, ensuring that AI remains a tool that enhances human capabilities rather than diminishes them.</p>`,
-    date: "May 15, 2025",
-    readTime: "5 min read",
-    author: authors[0],
-    category: categories[0],
-    tags: ["AI", "Machine Learning", "Technology Trends"],
-    image: "https://picsum.photos/seed/ai-future/600/400",
-    featured: true,
-    likes: 245,
-    comments: 37,
-  },
-  {
-    id: "post-2",
-    title: "Designing for Accessibility: A Comprehensive Guide",
-    excerpt:
-      "Learn how inclusive design principles can make your products accessible to a wider audience.",
-    content: "Full content for the accessibility article would go here...",
-    date: "May 12, 2025",
-    readTime: "7 min read",
-    author: authors[1],
-    category: categories[1],
-    tags: ["Accessibility", "UX Design", "Inclusive Design"],
-    image: "https://picsum.photos/seed/accessibility/600/400",
-    featured: true,
-    likes: 189,
-    comments: 24,
-  },
-  {
-    id: "post-3",
-    title:
-      "Sustainable Tech: Balancing Innovation and Environmental Responsibility",
-    excerpt:
-      "Examining how tech companies are addressing environmental concerns while pushing technological boundaries.",
-    content: "Full content for the sustainable tech article would go here...",
-    date: "May 10, 2025",
-    readTime: "6 min read",
-    author: authors[2],
-    category: categories[0],
-    tags: ["Sustainability", "Green Tech", "Innovation"],
-    image: "https://picsum.photos/seed/sustainable-tech/600/400",
-    featured: false,
-    likes: 210,
-    comments: 31,
-  },
-  {
-    id: "post-4",
-    title: "The Remote Work Revolution: Tools for Distributed Teams",
-    excerpt:
-      "A curated list of essential tools and practices for effective remote collaboration.",
-    content: "Full content for the remote work article would go here...",
-    date: "May 8, 2025",
-    readTime: "4 min read",
-    author: authors[0],
-    category: categories[4],
-    tags: ["Remote Work", "Productivity", "Collaboration"],
-    image: "https://picsum.photos/seed/remote-work/600/400",
-    featured: false,
-    likes: 176,
-    comments: 19,
-  },
-  {
-    id: "post-5",
-    title: `Understanding Quantum Computing: A Beginner's Guide`,
-    excerpt:
-      "Breaking down complex quantum concepts into digestible explanations for non-physicists.",
-    content: "Full content for the quantum computing article would go here...",
-    date: "May 5, 2025",
-    readTime: "8 min read",
-    author: authors[1],
-    category: categories[3],
-    tags: ["Quantum Computing", "Science", "Technology"],
-    image: "https://picsum.photos/seed/quantum/600/400",
-    featured: false,
-    likes: 231,
-    comments: 42,
-  },
-  {
-    id: "post-6",
-    title: "The Psychology of User Interaction",
-    excerpt:
-      "How understanding human behavior can lead to more effective digital products.",
-    content: "Full content for the psychology of UX article would go here...",
-    date: "May 3, 2025",
-    readTime: "5 min read",
-    author: authors[2],
-    category: categories[1],
-    tags: ["UX Design", "Psychology", "User Behavior"],
-    image: "https://picsum.photos/seed/psychology-ux/600/400",
-    featured: false,
-    likes: 198,
-    comments: 27,
-  },
-];
+    const open = basePrice + (Math.random() - 0.5) * 10;
+    const close = open + (Math.random() - 0.5) * 8;
+    const high = Math.max(open, close) + Math.random() * 5;
+    const low = Math.min(open, close) - Math.random() * 5;
 
-// ====== Main App Component ======
-const ModernBlogApp = () => {
-  // UI State
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentPost, setCurrentPost] = useState<Post | null>(null);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>(posts);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: "comment-1",
-      author: {
-        id: "reader-1",
-        name: "Taylor Reed",
-        avatar: "https://randomuser.me/api/portraits/men/22.jpg",
-        role: "Reader",
-        bio: "Tech enthusiast and early adopter",
-      },
-      content:
-        "This article really opened my eyes to how pervasive AI has become in our daily lives. I wonder about the privacy implications though.",
-      date: "May 16, 2025",
-      likes: 12,
-      postId: "post-1",
-      replies: [
-        {
-          id: "reply-1",
-          postId: "post-1",
-          author: authors[0],
-          content: `Great point about privacy, Taylor. That's definitely one of the key challenges we need to address as AI becomes more integrated into our lives.`,
-          date: "May 16, 2025",
-          likes: 5,
-        },
-      ],
-    },
-    {
-      id: "comment-2",
-      postId: "post-1",
-      author: {
-        id: "reader-2",
-        name: "Jordan Smith",
-        avatar: "https://randomuser.me/api/portraits/women/57.jpg",
-        role: "Reader",
-        bio: "Software developer and AI researcher",
-      },
-      content:
-        "I work in the AI field, and I appreciate how this article makes complex concepts accessible without oversimplifying. Looking forward to more articles in this series!",
-      date: "May 17, 2025",
-      likes: 8,
-    },
-
-    // Comments for post-2
-    {
-      id: "comment-3",
-      postId: "post-2",
-      author: {
-        id: "reader-3",
-        name: "Samuel Brooks",
-        avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-        role: "Product Manager",
-        bio: "Always thinking about user experience.",
-      },
-      content:
-        "The UI case studies were spot on. I've forwarded this to my design team!",
-      date: "May 18, 2025",
-      likes: 9,
-    },
-
-    // Comments for post-3
-    {
-      id: "comment-4",
-      postId: "post-3",
-      author: {
-        id: "reader-4",
-        name: "Lena Torres",
-        avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-        role: "UX Designer",
-        bio: "Designing with empathy and data.",
-      },
-      content:
-        "Loved the section on cognitive load—this is often overlooked in fast-paced projects.",
-      date: "May 19, 2025",
-      likes: 6,
-    },
-
-    // Comments for post-4
-    {
-      id: "comment-5",
-      postId: "post-4",
-      author: {
-        id: "reader-5",
-        name: "Dev Patel",
-        avatar: "https://randomuser.me/api/portraits/men/33.jpg",
-        role: "Full Stack Developer",
-        bio: "Building SaaS and writing clean code.",
-      },
-      content:
-        "Nice breakdown of microservices. Would love a follow-up post on deployment strategies.",
-      date: "May 20, 2025",
-      likes: 10,
-    },
-
-    // Comments for post-5
-    {
-      id: "comment-6",
-      postId: "post-5",
-      author: {
-        id: "reader-6",
-        name: "Emily Zhang",
-        avatar: "https://randomuser.me/api/portraits/women/22.jpg",
-        role: "Cloud Architect",
-        bio: "Helping teams scale on the cloud.",
-      },
-      content:
-        "This was a good refresher on Kubernetes fundamentals. Thanks for including diagrams!",
-      date: "May 21, 2025",
-      likes: 11,
-    },
-
-    // Comments for post-6
-    {
-      id: "comment-7",
-      postId: "post-6",
-      author: {
-        id: "reader-7",
-        name: "Marcus Lee",
-        avatar: "https://randomuser.me/api/portraits/men/78.jpg",
-        role: "Security Analyst",
-        bio: "Keeping the web safe one firewall at a time.",
-      },
-      content:
-        "The security checklist is gold. Every startup should bookmark this.",
-      date: "May 21, 2025",
-      likes: 14,
-    },
-  ]);
-  const [replyText, setReplyText] = useState("");
-
-  // Form State
-  const [comment, setComment] = useState("");
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-
-  // Auth State
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [currentUser, setCurrentUser] = useState<Author | null>(null);
-  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
-  const [showSavedPosts, setShowSavedPosts] = useState(false);
-
-  // Post Creation State
-  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
-  const [newPost, setNewPost] = useState<Partial<Post>>({
-    title: "",
-    excerpt: "",
-    content: "",
-    category: categories[0],
-    tags: [],
-    image: "",
-  });
-  const [allPosts, setAllPosts] = useState<Post[]>(posts);
-
-  // Refs
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // New state for scrolling to comments
-  const [scrollToCommentsFlag, setScrollToCommentsFlag] = useState(false);
-
-  // Toast state
-  const [toasts, setToasts] = useState<Array<{id: string, message: string, type: 'success' | 'error' | 'info'}>>([]);
-
-  // Function to show toast
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 4000);
-  };
-
-  // Handle scroll to show/hide back to top button
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 500);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Filter posts based on search query and selected category
-  useEffect(() => {
-    const filtered = allPosts.filter((post) => {
-      const matchesQuery =
-        searchQuery === "" ||
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-      const matchesCategory =
-        selectedCategory === null || post.category.id === selectedCategory;
-
-      return matchesQuery && matchesCategory;
+    data.push({
+      date: date.toISOString().split("T")[0],
+      open: Math.round(open * 100) / 100,
+      high: Math.round(high * 100) / 100,
+      low: Math.round(low * 100) / 100,
+      close: Math.round(close * 100) / 100,
+      volume: Math.floor(Math.random() * 1000000) + 500000,
     });
 
-    setFilteredPosts(filtered);
-  }, [searchQuery, selectedCategory, allPosts]);
+    basePrice = close;
+  }
 
-  // Focus search input when search is opened
-  useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-      // Prevent background scrolling
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Restore background scrolling
-      document.body.style.overflow = 'unset';
-    }
+  return data;
+};
 
-    // Add keyboard event listeners
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isSearchOpen) {
-        if (e.key === 'Escape') {
-          setIsSearchOpen(false);
-        } else if (e.key === 'Enter' && searchQuery && filteredPosts.length > 0) {
-          handlePostClick(filteredPosts[0]);
-          setIsSearchOpen(false);
-        }
-      }
-    };
+const generateNewsData = (): NewsItem[] => {
+  const words = [
+    "Growth",
+    "Innovation",
+    "Market",
+    "Technology",
+    "Profit",
+    "Revenue",
+    "Expansion",
+    "Investment",
+    "Risk",
+    "Opportunity",
+  ];
+  const sources = [
+    "Reuters",
+    "Bloomberg",
+    "CNBC",
+    "MarketWatch",
+    "Financial Times",
+  ];
+  const contents = [
+    "Market analysts are optimistic about the upcoming quarter with strong earnings expected across multiple sectors.",
+    "Technology stocks continue to show resilience despite market volatility and regulatory concerns.",
+    "Investment flows into emerging markets have increased significantly this month.",
+    "Risk assessment models suggest a cautious approach to portfolio allocation in current conditions.",
+    "Revenue growth in the financial sector exceeds expectations for the third consecutive quarter.",
+  ];
 
-    if (isSearchOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: `news-${i}`,
+    title: `${words[Math.floor(Math.random() * words.length)]} ${
+      words[Math.floor(Math.random() * words.length)]
+    } Report`,
+    content: contents[Math.floor(Math.random() * contents.length)],
+    sentiment: ["positive", "negative", "neutral"][
+      Math.floor(Math.random() * 3)
+    ] as "positive" | "negative" | "neutral",
+    score: Math.random(),
+    source: sources[Math.floor(Math.random() * sources.length)],
+    timestamp: new Date(
+      Date.now() - Math.random() * 86400000 * 7
+    ).toISOString(),
+  }));
+};
 
-    // Cleanup function to restore scrolling if component unmounts
-    return () => {
-      document.body.style.overflow = 'unset';
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isSearchOpen, searchQuery, filteredPosts]);
+const generateRiskMetrics = (): RiskMetric[] => [
+  {
+    id: "var",
+    name: "Value at Risk",
+    value: 2.35,
+    change: -0.12,
+    status: "good",
+    description:
+      "Maximum potential loss over a given time period at a specified confidence level",
+  },
+  {
+    id: "sharpe",
+    name: "Sharpe Ratio",
+    value: 1.42,
+    change: 0.08,
+    status: "good",
+    description:
+      "Risk-adjusted return measure comparing excess return to volatility",
+  },
+  {
+    id: "beta",
+    name: "Portfolio Beta",
+    value: 1.15,
+    change: 0.03,
+    status: "warning",
+    description: "Measure of portfolio sensitivity to market movements",
+  },
+  {
+    id: "volatility",
+    name: "Volatility",
+    value: 18.5,
+    change: 2.1,
+    status: "danger",
+    description:
+      "Standard deviation of returns indicating price fluctuation magnitude",
+  },
+];
 
-  // Prevent background scrolling when mobile menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      // Prevent background scrolling
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Restore background scrolling
-      document.body.style.overflow = 'unset';
-    }
+const generatePortfolios = (): Portfolio[] => [
+  {
+    id: "growth",
+    name: "Growth Portfolio",
+    value: 125000,
+    change: 5.2,
+    allocation: { Stocks: 70, Bonds: 20, Cash: 10 },
+  },
+  {
+    id: "conservative",
+    name: "Conservative Portfolio",
+    value: 85000,
+    change: 2.1,
+    allocation: { Stocks: 40, Bonds: 50, Cash: 10 },
+  },
+  {
+    id: "aggressive",
+    name: "Aggressive Portfolio",
+    value: 95000,
+    change: -1.5,
+    allocation: { Stocks: 85, Bonds: 10, Cash: 5 },
+  },
+];
 
-    // Cleanup function to restore scrolling if component unmounts
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMenuOpen]);
+const generateAlerts = (): Alert[] => [
+  {
+    id: "alert-1",
+    title: "Portfolio Rebalancing",
+    message:
+      "Your Growth Portfolio allocation has drifted beyond target ranges",
+    type: "warning",
+    timestamp: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: "alert-2",
+    title: "Market Update",
+    message: "Significant market movement detected in your watchlist",
+    type: "info",
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    read: false,
+  },
+  {
+    id: "alert-3",
+    title: "Risk Threshold",
+    message: "Portfolio volatility has exceeded your risk tolerance",
+    type: "error",
+    timestamp: new Date(Date.now() - 7200000).toISOString(),
+    read: true,
+  },
+];
 
-  const handlePostClick = (post: Post, scrollToComments = false) => {
-    setCurrentPost(post);
-    setScrollToCommentsFlag(scrollToComments);
-    if (!scrollToComments) {
-      window.scrollTo(0, 0);
-    }
-  };
+// Smooth scroll utility
+const scrollToSection = (sectionId: string, offset = 80) => {
+  const element = document.getElementById(sectionId);
+  if (element) {
+    const elementPosition =
+      element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - offset;
 
-  const handleBackToList = () => {
-    setCurrentPost(null);
-  };
-
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
-    setCurrentPost(null); // Close single post view when navigating to categories
-    setShowSavedPosts(false); // Also close saved posts view if open
-    window.scrollTo(0, 0); // Scroll to top when changing views
-  };
-
-  const toggleSearch = () => {
-    setIsSearchOpen(!isSearchOpen);
-    if (!isSearchOpen) {
-      // Clear search when opening
-      setSearchQuery("");
-    }
-  };
-
-  const scrollToTop = () => {
     window.scrollTo({
-      top: 0,
+      top: offsetPosition,
       behavior: "smooth",
     });
-  };
+  }
+};
 
-  // Sign in handling
-  const handleSignIn = () => {
-    // Mock authentication
-    if (username && password) {
-      // In a real app, this would validate against a backend
-      setIsSignedIn(true);
+// Authentication Guard Component
+const AuthGuard = memo(
+  ({
+    children,
+    isAuthenticated,
+    onLoginRequired,
+  }: {
+    children: React.ReactNode;
+    isAuthenticated: boolean;
+    onLoginRequired: () => void;
+  }) => {
+    if (!isAuthenticated) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <LockClosedIcon className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Authentication Required
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Please log in to access your portfolio dashboard and analytics
+              tools.
+            </p>
+            <button
+              onClick={onLoginRequired}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              Sign In to Continue
+            </button>
+          </div>
+        </div>
+      );
+    }
 
-      // Create a mock user based on the username
-      const user: Author = {
-        id: "current-user",
-        name: username,
-        avatar: `https://randomuser.me/api/portraits/${
-          Math.random() > 0.5 ? "men" : "women"
-        }/${Math.floor(Math.random() * 99)}.jpg`,
-        role: "Member",
-        bio: "Blog member",
+    return <>{children}</>;
+  }
+);
+
+// Memoized Components
+const CandlestickChart = memo(
+  ({
+    data,
+    width,
+    height,
+  }: {
+    data: StockData[];
+    width: number;
+    height: number;
+  }) => {
+    const [selectedRange, setSelectedRange] = useState<[number, number]>([
+      0,
+      data.length - 1,
+    ]);
+    const [tooltip, setTooltip] = useState<{
+      x: number;
+      y: number;
+      data: StockData | null;
+    }>({ x: 0, y: 0, data: null });
+    const [chartType, setChartType] = useState<"candlestick" | "line">(
+      "candlestick"
+    );
+
+    const visibleData = useMemo(() => {
+      return data.slice(selectedRange[0], selectedRange[1] + 1);
+    }, [data, selectedRange]);
+
+    const { minPrice, maxPrice, priceRange } = useMemo(() => {
+      const prices = visibleData.flatMap((d) => [d.high, d.low]);
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      return { minPrice: min, maxPrice: max, priceRange: max - min };
+    }, [visibleData]);
+
+    const handleMouseMove = useCallback(
+      (e: React.MouseEvent<SVGElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const dataIndex = Math.floor((x / width) * visibleData.length);
+
+        if (dataIndex >= 0 && dataIndex < visibleData.length) {
+          setTooltip({
+            x: e.clientX,
+            y: e.clientY,
+            data: visibleData[dataIndex],
+          });
+        }
+      },
+      [width, visibleData]
+    );
+
+    const handleMouseLeave = useCallback(() => {
+      setTooltip({ x: 0, y: 0, data: null });
+    }, []);
+
+    const exportChart = useCallback(() => {
+      const csvContent =
+        "data:text/csv;charset=utf-8," +
+        "Date,Open,High,Low,Close,Volume\n" +
+        visibleData
+          .map(
+            (row) =>
+              `${row.date},${row.open},${row.high},${row.low},${row.close},${row.volume}`
+          )
+          .join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "chart_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, [visibleData]);
+
+    return (
+      <div className="relative">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setChartType("candlestick")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-300 shadow-sm ${
+                chartType === "candlestick"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              }`}
+            >
+              Candlestick
+            </button>
+            <button
+              onClick={() => setChartType("line")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-300 shadow-sm ${
+                chartType === "line"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+              }`}
+            >
+              Line
+            </button>
+            <button
+              onClick={exportChart}
+              className="flex md:hidden items-center space-x-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-800 cursor-pointer transition-all duration-300 shadow-md"
+            >
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              <span>Export</span>
+            </button>
+          </div>
+          <button
+            onClick={exportChart}
+            className="hidden md:flex items-center space-x-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-800 cursor-pointer transition-all duration-300 shadow-md"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            <span>Export</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <svg
+            width={width}
+            height={height}
+            className="border border-gray-200 rounded-lg bg-white cursor-crosshair min-w-full shadow-sm"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+            {/* Grid lines */}
+            {Array.from({ length: 5 }, (_, i) => (
+              <line
+                key={i}
+                x1={0}
+                y1={(height / 4) * i}
+                x2={width}
+                y2={(height / 4) * i}
+                stroke="#e5e7eb"
+                strokeWidth={1}
+              />
+            ))}
+
+            {chartType === "candlestick" ? (
+              /* Candlesticks */
+              visibleData.map((item, index) => {
+                const x =
+                  (index / visibleData.length) * width +
+                  width / visibleData.length / 2;
+                const candleWidth = Math.max(
+                  2,
+                  (width / visibleData.length) * 0.6
+                );
+
+                const openY =
+                  height - ((item.open - minPrice) / priceRange) * height;
+                const closeY =
+                  height - ((item.close - minPrice) / priceRange) * height;
+                const highY =
+                  height - ((item.high - minPrice) / priceRange) * height;
+                const lowY =
+                  height - ((item.low - minPrice) / priceRange) * height;
+
+                const isGreen = item.close > item.open;
+                const color = isGreen ? "#10b981" : "#ef4444";
+
+                return (
+                  <g key={index}>
+                    {/* High-Low line */}
+                    <line
+                      x1={x}
+                      y1={highY}
+                      x2={x}
+                      y2={lowY}
+                      stroke={color}
+                      strokeWidth={1}
+                    />
+                    {/* Open-Close rectangle */}
+                    <rect
+                      x={x - candleWidth / 2}
+                      y={Math.min(openY, closeY)}
+                      width={candleWidth}
+                      height={Math.abs(closeY - openY) || 1}
+                      fill={isGreen ? color : "#ffffff"}
+                      stroke={color}
+                      strokeWidth={1}
+                    />
+                  </g>
+                );
+              })
+            ) : (
+              /* Line Chart */
+              <polyline
+                fill="none"
+                stroke="#2563eb"
+                strokeWidth={2}
+                points={visibleData
+                  .map((item, index) => {
+                    const x =
+                      (index / visibleData.length) * width +
+                      width / visibleData.length / 2;
+                    const y =
+                      height - ((item.close - minPrice) / priceRange) * height;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")}
+              />
+            )}
+          </svg>
+        </div>
+
+        {/* Brush selector */}
+        <div className="mt-4">
+          <input
+            type="range"
+            min={0}
+            max={data.length - 1}
+            value={selectedRange[0]}
+            onChange={(e) =>
+              setSelectedRange([parseInt(e.target.value), selectedRange[1]])
+            }
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>{data[selectedRange[0]]?.date}</span>
+            <span>{data[selectedRange[1]]?.date}</span>
+          </div>
+        </div>
+
+        {/* Tooltip */}
+        {tooltip.data && (
+          <div
+            className="fixed z-50 bg-black text-white p-2 rounded shadow-lg text-xs pointer-events-none"
+            style={{ left: tooltip.x + 10, top: tooltip.y - 10 }}
+          >
+            <div>Date: {tooltip.data.date}</div>
+            <div>Open: ${tooltip.data.open}</div>
+            <div>High: ${tooltip.data.high}</div>
+            <div>Low: ${tooltip.data.low}</div>
+            <div>Close: ${tooltip.data.close}</div>
+            <div>Volume: {tooltip.data.volume.toLocaleString()}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+const WordCloud = memo(
+  ({
+    news,
+    onNewsClick,
+  }: {
+    news: NewsItem[];
+    onNewsClick: (news: NewsItem) => void;
+  }) => {
+    const [filter, setFilter] = useState<
+      "all" | "positive" | "negative" | "neutral"
+    >("all");
+
+    const filteredNews = useMemo(() => {
+      return filter === "all"
+        ? news
+        : news.filter((item) => item.sentiment === filter);
+    }, [news, filter]);
+
+    const wordFreq = useMemo(() => {
+      const freq: Record<
+        string,
+        {
+          count: number;
+          sentiment: "positive" | "negative" | "neutral";
+          news: NewsItem[];
+        }
+      > = {};
+
+      filteredNews.forEach((item) => {
+        const words = item.title.split(" ");
+        words.forEach((word) => {
+          if (word.length > 3) {
+            if (freq[word]) {
+              freq[word].count++;
+              freq[word].news.push(item);
+            } else {
+              freq[word] = {
+                count: 1,
+                sentiment: item.sentiment,
+                news: [item],
+              };
+            }
+          }
+        });
+      });
+
+      return Object.entries(freq)
+        .sort(([, a], [, b]) => b.count - a.count)
+        .slice(0, 20);
+    }, [filteredNews]);
+
+    return (
+      <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex flex-wrap gap-3">
+            {(["all", "positive", "negative", "neutral"] as const).map(
+              (type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilter(type)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold cursor-pointer transition-all duration-300 capitalize shadow-sm ${
+                    filter === type
+                      ? type === "positive"
+                        ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-200"
+                        : type === "negative"
+                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200"
+                        : type === "neutral"
+                        ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-gray-200"
+                        : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-200"
+                      : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 hover:border-gray-400 hover:text-gray-900"
+                  }`}
+                >
+                  {type}
+                  {filter === type && (
+                    <span className="ml-2 bg-black bg-opacity-20 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                      {filteredNews.length}
+                    </span>
+                  )}
+                </button>
+              )
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+            <span className="text-xs text-gray-500">Positive</span>
+            <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+            <span className="text-xs text-gray-500">Negative</span>
+            <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
+            <span className="text-xs text-gray-500">Neutral</span>
+          </div>
+        </div>
+
+        <div className="relative bg-gradient-to-br from-slate-50 via-white to-slate-100 rounded-xl border border-gray-200 p-8 min-h-[300px] overflow-hidden">
+          {/* Background decorative elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100 to-transparent rounded-full opacity-50 -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-green-100 to-transparent rounded-full opacity-50 translate-y-12 -translate-x-12"></div>
+          
+          <div className="relative flex flex-wrap gap-4 items-center justify-center">
+            {wordFreq.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <DocumentTextIcon className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-lg">No articles found for this filter</p>
+              </div>
+            ) : (
+              wordFreq.map(([word, data], index) => {
+                const size = Math.max(14, Math.min(36, 14 + data.count * 2.5));
+                const opacity = Math.max(0.7, Math.min(1, 0.5 + data.count * 0.1));
+                
+                const colors = {
+                  positive: "text-green-600 hover:text-green-700 shadow-green-100",
+                  negative: "text-red-600 hover:text-red-700 shadow-red-100", 
+                  neutral: "text-gray-600 hover:text-gray-700 shadow-gray-100",
+                };
+
+                const bgColors = {
+                  positive: "hover:bg-green-50",
+                  negative: "hover:bg-red-50",
+                  neutral: "hover:bg-gray-50",
+                };
+
+                return (
+                  <button
+                    key={word}
+                    onClick={() => onNewsClick(data.news[0])}
+                    className={`font-bold ${colors[data.sentiment]} ${bgColors[data.sentiment]} 
+                      transition-all duration-300 cursor-pointer hover:scale-110 hover:shadow-lg 
+                      px-3 py-2 rounded-lg border border-transparent hover:border-gray-200
+                      transform hover:-translate-y-1 active:scale-95`}
+                    style={{ 
+                      fontSize: `${size}px`,
+                      opacity: opacity,
+                      fontWeight: 600 + Math.min(300, data.count * 50),
+                    }}
+                    title={`${word} - ${data.count} mentions (${data.sentiment})`}
+                  >
+                    {word}
+                    <span className="ml-1 text-xs opacity-60 font-normal">
+                      {data.count > 1 ? `×${data.count}` : ''}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+          
+          {/* Bottom gradient overlay */}
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+        </div>
+
+        {filteredNews.length > 0 && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">
+              Analyzing <span className="font-semibold text-blue-600">{filteredNews.length}</span> articles • 
+              Click on any word to read related news
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+const RiskCard = memo(
+  ({
+    metric,
+    onDetailsClick,
+  }: {
+    metric: RiskMetric;
+    onDetailsClick: (metric: RiskMetric) => void;
+  }) => {
+    const statusColors = {
+      good: "border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg hover:from-green-100 hover:to-green-200",
+      warning: "border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:shadow-lg hover:from-yellow-100 hover:to-yellow-200",
+      danger: "border-red-200 bg-gradient-to-br from-red-50 to-red-100 hover:shadow-lg hover:from-red-100 hover:to-red-200",
+    };
+
+    const statusIcons = {
+      good: <CheckCircleIcon className="w-5 h-5 text-green-600" />,
+      warning: <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />,
+      danger: <InformationCircleIcon className="w-5 h-5 text-red-600" />,
+    };
+
+    return (
+      <div
+        onClick={() => onDetailsClick(metric)}
+        className={`p-4 rounded-xl border shadow-md ${
+          statusColors[metric.status]
+        } transition-all duration-300 cursor-pointer`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {statusIcons[metric.status]}
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
+              {metric.name}
+            </h3>
+          </div>
+          <div className="text-right">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">
+              {metric.value}
+            </div>
+            <div
+              className={`text-xs sm:text-sm flex items-center ${
+                metric.change >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {metric.change >= 0 ? (
+                <ArrowTrendingUpIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              ) : (
+                <ArrowTrendingDownIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              )}
+              {Math.abs(metric.change).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+const Modal = memo(
+  ({
+    isOpen,
+    onClose,
+    title,
+    children,
+    size = "md",
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+    size?: "sm" | "md" | "lg" | "xl";
+  }) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    const sizeClasses = {
+      sm: "max-w-sm",
+      md: "max-w-md",
+      lg: "max-w-2xl",
+      xl: "max-w-4xl",
+    };
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          modalRef.current &&
+          !modalRef.current.contains(event.target as Node)
+        ) {
+          onClose();
+        }
       };
 
-      setCurrentUser(user);
-      setIsSignInModalOpen(false);
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          onClose();
+        }
+      };
 
-      // Clear form
-      setUsername("");
+      if (isOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleEscape);
+        document.body.style.overflow = "hidden";
+      }
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEscape);
+        document.body.style.overflow = "unset";
+      };
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      >
+        <div
+          ref={modalRef}
+          className={`relative bg-white rounded-2xl shadow-2xl border border-gray-100 ${sizeClasses[size]} w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100`}
+        >
+          <div className="sticky top-0 bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+              {title}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="p-4 sm:p-6">{children}</div>
+        </div>
+      </div>
+    );
+  }
+);
+
+const LoginModal = memo(
+  ({
+    isOpen,
+    onClose,
+    onLogin,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    onLogin: (email: string, password: string) => void;
+  }) => {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+      {}
+    );
+
+    const validateForm = useCallback(() => {
+      const newErrors: { email?: string; password?: string } = {};
+
+      if (!email.trim()) {
+        newErrors.email = "Email is required";
+      } else if (!/\S+@\S+\.\S+/.test(email)) {
+        newErrors.email = "Email is invalid";
+      }
+
+      if (!password) {
+        newErrors.password = "Password is required";
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    }, [email, password]);
+
+    const handleSubmit = useCallback(() => {
+      if (validateForm()) {
+        onLogin(email.trim(), password);
+        setEmail("");
+        setPassword("");
+        setErrors({});
+      }
+    }, [email, password, onLogin, validateForm]);
+
+    const handleClose = useCallback(() => {
+      onClose();
+      setEmail("");
       setPassword("");
+      setErrors({});
+    }, [onClose]);
+
+    return (
+      <Modal isOpen={isOpen} onClose={handleClose} title="Sign In">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.email ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="Enter your email"
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 ${
+                  errors.password ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter password (hint: 12345678)"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-4 w-4 text-gray-400" />
+                )}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+            )}
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium cursor-pointer"
+          >
+            Sign In
+          </button>
+        </div>
+
+        <p className="mt-4 text-xs text-gray-500 text-center">
+          Use any email and any password to login
+        </p>
+      </Modal>
+    );
+  }
+);
+
+const PortfolioModal = ({
+  isOpen,
+  onClose,
+  portfolios,
+  onCreatePortfolio,
+  onDeletePortfolio,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  portfolios: Portfolio[];
+  onCreatePortfolio: (name: string) => void;
+  onDeletePortfolio: (id: string) => void;
+}) => {
+  const [newPortfolioName, setNewPortfolioName] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const handleCreate = useCallback(() => {
+    if (newPortfolioName.trim()) {
+      onCreatePortfolio(newPortfolioName.trim());
+      setNewPortfolioName("");
+      setShowCreateForm(false);
     }
-  };
-
-  const handleSignOut = () => {
-    setIsSignedIn(false);
-    setCurrentUser(null);
-  };
-
-  // Post creation handling
-  const handleCreatePost = () => {
-    if (!isSignedIn || !currentUser) {
-      setIsSignInModalOpen(true);
-      return;
-    }
-
-    // Validate required fields
-    if (!newPost.title || !newPost.excerpt || !newPost.content) {
-      showToast("Please fill in all required fields", "error");
-      return;
-    }
-
-    // Create a new post
-    const postId = `post-${allPosts.length + 1}`;
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    // Generate image if none provided
-    const imageUrl =
-      newPost.image || `https://picsum.photos/seed/${postId}/600/400`;
-
-    // Create full post object
-    const fullPost: Post = {
-      id: postId,
-      title: newPost.title,
-      excerpt: newPost.excerpt,
-      content: newPost.content,
-      date: formattedDate,
-      readTime: `${Math.max(
-        2,
-        Math.ceil(newPost.content.length / 1000)
-      )} min read`,
-      author: currentUser,
-      category: newPost.category || categories[0],
-      tags: newPost.tags || [],
-      image: imageUrl,
-      likes: 0,
-      comments: 0,
-    };
-
-    // Add to posts and reset form
-    setAllPosts([fullPost, ...allPosts]);
-    setIsCreatePostModalOpen(false);
-    setNewPost({
-      title: "",
-      excerpt: "",
-      content: "",
-      category: categories[0],
-      tags: [],
-      image: "",
-    });
-  };
-
-  // Comment handling
-  const handleSubmitComment = () => {
-    if (!currentPost) return;
-
-    if (!isSignedIn) {
-      setIsSignInModalOpen(true);
-      return;
-    }
-
-    if (!comment.trim()) {
-      showToast("Please enter a comment", "error");
-      return;
-    }
-
-    // Create a new comment
-    const newComment: Comment = {
-      id: `comment-${Date.now()}`,
-      author: currentUser!,
-      content: comment,
-      date: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      likes: 0,
-      postId: currentPost.id,
-    };
-
-    // Add comment to the current post
-    const updatedPosts = allPosts.map((post) => {
-      if (post.id === currentPost.id) {
-        // Create a new post object with updated comment count
-        return {
-          ...post,
-          comments: post.comments + 1,
-        };
-      }
-      return post;
-    });
-
-    // Update the current post's comments count
-    if (currentPost) {
-      setCurrentPost({
-        ...currentPost,
-        comments: currentPost.comments + 1,
-      });
-    }
-
-    // Update posts
-    setAllPosts(updatedPosts);
-
-    // Add comment to the global comments
-    setComments((prev) => [newComment, ...prev]);
-
-    // Clear comment field
-    setComment("");
-  };
-
-  const handleSubscribe = () => {
-    // Mock subscribe functionality
-    if (!email.trim()) {
-      showToast("Please enter your email", "error");
-      return;
-    }
-
-    setEmail("");
-    setName("");
-    showToast("Thanks for subscribing!", "success");
-  };
-
-  // Add these functions to ModernBlogApp
-  const handleSavePost = (post: Post) => {
-    setSavedPosts((prev) => {
-      if (!prev.some((p) => p.id === post.id)) {
-        return [...prev, post];
-      }
-      return prev;
-    });
-  };
-
-  const handleRemoveSavedPost = (postId: string) => {
-    setSavedPosts((prev) => prev.filter((post) => post.id !== postId));
-  };
+  }, [newPortfolioName, onCreatePortfolio]);
 
   return (
-    <motion.div 
-      className="min-h-screen bg-gray-50 text-gray-900"
-      style={{ fontFamily: 'Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Portfolio Management"
+      size="lg"
     >
-      {/* Navigation */}
-      <motion.nav 
-        className="bg-white shadow-sm fixed w-full z-10 transition-all duration-300"
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <a
-                href="#"
-                className="flex-shrink-0 flex items-center cursor-pointer"
-                onClick={() => {
-                  setCurrentPost(null);
-                  setSelectedCategory(null);
-                  setShowSavedPosts(false);
-                  setSearchQuery("");
-                  setIsSearchOpen(false);
-                  window.scrollTo(0, 0);
-                }}
-              >
-                <span className="font-bold text-xl text-blue-600">Insight</span>
-                <span className="font-bold text-xl text-gray-900">Blog</span>
-              </a>
-              <div className="hidden md:ml-6 md:flex md:space-x-8">
-                {categories.slice(0, 4).map((category) => (
-                  <a
-                    key={category.id}
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleCategorySelect(category.id);
-                    }}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer ${
-                      selectedCategory === category.id
-                        ? "border-blue-500 text-gray-900"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Your Portfolios
+          </h3>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 cursor-pointer transition-colors w-full sm:w-auto justify-center"
+          >
+            <PlusIcon className="w-4 h-4" />
+            <span>New Portfolio</span>
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+              <input
+                type="text"
+                value={newPortfolioName}
+                onChange={(e) => setNewPortfolioName(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleCreate()}
+                placeholder="Portfolio name"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleCreate}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 cursor-pointer transition-colors flex-1 sm:flex-none"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setNewPortfolioName("");
+                  }}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 cursor-pointer transition-colors flex-1 sm:flex-none"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-4">
+          {portfolios.map((portfolio) => (
+            <div
+              key={portfolio.id}
+              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
+                <h4 className="font-semibold text-gray-900">
+                  {portfolio.name}
+                </h4>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => onDeletePortfolio(portfolio.id)}
+                    className="text-red-600 hover:text-red-800 cursor-pointer"
                   >
-                    {category.name}
-                  </a>
-                ))}
-                <div className="relative group">
-                  <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200 cursor-pointer">
-                    More <ChevronDown className="ml-1 h-4 w-4" />
+                    <TrashIcon className="w-4 h-4" />
                   </button>
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                    {categories.slice(4).map((category) => (
-                      <a
-                        key={category.id}
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleCategorySelect(category.id);
-                        }}
-                        className={`block px-4 py-2 text-sm cursor-pointer ${
-                          selectedCategory === category.id
-                            ? "bg-gray-100 text-gray-900"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span className="text-2xl font-bold text-gray-900">
+                  ${portfolio.value.toLocaleString()}
+                </span>
+                <span
+                  className={`flex items-center ${
+                    portfolio.change >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {portfolio.change >= 0 ? (
+                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                  ) : (
+                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                  )}
+                  {Math.abs(portfolio.change).toFixed(2)}%
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600">
+                {Object.entries(portfolio.allocation).map(
+                  ([asset, percent]) => (
+                    <span key={asset}>
+                      {asset}: {percent.toFixed(2)}%
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const AlertsModal = memo(
+  ({
+    isOpen,
+    onClose,
+    alerts,
+    onMarkAsRead,
+    onDeleteAlert,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    alerts: Alert[];
+    onMarkAsRead: (id: string) => void;
+    onDeleteAlert: (id: string) => void;
+  }) => {
+    const alertColors = {
+      info: "border-blue-200 bg-blue-50",
+      warning: "border-yellow-200 bg-yellow-50",
+      success: "border-green-200 bg-green-50",
+      error: "border-red-200 bg-red-50",
+    };
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Notifications & Alerts"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {alerts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <BellIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>No alerts at this time</p>
+            </div>
+          ) : (
+            alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`border rounded-lg p-4 ${alertColors[alert.type]} ${
+                  alert.read ? "opacity-60" : ""
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">
+                      {alert.title}
+                    </h4>
+                    <p className="text-gray-700 text-sm mb-2">
+                      {alert.message}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(alert.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-auto">
+                    {!alert.read && (
+                      <button
+                        onClick={() => onMarkAsRead(alert.id)}
+                        className="text-blue-600 hover:text-blue-800 cursor-pointer text-xs whitespace-nowrap"
                       >
-                        {category.name}
-                      </a>
-                    ))}
+                        Mark as read
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onDeleteAlert(alert.id)}
+                      className="text-red-600 hover:text-red-800 cursor-pointer"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
+            ))
+          )}
+        </div>
+      </Modal>
+    );
+  }
+);
+
+const NewsDetailsModal = memo(
+  ({
+    isOpen,
+    onClose,
+    news,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    news: NewsItem | null;
+  }) => {
+    if (!news) return null;
+
+    const sentimentColors = {
+      positive: "text-green-600 bg-green-100",
+      negative: "text-red-600 bg-red-100",
+      neutral: "text-gray-600 bg-gray-100",
+    };
+
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="News Article" size="lg">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <span
+              className={`px-2 py-1 rounded text-xs font-medium ${
+                sentimentColors[news.sentiment]
+              }`}
+            >
+              {news.sentiment.toUpperCase()}
+            </span>
+            <span className="text-sm text-gray-500">{news.source}</span>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">{news.title}</h3>
+          <p className="text-gray-700">{news.content}</p>
+          <div className="text-xs text-gray-500">
+            {new Date(news.timestamp).toLocaleString()}
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+);
+
+const RiskDetailsModal = memo(
+  ({
+    isOpen,
+    onClose,
+    metric,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    metric: RiskMetric | null;
+  }) => {
+    if (!metric) return null;
+
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title={metric.name} size="lg">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <span className="text-3xl font-bold text-gray-900">
+              {metric.value}
+            </span>
+            <span
+              className={`flex items-center ${
+                metric.change >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {metric.change >= 0 ? (
+                <ArrowTrendingUpIcon className="w-5 h-5 mr-1" />
+              ) : (
+                <ArrowTrendingDownIcon className="w-5 h-5 mr-1" />
+              )}
+              {Math.abs(metric.change).toFixed(2)}
+            </span>
+          </div>
+          <p className="text-gray-700">{metric.description}</p>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-semibold text-gray-900 mb-2">Risk Level</h4>
+            <div
+              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                metric.status === "good"
+                  ? "bg-green-100 text-green-800"
+                  : metric.status === "warning"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              {metric.status.toUpperCase()}
             </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+);
+
+const Navbar = memo(
+  ({
+    user,
+    onLoginClick,
+    onLogout,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+    onPortfolioClick,
+    onAlertsClick,
+    unreadAlertsCount,
+  }: {
+    user: User;
+    onLoginClick: () => void;
+    onLogout: () => void;
+    isMobileMenuOpen: boolean;
+    setIsMobileMenuOpen: (open: boolean) => void;
+    onPortfolioClick: () => void;
+    onAlertsClick: () => void;
+    unreadAlertsCount: number;
+  }) => {
+    const navbarRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          navbarRef.current &&
+          !navbarRef.current.contains(event.target as Node) &&
+          isMobileMenuOpen
+        ) {
+          setIsMobileMenuOpen(false);
+        }
+      };
+
+      if (isMobileMenuOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.body.style.overflow = "hidden";
+      } else {
+        document.body.style.overflow = "unset";
+      }
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.body.style.overflow = "unset";
+      };
+    }, [isMobileMenuOpen, setIsMobileMenuOpen]);
+
+    const handleNavClick = (sectionId: string) => {
+      scrollToSection(sectionId);
+      setIsMobileMenuOpen(false);
+    };
+
+    return (
+      <nav ref={navbarRef} className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-sm">P</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
+                  Portfolio<span className="text-blue-600">Analyzer</span>
+                </h1>
+              </div>
+            </div>
+
+            <div className="hidden md:flex items-center space-x-4">
               <button
-                onClick={toggleSearch}
-                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
+                onClick={() => handleNavClick("dashboard")}
+                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
               >
-                <Search className="h-5 w-5" />
+                <ChartBarIcon className="w-4 h-4" />
+                <span>Dashboard</span>
+              </button>
+              <button
+                onClick={() => handleNavClick("analytics")}
+                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
+              >
+                <ChartPieIcon className="w-4 h-4" />
+                <span>Charts</span>
+              </button>
+              <button
+                onClick={() => handleNavClick("insights")}
+                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center space-x-1"
+              >
+                <DocumentTextIcon className="w-4 h-4" />
+                <span>Analysis</span>
               </button>
 
-              {/* Create new post button */}
-              {isSignedIn && (
+              <button
+                onClick={onAlertsClick}
+                className="relative text-gray-600 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-all p-2 rounded-lg"
+              >
+                <BellIcon className="w-5 h-5" />
+                {unreadAlertsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium shadow-lg">
+                    {unreadAlertsCount}
+                  </span>
+                )}
+              </button>
+
+              {user.isAuthenticated ? (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600 hidden lg:inline">
+                    {user.email.length > 20
+                      ? `${user.email.substring(0, 20)}...`
+                      : user.email}
+                  </span>
+                  <button
+                    onClick={onLogout}
+                    className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-md cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => setIsCreatePostModalOpen(true)}
-                  className="hidden md:block ml-4 px-4 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 cursor-pointer"
+                  onClick={onLoginClick}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-md cursor-pointer"
                 >
-                  New Post
+                  Login
                 </button>
               )}
+            </div>
 
-              <div className="hidden md:ml-4 md:flex md:items-center">
-                {!isSignedIn ? (
-                  <button
-                    onClick={() => setIsSignInModalOpen(true)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-                  >
-                    Sign In
-                  </button>
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-gray-700 hover:text-blue-600 cursor-pointer"
+              >
+                {isMobileMenuOpen ? (
+                  <XMarkIcon className="w-6 h-6" />
                 ) : (
-                  <div className="relative ml-3 group">
-                    <div className="flex items-center">
-                      <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
-                        <img
-                          className="h-8 w-8 rounded-full"
-                          src={currentUser?.avatar}
-                          alt={currentUser?.name}
-                        />
-                        <span className="ml-2 text-gray-700">
-                          {currentUser?.name}
-                        </span>
-                        <ChevronDown className="ml-1 h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setIsCreatePostModalOpen(true);
-                        }}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      >
-                        New Post
-                      </a>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setShowSavedPosts(true);
-                          setCurrentPost(null);
-                        }}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      >
-                        Saved Posts
-                      </a>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleSignOut();
-                        }}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      >
-                        Sign Out
-                      </a>
-                    </div>
-                  </div>
+                  <Bars3Icon className="w-6 h-6" />
                 )}
-
-                {!isSignedIn && (
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsSignInModalOpen(true);
-                    }}
-                    className="ml-3 px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-                  >
-                    Subscribe
-                  </a>
-                )}
-              </div>
-              <div className="ml-4 md:hidden">
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
-                >
-                  {isMenuOpen ? (
-                    <X className="h-6 w-6" />
-                  ) : (
-                    <Menu className="h-6 w-6" />
-                  )}
-                </button>
-              </div>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile menu */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              className="md:hidden bg-white shadow-lg"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              style={{ overflow: "hidden" }}
-            >
-              {/* Categories Section */}
-              <motion.div 
-                className="px-4 py-4 border-b border-gray-100"
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <button
+                onClick={() => handleNavClick("dashboard")}
+                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
               >
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  Categories
-                </h3>
-                <div className="space-y-1">
-                  {categories.map((category, index) => (
-                    <motion.button
-                      key={category.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleCategorySelect(category.id);
-                        setIsMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg text-base font-medium transition-all duration-200 cursor-pointer touch-manipulation ${
-                        selectedCategory === category.id
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.15 + index * 0.05 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {category.name}
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* User Section */}
-              <motion.div 
-                className="px-4 py-4"
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.3 }}
+                <ChartBarIcon className="w-4 h-4" />
+                <span>Dashboard</span>
+              </button>
+              <button
+                onClick={() => handleNavClick("analytics")}
+                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
               >
-                {!isSignedIn ? (
-                  <>
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                      Account
-                    </h3>
-                    <div className="space-y-2">
-                      <motion.button
-                        onClick={() => {
-                          setIsSignInModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full px-4 py-3 text-left text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 cursor-pointer touch-manipulation"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.35 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Sign In
-                      </motion.button>
-                      <motion.button
-                        onClick={() => {
-                          setIsSignInModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full px-4 py-3 rounded-lg text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 cursor-pointer touch-manipulation text-center"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.4 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Subscribe
-                      </motion.button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* User Info */}
-                    <motion.div 
-                      className="flex items-center mb-4 p-3 bg-gray-50 rounded-lg"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ duration: 0.4, delay: 0.35 }}
-                    >
-                      <img
-                        className="h-10 w-10 rounded-full mr-3"
-                        src={currentUser?.avatar}
-                        alt={currentUser?.name}
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{currentUser?.name}</div>
-                        <div className="text-sm text-gray-500">{currentUser?.role}</div>
-                      </div>
-                    </motion.div>
+                <ChartPieIcon className="w-4 h-4" />
+                <span>Charts</span>
+              </button>
+              <button
+                onClick={() => handleNavClick("insights")}
+                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
+              >
+                <DocumentTextIcon className="w-4 h-4" />
+                <span>Analysis</span>
+              </button>
+              <button
+                onClick={() => {
+                  onAlertsClick();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-base font-medium w-full text-left transition-all cursor-pointer"
+              >
+                <BellIcon className="w-4 h-4" />
+                <span>
+                  Alerts {unreadAlertsCount > 0 && `(${unreadAlertsCount})`}
+                </span>
+              </button>
 
-                    {/* User Actions */}
-                    <div className="space-y-2">
-                      <motion.button
-                        onClick={() => {
-                          setIsCreatePostModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-base font-medium text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 cursor-pointer touch-manipulation"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.4 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <span className="mr-2">+</span>
-                        New Post
-                      </motion.button>
-                      
-                      <motion.button
-                        onClick={() => {
-                          setShowSavedPosts(true);
-                          setCurrentPost(null);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full flex items-center px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer touch-manipulation"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.45 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Bookmark className="h-5 w-5 mr-3" />
-                        Saved Posts
-                      </motion.button>
-
-                      <motion.button
-                        onClick={() => {
-                          handleSignOut();
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full flex items-center px-4 py-3 rounded-lg text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200 cursor-pointer touch-manipulation"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.5 }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <X className="h-5 w-5 mr-3" />
-                        Sign Out
-                      </motion.button>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Search overlay */}
-        <div
-          className={`fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-start justify-center pt-4 sm:pt-20 px-4 transition-all duration-300 ease-out ${
-            isSearchOpen ? "opacity-100 visible" : "opacity-0 invisible"
-          }`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsSearchOpen(false);
-            }
-          }}
-        >
-          <div className={`w-full max-w-2xl transform transition-all duration-300 ease-out ${
-            isSearchOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'
-          }`}>
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 overflow-hidden max-h-[90vh] flex flex-col">
-              {/* Search Header */}
-              <div className="px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border-b border-gray-100/50 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg sm:rounded-xl">
-                      <Search className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Search Articles</h2>
-                      <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Find the perfect article for you</p>
-                    </div>
-                  </div>
+              {user.isAuthenticated ? (
+                <div className="px-3 py-2">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Welcome, {user.email}
+                  </p>
                   <button
-                    onClick={() => setIsSearchOpen(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer group touch-manipulation"
+                    onClick={onLogout}
+                    className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-md cursor-pointer"
                   >
-                    <X className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
+                    Logout
                   </button>
                 </div>
-              </div>
-
-              {/* Search Input */}
-              <div className="px-4 sm:px-8 py-4 sm:py-6 flex-shrink-0">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-                  </div>
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search by title, content, tags, or author..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 text-base sm:text-lg border-0 rounded-xl sm:rounded-2xl bg-gray-50/80 placeholder-gray-400 focus:outline-none focus:ring-2 sm:focus:ring-3 focus:ring-blue-500/30 focus:bg-white transition-all duration-300 shadow-sm touch-manipulation"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center">
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className={`text-gray-400 hover:text-gray-600 focus:outline-none transition-all duration-200 cursor-pointer p-1.5 sm:p-2 rounded-lg sm:rounded-xl hover:bg-gray-100 touch-manipulation ${
-                        searchQuery ? "opacity-100 visible scale-100" : "opacity-0 invisible scale-75"
-                      }`}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+              ) : (
+                <div className="px-3 py-2">
+                  <button
+                    onClick={onLoginClick}
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-md cursor-pointer"
+                  >
+                    Login
+                  </button>
                 </div>
-
-                {/* Search Results */}
-                {searchQuery && (
-                  <div className="mt-4 sm:mt-6 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <h3 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center">
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-1.5 sm:mr-2"></div>
-                        Search Results
-                      </h3>
-                      <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">
-                        {filteredPosts.length} found
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 sm:space-y-3 max-h-60 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                      {filteredPosts.length > 0 ? (
-                        filteredPosts.slice(0, 6).map((post) => (
-                          <div
-                            key={post.id}
-                            onClick={() => {
-                              handlePostClick(post);
-                              setIsSearchOpen(false);
-                            }}
-                            className="group p-3 sm:p-4 hover:bg-gray-50 rounded-lg sm:rounded-2xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-200 hover:shadow-md transform hover:-translate-y-0.5 touch-manipulation"
-                          >
-                            <div className="flex items-start space-x-3 sm:space-x-4">
-                              <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg sm:rounded-xl overflow-hidden shadow-sm">
-                                <img 
-                                  src={post.image} 
-                                  alt={post.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 mb-1">
-                                  {post.title}
-                                </h4>
-                                <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 mb-2">
-                                  {post.excerpt.substring(0, 120)}...
-                                </p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center text-xs text-gray-400">
-                                    <span className="font-medium truncate max-w-20 sm:max-w-none">{post.author.name}</span>
-                                    <span className="mx-1 sm:mx-2">•</span>
-                                    <span className="flex-shrink-0">{post.readTime}</span>
-                                  </div>
-                                  <div className="flex space-x-1 flex-shrink-0 ml-2">
-                                    {post.tags.slice(0, 1).map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 max-w-16 sm:max-w-none truncate"
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {post.tags.length > 1 && (
-                                      <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
-                                        +{post.tags.length - 1}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 sm:py-12 animate-in fade-in duration-500">
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                            <Search className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
-                          </div>
-                          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No articles found</h3>
-                          <p className="text-sm sm:text-base text-gray-500 max-w-xs sm:max-w-sm mx-auto px-4">
-                            We couldn't find any articles matching "<span className="font-medium text-gray-700">{searchQuery}</span>". Try different keywords.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Quick Actions */}
-                {!searchQuery && (
-                  <div className="mt-4 sm:mt-6 animate-in fade-in duration-300">
-                    <h3 className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full mr-1.5 sm:mr-2"></div>
-                      Popular Categories
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      {categories.slice(0, 4).map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => {
-                            handleCategorySelect(category.id);
-                            setIsSearchOpen(false);
-                          }}
-                          className="p-2.5 sm:p-3 text-left bg-gradient-to-br from-gray-50 to-gray-100 hover:from-blue-50 hover:to-blue-100 rounded-lg sm:rounded-xl transition-all duration-200 cursor-pointer group border border-gray-200 hover:border-blue-200 touch-manipulation"
-                        >
-                          <div className="font-medium text-sm sm:text-base text-gray-900 group-hover:text-blue-700 transition-colors duration-200 truncate">
-                            {category.name}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5 sm:mt-1">
-                            {posts.filter(p => p.category.id === category.id).length} articles
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 sm:px-8 py-3 sm:py-4 bg-gray-50/80 border-t border-gray-100/50 flex-shrink-0">
-                <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500">
-                  <div className="flex items-center space-x-2 sm:space-x-4">
-                    <span className="hidden sm:inline">Press <kbd className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white rounded border text-xs font-mono">Esc</kbd> to close</span>
-                    <span className="sm:hidden">Tap outside to close</span>
-                  </div>
-                  <div>
-                    {searchQuery && filteredPosts.length > 0 && (
-                      <span className="hidden sm:inline">Press <kbd className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white rounded border text-xs font-mono">Enter</kbd> to select first result</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.nav>
-
-      <motion.main 
-        className="pt-24 pb-16"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-      >
-        {currentPost ? (
-          <SinglePostView
-            post={currentPost}
-            comments={comments.filter((c) => c.postId === currentPost.id)}
-            onBack={handleBackToList}
-            comment={comment}
-            setComment={setComment}
-            handleSubmitComment={handleSubmitComment}
-            isSignedIn={isSignedIn}
-            currentUser={currentUser}
-            setIsSignInModalOpen={setIsSignInModalOpen}
-            setComments={setComments}
-            replyText={replyText}
-            setReplyText={setReplyText}
-            onSavePost={handleSavePost}
-            onRemoveSavedPost={handleRemoveSavedPost}
-            scrollToComments={scrollToCommentsFlag}
-            onScrollToCommentsComplete={() => setScrollToCommentsFlag(false)}
-            showToast={showToast}
-          />
-        ) : showSavedPosts ? (
-          <SavedPostsView
-            posts={savedPosts}
-            onPostClick={handlePostClick}
-            onBack={() => setShowSavedPosts(false)}
-            onUnsavePost={handleRemoveSavedPost}
-          />
-        ) : (
-          <BlogListView
-            posts={filteredPosts}
-            onPostClick={handlePostClick}
-            selectedCategory={selectedCategory}
-            categories={categories}
-            onCategorySelect={handleCategorySelect}
-            email={email}
-            setEmail={setEmail}
-            name={name}
-            setName={setName}
-            handleSubscribe={handleSubscribe}
-            comments={comments}
-          />
-        )}
-      </motion.main>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center mb-4">
-                <span className="font-bold text-xl text-blue-400">Insight</span>
-                <span className="font-bold text-xl text-white">Blog</span>
-              </div>
-              <p className="text-gray-300 mb-4 max-w-md">
-                Insightful perspectives on technology, design, business, and
-                more. Join our community of forward-thinking readers.
-              </p>
-              <div className="flex space-x-4">
-                <a
-                  href="#"
-                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                >
-                  <Twitter className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                >
-                  <Linkedin className="h-5 w-5" />
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-400 hover:text-white transition-colors duration-200 cursor-pointer"
-                >
-                  <Github className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Categories
-              </h3>
-              <ul className="space-y-2">
-                {categories.map((category) => (
-                  <li key={category.id}>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleCategorySelect(category.id);
-                        setCurrentPost(null);
-                        window.scrollTo(0, 0);
-                      }}
-                      className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
-                    >
-                      {category.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Subscribe
-              </h3>
-              <p className="text-gray-300 mb-4">
-                Get the latest posts delivered right to your inbox.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="px-4 py-2 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={handleSubscribe}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-                >
-                  Subscribe
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-gray-800">
-            <p className="text-gray-400 text-sm text-center">
-              © {new Date().getFullYear()} InsightBlog. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-
-      {/* Back to top button */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            onClick={scrollToTop}
-            className="fixed right-6 bottom-6 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-all duration-300 cursor-pointer"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ChevronUp className="h-5 w-5" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Toast notifications */}
-      <div className="fixed top-20 right-4 z-50 space-y-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              className={`px-4 py-3 rounded-md shadow-lg text-white text-sm font-medium ${
-                toast.type === 'success' ? 'bg-green-500' :
-                toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-              }`}
-              initial={{ x: 300, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 300, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Sign In Modal */}
-      <AnimatePresence>
-        {isSignInModalOpen && (
-          <motion.div 
-            className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setIsSignInModalOpen(false);
-              }
-            }}
-          >
-            <motion.div 
-              className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
-                <motion.button
-                  onClick={() => setIsSignInModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-500 cursor-pointer"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <X className="h-6 w-6" />
-                </motion.button>
-              </div>
-
-              <div className="space-y-4">
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                >
-                  <label
-                    htmlFor="username"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Username
-                  </label>
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your username"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                >
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your password"
-                  />
-                </motion.div>
-
-                <motion.div 
-                  className="flex items-center justify-between"
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
-                >
-                  <div className="flex items-center">
-                    <input
-                      id="remember-me"
-                      type="checkbox"
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                    />
-                    <label
-                      htmlFor="remember-me"
-                      className="ml-2 block text-sm text-gray-700 cursor-pointer"
-                    >
-                      Remember me
-                    </label>
-                  </div>
-
-
-                </motion.div>
-
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.4 }}
-                >
-                  <motion.button
-                    onClick={handleSignIn}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Sign In
-                  </motion.button>
-                </motion.div>
-
-                <motion.div 
-                  className="text-center"
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.5 }}
-                >
-                </motion.div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Create Post Modal */}
-      {isCreatePostModalOpen && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Create New Post
-              </h2>
-              <button
-                onClick={() => setIsCreatePostModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500 cursor-pointer"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="post-title"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Title *
-                </label>
-                <input
-                  id="post-title"
-                  type="text"
-                  value={newPost.title}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, title: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter post title"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-excerpt"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Excerpt *
-                </label>
-                <textarea
-                  id="post-excerpt"
-                  value={newPost.excerpt}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, excerpt: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter a brief excerpt of your post"
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-content"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Content *
-                </label>
-                <textarea
-                  id="post-content"
-                  value={newPost.content}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, content: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Write your post content here. HTML formatting is supported."
-                  rows={10}
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-category"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Category
-                </label>
-                <select
-                  id="post-category"
-                  value={newPost.category?.id || categories[0].id}
-                  onChange={(e) => {
-                    const selectedCategory = categories.find(
-                      (cat) => cat.id === e.target.value
-                    );
-                    setNewPost({
-                      ...newPost,
-                      category: selectedCategory || categories[0],
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-tags"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Tags (comma separated)
-                </label>
-                <input
-                  id="post-tags"
-                  type="text"
-                  value={newPost.tags?.join(", ") || ""}
-                  onChange={(e) => {
-                    const tagsInput = e.target.value;
-                    const tagsArray = tagsInput
-                      .split(",")
-                      .map((tag) => tag.trim())
-                      .filter((tag) => tag);
-                    setNewPost({ ...newPost, tags: tagsArray });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g. Technology, AI, Design"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-image"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Featured Image URL (optional)
-                </label>
-                <input
-                  id="post-image"
-                  type="text"
-                  value={newPost.image}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, image: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter image URL or leave blank for a random image"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setIsCreatePostModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreatePost}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  Publish Post
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
-};
-
-// ====== Blog List View Component ======
-const BlogListView = ({
-  posts,
-  onPostClick,
-  selectedCategory,
-  categories,
-  onCategorySelect,
-  email,
-  setEmail,
-  name,
-  setName,
-  handleSubscribe,
-  comments,
-}: {
-  posts: Post[];
-  onPostClick: (post: Post, scrollToComments?: boolean) => void;
-  selectedCategory: string | null;
-  categories: Category[];
-  onCategorySelect: (categoryId: string) => void;
-  email: string;
-  setEmail: (email: string) => void;
-  name: string;
-  setName: (name: string) => void;
-  handleSubscribe: () => void;
-  comments: Comment[];
-}) => {
-  const featuredPosts = posts.filter((post) => post.featured);
-  const regularPosts = posts.filter((post) => !post.featured);
-
-  const [locallyLikedPosts, setLocallyLikedPosts] = useState<Record<string, boolean>>({});
-  const [localLikeCounts, setLocalLikeCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    const initialCounts: Record<string, number> = {};
-    const initialLikedStatus: Record<string, boolean> = {};
-    posts.forEach(p => {
-      initialCounts[p.id] = p.likes;
-      initialLikedStatus[p.id] = false; // Assume not liked initially on card view
-    });
-    setLocalLikeCounts(initialCounts);
-    setLocallyLikedPosts(initialLikedStatus);
-  }, [posts]);
-
-  const handleToggleLike = (postId: string) => {
-    const currentlyLiked = locallyLikedPosts[postId];
-    setLocallyLikedPosts(prevLikedStatus => ({
-      ...prevLikedStatus,
-      [postId]: !currentlyLiked,
-    }));
-    setLocalLikeCounts(prevCounts => ({
-      ...prevCounts,
-      [postId]: currentlyLiked
-        ? (prevCounts[postId] || 0) - 1 // If it was liked, decrement
-        : (prevCounts[postId] || 0) + 1, // If it was not liked, increment
-    }));
-  };
-
-  // Selected category name for display
-  const selectedCategoryName = selectedCategory
-    ? categories.find((cat) => cat.id === selectedCategory)?.name
-    : null;
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Hero/Featured section */}
-      {selectedCategory === null ? (
-        <section className="mb-16">
-          <h1 className="text-4xl font-bold text-center mb-12">
-            <span className="text-blue-600">Insights</span> for the Modern World
-          </h1>
-
-          {featuredPosts.length > 0 ? (
-            <motion.div 
-              className="grid grid-cols-1 lg:grid-cols-1 gap-8"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {featuredPosts.slice(0, 2).map((post, index) => (
-                  <motion.div
-                    key={post.id}
-                    className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
-                    onClick={() => onPostClick(post, false)}
-                  >
-                    <div className="relative h-64 w-full overflow-hidden">
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        className="h-full w-full object-cover object-center"
-                        style={{ objectPosition: 'center' }}
-                      />
-                      <div className="absolute top-4 left-4 bg-blue-600 text-white text-xs uppercase py-1 px-2 rounded-md">
-                        Featured
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <div className="mb-3">
-                        <div className="flex items-center mb-1">
-                          <img
-                            src={post.author.avatar}
-                            alt={post.author.name}
-                            className="h-6 w-6 rounded-full mr-2"
-                          />
-                          <span className="font-medium text-gray-900">{post.author.name}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 ml-8">
-                          <span>{post.date}</span>
-                          <span className="mx-2">•</span>
-                          <span className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            {post.readTime}
-                          </span>
-                        </div>
-                      </div>
-                      <h2 className="text-xl sm:text-2xl font-bold mb-2 text-gray-900 line-clamp-2">
-                        {post.title}
-                      </h2>
-                      <p className="text-gray-600 mb-4 line-clamp-3 text-sm sm:text-base">{post.excerpt}</p>
-                      <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
-                        <div className="flex flex-wrap gap-2">
-                          {post.tags.slice(0, 2).map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {post.tags.length > 2 && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                              +{post.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
-                            className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                            aria-label="Like post"
-                          >
-                            <Heart className={`h-4 w-4 mr-1 ${locallyLikedPosts[post.id] ? 'fill-current' : ''}`} />
-                            {localLikeCounts[post.id] !== undefined ? localLikeCounts[post.id] : post.likes}
-                          </button>
-                          <span 
-                            className="flex items-center cursor-pointer" 
-                            onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
-                            role="button"
-                            aria-label="View comments"
-                          >
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            {comments.filter((c) => c.postId === post.id).length}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div 
-              className="text-center py-12"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <p className="text-gray-500">No featured posts available.</p>
-            </motion.div>
-          )}
-        </section>
-      ) : (
-        <section className="mb-12">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {selectedCategoryName} Articles
-            </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore our collection of articles about{" "}
-              {selectedCategoryName?.toLowerCase()}, covering the latest trends,
-              insights, and practical knowledge.
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* Category filters for mobile */}
-      <div className="md:hidden mb-8">
-        <div className="flex overflow-x-auto py-2 space-x-2 no-scrollbar">
-          <button
-            onClick={() => onCategorySelect(selectedCategory || "")}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 flex-shrink-0 cursor-pointer ${
-              selectedCategory === null
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            All
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => onCategorySelect(category.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 flex-shrink-0 cursor-pointer ${
-                selectedCategory === category.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Posts list */}
-        <div className="md:col-span-2">
-          <h2 className="text-2xl font-bold mb-6">
-            {selectedCategory
-              ? `${selectedCategoryName} Posts`
-              : "Latest Articles"}
-          </h2>
-
-          {posts.length > 0 ? (
-            <div className="space-y-8">
-              {regularPosts.map((post) => (
-                <article
-                  key={post.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer flex flex-col sm:flex-row h-auto"
-                  onClick={() => onPostClick(post, false)}
-                >
-                  <div className="sm:w-1/3 h-48 sm:h-auto sm:min-h-full overflow-hidden flex-shrink-0">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="h-full w-full object-cover object-center transition-transform duration-300 hover:scale-105"
-                      style={{ objectPosition: 'center', minHeight: '100%' }}
-                    />
-                  </div>
-                  <div className="p-4 sm:p-6 sm:w-2/3 flex-1 flex flex-col justify-between">
-                    <div className="mb-3">
-                      <div className="flex items-center mb-1">
-                        <img
-                          src={post.author.avatar}
-                          alt={post.author.name}
-                          className="h-6 w-6 rounded-full mr-2"
-                        />
-                        <span className="font-medium text-gray-900">{post.author.name}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500 ml-8">
-                        <span>{post.date}</span>
-                        <span className="mx-2">•</span>
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {post.readTime}
-                        </span>
-                      </div>
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-900 line-clamp-2">
-                      {post.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2 text-sm sm:text-base">{post.excerpt}</p>
-                    <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
-                      <div className="flex flex-wrap gap-2">
-                        {post.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {post.tags.length > 2 && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                            +{post.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
-                         <button 
-                          onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
-                          className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                          aria-label="Like post"
-                        >
-                          <Heart className={`h-4 w-4 mr-1 ${locallyLikedPosts[post.id] ? 'fill-current' : ''}`} />
-                          {localLikeCounts[post.id] !== undefined ? localLikeCounts[post.id] : post.likes}
-                        </button>
-                        <span 
-                          className="flex items-center cursor-pointer" 
-                          onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
-                          role="button"
-                          aria-label="View comments"
-                        >
-                          <MessageCircle className="h-4 w-4 mr-1" />
-                          {comments.filter((c) => c.postId === post.id).length}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                No posts found
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {selectedCategory
-                  ? "There are no posts in this category yet."
-                  : "There are no posts matching your criteria."}
-              </p>
-              {selectedCategory && (
-                <button
-                  onClick={() => onCategorySelect(selectedCategory)}
-                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 cursor-pointer"
-                >
-                  View all posts
-                </button>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="md:col-span-1">
-          <div className="space-y-8">
-            {/* Categories */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-bold mb-4 text-gray-900">
-                Categories
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onCategorySelect(selectedCategory || "");
-                    }}
-                    className={`flex items-center justify-between py-2 px-3 rounded-md transition-colors duration-200 cursor-pointer ${
-                      selectedCategory === null
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>All Categories</span>
-                    <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
-                      {posts.length}
-                    </span>
-                  </a>
-                </li>
-                {categories.map((category) => {
-                  const categoryPostCount = posts.filter(
-                    (post) => post.category.id === category.id
-                  ).length;
-
-                  return (
-                    <li key={category.id}>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onCategorySelect(category.id);
-                        }}
-                        className={`flex items-center justify-between py-2 px-3 rounded-md transition-colors duration-200 cursor-pointer ${
-                          selectedCategory === category.id
-                            ? "bg-blue-50 text-blue-600"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span>{category.name}</span>
-                        <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
-                          {categoryPostCount}
-                        </span>
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* Newsletter */}
-            <div
-              id="subscribe-newsletter"
-              className="bg-blue-600 rounded-lg shadow-md p-6 text-white"
-            >
-              <h3 className="text-lg font-bold mb-2">
-                Refer to our newsletter
-              </h3>
-              <p className="text-blue-100 mb-4">
-                Get the latest posts delivered right to your inbox.
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Enter referral name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-blue-500 bg-blue-500 rounded-md placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="email"
-                    placeholder="Enter referral email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-blue-500 bg-blue-500 rounded-md placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white"
-                  />
-                </div>
-                <button
-                  onClick={handleSubscribe}
-                  className="w-full bg-white text-blue-600 font-medium py-2 px-4 rounded-md hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-                >
-                  Subscribe
-                </button>
-              </div>
-              <p className="text-blue-200 text-xs mt-3">
-                We respect your privacy. No spam, ever.
-              </p>
-            </div>
-
-            {/* Popular tags */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-bold mb-4 text-gray-900">
-                Popular Tags
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {Array.from(new Set(posts.flatMap((post) => post.tags)))
-                  .slice(0, 12)
-                  .map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer transition-colors duration-200"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-              </div>
-            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+        )}
+      </nav>
+    );
+  }
+);
 
-// Add this new component
-const SavedPostsView = ({
-  posts,
-  onPostClick,
-  onBack,
-  onUnsavePost,
-}: {
-  posts: Post[];
-  onPostClick: (post: Post, scrollToComments?: boolean) => void;
-  onBack: () => void;
-  onUnsavePost: (postId: string) => void;
-}) => {
-  const [locallyLikedSavedPosts, setLocallyLikedSavedPosts] = useState<Record<string, boolean>>({});
-  const [localSavedLikeCounts, setLocalSavedLikeCounts] = useState<Record<string, number>>({});
+const Toast = memo(
+  ({
+    message,
+    type,
+    isVisible,
+    onClose,
+  }: {
+    message: string;
+    type: "success" | "error" | "info";
+    isVisible: boolean;
+    onClose: () => void;
+  }) => {
+    const colors = {
+      success: "bg-green-500",
+      error: "bg-red-500",
+      info: "bg-blue-500",
+    };
 
-  useEffect(() => {
-    const initialCounts: Record<string, number> = {};
-    const initialLikedStatus: Record<string, boolean> = {};
-    posts.forEach(p => {
-      initialCounts[p.id] = p.likes;
-      initialLikedStatus[p.id] = false; // Assume not liked initially on card view
-    });
-    setLocalSavedLikeCounts(initialCounts);
-    setLocallyLikedSavedPosts(initialLikedStatus);
-  }, [posts]);
+    useEffect(() => {
+      if (isVisible) {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+      }
+    }, [isVisible, onClose]);
 
-  const handleToggleLike = (postId: string) => {
-    const currentlyLiked = locallyLikedSavedPosts[postId];
-    setLocallyLikedSavedPosts(prevLikedStatus => ({
-      ...prevLikedStatus,
-      [postId]: !currentlyLiked,
-    }));
-    setLocalSavedLikeCounts(prevCounts => ({
-      ...prevCounts,
-      [postId]: currentlyLiked
-        ? (prevCounts[postId] || 0) - 1
-        : (prevCounts[postId] || 0) + 1,
-    }));
-  };
+    if (!isVisible) return null;
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="mb-6 inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
+    return (
+      <div
+        className={`fixed top-10 md:top-20 right-4 z-50 ${
+          colors[type]
+        } text-white px-4 sm:px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 max-w-[300px] md:max-w-sm ${
+          isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+        }`}
       >
-        <ArrowRight className="h-4 w-4 mr-1 transform rotate-180" />
-        Back to all articles
-      </button>
-
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Saved Posts</h1>
-        <p className="text-gray-600 mt-2">
-          Your bookmarked articles for later reading
-        </p>
-      </header>
-
-      {posts.length > 0 ? (
-        <div className="space-y-8">
-          {posts.map((post) => (
-            <article
-              key={post.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer flex flex-col sm:flex-row h-auto"
-              onClick={() => onPostClick(post, false)}
-            >
-              <div className="sm:w-1/3 h-48 sm:h-auto sm:min-h-full overflow-hidden flex-shrink-0">
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="h-full w-full object-cover object-center transition-transform duration-300 hover:scale-105"
-                  style={{ objectPosition: 'center', minHeight: '100%' }}
-                />
-              </div>
-              <div className="p-4 sm:p-6 sm:w-2/3 flex-1 flex flex-col justify-between">
-                <div className="mb-3">
-                  <div className="flex items-center mb-1">
-                    <img
-                      src={post.author.avatar}
-                      alt={post.author.name}
-                      className="h-6 w-6 rounded-full mr-2"
-                    />
-                    <span className="font-medium text-gray-900">{post.author.name}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500 ml-8">
-                    <span>{post.date}</span>
-                    <span className="mx-2">•</span>
-                    <span className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {post.readTime}
-                    </span>
-                  </div>
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-900 line-clamp-2">
-                  {post.title}
-                </h3>
-                <p className="text-gray-600 mb-4 line-clamp-2 text-sm sm:text-base">{post.excerpt}</p>
-                <div className="flex sm:items-center sm:justify-between sm:flex-row flex-col gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    {post.tags.slice(0, 2).map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {post.tags.length > 2 && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                        +{post.tags.length - 2}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 text-gray-500 sm:justify-start justify-between mt-2 sm:mt-0">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleToggleLike(post.id); }} 
-                      className={`flex items-center transition-colors duration-200 cursor-pointer ${locallyLikedSavedPosts[post.id] ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                      aria-label="Like post"
-                    >
-                      <Heart className={`h-4 w-4 mr-1 ${locallyLikedSavedPosts[post.id] ? 'fill-current' : ''}`} />
-                      {localSavedLikeCounts[post.id] !== undefined ? localSavedLikeCounts[post.id] : post.likes}
-                    </button>
-                    <span 
-                      className="flex items-center cursor-pointer" 
-                      onClick={(e) => { e.stopPropagation(); onPostClick(post, true); }}
-                      role="button"
-                      aria-label="View comments"
-                    >
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      {post.comments} {/* Assuming comments count on post object is fine for saved view */}
-                    </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onUnsavePost(post.id); }}
-                      className="flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-                      aria-label="Unsave post"
-                    >
-                      <Bookmark className="h-4 w-4 mr-1 fill-current" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <h3 className="text-xl font-medium text-gray-900 mb-2">
-            No saved posts yet
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Bookmark articles that interest you to read them later.
-          </p>
-          <button
-            onClick={onBack}
-            className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 cursor-pointer"
-          >
-            Browse all articles
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">{message}</span>
+          <button onClick={onClose} className="ml-2 cursor-pointer">
+            <XMarkIcon className="w-4 h-4" />
           </button>
         </div>
-      )}
-    </div>
-  );
-};
-
-// ====== Single Post View Component ======
-const SinglePostView = ({
-  post,
-  comments,
-  onBack,
-  comment,
-  setComment,
-  handleSubmitComment,
-  isSignedIn = false,
-  currentUser = null,
-  setIsSignInModalOpen,
-  setComments,
-  replyText,
-  setReplyText,
-  onSavePost,
-  onRemoveSavedPost,
-  scrollToComments,
-  onScrollToCommentsComplete,
-  showToast,
-}: {
-  post: Post;
-  comments: Comment[];
-  onBack: () => void;
-  comment: string;
-  setComment: (comment: string) => void;
-  handleSubmitComment: () => void;
-  isSignedIn?: boolean;
-  currentUser?: Author | null;
-  setIsSignInModalOpen: (isOpen: boolean) => void;
-  setComments: React.Dispatch<React.SetStateAction<Comment[]>>;
-  replyText: string;
-  setReplyText: React.Dispatch<React.SetStateAction<string>>;
-  onSavePost: (post: Post) => void;
-  onRemoveSavedPost: (postId: string) => void;
-  scrollToComments: boolean;
-  onScrollToCommentsComplete: () => void;
-  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
-}) => {
-  const [showShareOptions, setShowShareOptions] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likes);
-
-  const handleLike = () => {
-    if (isLiked) {
-      setLikeCount(likeCount - 1);
-    } else {
-      setLikeCount(likeCount + 1);
-    }
-    setIsLiked(!isLiked);
-  };
-
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
-    if (!isBookmarked) {
-      onSavePost(post); // Add post to saved posts
-    } else {
-      onRemoveSavedPost(post.id); // Remove post from saved posts
-    }
-  };
-
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const handleCommentLike = (id: string) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? { ...c, likes: likedComments.has(id) ? c.likes - 1 : c.likes + 1 }
-          : c
-      )
+      </div>
     );
-    setLikedComments((pc) => {
-      const next = new Set(pc);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  }
+);
 
-  const handleReplyLike = (replyId: string, parentCommentId: string) => {
-    setComments(prevComments => 
-      prevComments.map(comment => {
-        if (comment.id === parentCommentId) {
-          return {
-            ...comment,
-            replies: (comment.replies || []).map(reply => {
-              if (reply.id === replyId) {
-                const alreadyLiked = likedComments.has(replyId);
-                return {
-                  ...reply,
-                  likes: alreadyLiked ? reply.likes - 1 : reply.likes + 1,
-                };
-              }
-              return reply;
-            }),
+// Main Component
+export default function PortfolioAnalyzer() {
+  // State management
+  const [user, setUser] = useState<User>({ email: "", isAuthenticated: false });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
+  const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
+  const [selectedRiskMetric, setSelectedRiskMetric] =
+    useState<RiskMetric | null>(null);
+  const [isClient, setisClient] = useState(false);
+  const [stockData, setStockData] = useState(() => generateStockData());
+  const [newsData] = useState(() => generateNewsData());
+  const [riskMetrics, setRiskMetrics] = useState(() => generateRiskMetrics());
+  const [portfolios, setPortfolios] = useState(() => generatePortfolios());
+  const [alerts, setAlerts] = useState(() => generateAlerts());
+
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+    isVisible: boolean;
+  }>({
+    message: "",
+    type: "info",
+    isVisible: false,
+  });
+
+  const unreadAlertsCount = useMemo(
+    () => alerts.filter((alert) => !alert.read).length,
+    [alerts]
+  );
+
+  useEffect(() => {
+    if (!isClient) {
+      setisClient(true);
+    }
+  }, []);
+
+  // Event handlers
+  const handleLogin = useCallback((email: string, password: string) => {
+    if (password) {
+      setUser({ email, isAuthenticated: true });
+      setIsLoginModalOpen(false);
+      setToast({
+        message: `Welcome back, ${email}!`,
+        type: "success",
+        isVisible: true,
+      });
+    } else {
+      setToast({
+        message: "Invalid credentials. Use password: 12345678",
+        type: "error",
+        isVisible: true,
+      });
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    const userEmail = user.email;
+    setUser({ email: "", isAuthenticated: false });
+    setIsMobileMenuOpen(false);
+    setToast({
+      message: `Goodbye, ${userEmail}!`,
+      type: "info",
+      isVisible: true,
+    });
+  }, [user.email]);
+
+  const handleNewsClick = useCallback((news: NewsItem) => {
+    setSelectedNews(news);
+    setIsNewsModalOpen(true);
+  }, []);
+
+  const handleRiskClick = useCallback((metric: RiskMetric) => {
+    setSelectedRiskMetric(metric);
+    setIsRiskModalOpen(true);
+  }, []);
+
+  const handleCreatePortfolio = useCallback((name: string) => {
+    const newPortfolio: Portfolio = {
+      id: `portfolio-${Date.now()}`,
+      name,
+      value: Math.floor(Math.random() * 100000) + 50000,
+      change: (Math.random() - 0.5) * 10,
+      allocation: { Stocks: 60, Bonds: 30, Cash: 10 },
+    };
+    setPortfolios((prev) => [...prev, newPortfolio]);
+    setToast({
+      message: `Portfolio "${name}" created successfully!`,
+      type: "success",
+      isVisible: true,
+    });
+  }, []);
+
+  const handleDeletePortfolio = useCallback((id: string) => {
+    setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    setToast({
+      message: "Portfolio deleted successfully!",
+      type: "info",
+      isVisible: true,
+    });
+  }, []);
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setAlerts((prev) =>
+      prev.map((alert) => (alert.id === id ? { ...alert, read: true } : alert))
+    );
+  }, []);
+
+  const handleDeleteAlert = useCallback((id: string) => {
+    setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+  }, []);
+
+  const closeToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  }, []);
+
+  // Add live data update mechanism
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Update stock data with new values
+      setStockData((prev: StockData[]) => {
+        const newData = [...prev];
+        const lastItem = newData[newData.length - 1];
+        const today = new Date().toISOString().split("T")[0];
+        
+        // Only add new data if it's a new day or update the last entry
+        if (lastItem.date !== today) {
+          const basePrice = lastItem.close;
+          const open = basePrice + (Math.random() - 0.5) * 5;
+          const close = open + (Math.random() - 0.5) * 4;
+          const high = Math.max(open, close) + Math.random() * 3;
+          const low = Math.min(open, close) - Math.random() * 3;
+
+          newData.push({
+            date: today,
+            open: Math.round(open * 100) / 100,
+            high: Math.round(high * 100) / 100,
+            low: Math.round(low * 100) / 100,
+            close: Math.round(close * 100) / 100,
+            volume: Math.floor(Math.random() * 1000000) + 500000,
+          });
+        } else {
+          // Update current day's data
+          const updatedClose = lastItem.close + (Math.random() - 0.5) * 2;
+          newData[newData.length - 1] = {
+            ...lastItem,
+            close: Math.round(updatedClose * 100) / 100,
+            high: Math.max(lastItem.high, updatedClose),
+            low: Math.min(lastItem.low, updatedClose),
           };
         }
-        return comment;
-      })
-    );
+        
+        return newData;
+      });
 
-    setLikedComments(prevLiked => {
-      const next = new Set(prevLiked);
-      if (next.has(replyId)) {
-        next.delete(replyId);
-      } else {
-        next.add(replyId);
-      }
-      return next;
-    });
-  };
+      // Update risk metrics with slight variations
+      setRiskMetrics((prev: RiskMetric[]) => prev.map((metric: RiskMetric) => ({
+        ...metric,
+        value: Math.round((metric.value + (Math.random() - 0.5) * 0.1) * 100) / 100,
+        change: Math.round((Math.random() - 0.5) * 0.2 * 100) / 100,
+      })));
 
-  // And for "Reply", you'll need to track which comment is in "reply mode":
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+      // Update portfolios with real-time changes
+      setPortfolios((prev: Portfolio[]) => prev.map((portfolio: Portfolio) => {
+        const changePercent = (Math.random() - 0.5) * 0.25; // Random change between -0.25% to +0.25%
+        const newValue = portfolio.value * (1 + changePercent / 100);
+        const newChange = portfolio.change + (Math.random() - 0.5) * 0.2; // Small random adjustment
+        
+        return {
+          ...portfolio,
+          value: Math.round(newValue),
+          change: Math.round(newChange * 100) / 100, // Format to 2 decimal places
+        };
+      }));
 
-  useEffect(() => {
-    if (scrollToComments) {
-      document.getElementById("comments-section")?.scrollIntoView({ behavior: "smooth" });
-      onScrollToCommentsComplete();
-    }
-  }, [scrollToComments, onScrollToCommentsComplete]);
+    }, 5000); // Update every 5 seconds
 
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!isClient) {
+    return "";
+  }
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="mb-6 inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-      >
-        <ArrowRight className="h-4 w-4 mr-1 transform rotate-180" />
-        Back to articles
-      </button>
-
-      {/* Article header */}
-      <header className="mb-8">
-        <div className="flex items-center text-sm text-gray-500 mb-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 mr-2">
-            {post.category.name}
-          </span>
-          <span>{post.date}</span>
-          <span className="mx-2">•</span>
-          <span className="flex items-center">
-            <Clock className="h-4 w-4 mr-1" />
-            {post.readTime}
-          </span>
-        </div>
-
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-          {post.title}
-        </h1>
-
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center">
-            <img
-              src={post.author.avatar}
-              alt={post.author.name}
-              className="h-10 w-10 rounded-full mr-3"
-            />
-            <div>
-              <div className="font-medium text-gray-900">
-                {post.author.name}
-              </div>
-              <div className="text-sm text-gray-500">{post.author.role}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <button
-                onClick={() => setShowShareOptions(!showShareOptions)}
-                className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors duration-200 cursor-pointer"
-              >
-                <Share2 className="h-5 w-5" />
-              </button>
-
-              {/* Share dropdown */}
-              <div
-                className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 ${
-                  showShareOptions
-                    ? "opacity-100 visible"
-                    : "opacity-0 invisible"
-                } transition-all duration-200`}
-              >
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                >
-                  <Twitter className="h-4 w-4 inline mr-2" /> Twitter
-                </a>
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                >
-                  <Facebook className="h-4 w-4 inline mr-2" /> Facebook
-                </a>
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                >
-                  <Linkedin className="h-4 w-4 inline mr-2" /> LinkedIn
-                </a>
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                >
-                  <Mail className="h-4 w-4 inline mr-2" /> Email
-                </a>
-              </div>
-            </div>
-
-            <button
-              onClick={handleBookmark}
-              className={`p-2 rounded-full ${
-                isBookmarked
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              } transition-colors duration-200 cursor-pointer`}
-            >
-              <Bookmark
-                className={`h-5 w-5 ${isBookmarked ? "fill-current" : ""}`}
-              />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Featured image */}
-      <div className="mb-8 rounded-lg overflow-hidden">
-        <img
-          src={post.image}
-          alt={post.title}
-          className="w-full h-auto object-cover"
+    <div
+      className="min-h-screen bg-gray-50"
+      style={{ fontFamily: "Roboto, sans-serif" }}
+    >
+      {user.isAuthenticated && (
+        <Navbar
+          user={user}
+          onLoginClick={() => setIsLoginModalOpen(true)}
+          onLogout={handleLogout}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onPortfolioClick={() => setIsPortfolioModalOpen(true)}
+          onAlertsClick={() => setIsAlertsModalOpen(true)}
+          unreadAlertsCount={unreadAlertsCount}
         />
-      </div>
+      )}
 
-      {/* Article content */}
-      <article className="prose prose-lg max-w-none mb-12">
-        <div dangerouslySetInnerHTML={{ __html: post.content }} />
-      </article>
-
-      {/* Tags */}
-      <div className="mb-8">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">Tags</h3>
-        <div className="flex flex-wrap gap-2">
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer transition-colors duration-200"
-            >
-              <Tag className="h-4 w-4 mr-1" />
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Article actions */}
-      <div className="flex items-center justify-between border-t border-b border-gray-200 py-4 mb-8">
-        <div className="flex space-x-4">
-          <button
-            onClick={handleLike}
-            className={`flex items-center ${
-              isLiked ? "text-red-500" : "text-gray-600 hover:text-red-500"
-            } transition-colors duration-200 cursor-pointer`}
-          >
-            <Heart
-              className={`h-5 w-5 mr-1 ${isLiked ? "fill-current" : ""}`}
-            />
-            <span>{likeCount}</span>
-          </button>
-          <button
-            onClick={() =>
-              document
-                .getElementById("comments-section")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-          >
-            <MessageCircle className="h-5 w-5 mr-1" />
-            <span>{comments.length}</span>
-          </button>
-        </div>
-
-        <div className="flex space-x-2">
-          <button
-            onClick={handleBookmark}
-            className={`flex items-center ${
-              isBookmarked
-                ? "text-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            } transition-colors duration-200 cursor-pointer`}
-          >
-            <Bookmark
-              className={`h-5 w-5 mr-1 ${isBookmarked ? "fill-current" : ""}`}
-            />
-            <span>Save</span>
-          </button>
-          <button
-            onClick={() => setShowShareOptions(!showShareOptions)}
-            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-          >
-            <Share2 className="h-5 w-5 mr-1" />
-            <span>Share</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Author bio */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-8">
-        <div className="flex items-center mb-4">
-          <img
-            src={post.author.avatar}
-            alt={post.author.name}
-            className="h-12 w-12 rounded-full mr-4"
-          />
-          <div>
-            <h3 className="font-bold text-lg text-gray-900">
-              {post.author.name}
-            </h3>
-            <p className="text-sm text-gray-600">{post.author.role}</p>
-          </div>
-        </div>
-        <p className="text-gray-700 mb-4">{post.author.bio}</p>
-        <div className="flex space-x-4">
-          <a
-            href="#"
-            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-          >
-            <Twitter className="h-5 w-5" />
-          </a>
-          <a
-            href="#"
-            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-          >
-            <Linkedin className="h-5 w-5" />
-          </a>
-          <a
-            href="#"
-            className="text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-          >
-            <Mail className="h-5 w-5" />
-          </a>
-        </div>
-      </div>
-
-      {/* Related articles would go here */}
-
-      {/* Comments section */}
-      <section id="comments-section" className="mb-8">
-        <h2 className="text-2xl font-bold mb-6">
-          Comments ({comments.length})
-        </h2>
-
-        {/* Comment form */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h3 className="text-lg font-medium mb-4">Leave a comment</h3>
-          {isSignedIn ? (
-            <div>
-              <div className="flex items-center mb-4">
-                <img
-                  src={currentUser?.avatar}
-                  alt={currentUser?.name}
-                  className="h-10 w-10 rounded-full mr-3"
-                />
-                <div>
-                  <div className="font-medium text-gray-900">
-                    {currentUser?.name}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Commenting as {currentUser?.role}
-                  </div>
-                </div>
-              </div>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Share your thoughts..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-                rows={4}
-              ></textarea>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleSubmitComment}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center cursor-pointer"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Post Comment
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-600 mb-4">
-                You need to sign in to leave a comment.
-              </p>
-              <button
-                onClick={() => setIsSignInModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-              >
-                Sign In to Comment
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Comments list */}
-        <div className="space-y-6">
-          {comments.map((comment) => (
-            <div key={comment.id} className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <img
-                  src={comment.author.avatar}
-                  alt={comment.author.name}
-                  className="h-10 w-10 rounded-full mr-3"
-                />
-                <div>
-                  <div className="font-medium text-gray-900">
-                    {comment.author.name}
-                  </div>
-                  <div className="text-sm text-gray-500">{comment.date}</div>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-4">{comment.content}</p>
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  onClick={() =>
-                    setReplyingTo(replyingTo === comment.id ? null : comment.id)
-                  }
-                  className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer"
-                >
-                  Reply
-                </button>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleCommentLike(comment.id)}
-                    className={`text-gray-500 transition-colors duration-200 ${
-                      likedComments.has(comment.id)
-                        ? "text-red-500"
-                        : "hover:text-red-500 text-gray-600"
-                    } cursor-pointer`}
-                  >
-                    <Heart
-                      className={`h-4 w-4 mr-1 ${
-                        likedComments.has(comment.id) ? "fill-current" : ""
-                      }`}
-                    />
-                  </button>
-                  <span className="text-gray-500 text-sm ml-1">
-                    {comment.likes}
-                  </span>
-                </div>
-              </div>
-
-              {/* Conditionally render a reply box - MOVED AND RESTYLED */}
-              {replyingTo === comment.id && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
-                    placeholder={`Replying to ${comment.author.name}...`}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    rows={3}
-                  />
-                  <div className="flex justify-end">
+      <AuthGuard
+        isAuthenticated={user.isAuthenticated}
+        onLoginRequired={() => setIsLoginModalOpen(true)}
+      >
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+          {/* Hero Section */}
+          <div id="dashboard" className="mb-6 sm:mb-8">
+            <div className="relative h-64 sm:h-72 md:h-80 lg:h-[26rem] xl:h-[30rem] rounded-lg overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1563986768711-b3bde3dc821e?w=1200&h=400&fit=crop&crop=center"
+                alt="Financial Dashboard"
+                className="w-full h-full object-cover"
+              />
+              {/* <div
+                className="relative h-[60vh] md:h-[75vh] lg:h-[90vh] w-full bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('https://source.unsplash.com/1600x900/?stock,finance,analytics')`,
+                }}
+              > */}
+              {/* Black overlay */}
+              <div className="absolute inset-0 bg-black/50 bg-opacity-60 flex items-center justify-center p-4">
+                <div className="text-center text-white px-2">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4">
+                    Advanced Portfolio Analytics
+                  </h1>
+                  <p className="text-sm sm:text-lg md:text-xl opacity-90 mb-4 sm:mb-6">
+                    Real-time insights for informed investment decisions
+                  </p>
+                  <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
                     <button
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center text-sm font-medium cursor-pointer"
-                      onClick={() => {
-                        if (!currentUser) {
-                          setIsSignInModalOpen(true);
-                          return;
-                        }
-                        if (!replyText.trim()) {
-                          showToast("Reply cannot be empty.", "error");
-                          return;
-                        }
-                        // append a new reply to this comment
-                        setComments((prev) =>
-                          prev.map((c) =>
-                            c.id === comment.id
-                              ? {
-                                  ...c,
-                                  replies: [
-                                    ...(c.replies || []),
-                                    {
-                                      id: `reply-${Date.now()}`,
-                                      author: currentUser!,
-                                      content: replyText,
-                                      postId: post.id,
-                                      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-                                      likes: 0,
-                                    },
-                                  ],
-                                }
-                              : c
-                          )
-                        );
-                        setReplyText("");
-                        setReplyingTo(null);
-                      }}
+                      onClick={() => setIsPortfolioModalOpen(true)}
+                      className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center space-x-2"
                     >
-                      <Send className="h-4 w-4 mr-2" />
-                      Post Reply
+                      <ChartPieIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base">
+                        Manage Portfolios
+                      </span>
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* Replies */}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-4 pl-6 border-l-2 border-gray-100">
-                  {comment.replies.map((reply) => (
-                    <div key={reply.id} className="mt-4">
-                      <div className="flex items-center mb-2">
-                        <img
-                          src={reply.author.avatar}
-                          alt={reply.author.name}
-                          className="h-8 w-8 rounded-full mr-2"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">
-                            {reply.author.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {reply.date}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-gray-700 text-sm mb-2">
-                        {reply.content}
-                      </p>
-                      {/* Add Like button for reply */}
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => handleReplyLike(reply.id, comment.id)}
-                          className={`text-gray-500 transition-colors duration-200 ${
-                            likedComments.has(reply.id)
-                              ? "text-red-500"
-                              : "hover:text-red-500 text-gray-600"
-                          } cursor-pointer flex items-center text-xs`}
-                        >
-                          <Heart
-                            className={`h-3 w-3 mr-1 ${
-                              likedComments.has(reply.id) ? "fill-current" : ""
-                            }`}
-                          />
-                           {reply.likes}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                {/* </div> */}
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Total Value
+                  </p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
+                    $305K
+                  </p>
+                </div>
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <CurrencyDollarIcon className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
+                </div>
+              </div>
+              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
+                <ArrowTrendingUpIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 mr-1" />
+                <span className="text-green-600">+5.2%</span>
+                <span className="text-gray-500 ml-1 hidden sm:inline">
+                  from last month
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Portfolios
+                  </p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
+                    {portfolios.length}
+                  </p>
+                </div>
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <ChartPieIcon className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />
+                </div>
+              </div>
+              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
+                <span className="text-gray-500">Diversified</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Risk Score
+                  </p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
+                    7.2
+                  </p>
+                </div>
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
+                  <ExclamationTriangleIcon className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" />
+                </div>
+              </div>
+              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
+                <span className="text-yellow-600">Moderate</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Alerts
+                  </p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
+                    {unreadAlertsCount}
+                  </p>
+                </div>
+                <div className="p-2 sm:p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
+                  <BellIcon className="w-4 h-4 sm:w-6 sm:h-6 text-red-600" />
+                </div>
+              </div>
+              <div className="flex items-center mt-1 sm:mt-2 text-xs sm:text-sm">
+                <span className="text-gray-500">Unread</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Dashboard Grid */}
+          <div
+            id="analytics"
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"
+          >
+            {/* Candlestick Chart */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-all duration-300">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center">
+                    <ChartBarIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" />
+                    Stock Price Movement
+                  </h2>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs sm:text-sm text-gray-500">
+                      Last 30 days
+                    </div>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <CandlestickChart
+                    data={stockData}
+                    width={Math.max(
+                      300,
+                      window.innerWidth > 1024
+                        ? 750
+                        : Math.min(window.innerWidth - 100, 500)
+                    )}
+                    height={250}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Metrics */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Risk Metrics
+                </h2>
+              </div>
+              {riskMetrics.map((metric) => (
+                <RiskCard
+                  key={metric.id}
+                  metric={metric}
+                  onDetailsClick={handleRiskClick}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* News Sentiment Word Cloud */}
+          <div className="mt-6 sm:mt-12">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-all duration-300">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Market Sentiment Analysis
+                </h2>
+                <div className="flex items-center space-x-2"></div>
+              </div>
+              <WordCloud news={newsData} onNewsClick={handleNewsClick} />
+            </div>
+          </div>
+
+          {/* Additional Insights */}
+          <div
+            id="insights"
+            className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+          >
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group">
+              <img
+                src="https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=200&fit=crop&crop=center"
+                alt="Market Analysis"
+                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
+              />
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                Market Trends
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Comprehensive analysis of current market conditions and future
+                projections.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group">
+              <img
+                src="https://images.unsplash.com/photo-1553484771-371a605b060b?w=400&h=200&fit=crop&crop=center"
+                alt="Portfolio Management"
+                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
+              />
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                Portfolio Optimization
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                AI-powered recommendations to optimize your investment portfolio
+                for maximum returns.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 border border-gray-100 group md:col-span-2 lg:col-span-1">
+              <img
+                src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&h=200&fit=crop&crop=center"
+                alt="Risk Assessment"
+                className="w-full h-24 sm:h-32 object-cover rounded-lg mb-4 group-hover:opacity-90 transition-opacity"
+              />
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                Risk Assessment
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Advanced risk modeling and stress testing for your investment
+                strategies.
+              </p>
+            </div>
+          </div>
+        </main>
+        <footer className="bg-gray-900 text-gray-400 py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-center md:text-left">
+              {/* Brand + Social */}
+              <div>
+                <a
+                  href="#"
+                  className="text-xl font-bold text-white flex justify-center md:justify-start items-center mb-6"
+                >
+                  <span>
+                    Portfolio<span className="text-indigo-400">Analyzer</span>
+                  </span>
+                </a>
+                <p className="mb-6">
+                  Empowering businesses with next-generation automation and
+                  analytics tools. twitter facebook
+                </p>
+              </div>
+
+              {/* Links */}
+              <div>
+                <h5 className="text-white font-medium mb-4">Product</h5>
+                <ul className="space-y-2">
+                  {[
+                    "Features",
+                    "Pricing",
+                    "Integrations",
+                    "Changelog",
+                    "Documentation",
+                  ].map((item, index) => (
+                    <li key={index}>
+                      <a
+                        href="#"
+                        className="hover:text-white transition-colors"
+                      >
+                        {item}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h5 className="text-white font-medium mb-4">Company</h5>
+                <ul className="space-y-2">
+                  {["About", "Customers", "Careers", "Press", "Contact"].map(
+                    (item, index) => (
+                      <li key={index}>
+                        <a
+                          href="#"
+                          className="hover:text-white transition-colors"
+                        >
+                          {item}
+                        </a>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <h5 className="text-white font-medium mb-4">Resources</h5>
+                <ul className="space-y-2">
+                  {[
+                    "Blog",
+                    "Guides",
+                    "Webinars",
+                    "API Reference",
+                    "Support Center",
+                  ].map((item, index) => (
+                    <li key={index}>
+                      <a
+                        href="#"
+                        className="hover:text-white transition-colors"
+                      >
+                        {item}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="border-t border-gray-800 mt-12 pt-6 text-center">
+              <p>
+                © {new Date().getFullYear()} PortfolioAnalyzer. All rights
+                reserved.
+              </p>
+            </div>
+          </div>
+        </footer>
+      </AuthGuard>
+
+      {/* Modals */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLogin={handleLogin}
+      />
+
+      <PortfolioModal
+        isOpen={isPortfolioModalOpen}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        portfolios={portfolios}
+        onCreatePortfolio={handleCreatePortfolio}
+        onDeletePortfolio={handleDeletePortfolio}
+      />
+
+      <AlertsModal
+        isOpen={isAlertsModalOpen}
+        onClose={() => setIsAlertsModalOpen(false)}
+        alerts={alerts}
+        onMarkAsRead={handleMarkAsRead}
+        onDeleteAlert={handleDeleteAlert}
+      />
+
+      <NewsDetailsModal
+        isOpen={isNewsModalOpen}
+        onClose={() => setIsNewsModalOpen(false)}
+        news={selectedNews}
+      />
+
+      <RiskDetailsModal
+        isOpen={isRiskModalOpen}
+        onClose={() => setIsRiskModalOpen(false)}
+        metric={selectedRiskMetric}
+      />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={closeToast}
+      />
     </div>
   );
-};
-
-export default ModernBlogApp;
-
-// Zod Schema
-export const Schema = {
-    "commentary": "Creating a modern blog website interface using Next.js and TypeScript.",
-    "template": "nextjs-developer",
-    "title": "Modern Blog Interface",
-    "description": "A modern blog website interface to share thoughts.",
-    "additional_dependencies": [
-        "lucide-react"
-    ],
-    "has_additional_dependencies": true,
-    "install_dependencies_command": "npm install lucide-react",
-    "port": 3000,
-    "file_path": "pages/index.tsx",
-    "code": "<see code above>"
 }
