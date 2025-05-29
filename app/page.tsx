@@ -1,1503 +1,1551 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Calendar,
-  Users,
-  Clock,
-  MapPin,
-  Filter,
-  Search,
-  Bell,
-  User,
-  Settings,
-  Heart,
-  Share2,
-  Star,
-  Zap,
-  Coffee,
-  Code,
-  Camera,
-  Music,
-  BookOpen,
-  Gamepad2,
-  Palette,
-  Globe,
-  CheckCircle,
-  AlertCircle,
-  Calendar as CalendarIcon,
-  Plus,
-  Minus,
-  X,
-  Menu,
-  Rocket,
-  Mail,
-  Twitter,
-  Facebook,
-  Instagram,
-  Briefcase,
-  GraduationCap,
-  UserCheck,
-  Trophy,
-  Lightbulb,
-  Target,
-  Flame,
-  Sparkles,
-  Flame as FlameIcon,
-} from "lucide-react";
-import { LucideProps } from "lucide-react";
+import React from "react"
+import { useRef, useEffect, useState, useCallback, Suspense, useMemo } from "react"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { Box, Sphere, Cone, Torus, Cylinder } from "@react-three/drei"
+import * as THREE from "three"
 
-interface User {
-  id: number;
-  name: string;
-  interests: string[];
-  avatar: string;
-  availability: "available" | "busy" | "maybe";
+// Types
+interface ARObject {
+  id: string
+  type: "cube" | "sphere" | "pyramid" | "torus" | "cylinder"
+  position: [number, number, number]
+  rotation: [number, number, number]
+  scale: [number, number, number]
+  color: string
+  isSelected: boolean
+  screenPosition?: [number, number]
+  isVisible?: boolean // For virtualization
+  lastUpdateTime?: number
 }
 
-interface Event {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  description: string;
-  interests: string[];
-  participants: number;
-  maybeCount: number;
-  maxCapacity: number;
-  organizer: string;
-  image: string;
-  attendees: User[];
-  calendarConflicts: number;
-  trending?: boolean;
-  popularity?: number;
+// Tool types - includes both object types and special tools
+type ToolType = ARObject["type"] | "hand"
+
+interface ARAnchor {
+  id: string
+  screenPosition: [number, number]
+  worldPosition: [number, number, number]
+  confidence: number
+  isVisible?: boolean
 }
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  type: "work" | "personal";
+interface InteractionState {
+  isActive: boolean
+  startX: number
+  startY: number
+  currentX: number
+  currentY: number
+  objectId: string | null
+  initialRotation: [number, number, number]
+  type: "touch" | "mouse"
+  isDragToPlace?: boolean
+  isMovingObject?: boolean
 }
 
-interface ToastProps {
-  message: string;
-  type: "success" | "error" | "info";
-  onClose: () => void;
+interface ViewportBounds {
+  left: number
+  right: number
+  top: number
+  bottom: number
 }
 
-interface AIMatchData {
-  compatibilityScore: number;
-  suggestedConnections: User[];
-  recommendedEvents: Event[];
-  attendanceReason: string;
+// Constants
+const OBJECT_COLORS = [
+  "#FF6B6B",
+  "#4ECDC4",
+  "#45B7D1",
+  "#96CEB4",
+  "#FFEAA7",
+  "#DDA0DD",
+  "#98D8C8",
+  "#F7DC6F",
+  "#BB8FCE",
+  "#85C1E9",
+]
+
+const TOOLS = [
+  { type: "hand" as const, icon: "✋", name: "Move" },
+  { type: "cube" as const, icon: "🟦", name: "Cube" },
+  { type: "sphere" as const, icon: "🔵", name: "Sphere" },
+  { type: "pyramid" as const, icon: "🔺", name: "Pyramid" },
+  { type: "torus" as const, icon: "🍩", name: "Torus" },
+  { type: "cylinder" as const, icon: "🥫", name: "Cylinder" },
+]
+
+// Performance constants
+const VIEWPORT_MARGIN = 100 // Pixels outside viewport to still render
+const MAX_RENDER_DISTANCE = 10 // World units
+const LOD_DISTANCE_THRESHOLD = 7 // Distance to switch to low detail
+const UPDATE_THROTTLE = 16 // Milliseconds between updates (60fps)
+
+// Utility functions
+const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+const getRandomColor = () => OBJECT_COLORS[Math.floor(Math.random() * OBJECT_COLORS.length)]
+
+// Device detection with SSR safety
+const useDeviceType = () => {
+  const [isMobile, setIsMobile] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+    const checkDevice = () => {
+      if (typeof window !== "undefined") {
+        setIsMobile(window.innerWidth < 768 || "ontouchstart" in window)
+      }
+    }
+
+    checkDevice()
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", checkDevice)
+      return () => window.removeEventListener("resize", checkDevice)
+    }
+  }, [])
+
+  return { isMobile, isClient }
 }
 
-type AttendanceStatus = "attending" | "maybe" | null;
+// Viewport bounds hook for virtualization with SSR safety
+const useViewportBounds = (): ViewportBounds => {
+  const [bounds, setBounds] = useState<ViewportBounds>({
+    left: -VIEWPORT_MARGIN,
+    right: 1920 + VIEWPORT_MARGIN, // Default fallback
+    top: -VIEWPORT_MARGIN,
+    bottom: 1080 + VIEWPORT_MARGIN, // Default fallback
+  })
 
-// Toast Component
-const Toast: React.FC<ToastProps> = ({ message, type = "info", onClose }) => (
-  <div
-    className={`fixed top-4 right-4 z-[60] p-4 rounded-lg backdrop-blur-md border shadow-lg transition-all duration-300 ${
-      type === "success"
-        ? "bg-green-800/90 border-green-600/50 text-green-100"
-        : type === "error"
-        ? "bg-red-800/90 border-red-600/50 text-red-100"
-        : "bg-blue-800/90 border-blue-600/50 text-blue-100"
-    }`}
-  >
-    <div className="flex items-center justify-between space-x-3">
-      <span className="text-sm font-medium">{message}</span>
-      <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  </div>
-);
+  useEffect(() => {
+    if (typeof window === "undefined") return
 
-// Sample Data
-const mockUsers: User[] = [
-  {
-    id: 1,
-    name: "Alice Chen",
-    interests: ["tech", "photography", "coffee"],
-    avatar: "Code",
-    availability: "available",
-  },
-  {
-    id: 2,
-    name: "Bob Smith",
-    interests: ["design", "music", "travel"],
-    avatar: "Palette",
-    availability: "busy",
-  },
-  {
-    id: 3,
-    name: "Carol Davis",
-    interests: ["books", "coffee", "photography"],
-    avatar: "BookOpen",
-    availability: "available",
-  },
-  {
-    id: 4,
-    name: "David Wilson",
-    interests: ["gaming", "tech", "music"],
-    avatar: "Gamepad2",
-    availability: "maybe",
-  },
-  {
-    id: 5,
-    name: "Eva Rodriguez",
-    interests: ["art", "travel", "design"],
-    avatar: "Camera",
-    availability: "available",
-  },
-];
-
-const initialEvents: Event[] = [
-  {
-    id: 1,
-    title: "Tech Innovators Meetup",
-    date: "2025-06-15",
-    time: "18:00",
-    location: "Silicon Valley Hub",
-    description:
-      "Join fellow tech enthusiasts for networking and innovation discussions.",
-    interests: ["tech", "networking"],
-    participants: 24,
-    maybeCount: 12,
-    maxCapacity: 50,
-    organizer: "Alice Chen",
-    image: "Rocket",
-    attendees: mockUsers.slice(0, 3),
-    calendarConflicts: 2,
-  },
-  {
-    id: 2,
-    title: "Photography Walk",
-    date: "2025-06-18",
-    time: "10:00",
-    location: "Central Park",
-    description:
-      "Explore the city through your lens with fellow photographers.",
-    interests: ["photography", "outdoor"],
-    participants: 16,
-    maybeCount: 8,
-    maxCapacity: 25,
-    organizer: "Bob Smith",
-    image: "Camera",
-    attendees: mockUsers.slice(1, 4),
-    calendarConflicts: 0,
-  },
-  {
-    id: 3,
-    title: "Coffee & Code",
-    date: "2025-06-20",
-    time: "09:00",
-    location: "Downtown Café",
-    description: "Casual coding session over great coffee.",
-    interests: ["coffee", "tech", "coding"],
-    participants: 18,
-    maybeCount: 15,
-    maxCapacity: 30,
-    organizer: "Carol Davis",
-    image: "Coffee",
-    attendees: mockUsers.slice(0, 2),
-    calendarConflicts: 1,
-  },
-  {
-    id: 4,
-    title: "Music Production Workshop",
-    date: "2025-06-22",
-    time: "14:00",
-    location: "Sound Studio",
-    description:
-      "Learn music production techniques from industry professionals.",
-    interests: ["music", "workshop"],
-    participants: 22,
-    maybeCount: 6,
-    maxCapacity: 35,
-    organizer: "David Wilson",
-    image: "Music",
-    attendees: mockUsers.slice(2, 5),
-    calendarConflicts: 0,
-  },
-  {
-    id: 5,
-    title: "Art Gallery Opening",
-    date: "2025-06-25",
-    time: "19:00",
-    location: "Modern Art Museum",
-    description: "Exclusive preview of contemporary art exhibition.",
-    interests: ["art", "culture"],
-    participants: 31,
-    maybeCount: 9,
-    maxCapacity: 40,
-    organizer: "Eva Rodriguez",
-    image: "Palette",
-    attendees: mockUsers.slice(1, 3),
-    calendarConflicts: 3,
-  },
-  {
-    id: 6,
-    title: "Gaming Tournament",
-    date: "2025-06-28",
-    time: "16:00",
-    location: "E-Sports Arena",
-    description: "Competitive gaming with prizes and networking.",
-    interests: ["gaming", "competition"],
-    participants: 28,
-    maybeCount: 11,
-    maxCapacity: 45,
-    organizer: "Alice Chen",
-    image: "Trophy",
-    attendees: mockUsers.slice(0, 4),
-    calendarConflicts: 1,
-  },
-];
-
-type InterestIconType = {
-  [key: string]: React.ForwardRefExoticComponent<
-    Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
-  >;
-};
-
-const interestIcons: InterestIconType = {
-  tech: Code,
-  photography: Camera,
-  coffee: Coffee,
-  music: Music,
-  books: BookOpen,
-  gaming: Gamepad2,
-  art: Palette,
-  design: Palette,
-  travel: Globe,
-  networking: Users,
-  outdoor: MapPin,
-  coding: Code,
-  workshop: Star,
-  culture: BookOpen,
-  competition: Zap,
-};
-
-// Helper function to render dynamic icons
-const iconMap = {
-  Rocket,
-  Camera,
-  Coffee,
-  Music,
-  Palette,
-  Trophy,
-  Code,
-  BookOpen,
-  Gamepad2,
-  Users,
-  Briefcase,
-  GraduationCap,
-  UserCheck,
-  Lightbulb,
-  Target,
-  Flame,
-  Sparkles,
-};
-
-const DynamicIcon = ({ iconName, className = "w-6 h-6", ...props }: { iconName: string; className?: string; [key: string]: any }) => {
-  const IconComponent = iconMap[iconName as keyof typeof iconMap];
-  return IconComponent ? <IconComponent className={className} {...props} /> : <Star className={className} {...props} />;
-};
-
-const CommunityMeetupPlatform: React.FC = () => {
-  const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [userAttendance, setUserAttendance] = useState<
-    Record<number, AttendanceStatus>
-  >({});
-  const [showAIMatching, setShowAIMatching] = useState(false);
-  const [calendarConnected, setCalendarConnected] = useState(false);
-  const [timelineView, setTimelineView] = useState(false);
-  const [showCalendarIntegration, setShowCalendarIntegration] = useState(false);
-  const [aiMatchingData, setAiMatchingData] = useState<
-    Record<number, AIMatchData>
-  >({});
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-  } | null>(null);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  // Toast
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "info"
-  ) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const allInterests = [...new Set(events.flatMap((event) => event.interests))];
-
-  // Filters
-  const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      const matchesInterests =
-        selectedInterests.length === 0 ||
-        event.interests.some((interest) =>
-          selectedInterests.includes(interest)
-        );
-      const matchesSearch =
-        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesInterests && matchesSearch;
-    });
-  }, [selectedInterests, searchTerm, events]);
-
-  // AI Matching
-  const generateAIMatches = (eventId: number): AIMatchData => {
-    const event = events.find((e) => e.id === eventId);
-    if (!event) throw new Error("Event not found");
-
-    const userInterests = ["tech", "photography", "coffee"]; // Mock current user interests
-
-    const compatibilityScore =
-      (event.interests.filter((interest) => userInterests.includes(interest))
-        .length /
-        event.interests.length) *
-      100;
-
-    const matches = mockUsers.filter((user) =>
-      user.interests.some((interest) => event.interests.includes(interest))
-    );
-
-    const recommendations = events
-      .filter(
-        (e) =>
-          e.id !== eventId &&
-          e.interests.some((interest) => userInterests.includes(interest))
-      )
-      .slice(0, 2);
-
-    return {
-      compatibilityScore: Math.round(compatibilityScore),
-      suggestedConnections: matches.slice(0, 3),
-      recommendedEvents: recommendations,
-      attendanceReason:
-        compatibilityScore > 50
-          ? `High compatibility (${Math.round(compatibilityScore)}%)`
-          : "Some shared interests",
-    };
-  };
-
-  const handleAttendance = (eventId: number, status: AttendanceStatus) => {
-    const previousStatus = userAttendance[eventId];
-
-    setUserAttendance((prev) => ({
-      ...prev,
-      [eventId]: status,
-    }));
-
-    setEvents((prev) =>
-      prev.map((event) => {
-        if (event.id === eventId) {
-          let newParticipants = event.participants;
-          let newMaybeCount = event.maybeCount;
-
-          if (previousStatus === "attending") newParticipants--;
-          if (previousStatus === "maybe") newMaybeCount--;
-
-          if (status === "attending") newParticipants++;
-          if (status === "maybe") newMaybeCount++;
-
-          return {
-            ...event,
-            participants: Math.max(0, newParticipants),
-            maybeCount: Math.max(0, newMaybeCount),
-          };
-        }
-        return event;
+    const updateBounds = () => {
+      setBounds({
+        left: -VIEWPORT_MARGIN,
+        right: window.innerWidth + VIEWPORT_MARGIN,
+        top: -VIEWPORT_MARGIN,
+        bottom: window.innerHeight + VIEWPORT_MARGIN,
       })
-    );
-
-    if (selectedEvent && selectedEvent.id === eventId) {
-      setSelectedEvent((prev) => {
-        if (!prev) return null;
-        let newParticipants = prev.participants;
-        let newMaybeCount = prev.maybeCount;
-
-        if (previousStatus === "attending") newParticipants--;
-        if (previousStatus === "maybe") newMaybeCount--;
-
-        if (status === "attending") newParticipants++;
-        if (status === "maybe") newMaybeCount++;
-
-        return {
-          ...prev,
-          participants: Math.max(0, newParticipants),
-          maybeCount: Math.max(0, newMaybeCount),
-        };
-      });
-    }
-  };
-
-  const addToGoogleCalendar = (event: Event) => {
-    const eventDate = new Date(`${event.date}T${event.time}`);
-    const endDate = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
-
-    const googleUrl = new URL("https://calendar.google.com/calendar/render");
-    googleUrl.searchParams.set("action", "TEMPLATE");
-    googleUrl.searchParams.set("text", event.title);
-    googleUrl.searchParams.set(
-      "dates",
-      `${eventDate.toISOString().replace(/[-:]/g, "").split(".")[0]}Z/${
-        endDate.toISOString().replace(/[-:]/g, "").split(".")[0]
-      }Z`
-    );
-    googleUrl.searchParams.set("details", event.description);
-    googleUrl.searchParams.set("location", event.location);
-    googleUrl.searchParams.set("organizer", event.organizer);
-
-    window.open(googleUrl.toString(), "_blank");
-    showToast("Opening Google Calendar...", "success");
-  };
-
-  useEffect(() => {
-    const newAIData: Record<number, AIMatchData> = {};
-    events.forEach((event) => {
-      newAIData[event.id] = generateAIMatches(event.id);
-    });
-    setAiMatchingData(newAIData);
-  }, [events]);
-
-  // Prevent background scrolling when modal is open
-  useEffect(() => {
-    if (selectedEvent) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
     }
 
-    // Cleanup function to restore scrolling when component unmounts
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [selectedEvent]);
+    updateBounds()
+    window.addEventListener("resize", updateBounds)
+    return () => window.removeEventListener("resize", updateBounds)
+  }, [])
 
-  // Timeline Component
-  const Timeline = () => (
-    <div className="w-full overflow-x-auto pb-1">
-      <div
-        className="relative flex items-start min-w-max px-6"
-        style={{ height: "350px" }}
-      >
-        <div className="absolute top-10 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"></div>
+  return bounds
+}
 
-        {events.map((event, index) => (
-          <div
-            key={event.id}
-            className="relative flex flex-col items-center mx-12 mt-8"
-          >
-            <div className="relative z-10 mb-4">
-              <div className="absolute inset-0 bg-purple-500/30 blur-md rounded-full"></div>
-              <div className="relative w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-2 border-white/20">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              </div>
-            </div>
+// Optimized 3D Object Component with virtualization
+const Object3D: React.FC<{
+  object: ARObject
+  onSelect: (id: string) => void
+  interaction: InteractionState
+  onUpdateRotation: (id: string, rotation: [number, number, number]) => void
+  onUpdateScreenPosition: (id: string, screenPos: [number, number], isVisible: boolean) => void
+  viewportBounds: ViewportBounds
+  onUpdatePosition: (id: string, position: [number, number, number]) => void
+}> = React.memo(({ object, onSelect, interaction, onUpdateRotation, onUpdateScreenPosition, viewportBounds, onUpdatePosition }) => {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const { camera, gl } = useThree()
+  const lastUpdateRef = useRef(0)
 
-            <div className="relative w-72 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 hover:scale-105 transition-all hover:bg-white/20 shadow-lg">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-2xl">
-                  <DynamicIcon iconName={event.image} className="w-8 h-8 text-purple-300" />
-                </div>
-                {calendarConnected && event.calendarConflicts > 0 && (
-                  <div className="flex items-center space-x-1 text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-                    <AlertCircle className="w-3 h-3" />
-                    <span className="text-xs">
-                      {event.calendarConflicts} conflicts
-                    </span>
-                  </div>
-                )}
-              </div>
+  // Calculate if object should use LOD
+  const useLOD = useMemo(() => {
+    const distance = Math.sqrt(object.position[0] ** 2 + object.position[1] ** 2 + object.position[2] ** 2)
+    return distance > LOD_DISTANCE_THRESHOLD
+  }, [object.position])
 
-              <h3 className="font-semibold text-white text-sm mb-2 line-clamp-2">
-                {event.title}
-              </h3>
-              <div className="flex items-center space-x-1.5 text-white/70 mb-3">
-                <MapPin className="w-3 h-3" />
-                <p className="text-xs">{event.location}</p>
-              </div>
+  // Throttled frame updates for performance
+  useFrame((state) => {
+    if (!meshRef.current) return
 
-              <div className="flex items-center space-x-2 text-white/80 mb-3">
-                <div className="flex items-center space-x-1">
-                  <Calendar className="w-3 h-3" />
-                  <span className="text-xs">{event.date}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-3 h-3" />
-                  <span className="text-xs">{event.time}</span>
-                </div>
-              </div>
+    const now = state.clock.getElapsedTime() * 1000
+    if (now - lastUpdateRef.current < UPDATE_THROTTLE) return
+    lastUpdateRef.current = now
 
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1 bg-white/10 px-2 py-0.5 rounded-full">
-                    <Users className="w-3 h-3" />
-                    <span className="text-xs">{event.participants}</span>
-                  </div>
-                  <div className="flex items-center space-x-1 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-                    <Heart className="w-3 h-3 text-yellow-400" />
-                    <span className="text-xs text-yellow-400">
-                      {event.maybeCount}
-                    </span>
-                  </div>
-                </div>
+    // Apply interaction (rotation or movement)
+    if (interaction.isActive && interaction.objectId === object.id) {
+      if (interaction.isMovingObject) {
+        // For moving objects, update position in real-time
+        const normalizedX = (interaction.currentX / gl.domElement.clientWidth) * 2 - 1
+        const normalizedY = -(interaction.currentY / gl.domElement.clientHeight) * 2 + 1
+        const newWorldPosition: [number, number, number] = [normalizedX * 5, normalizedY * 3, object.position[2]]
+        
+        meshRef.current.position.set(...newWorldPosition)
+        // Update the object position for the parent component
+        onUpdatePosition(object.id, newWorldPosition)
+        onUpdateScreenPosition(object.id, [interaction.currentX, interaction.currentY], true)
+      } else {
+        // Handle rotation
+        const deltaX = interaction.currentX - interaction.startX
+        const deltaY = interaction.currentY - interaction.startY
 
-                {userAttendance[event.id] && (
-                  <div
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      userAttendance[event.id] === "attending"
-                        ? "bg-green-500/20 text-green-300"
-                        : "bg-yellow-500/20 text-yellow-300"
-                    }`}
-                  >
-                    {userAttendance[event.id] === "attending"
-                      ? "Going"
-                      : "Maybe"}
-                  </div>
-                )}
-              </div>
+        const rotationSpeed = 0.01
+        const newRotation: [number, number, number] = [
+          interaction.initialRotation[0] + deltaY * rotationSpeed,
+          interaction.initialRotation[1] + deltaX * rotationSpeed,
+          interaction.initialRotation[2],
+        ]
 
-              <div className="text-center">
-                <button
-                  onClick={() => addToGoogleCalendar(event)}
-                  className="cursor-pointer group relative w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <Calendar className="w-3.5 h-3.5 text-blue-300 group-hover:text-blue-200 transition-colors" />
-                    <span className="text-sm font-medium text-blue-200 group-hover:text-white transition-colors">
-                      Add to Calendar
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-indigo-500/0 group-hover:from-blue-500/10 group-hover:to-indigo-500/10 rounded-lg transition-all duration-300"></div>
-                </button>
-              </div>
-            </div>
+        meshRef.current.rotation.set(...newRotation)
+        onUpdateRotation(object.id, newRotation)
+      }
+    }
 
-            <div className="mt-3 text-xs text-white/50 font-medium">
-              {new Date(event.date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </div>
-          </div>
+    // Update screen position and visibility for virtualization
+    const vector = new THREE.Vector3()
+    meshRef.current.getWorldPosition(vector)
+
+    // Check if object is within render distance
+    const distance = vector.distanceTo(camera.position)
+    if (distance > MAX_RENDER_DISTANCE) {
+      onUpdateScreenPosition(object.id, [0, 0], false)
+      return
+    }
+
+    vector.project(camera)
+
+    const screenX = (vector.x * 0.5 + 0.5) * gl.domElement.clientWidth
+    const screenY = (vector.y * -0.5 + 0.5) * gl.domElement.clientHeight
+
+    // Check if object is within viewport bounds
+    const isVisible =
+      screenX >= viewportBounds.left &&
+      screenX <= viewportBounds.right &&
+      screenY >= viewportBounds.top &&
+      screenY <= viewportBounds.bottom &&
+      vector.z < 1 // Not behind camera
+
+    onUpdateScreenPosition(object.id, [screenX, screenY], isVisible)
+  })
+
+  // Don't render if not visible (virtualization)
+  if (!object.isVisible) {
+    return null
+  }
+
+  const renderGeometry = () => {
+    // Use lower detail for distant objects (LOD)
+    const segments = useLOD ? 8 : 32
+
+    switch (object.type) {
+      case "cube":
+        return <Box args={[1, 1, 1]} />
+      case "sphere":
+        return <Sphere args={[0.5, segments, segments]} />
+      case "pyramid":
+        return <Cone args={[0.5, 1, useLOD ? 4 : 8]} />
+      case "torus":
+        return <Torus args={[0.4, 0.2, useLOD ? 8 : 16, segments]} />
+      case "cylinder":
+        return <Cylinder args={[0.3, 0.3, 1, segments]} />
+      default:
+        return <Box args={[1, 1, 1]} />
+    }
+  }
+
+  return (
+    <mesh ref={meshRef} position={object.position} rotation={object.rotation} scale={object.scale}>
+      {renderGeometry()}
+      <meshStandardMaterial
+        color={object.color}
+        wireframe={object.isSelected}
+        emissive={
+          interaction.isActive && interaction.objectId === object.id && interaction.isMovingObject
+            ? "#00ff64" // Green glow when moving
+            : object.isSelected 
+            ? "#444444" // Gray glow when selected
+            : "#000000" // No glow
+        }
+      />
+      {object.isSelected && (
+        <lineSegments>
+          <edgesGeometry args={[new THREE.BoxGeometry(1.2, 1.2, 1.2)]} />
+          <lineBasicMaterial color="#ffffff" linewidth={3} />
+        </lineSegments>
+      )}
+    </mesh>
+  )
+})
+
+Object3D.displayName = "Object3D"
+
+// Optimized AR Anchor Component
+const ARAnchor: React.FC<{ anchor: ARAnchor }> = React.memo(({ anchor }) => {
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  const [isVisibleInternal, setIsVisibleInternal] = useState(anchor.isVisible)
+
+  useEffect(() => {
+    setIsVisibleInternal(anchor.isVisible)
+  }, [anchor.isVisible])
+
+  // Don't render if not visible
+  if (!isVisibleInternal) {
+    return null
+  }
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      const time = state.clock.getElapsedTime()
+      meshRef.current.scale.setScalar(1 + Math.sin(time * 3) * 0.1)
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={anchor.worldPosition}>
+      <ringGeometry args={[0.1, 0.15, 16]} />
+      <meshBasicMaterial color="#00ff64" transparent opacity={anchor.confidence} />
+    </mesh>
+  )
+})
+
+ARAnchor.displayName = "ARAnchor"
+
+// Optimized 3D Scene Component
+const Scene3D: React.FC<{
+  objects: ARObject[]
+  anchors: ARAnchor[]
+  onSelectObject: (id: string) => void
+  interaction: InteractionState
+  onUpdateRotation: (id: string, rotation: [number, number, number]) => void
+  onUpdateScreenPosition: (id: string, screenPos: [number, number], isVisible: boolean) => void
+  viewportBounds: ViewportBounds
+  onUpdatePosition: (id: string, position: [number, number, number]) => void
+}> = React.memo(
+  ({ objects, anchors, onSelectObject, interaction, onUpdateRotation, onUpdateScreenPosition, viewportBounds, onUpdatePosition }) => {
+    // Filter visible objects for performance
+    const visibleObjects = useMemo(() => objects.filter((obj) => obj.isVisible !== false), [objects])
+    const visibleAnchors = useMemo(() => anchors.filter((anchor) => anchor.isVisible !== false), [anchors])
+
+    return (
+      <>
+        {/* Optimized Lighting */}
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[10, 10, 5]} intensity={1} castShadow={false} />
+        <pointLight position={[-10, -10, -5]} intensity={0.5} />
+
+        {/* Virtualized AR Anchors */}
+        {visibleAnchors.map((anchor) => (
+          <ARAnchor key={anchor.id} anchor={anchor} />
         ))}
+
+        {/* Virtualized 3D Objects */}
+        {visibleObjects.map((object) => (
+          <Object3D
+            key={object.id}
+            object={object}
+            onSelect={onSelectObject}
+            interaction={interaction}
+            onUpdateRotation={onUpdateRotation}
+            onUpdateScreenPosition={onUpdateScreenPosition}
+            viewportBounds={viewportBounds}
+            onUpdatePosition={onUpdatePosition}
+          />
+        ))}
+      </>
+    )
+  },
+)
+
+Scene3D.displayName = "Scene3D"
+
+// Enhanced Camera Hook with flip functionality and SSR safety
+const useCamera = () => {
+  const [state, setState] = useState<{
+    stream: MediaStream | null
+    error: string | null
+    isLoading: boolean
+    isReady: boolean
+    facingMode: "environment" | "user"
+    canFlip: boolean
+  }>({
+    stream: null,
+    error: null,
+    isLoading: true,
+    isReady: false,
+    facingMode: "environment",
+    canFlip: false,
+  })
+
+  const initCamera = useCallback(
+    async (preferredFacingMode: "environment" | "user" = "environment") => {
+      // Skip camera initialization during SSR
+      if (typeof window === "undefined" || typeof navigator === "undefined") {
+        setState((prev) => ({ ...prev, isLoading: false, error: "Camera not available during server rendering" }))
+        return
+      }
+
+      try {
+        setState((prev) => ({ ...prev, isLoading: true, error: null }))
+
+        console.log("🎥 Starting camera initialization with facing mode:", preferredFacingMode)
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Camera API not supported in this browser")
+        }
+
+        // Stop existing stream if any
+        if (state.stream) {
+          state.stream.getTracks().forEach((track) => track.stop())
+        }
+
+        console.log("🎥 Requesting camera permissions...")
+
+        // Check available cameras
+        let availableCameras: MediaDeviceInfo[] = []
+        try {
+          // Request permission first
+          await navigator.mediaDevices
+            .getUserMedia({ video: true })
+            .then((tempStream) => {
+              // Stop this temporary stream immediately
+              tempStream.getTracks().forEach((track) => track.stop())
+            })
+            .catch((err) => {
+              console.warn("⚠️ Initial permission request failed:", err)
+              // Continue anyway, we'll try different configs below
+            })
+
+          const devices = await navigator.mediaDevices.enumerateDevices()
+          availableCameras = devices.filter((device) => device.kind === "videoinput")
+          console.log("📹 Available cameras:", availableCameras.length)
+        } catch (err) {
+          console.warn("⚠️ Could not enumerate devices:", err)
+        }
+
+        const canFlip = availableCameras.length > 1
+
+        // Chrome specific configurations - try more variations 
+        const configs = [
+          // Try exact facingMode first (works better in Chrome)
+          {
+            video: {
+              facingMode: { exact: preferredFacingMode },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+            },
+          },
+          // Then try without exact constraint
+          {
+            video: {
+              facingMode: preferredFacingMode,
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+            },
+          },
+          // Try opposite camera
+          {
+            video: {
+              facingMode: preferredFacingMode === "environment" ? "user" : "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          // Try with deviceId if we have cameras
+          ...(availableCameras.length > 0 ? [{ video: { deviceId: { exact: availableCameras[0].deviceId } } }] : []),
+          // Fallback to basic video
+          { video: true },
+        ]
+
+        let stream: MediaStream | null = null
+        let lastError: Error | null = null
+        let actualFacingMode = preferredFacingMode
+
+        for (const config of configs) {
+          try {
+            console.log("🎥 Trying config:", config)
+            stream = await navigator.mediaDevices.getUserMedia(config)
+            console.log("✅ Camera stream obtained:", stream)
+
+            // Try to determine actual facing mode from stream
+            const videoTrack = stream.getVideoTracks()[0]
+            if (videoTrack) {
+              const settings = videoTrack.getSettings()
+              if (settings.facingMode) {
+                actualFacingMode = settings.facingMode as "environment" | "user"
+                console.log("📹 Actual facing mode:", actualFacingMode)
+              }
+            }
+            break
+          } catch (err) {
+            console.warn("⚠️ Config failed:", err)
+            lastError = err as Error
+          }
+        }
+
+        if (!stream) {
+          throw lastError || new Error("Failed to access camera")
+        }
+
+        setState({
+          stream,
+          error: null,
+          isLoading: false,
+          isReady: true,
+          facingMode: actualFacingMode,
+          canFlip,
+        })
+
+        console.log("✅ Camera initialized successfully")
+      } catch (error) {
+        console.error("❌ Camera initialization failed:", error)
+        setState((prev) => ({
+          ...prev,
+          stream: null,
+          error: error instanceof Error ? error.message : "Camera access failed",
+          isLoading: false,
+          isReady: false,
+        }))
+      }
+    },
+    [state.stream],
+  )
+
+  const flipCamera = useCallback(() => {
+    if (!state.canFlip) return
+    const newFacingMode = state.facingMode === "environment" ? "user" : "environment"
+    console.log("🔄 Flipping camera to:", newFacingMode)
+    initCamera(newFacingMode)
+  }, [state.facingMode, state.canFlip, initCamera])
+
+  useEffect(() => {
+    // Only initialize camera on client side
+    if (typeof window !== "undefined") {
+      initCamera()
+    }
+
+    return () => {
+      if (state.stream) {
+        state.stream.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [])
+
+  return { ...state, initCamera, flipCamera }
+}
+
+// Loading Screen Component
+const LoadingScreen: React.FC<{ message?: string; subMessage?: string }> = ({
+  message = "Loading AR Collage Studio",
+  subMessage = "Preparing your AR experience...",
+}) => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 text-white text-center max-w-md mx-4">
+        <div className="text-6xl mb-6 animate-pulse">📱</div>
+        <h2 className="text-2xl font-bold mb-4">{message}</h2>
+        <p className="text-white/80 mb-4">{subMessage}</p>
+        <div className="w-full bg-white/20 rounded-full h-2">
+          <div className="bg-blue-500 h-2 rounded-full animate-pulse w-3/4"></div>
+        </div>
       </div>
     </div>
-  );
+  )
+}
 
-  // AI Matching Panel
-  const AIMatchingPanel = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {events.slice(0, 4).map((event) => {
-        const matchData = aiMatchingData[event.id];
-        if (!matchData) return null;
+// Main Component
+const ARCollageComposer: React.FC = () => {
+  // Add a Chrome-specific error handler in the main component
 
-        return (
-          <div
-            key={event.id}
-            className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 cursor-pointer hover:bg-white/15 hover:border-white/30 transition-all duration-200 hover:scale-105"
-            onClick={() => setSelectedEvent(event)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <DynamicIcon iconName={event.image} className="w-8 h-8 text-purple-300" />
-                <div>
-                  <h3 className="font-semibold">{event.title}</h3>
-                  <p className="text-sm text-white/70">
-                    {matchData.attendanceReason}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-bold text-green-400">
-                  {matchData.compatibilityScore}%
-                </div>
-                <div className="text-xs text-white/60">Match</div>
-              </div>
+  // Add this function near the top of the ARCollageComposer component
+  const getDetailedErrorMessage = (error: string | null): { message: string; tips: string[] } => {
+    if (!error) return { message: "Unknown error", tips: [] }
+
+    // Chrome-specific error messages and solutions
+    if (error.includes("Permission denied") || error.includes("NotAllowedError")) {
+      return {
+        message: "Camera access was denied",
+        tips: [
+          "Click the camera icon in your address bar and allow access",
+          "Check Chrome settings > Privacy and Security > Site Settings > Camera",
+          "Try using Chrome's incognito mode",
+          "Restart your browser or device",
+        ],
+      }
+    }
+
+    if (error.includes("NotFoundError") || error.includes("OverconstrainedError")) {
+      return {
+        message: "Camera not found or doesn't match requirements",
+        tips: [
+          "Make sure your device has a camera",
+          "Try a different browser",
+          "Disconnect any virtual camera software",
+          "Try using the front camera instead",
+        ],
+      }
+    }
+
+    if (error.includes("NotReadableError") || error.includes("AbortError")) {
+      return {
+        message: "Camera is in use by another application",
+        tips: [
+          "Close other apps that might be using your camera",
+          "Check for video conferencing apps running in the background",
+          "Restart your browser",
+          "Restart your device",
+        ],
+      }
+    }
+
+    return {
+      message: error,
+      tips: [
+        "Try using a different browser",
+        "Check that your camera is working in other apps",
+        "Make sure you're using HTTPS or localhost",
+        "Try disabling browser extensions",
+      ],
+    }
+  }
+
+  // Check for secure context and browser compatibility
+  const [isSecureContext, setIsSecureContext] = useState(true)
+  const [browserInfo, setBrowserInfo] = useState("")
+
+  useEffect(() => {
+    // Check if we're in a secure context (required for camera access)
+    if (typeof window !== "undefined") {
+      setIsSecureContext(window.isSecureContext)
+
+      // Get browser info
+      const userAgent = navigator.userAgent
+      let browserName = "Unknown"
+
+      if (userAgent.match(/chrome|chromium|crios/i)) {
+        browserName = "Chrome"
+      } else if (userAgent.match(/firefox|fxios/i)) {
+        browserName = "Firefox"
+      } else if (userAgent.match(/safari/i)) {
+        browserName = "Safari"
+      } else if (userAgent.match(/opr\//i)) {
+        browserName = "Opera"
+      } else if (userAgent.match(/edg/i)) {
+        browserName = "Edge"
+      }
+
+      setBrowserInfo(
+        `${browserName} on ${
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ? "Mobile" : "Desktop"
+        }`,
+      )
+    }
+  }, [])
+
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Device detection and viewport bounds with SSR safety
+  const { isMobile, isClient } = useDeviceType()
+  const viewportBounds = useViewportBounds()
+
+  // Camera state with flip functionality
+  const { stream, error: cameraError, isLoading, isReady, facingMode, canFlip, initCamera, flipCamera } = useCamera()
+
+  // App state
+  const [objects, setObjects] = useState<ARObject[]>([])
+  const [anchors, setAnchors] = useState<ARAnchor[]>([])
+  const [selectedTool, setSelectedTool] = useState<ToolType | null>(null)
+  const [showInstructions, setShowInstructions] = useState(true)
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false) // Default to false for SSR
+
+  const [interaction, setInteraction] = useState<InteractionState>({
+    isActive: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    objectId: null,
+    initialRotation: [0, 0, 0],
+    type: "touch",
+  })
+
+  // Drag preview state
+  const [dragPreview, setDragPreview] = useState<{
+    isVisible: boolean
+    x: number
+    y: number
+    tool: ToolType | null
+  }>({
+    isVisible: false,
+    x: 0,
+    y: 0,
+    tool: null,
+  })
+
+  // Update panel states based on device type 
+  useEffect(() => {
+    if (isClient) {
+      setToolsPanelOpen(!isMobile)
+    }
+  }, [isMobile, isClient])
+
+  // Setup video when stream is available
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      console.log("🎥 Setting up video element...")
+
+      const video = videoRef.current
+      video.srcObject = stream
+
+      const handleLoadedMetadata = () => {
+        console.log("✅ Video metadata loaded")
+        video
+          .play()
+          .then(() => console.log("✅ Video playing"))
+          .catch((err) => console.error("❌ Video play failed:", err))
+      }
+
+      const handleError = (e: Event) => {
+        console.error("❌ Video error:", e)
+      }
+
+      video.addEventListener("loadedmetadata", handleLoadedMetadata)
+      video.addEventListener("error", handleError)
+
+      return () => {
+        video.removeEventListener("loadedmetadata", handleLoadedMetadata)
+        video.removeEventListener("error", handleError)
+      }
+    }
+  }, [stream])
+
+  // Convert screen coordinates
+  const screenToWorld = useCallback((x: number, y: number): [number, number, number] => {
+    if (typeof window === "undefined") return [0, 0, 0]
+    const normalizedX = (x / window.innerWidth) * 2 - 1
+    const normalizedY = -(y / window.innerHeight) * 2 + 1
+    return [normalizedX * 5, normalizedY * 3, 0]
+  }, [])
+
+  // Optimized object finding with virtualization
+  const findObjectAtPosition = useCallback(
+    (x: number, y: number): ARObject | null => {
+      const hitRadius = isMobile ? 60 : 40
+
+      // Only check visible objects for performance
+      for (const obj of objects) {
+        if (obj.screenPosition && obj.isVisible) {
+          const [objX, objY] = obj.screenPosition
+          const distance = Math.sqrt((x - objX) ** 2 + (y - objY) ** 2)
+          if (distance <= hitRadius) {
+            return obj
+          }
+        }
+      }
+      return null
+    },
+    [objects, isMobile],
+  )
+
+  // Update object screen position and visibility (virtualization)
+  const updateObjectScreenPosition = useCallback((id: string, screenPos: [number, number], isVisible: boolean) => {
+    setObjects((prev) => prev.map((obj) => (obj.id === id ? { ...obj, screenPosition: screenPos, isVisible } : obj)))
+  }, [])
+
+  // Update anchor visibility
+  const updateAnchorVisibility = useCallback(() => {
+    setAnchors((prev) =>
+      prev.map((anchor) => {
+        const [x, y] = anchor.screenPosition
+        const isVisible =
+          x >= viewportBounds.left && x <= viewportBounds.right && y >= viewportBounds.top && y <= viewportBounds.bottom
+
+        return { ...anchor, isVisible }
+      }),
+    )
+  }, [viewportBounds])
+
+  // Update anchor visibility when viewport changes
+  useEffect(() => {
+    updateAnchorVisibility()
+  }, [updateAnchorVisibility])
+
+  // Add object
+  const addObject = useCallback(
+    (x: number, y: number) => {
+      // Don't place if no tool is selected or if hand tool is selected
+      if (!selectedTool || selectedTool === "hand") return
+
+      const worldPos = screenToWorld(x, y)
+
+      const newAnchor: ARAnchor = {
+        id: generateId(),
+        screenPosition: [x, y],
+        worldPosition: worldPos,
+        confidence: 0.8 + Math.random() * 0.2,
+        isVisible: true,
+      }
+
+      const newObject: ARObject = {
+        id: generateId(),
+        type: selectedTool,
+        position: worldPos,
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: getRandomColor(),
+        isSelected: false,
+        screenPosition: [x, y],
+        isVisible: true,
+        lastUpdateTime: Date.now(),
+      }
+
+      setAnchors((prev) => [...prev, newAnchor])
+      setObjects((prev) => [...prev, newObject])
+
+      // Reset tool selection after placing object
+      setSelectedTool(null)
+
+      console.log("➕ Added object:", newObject, "- Tool reset")
+    },
+    [selectedTool, screenToWorld],
+  )
+
+  // Select object
+  const selectObject = useCallback((id: string) => {
+    setObjects((prev) =>
+      prev.map((obj) => ({
+        ...obj,
+        isSelected: obj.id === id,
+      })),
+    )
+  }, [])
+
+  // Deselect all objects
+  const deselectAllObjects = useCallback(() => {
+    setObjects((prev) =>
+      prev.map((obj) => ({
+        ...obj,
+        isSelected: false,
+      })),
+    )
+  }, [])
+
+  // Update object rotation
+  const updateObjectRotation = useCallback((id: string, rotation: [number, number, number]) => {
+    setObjects((prev) => prev.map((obj) => (obj.id === id ? { ...obj, rotation } : obj)))
+  }, [])
+
+  // Update object position (for real-time movement)
+  const updateObjectPosition = useCallback((id: string, position: [number, number, number]) => {
+    setObjects((prev) => prev.map((obj) => (obj.id === id ? { ...obj, position } : obj)))
+  }, [])
+
+  // Move object to new position (for hand tool)
+  const moveObject = useCallback((id: string, x: number, y: number) => {
+    const worldPos = screenToWorld(x, y)
+    
+    setObjects((prev) => prev.map((obj) => 
+      obj.id === id 
+        ? { ...obj, position: worldPos, screenPosition: [x, y] }
+        : obj
+    ))
+
+    // Also update the associated anchor
+    setAnchors((prev) => prev.map((anchor) => {
+      // Find anchor closest to the object's old position
+      const obj = objects.find(o => o.id === id)
+      if (obj && obj.screenPosition) {
+        const [oldX, oldY] = obj.screenPosition
+        const [anchorX, anchorY] = anchor.screenPosition
+        const distance = Math.sqrt((oldX - anchorX) ** 2 + (oldY - anchorY) ** 2)
+        
+        // If this anchor is very close to the old object position, move it too
+        if (distance < 50) {
+          return { ...anchor, screenPosition: [x, y], worldPosition: worldPos }
+        }
+      }
+      return anchor
+    }))
+
+    console.log("📍 Moved object:", id, "to:", x, y)
+  }, [screenToWorld, objects])
+
+  // Delete individual object and its nearest anchor
+  const deleteObject = useCallback((objectId: string) => {
+    console.log("🗑️ Attempting to delete object:", objectId)
+    
+    const objectToDelete = objects.find(obj => obj.id === objectId)
+    if (!objectToDelete) {
+      console.warn("❌ Object not found:", objectId)
+      return
+    }
+
+    console.log("✅ Found object to delete:", objectToDelete.type)
+
+    // Remove the object
+    setObjects((prev) => {
+      const newObjects = prev.filter(obj => obj.id !== objectId)
+      console.log("📦 Objects before:", prev.length, "after:", newObjects.length)
+      return newObjects
+    })
+
+    // Find and remove the nearest anchor (if object has screen position)
+    if (objectToDelete.screenPosition) {
+      const [objX, objY] = objectToDelete.screenPosition
+      let nearestAnchor: ARAnchor | null = null
+      let minDistance = Infinity
+
+      anchors.forEach(anchor => {
+        const [anchorX, anchorY] = anchor.screenPosition
+        const distance = Math.sqrt((objX - anchorX) ** 2 + (objY - anchorY) ** 2)
+        if (distance < minDistance) {
+          minDistance = distance
+          nearestAnchor = anchor
+        }
+      })
+
+      // Remove the nearest anchor if it's close enough (within 100 pixels)
+      if (nearestAnchor && minDistance < 100) {
+        setAnchors((prev) => {
+          const newAnchors = prev.filter(anchor => anchor.id !== nearestAnchor!.id)
+          console.log("🎯 Anchors before:", prev.length, "after:", newAnchors.length)
+          return newAnchors
+        })
+        console.log("🎯 Removed nearest anchor at distance:", minDistance)
+      }
+    }
+
+    console.log("✅ Successfully deleted object:", objectId)
+  }, [objects, anchors])
+
+  // Get interaction coordinates with SSR safety
+  const getInteractionCoords = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return { x: 0, y: 0 }
+
+    if ("touches" in e) {
+      const touch = e.touches[0]
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      }
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      }
+    }
+  }, [])
+
+  // Universal interaction handlers
+  const handleInteractionStart = useCallback(
+    (e: React.TouchEvent | React.MouseEvent) => {
+      e.preventDefault()
+
+      const { x, y } = getInteractionCoords(e)
+      const interactionType = "touches" in e ? "touch" : "mouse"
+
+      console.log(`👆 ${interactionType} start at:`, x, y)
+
+      // Check if we're touching an existing object
+      const hitObject = findObjectAtPosition(x, y)
+
+      if (hitObject) {
+        // Check if hand tool is selected for moving, otherwise rotate
+        if (selectedTool === "hand") {
+          // Select and start moving the object
+          selectObject(hitObject.id)
+          setInteraction({
+            isActive: true,
+            startX: x,
+            startY: y,
+            currentX: x,
+            currentY: y,
+            objectId: hitObject.id,
+            initialRotation: [...hitObject.rotation],
+            type: interactionType,
+            isDragToPlace: false,
+            isMovingObject: true,
+          })
+          console.log("✋ Selected object for moving:", hitObject.id)
+        } else {
+          // Select and start rotating the object
+          selectObject(hitObject.id)
+          setInteraction({
+            isActive: true,
+            startX: x,
+            startY: y,
+            currentX: x,
+            currentY: y,
+            objectId: hitObject.id,
+            initialRotation: [...hitObject.rotation],
+            type: interactionType,
+            isDragToPlace: false,
+            isMovingObject: false,
+          })
+          console.log("🎯 Selected object for rotation:", hitObject.id)
+        }
+      } else {
+        // Check if we have a tool selected for drag-to-place
+        if (selectedTool) {
+          // Start drag-to-place mode
+          setInteraction({
+            isActive: true,
+            startX: x,
+            startY: y,
+            currentX: x,
+            currentY: y,
+            objectId: null,
+            initialRotation: [0, 0, 0],
+            type: interactionType,
+            isDragToPlace: true,
+          })
+          setDragPreview({
+            isVisible: true,
+            x,
+            y,
+            tool: selectedTool,
+          })
+          console.log("🎨 Started drag-to-place mode with tool:", selectedTool)
+        } else {
+          console.log("⚠️ No tool selected, cannot place object")
+        }
+      }
+    },
+    [findObjectAtPosition, selectObject, getInteractionCoords, selectedTool],
+  )
+
+  const handleInteractionMove = useCallback(
+    (e: React.TouchEvent | React.MouseEvent) => {
+      e.preventDefault()
+
+      if (!interaction.isActive) return
+
+      const { x, y } = getInteractionCoords(e)
+
+      setInteraction((prev) => ({
+        ...prev,
+        currentX: x,
+        currentY: y,
+      }))
+
+      // Update drag preview position if in drag-to-place mode
+      if (interaction.isDragToPlace) {
+        setDragPreview((prev) => ({
+          ...prev,
+          x,
+          y,
+        }))
+      }
+    },
+    [interaction.isActive, interaction.isDragToPlace, getInteractionCoords],
+  )
+
+  const handleInteractionEnd = useCallback(() => {
+    // If we were moving an object with hand tool, finalize the move
+    if (interaction.isMovingObject && interaction.objectId && selectedTool === "hand") {
+      moveObject(interaction.objectId, interaction.currentX, interaction.currentY)
+    }
+    
+    // If we were in drag-to-place mode, place the object
+    if (interaction.isDragToPlace && selectedTool) {
+      const distance = Math.sqrt(
+        (interaction.currentX - interaction.startX) ** 2 + 
+        (interaction.currentY - interaction.startY) ** 2
+      )
+      
+      // If it's a small movement, treat as a click, otherwise as a drag
+      if (distance < 10) {
+        // Click-to-place at start position
+        addObject(interaction.startX, interaction.startY)
+      } else {
+        // Drag-to-place at end position
+        addObject(interaction.currentX, interaction.currentY)
+      }
+    }
+
+    // Reset interaction and drag preview
+    setInteraction((prev) => ({
+      ...prev,
+      isActive: false,
+      objectId: null,
+      isDragToPlace: false,
+      isMovingObject: false,
+    }))
+    
+    setDragPreview({
+      isVisible: false,
+      x: 0,
+      y: 0,
+      tool: null,
+    })
+  }, [interaction, selectedTool, addObject, moveObject])
+
+  // Clear all objects
+  const clearAllObjects = useCallback(() => {
+    setObjects([])
+    setAnchors([])
+  }, [])
+
+  // Screenshot capture
+  const captureScreenshot = useCallback(async () => {
+    if (typeof window === "undefined" || !videoRef.current || !isReady) {
+      alert("❌ Camera not ready")
+      return
+    }
+
+    try {
+      console.log("📸 Capturing screenshot...")
+
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      if (!ctx) throw new Error("Canvas context not available")
+
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+
+      // Draw video background
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+
+      // Draw only visible AR anchors for performance
+      anchors
+        .filter((anchor) => anchor.isVisible)
+        .forEach((anchor) => {
+          const [x, y] = anchor.screenPosition
+          const time = Date.now() * 0.003
+          const pulse = 1 + Math.sin(time * 3) * 0.1
+
+          ctx.save()
+          ctx.translate(x, y)
+          ctx.scale(pulse, pulse)
+
+          // Outer ring
+          ctx.strokeStyle = `rgba(0, 255, 100, ${anchor.confidence})`
+          ctx.lineWidth = 3
+          ctx.beginPath()
+          ctx.arc(0, 0, 20, 0, Math.PI * 2)
+          ctx.stroke()
+
+          // Inner dot
+          ctx.fillStyle = `rgba(0, 255, 100, ${anchor.confidence})`
+          ctx.beginPath()
+          ctx.arc(0, 0, 6, 0, Math.PI * 2)
+          ctx.fill()
+
+          ctx.restore()
+        })
+
+      // Add watermark
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)"
+      ctx.fillRect(20, 20, 350, 80)
+      ctx.fillStyle = "#FFFFFF"
+      ctx.font = "18px Arial"
+      ctx.fillText(`AR Collage Studio - ${new Date().toLocaleString()}`, 30, 45)
+      ctx.fillText(`Objects: ${objects.length} | Camera: ${facingMode}`, 30, 70)
+
+      // Download
+      const link = document.createElement("a")
+      link.download = `ar-collage-${Date.now()}.png`
+      link.href = canvas.toDataURL("image/png", 0.9)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Success notification
+      const notification = document.createElement("div")
+      notification.textContent = "📸 Screenshot saved successfully!"
+      notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 255, 100, 0.95);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 30px;
+        font-weight: bold;
+        font-size: 18px;
+        z-index: 10000;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      `
+      document.body.appendChild(notification)
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification)
+        }
+      }, 3000)
+
+      console.log("✅ Screenshot captured")
+    } catch (error) {
+      console.error("❌ Screenshot failed:", error)
+      alert("Screenshot failed. Please try again.")
+    }
+  }, [isReady, objects, anchors, facingMode])
+
+  const selectedObject = objects.find((obj) => obj.isSelected)
+  const visibleObjectCount = objects.filter((obj) => obj.isVisible).length
+
+  // Show warning if not in secure context
+  if (!isSecureContext) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 text-white text-center max-w-md">
+          <div className="text-6xl mb-6">🔒</div>
+          <h2 className="text-2xl font-bold mb-4">Secure Connection Required</h2>
+          <p className="text-white/80 mb-6">
+            AR Collage Studio requires a secure connection (HTTPS) to access your camera.
+          </p>
+          <p className="text-white/80 mb-6">
+            You are currently using: <span className="font-bold">{browserInfo}</span>
+          </p>
+          <div className="space-y-3">
+            <a
+              href="https://localhost:3000"
+              className="block w-full bg-blue-500/80 backdrop-blur-lg rounded-2xl px-6 py-3 text-white font-semibold hover:bg-blue-600/80 transition-all duration-200 cursor-pointer"
+            >
+              Try HTTPS Connection
+            </a>
+          </div>
+          <div className="mt-6 text-white/60 text-sm">
+            <p>For Chrome users:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-left">
+              <li>Use HTTPS or localhost</li>
+              <li>Check that camera permissions are enabled</li>
+              <li>Try using Chrome's incognito mode</li>
+              <li>Ensure no other apps are using your camera</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render during SSR
+  if (!isClient) {
+    return <LoadingScreen message="Loading AR Collage Studio" subMessage="Initializing application..." />
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <LoadingScreen message="Initializing AR Camera" subMessage="Requesting camera permissions..." />
+  }
+
+  // Error state
+  if (cameraError) {
+    const { message, tips } = getDetailedErrorMessage(cameraError)
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 text-white text-center max-w-md">
+          <div className="text-6xl mb-6">❌</div>
+          <h2 className="text-2xl font-bold mb-4">Camera Access Required</h2>
+          <p className="text-white/80 mb-6">{message}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => initCamera()}
+              className="w-full bg-blue-500/80 backdrop-blur-lg rounded-2xl px-6 py-3 text-white font-semibold hover:bg-blue-600/80 transition-all duration-200 cursor-pointer"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-white/20 backdrop-blur-lg rounded-2xl px-6 py-3 text-white font-semibold hover:bg-white/30 transition-all duration-200 cursor-pointer"
+            >
+              Reload Page
+            </button>
+          </div>
+          <div className="mt-6 text-white/60 text-sm">
+            <p>Troubleshooting tips:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-left">
+              {tips.map((tip, index) => (
+                <li key={index}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Camera Video Background */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: isMobile && facingMode === "user" ? "scaleX(-1)" : "none" }}
+      />
+
+      {/* 3D Canvas Overlay with Performance Optimization */}
+      <div className="absolute inset-0 w-full h-full">
+        <Canvas
+          camera={{ position: [0, 0, 5], fov: 75 }}
+          style={{ background: "transparent" }}
+          performance={{ min: 0.5 }} // Adaptive performance
+          dpr={[1, 2]} // Limit pixel ratio for performance
+        >
+          <Suspense fallback={null}>
+            <Scene3D
+              objects={objects}
+              anchors={anchors}
+              onSelectObject={selectObject}
+              interaction={interaction}
+              onUpdateRotation={updateObjectRotation}
+              onUpdateScreenPosition={updateObjectScreenPosition}
+              viewportBounds={viewportBounds}
+              onUpdatePosition={updateObjectPosition}
+            />
+          </Suspense>
+        </Canvas>
+      </div>
+
+      {/* Interaction Overlay */}
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 w-full h-full touch-none ${
+          selectedTool === "hand" ? "cursor-grab" : "cursor-crosshair"
+        }`}
+        width={typeof window !== "undefined" ? window.innerWidth : 1920}
+        height={typeof window !== "undefined" ? window.innerHeight : 1080}
+        onTouchStart={handleInteractionStart}
+        onTouchMove={handleInteractionMove}
+        onTouchEnd={handleInteractionEnd}
+        onMouseDown={handleInteractionStart}
+        onMouseMove={handleInteractionMove}
+        onMouseUp={handleInteractionEnd}
+        style={{ touchAction: "none", background: "transparent" }}
+      />
+
+      {/* Drag Preview Overlay */}
+      {dragPreview.isVisible && dragPreview.tool && (
+        <div
+          className="absolute pointer-events-none z-20"
+          style={{
+            left: dragPreview.x - 30,
+            top: dragPreview.y - 30,
+          }}
+        >
+          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl border-2 border-blue-400 flex items-center justify-center text-2xl shadow-lg animate-pulse">
+            {TOOLS.find(tool => tool.type === dragPreview.tool)?.icon}
+          </div>
+          <div className="text-white text-xs text-center mt-1 font-semibold drop-shadow-lg">
+            {TOOLS.find(tool => tool.type === dragPreview.tool)?.name}
+          </div>
+        </div>
+      )}
+
+      {/* Improved Mobile Header */}
+      <div className="absolute top-0 left-0 right-0 z-10">
+        <div className="bg-gradient-to-b from-black/90 via-black/60 to-transparent">
+          {/* Main Header */}
+          <div className="flex items-center justify-between p-3">
+            <div className="flex-1">
+              <h1 className="text-white font-bold text-lg leading-tight">AR Collage Studio</h1>
+              <p className="text-white/70 text-xs leading-tight mt-0.5">
+                {isMobile
+                  ? "Tap objects to rotate • Tap/drag to place"
+                  : "Click objects to rotate • Click/drag to place"}
+              </p>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium mb-2 flex items-center space-x-2">
-                  <Users className="w-4 h-4" />
-                  <span>Suggested Connections</span>
-                </h4>
-                <div className="flex space-x-2">
-                  {matchData.suggestedConnections.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center space-x-2 bg-white/10 rounded-lg p-2 flex-1 cursor-pointer hover:bg-white/15 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        showToast(`Connect with ${user.name} feature coming soon!`, "info");
-                      }}
-                    >
-                      <DynamicIcon iconName={user.avatar} className="w-4 h-4 text-blue-300" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">
-                          {user.name}
-                        </p>
-                        <p className="text-xs text-white/60 truncate">
-                          {user.interests.slice(0, 2).join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {matchData.recommendedEvents.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2 flex items-center space-x-2">
-                    <Zap className="w-4 h-4" />
-                    <span>You might also like</span>
-                  </h4>
-                  <div className="space-y-2">
-                    {matchData.recommendedEvents.map((recEvent) => (
-                      <div
-                        key={recEvent.id}
-                        className="flex items-center space-x-3 bg-white/5 rounded-lg p-2 cursor-pointer hover:bg-white/10 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEvent(recEvent);
-                        }}
-                      >
-                        <DynamicIcon iconName={recEvent.image} className="w-4 h-4 text-purple-300" />
-                        <div>
-                          <p className="text-xs font-medium">
-                            {recEvent.title}
-                          </p>
-                          <p className="text-xs text-white/60">
-                            {recEvent.date}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            <div className="flex items-center space-x-2 ml-3">
+              {/* Camera Flip Button (Mobile Only) */}
+              {isMobile && canFlip && (
+                <button
+                  onClick={flipCamera}
+                  className="bg-white/15 backdrop-blur-lg rounded-xl p-2.5 text-white hover:bg-white/25 transition-all duration-200 text-lg shadow-lg cursor-pointer"
+                  title={`Switch to ${facingMode === "environment" ? "front" : "rear"} camera`}
+                >
+                  🔄
+                </button>
+              )}
+              <button
+                onClick={captureScreenshot}
+                className="bg-white/15 backdrop-blur-lg rounded-xl p-2.5 text-white hover:bg-white/25 transition-all duration-200 text-lg shadow-lg cursor-pointer"
+                title="Capture Screenshot"
+              >
+                📸
+              </button>
+              {objects.length > 0 && (
+                <button
+                  onClick={clearAllObjects}
+                  className="bg-red-500/80 backdrop-blur-lg rounded-xl p-2.5 text-white hover:bg-red-600/80 transition-all duration-200 text-lg shadow-lg cursor-pointer"
+                  title="Clear All Objects"
+                >
+                  🧹
+                </button>
               )}
             </div>
           </div>
-        );
-      })}
-    </div>
-  );
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6" />
+          {/* Performance Stats (Mobile) */}
+          {isMobile && (
+            <div className="px-3 pb-2">
+              <div className="flex items-center justify-between text-white/60 text-xs">
+                <span>Objects: {objects.length}</span>
+                <span>Visible: {visibleObjectCount}</span>
+                <span>Camera: {facingMode === "environment" ? "Rear" : "Front"}</span>
+                <span>Tool: {selectedTool ? TOOLS.find((t) => t.type === selectedTool)?.name : "None"}</span>
+                {selectedObject && <span className="text-blue-400">Selected: {selectedObject.type}</span>}
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                MeetupHub
-              </h1>
             </div>
-
-            <nav className="hidden md:flex items-center space-x-3">
-              <button
-                onClick={() => setTimelineView(!timelineView)}
-                className={`group relative px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 cursor-pointer overflow-hidden ${
-                  timelineView
-                    ? "bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-white border border-purple-400/50 shadow-lg shadow-purple-500/25"
-                    : "bg-white/10 text-white/80 border border-white/20 hover:bg-white/15 hover:text-white hover:border-white/30 hover:shadow-lg hover:shadow-white/10"
-                } transform hover:scale-105 active:scale-95`}
-              >
-                {/* Background glow effect */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                    timelineView ? "opacity-100" : ""
-                  }`}
-                ></div>
-
-                {/* Icon and text */}
-                <div className="relative flex items-center space-x-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Timeline</span>
-                </div>
-
-                {/* Active indicator */}
-                {timelineView && (
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
-                )}
-
-                {/* Hover shimmer effect */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-shimmer"></div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setShowAIMatching(!showAIMatching)}
-                className={`group relative px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 cursor-pointer overflow-hidden ${
-                  showAIMatching
-                    ? "bg-gradient-to-r from-blue-500/30 to-cyan-500/30 text-white border border-blue-400/50 shadow-lg shadow-blue-500/25"
-                    : "bg-white/10 text-white/80 border border-white/20 hover:bg-white/15 hover:text-white hover:border-white/30 hover:shadow-lg hover:shadow-white/10"
-                } transform hover:scale-105 active:scale-95`}
-              >
-                {/* Background glow effect */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                    showAIMatching ? "opacity-100" : ""
-                  }`}
-                ></div>
-
-                {/* Icon and text */}
-                <div className="relative flex items-center space-x-2">
-                  <Zap className="w-4 h-4" />
-                  <span>AI Matching</span>
-                </div>
-
-                {/* Active indicator */}
-                {showAIMatching && (
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full"></div>
-                )}
-
-                {/* Hover shimmer effect */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-shimmer"></div>
-                </div>
-              </button>
-            </nav>
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="md:hidden hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-
-              <button
-                onClick={() =>
-                  showToast("Notifications feature coming soon!", "info")
-                }
-                className="hidden md:flex p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              >
-                <Bell className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => showToast("Settings panel coming soon!", "info")}
-                className="hidden md:flex p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() =>
-                  showToast("Profile management coming soon!", "info")
-                }
-                className="hidden md:flex w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-              >
-                <User className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Search and Filters */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-              <input
-                type="text"
-                placeholder="Search events..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-white/50"
-              />
+      {/* Optimized Tool Palette */}
+      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
+        {/* Toggle Button */}
+        <button
+          onClick={() => setToolsPanelOpen(!toolsPanelOpen)}
+          className={`mb-3 w-12 h-12 rounded-full bg-white/15 backdrop-blur-lg text-white text-xl hover:bg-white/25 transition-all duration-200 shadow-lg cursor-pointer ${
+            toolsPanelOpen ? "scale-110 bg-blue-500/80" : ""
+          }`}
+          title="3D Objects"
+        >
+          🎨
+        </button>
+
+        {/* Panel Content */}
+        <div
+          className={`bg-white/15 backdrop-blur-lg rounded-2xl shadow-xl transition-all duration-300 overflow-hidden ${
+            toolsPanelOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="p-2.5">
+            <div className="text-white text-center text-xs font-semibold mb-2">3D Objects</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {TOOLS.map((tool) => (
+                <button
+                  key={tool.type}
+                  onClick={() => setSelectedTool(tool.type)}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg transition-all duration-200 cursor-pointer ${
+                    selectedTool === tool.type
+                      ? "bg-blue-500/90 text-white scale-105 shadow-lg"
+                      : "bg-white/10 text-white/80 hover:bg-white/20 hover:scale-105"
+                  }`}
+                  title={tool.name}
+                >
+                  {tool.icon}
+                </button>
+              ))}
             </div>
-            {(selectedInterests.length > 0 || searchTerm.length > 0) && (
-              <button
-                onClick={() => {
-                  setSelectedInterests([]);
-                  setSearchTerm("");
-                  showToast("Filters reset successfully!", "success");
-                }}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all cursor-pointer flex items-center space-x-2"
-              >
-                <X className="w-5 h-5" />
-                <span>Reset Filters</span>
-              </button>
+            {!selectedTool && (
+              <div className="text-white/60 text-center text-xs mt-2">
+                Select a tool to place objects
+              </div>
             )}
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {allInterests.map((interest) => {
-              const IconComponent = interestIcons[interest] || Star;
-              return (
-                <button
-                  key={interest}
-                  onClick={() => {
-                    setSelectedInterests((prev) =>
-                      prev.includes(interest)
-                        ? prev.filter((i) => i !== interest)
-                        : [...prev, interest]
-                    );
-                  }}
-                  className={`px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center space-x-1.5 text-sm ${
-                    selectedInterests.includes(interest)
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-105"
-                      : "bg-white/10 hover:bg-white/20 text-white/70 hover:text-white hover:scale-105"
-                  }`}
-                >
-                  <IconComponent className="w-3.5 h-3.5" />
-                  <span className="capitalize">{interest}</span>
-                </button>
-              );
-            })}
-          </div>
         </div>
+      </div>
 
-        {/* Timeline View */}
-        {timelineView && !searchTerm && (
-          <div className="mb-8 bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-            <h2 className="text-xl font-semibold mb-2 flex items-center space-x-2">
-              <Clock className="w-5 h-5" />
-              <span>Event Timeline</span>
-            </h2>
-            <Timeline />
-          </div>
-        )}
-
-        {/* AI Matching Panel */}
-        {showAIMatching && !searchTerm && (
-          <div className="mb-8 bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-            <h2 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-yellow-400" />
-              <span>AI-Powered Matching</span>
-            </h2>
-            <AIMatchingPanel />
-          </div>
-        )}
-
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Upcoming Events</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 justify-items-center">
-            {filteredEvents.map((event) => (
-              <div
-                key={event.id}
-                className="group relative w-80 h-80 cursor-pointer transform-gpu transition-all duration-500 hover:scale-110"
-                style={{ perspective: "1000px" }}
-              >
-                <div
-                  className="w-full h-full relative transform-gpu transition-all duration-500 group-hover:rotateY-12 group-hover:rotateX-6"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <div
-                    onClick={() => setSelectedEvent(event)}
-                    className="w-full h-full relative overflow-hidden transition-all duration-500 group-hover:shadow-2xl group-hover:shadow-purple-500/30"
-                    style={{
-                      clipPath:
-                        "polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)",
-                      background:
-                        "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
-                      backdropFilter: "blur(20px)",
-                      border: "1px solid rgba(255,255,255,0.2)",
-                    }}
-                  >
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 transform translate-x-1 translate-y-1 -z-10"
-                      style={{
-                        clipPath:
-                          "polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)",
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-blue-500/15 to-indigo-500/15 transform translate-x-2 translate-y-2 -z-20"
-                      style={{
-                        clipPath:
-                          "polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)",
-                      }}
-                    />
-
-                    <div className="absolute inset-0 flex flex-col items-center text-center">
-                      <div className="flex-shrink-0 pt-6 pb-0">
-                        <div className="flex justify-center space-x-1 mb-2">
-                          {event.trending && (
-                            <div className="bg-red-500/20 backdrop-blur-sm border border-red-500/40 rounded-full px-2 py-0.5">
-                              <FlameIcon className="w-3 h-3 text-red-300" />
-                            </div>
-                          )}
-                          {calendarConnected &&
-                            event.calendarConflicts === 0 && (
-                              <div className="bg-green-500/20 backdrop-blur-sm border border-green-500/40 rounded-full px-2 py-0.5">
-                                <CheckCircle className="w-3 h-3 text-green-300" />
-                              </div>
-                            )}
-                        </div>
-
-                        <div className="text-3xl transition-all duration-300 group-hover:scale-125 group-hover:rotate-6">
-                          <DynamicIcon iconName={event.image} className="w-12 h-12 text-purple-300" />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-center items-center px-8 pb-2 max-w-60">
-                        <h3 className="font-bold text-base mb-2 line-clamp-2 transition-all duration-300 group-hover:text-purple-200 leading-tight">
-                          {event.title}
-                        </h3>
-
-                        <div className="text-xs text-white/80 mb-2 font-medium">
-                          {event.date} • {event.time}
-                        </div>
-
-                        <div className="flex items-center space-x-1 mb-3 text-xs text-white/70">
-                          <MapPin className="w-3 h-3" />
-                          <span className="truncate max-w-28">
-                            {event.location}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-center space-x-3 mb-3">
-                          <div className="flex items-center space-x-1 bg-white/15 rounded-full px-2 py-1">
-                            <Users className="w-3 h-3 text-blue-300" />
-                            <span className="text-xs font-medium">
-                              {event.participants}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-1 bg-yellow-500/20 rounded-full px-2 py-1">
-                            <Heart className="w-3 h-3 text-yellow-400" />
-                            <span className="text-xs font-medium">
-                              {event.maybeCount}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-1 justify-center mb-3">
-                          {event.interests.slice(0, 2).map((interest) => (
-                            <span
-                              key={interest}
-                              className="text-xs bg-purple-500/30 px-2 py-0.5 rounded-full font-medium"
-                            >
-                              {interest}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="flex space-x-1 justify-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const currentStatus = userAttendance[event.id];
-                              const newStatus = currentStatus === "attending" ? null : "attending";
-                              handleAttendance(event.id, newStatus);
-                            }}
-                            className={`px-3 py-1 text-xs rounded-full font-medium transition-all cursor-pointer transform hover:scale-105 ${
-                              userAttendance[event.id] === "attending"
-                                ? "bg-green-500 text-white shadow-md shadow-green-500/30"
-                                : "bg-white/20 hover:bg-green-500/60 backdrop-blur-sm border border-white/30 text-white"
-                            }`}
-                          >
-                            {userAttendance[event.id] === "attending"
-                              ? "✓ Going"
-                              : "Join"}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const currentStatus = userAttendance[event.id];
-                              const newStatus = currentStatus === "maybe" ? null : "maybe";
-                              handleAttendance(event.id, newStatus);
-                            }}
-                            className={`px-2 py-1 text-xs rounded-full font-medium transition-all cursor-pointer transform hover:scale-105 ${
-                              userAttendance[event.id] === "maybe"
-                                ? "bg-yellow-500 text-white shadow-md shadow-yellow-500/30"
-                                : "bg-white/20 hover:bg-yellow-500/60 backdrop-blur-sm border border-white/30 text-white"
-                            }`}
-                          >
-                            {userAttendance[event.id] === "maybe"
-                              ? "✓"
-                              : "Maybe"}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex-shrink-0 pb-4">
-                        {calendarConnected && event.calendarConflicts > 0 && (
-                          <div className="flex items-center justify-center space-x-1 bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/40 rounded-full px-2 py-1">
-                            <AlertCircle className="w-3 h-3 text-yellow-400" />
-                            <span className="text-xs text-yellow-300">
-                              {event.calendarConflicts}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                      <div
-                        className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-blue-500/10"
-                        style={{
-                          clipPath:
-                            "polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)",
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex space-x-2 z-10">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      showToast("Sharing feature coming soon!", "info");
-                    }}
-                    className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-all cursor-pointer transform hover:scale-110 shadow-lg"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="absolute top-1/2 -left-6 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                  <div className="flex flex-col items-center">
-                    <div className="w-2 h-16 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className={`w-full transition-all duration-1000 rounded-full ${
-                          (event.popularity ?? 75) >= 90
-                            ? "bg-gradient-to-t from-emerald-500 to-green-400"
-                            : (event.popularity ?? 75) >= 75
-                            ? "bg-gradient-to-t from-blue-500 to-cyan-400"
-                            : "bg-gradient-to-t from-yellow-500 to-orange-400"
-                        }`}
-                        style={{ height: `${event.popularity ?? 75}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-white/70 mt-1">
-                      {event.popularity ?? 75}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="absolute inset-0 -m-2 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-blue-500/5 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10"></div>
+      {/* Delete Button for Selected Object */}
+      {selectedObject && (
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10">
+          <div className="bg-white/15 backdrop-blur-lg rounded-2xl shadow-xl p-4 min-w-[120px]">
+            <div className="text-white text-center text-xs font-semibold mb-3">Selected Object</div>
+            <div className="flex flex-col items-center mb-3">
+              <div className="text-3xl mb-2 bg-white/10 rounded-xl p-2 w-12 h-12 flex items-center justify-center">
+                {TOOLS.find(tool => tool.type === selectedObject.type)?.icon}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Event Detail Modal */}
-        {selectedEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="text-4xl">
-                      <DynamicIcon iconName={selectedEvent.image} className="w-12 h-12 text-purple-300" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold mb-1">
-                        {selectedEvent.title}
-                      </h2>
-                      <p className="text-white/70">
-                        Organized by {selectedEvent.organizer}
-                      </p>
-                      {aiMatchingData[selectedEvent.id] && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <Zap className="w-4 h-4 text-yellow-400" />
-                          <span className="text-sm text-yellow-400">
-                            {
-                              aiMatchingData[selectedEvent.id]
-                                .compatibilityScore
-                            }
-                            % match for you
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedEvent(null)}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="font-semibold mb-3">Event Details</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="w-4 h-4" />
-                        <span>
-                          {selectedEvent.date} at {selectedEvent.time}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <MapPin className="w-4 h-4" />
-                        <span>{selectedEvent.location}</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Users className="w-4 h-4" />
-                        <span>
-                          {selectedEvent.participants}/
-                          {selectedEvent.maxCapacity} attending
-                        </span>
-                      </div>
-                      {calendarConnected && (
-                        <div
-                          className={`flex items-center space-x-3 ${
-                            selectedEvent.calendarConflicts === 0
-                              ? "text-green-400"
-                              : "text-yellow-400"
-                          }`}
-                        >
-                          {selectedEvent.calendarConflicts === 0 ? (
-                            <CheckCircle className="w-4 h-4" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4" />
-                          )}
-                          <span>
-                            {selectedEvent.calendarConflicts === 0
-                              ? "No calendar conflicts"
-                              : `${selectedEvent.calendarConflicts} calendar conflicts`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold mb-3">Interests & Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEvent.interests.map((interest) => {
-                        const IconComponent = interestIcons[interest] || Star;
-                        return (
-                          <span
-                            key={interest}
-                            className="flex items-center space-x-1 bg-purple-500/20 px-3 py-2 rounded-full text-sm"
-                          >
-                            <IconComponent className="w-3 h-3" />
-                            <span className="capitalize">{interest}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="font-semibold mb-3">Description</h3>
-                  <p className="text-white/80 leading-relaxed">
-                    {selectedEvent.description}
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="font-semibold mb-3">Attendees</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {selectedEvent.attendees.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center space-x-3 bg-white/10 rounded-lg p-3"
-                      >
-                        <DynamicIcon iconName={user.avatar} className="w-6 h-6 text-blue-300" />
-                        <div>
-                          <p className="text-sm font-medium">{user.name}</p>
-                          <p className="text-xs text-white/60">
-                            {user.interests.slice(0, 2).join(", ")}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={() => {
-                      const currentStatus = userAttendance[selectedEvent.id];
-                      const newStatus = currentStatus === "attending" ? null : "attending";
-                      handleAttendance(selectedEvent.id, newStatus);
-                    }}
-                    className={`flex-1 py-3 rounded-lg transition-all cursor-pointer ${
-                      userAttendance[selectedEvent.id] === "attending"
-                        ? "bg-green-500 text-white"
-                        : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                    }`}
-                  >
-                    {userAttendance[selectedEvent.id] === "attending"
-                      ? "Attending ✓"
-                      : "Join Event"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      const currentStatus = userAttendance[selectedEvent.id];
-                      const newStatus = currentStatus === "maybe" ? null : "maybe";
-                      handleAttendance(selectedEvent.id, newStatus);
-                    }}
-                    className={`px-6 py-3 rounded-lg transition-all cursor-pointer ${
-                      userAttendance[selectedEvent.id] === "maybe"
-                        ? "bg-yellow-500 text-white"
-                        : "bg-white/10 hover:bg-yellow-500/50"
-                    }`}
-                  >
-                    Maybe ({selectedEvent.maybeCount})
-                  </button>
-                  <button
-                    onClick={() => addToGoogleCalendar(selectedEvent)}
-                    className="px-6 py-3 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-all cursor-pointer border border-blue-500/30"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Add to Calendar</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
+              <div className="text-white/90 text-sm font-medium capitalize">{selectedObject.type}</div>
             </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white/5 backdrop-blur-md border-t border-white/10 mt-16">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg">MeetupHub</span>
-              </div>
-              <p className="text-white/60 text-sm">
-                Connect with like-minded individuals and discover amazing events
-                in your community.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Features</h3>
-              <ul className="space-y-2 text-sm text-white/60">
-                <li
-                  onClick={() =>
-                    showToast("AI Matching feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  AI Matching
-                </li>
-                <li
-                  onClick={() =>
-                    showToast(
-                      "Calendar Integration feature coming soon!",
-                      "info"
-                    )
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Calendar Integration
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Interest Filtering feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Interest Filtering
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Event Timeline feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Event Timeline
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Community</h3>
-              <ul className="space-y-2 text-sm text-white/60">
-                <li
-                  onClick={() =>
-                    showToast("Event creation feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Create Events
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Group joining feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Join Groups
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Partner finding feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Find Partners
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Interest sharing feature coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Share Interests
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Support</h3>
-              <ul className="space-y-2 text-sm text-white/60">
-                <li
-                  onClick={() => showToast("Help Center coming soon!", "info")}
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Help Center
-                </li>
-                <li
-                  onClick={() => showToast("Contact form coming soon!", "info")}
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Contact Us
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Privacy Policy coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Privacy Policy
-                </li>
-                <li
-                  onClick={() =>
-                    showToast("Terms of Service coming soon!", "info")
-                  }
-                  className="cursor-pointer hover:text-white transition-colors"
-                >
-                  Terms of Service
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-white/60 text-sm">
-              © 2025 MeetupHub. All rights reserved.
-            </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <button
-                onClick={() =>
-                  showToast("Email subscription coming soon!", "info")
-                }
-                className="text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                <Mail className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() =>
-                  showToast("Twitter integration coming soon!", "info")
-                }
-                className="text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                <Twitter className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() =>
-                  showToast("Facebook integration coming soon!", "info")
-                }
-                className="text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                <Facebook className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() =>
-                  showToast("Instagram integration coming soon!", "info")
-                }
-                className="text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                <Instagram className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* Mobile Menu */}
-      {showMobileMenu && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-          <div className="absolute top-0 right-0 w-64 h-full bg-white/10 backdrop-blur-md border-l border-white/20 p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Menu</h2>
-              <button
-                onClick={() => setShowMobileMenu(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <nav className="space-y-4">
+            <div className="flex justify-center">
               <button
                 onClick={() => {
-                  setTimelineView(!timelineView);
-                  setShowMobileMenu(false);
+                  deleteObject(selectedObject.id)
+                  deselectAllObjects()
                 }}
-                className={`w-full px-4 py-3 rounded-lg transition-all cursor-pointer text-left ${
-                  timelineView
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "hover:bg-white/10"
-                }`}
+                className="w-12 h-12 rounded-xl bg-red-500/80 hover:bg-red-600/80 text-white text-lg transition-all duration-200 cursor-pointer shadow-lg flex items-center justify-center"
+                title="Delete Selected Object"
               >
-                Timeline
+                ❌
               </button>
-              <button
-                onClick={() => {
-                  setShowAIMatching(!showAIMatching);
-                  setShowMobileMenu(false);
-                }}
-                className={`w-full px-4 py-3 rounded-lg transition-all cursor-pointer text-left ${
-                  showAIMatching
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "hover:bg-white/10"
-                }`}
-              >
-                AI Matching
-              </button>
-            </nav>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Status Bar */}
+      {!isMobile && (
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent z-10">
+          <div className="flex items-center justify-between text-white text-sm">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-2">
+              Objects: {objects.length} | Visible: {visibleObjectCount}
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-2">
+              Tool: {selectedTool ? TOOLS.find((t) => t.type === selectedTool)?.name : "None"}
+            </div>
+            {selectedObject && (
+              <div className="bg-blue-500/80 backdrop-blur-lg rounded-2xl px-4 py-2">
+                Selected: {selectedObject.type}
+              </div>
+            )}
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-2">
+              Performance: {Math.round((visibleObjectCount / Math.max(objects.length, 1)) * 100)}% visible
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions Modal */}
+      {showInstructions && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 text-center text-white max-w-lg mx-4 shadow-2xl">
+            <div className="text-5xl mb-6">🎯</div>
+            <h3 className="text-2xl font-bold mb-6">Welcome to AR Collage Studio</h3>
+            <div className="text-white/90 text-left space-y-3 mb-8 text-sm">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🎨</span>
+                <span>Select a tool each time you want to place an object</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">👆</span>
+                <span>Tap or drag to place objects anywhere on screen</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🎯</span>
+                <span>Tap objects to select and rotate them</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🔄</span>
+                <span>Drag selected objects to rotate in 3D</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">✋</span>
+                <span>Use hand tool to drag and reposition objects</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🗑️</span>
+                <span>Use delete button to remove selected objects</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🧹</span>
+                <span>Use clear button to remove all objects at once</span>
+              </div>
+              {isMobile && canFlip && (
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">📱</span>
+                  <span>Use flip button to switch between front/rear camera</span>
+                </div>
+              )}
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">⚡</span>
+                <span>Optimized performance with canvas virtualization</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">📸</span>
+                <span>Capture mixed reality screenshots</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowInstructions(false)}
+              className="bg-blue-500/80 backdrop-blur-lg rounded-2xl px-8 py-4 text-white font-bold text-lg hover:bg-blue-600/80 transition-all duration-200 shadow-lg cursor-pointer"
+            >
+              Start Creating! 🚀
+            </button>
           </div>
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default CommunityMeetupPlatform;
+export default ARCollageComposer
