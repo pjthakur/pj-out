@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hope Foundation - Transforming Lives Worldwide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -8px;
+            top: 1rem;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea30;
+            z-index: 10;
+        }
+
+        .star-rating {
+            display: inline-flex;
+            gap: 2px;
+        }
+
+        .star {
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.5rem;
+        }
+
+        .star.active {
+            color: #fbbf24;
+            transform: scale(1.1);
+        }
+
+        .star:hover {
+            transform: scale(1.2);
+        }
+
+        .donation-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .donor-avatar {
+            transition: all 0.3s ease;
+        }
+
+        .donor-avatar:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .scroll-to-top {
+            transition: all 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+        }
+
+        .scroll-to-top.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .impact-counter {
+            font-size: 3rem;
+            font-weight: 800;
+            background: white;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @media (max-width: 768px) {
+            .impact-counter {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50" id="#">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-200 z-50" role="navigation"
+        aria-label="Main navigation">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23667eea'/%3E%3Cpath d='M20 8v24M12 16l8 8 8-8' stroke='white' stroke-width='2' fill='none'/%3E%3C/svg%3E"
+                        alt="Hope Foundation Logo" class="h-8 w-8">
+                    <span class="ml-2 text-xl font-bold text-gray-900">Hope Foundation</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#home" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">Home</a>
+                    <a href="#about" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">About</a>
+                    <a href="#programs" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">Programs</a>
+                    <a href="#impact" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">Impact</a>
+                    <a href="#donors" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">Donors</a>
+                    <a href="#stories" class="nav-link text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                        role="menuitem">Stories</a>
+                </div>
+                <button class="md:hidden" id="mobile-menu-button" aria-label="Toggle mobile menu" aria-expanded="false">
+                    <i class="fas fa-bars text-gray-700"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div class="md:hidden hidden" id="mobile-menu" role="menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 bg-white border-t">
+                <a href="#home" class="block px-3 py-2 text-gray-700 hover:text-blue-600" role="menuitem">Home</a>
+                <a href="#about" class="block px-3 py-2 text-gray-700 hover:text-blue-600" role="menuitem">About</a>
+                <a href="#programs" class="block px-3 py-2 text-gray-700 hover:text-blue-600"
+                    role="menuitem">Programs</a>
+                <a href="#impact" class="block px-3 py-2 text-gray-700 hover:text-blue-600" role="menuitem">Impact</a>
+                <a href="#donors" class="block px-3 py-2 text-gray-700 hover:text-blue-600" role="menuitem">Donors</a>
+                <a href="#stories" class="block px-3 py-2 text-gray-700 hover:text-blue-600" role="menuitem">Stories</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="relative min-h-screen flex items-center gradient-bg">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <div class="fade-in-up">
+                <h1 class="text-4xl md:text-7xl font-bold mb-6 leading-tight">
+                    Transforming Lives
+                    <span class="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+                        Worldwide
+                    </span>
+                </h1>
+                <p class="text-lg md:text-2xl mb-8 max-w-3xl mx-auto opacity-90">
+                    Together, we're building a world where every child has access to education, clean water, and hope
+                    for a brighter future.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onclick="openDonationForm()"
+                        class="bg-white text-blue-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                        aria-label="Donate now">
+                        <i class="fas fa-heart mr-2"></i>
+                        Donate Now
+                    </button>
+                    <a href="#about"
+                        class="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-blue-600 transition-all duration-300">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 floating-animation">
+            <a href="#about" class="text-white hover:text-blue-400 transition-all duration-300"
+                aria-label="Scroll to About section">
+
+                <i class="fas fa-chevron-down text-white text-2xl opacity-70"></i>
+            </a>
+        </div>
+    </section>
+
+    <!-- Charity Rating Section -->
+    <section id="about" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Trusted & Transparent</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    We maintain the highest standards of accountability and transparency in all our operations.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div
+                    class="bg-gradient-to-br from-blue-50 to-indigo-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-award text-4xl text-blue-600 mb-4"></i>
+                            <h3 class="text-2xl font-bold text-gray-900">Charity Navigator</h3>
+                        </div>
+                        <div class="star-rating mb-4" data-rating="5" role="img" aria-label="5 out of 5 stars rating">
+                            <span class="star" data-value="1"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="2"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="3"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="4"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="5"><i class="fas fa-star"></i></span>
+                        </div>
+                        <p class="text-gray-600">4-Star Rating</p>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-green-50 to-emerald-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-shield-alt text-4xl text-green-600 mb-4"></i>
+                            <h3 class="text-2xl font-bold text-gray-900">GuideStar</h3>
+                        </div>
+                        <div class="star-rating mb-4" data-rating="5" role="img" aria-label="5 out of 5 stars rating">
+                            <span class="star" data-value="1"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="2"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="3"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="4"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="5"><i class="fas fa-star"></i></span>
+                        </div>
+                        <p class="text-gray-600">Platinum Seal</p>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-purple-50 to-violet-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-certificate text-4xl text-purple-600 mb-4"></i>
+                            <h3 class="text-2xl font-bold text-gray-900">Better Business Bureau</h3>
+                        </div>
+                        <div class="star-rating mb-4" data-rating="5" role="img" aria-label="5 out of 5 stars rating">
+                            <span class="star" data-value="1"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="2"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="3"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="4"><i class="fas fa-star"></i></span>
+                            <span class="star" data-value="5"><i class="fas fa-star"></i></span>
+                        </div>
+                        <p class="text-gray-600">A+ Rating</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Statistics -->
+    <section id="impact" class="py-20 gradient-bg text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Our Global Impact</h2>
+                <p class="text-xl opacity-90 max-w-3xl mx-auto">
+                    Every donation creates ripples of change across communities worldwide.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center glass-effect p-6 rounded-2xl">
+                    <div class="impact-counter" data-target="150000">0</div>
+                    <p class="text-lg font-semibold mt-2">Lives Transformed</p>
+                </div>
+                <div class="text-center glass-effect p-6 rounded-2xl">
+                    <div class="impact-counter" data-target="2500">0</div>
+                    <p class="text-lg font-semibold mt-2">Wells Built</p>
+                </div>
+                <div class="text-center glass-effect p-6 rounded-2xl">
+                    <div class="impact-counter" data-target="75">0</div>
+                    <p class="text-lg font-semibold mt-2">Countries Served</p>
+                </div>
+                <div class="text-center glass-effect p-6 rounded-2xl">
+                    <div class="impact-counter" data-target="98">0</div>
+                    <p class="text-lg font-semibold mt-2">% to Programs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Programs Timeline -->
+    <section id="programs" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Our Programs</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Comprehensive initiatives addressing the world's most pressing challenges.
+                </p>
+            </div>
+
+            <div class="max-w-3xl mx-auto">
+                <div class="timeline-item mb-12" data-aos="fade-up">
+                    <div class="timeline-dot"></div>
+                    <div class="bg-blue-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Clean Water Initiative</h3>
+                        <p class="text-gray-600 mb-4">Providing sustainable access to clean water in underserved
+                            communities through well construction and water purification systems.</p>
+                        <div class="flex items-center text-blue-600">
+                            <i class="fas fa-tint mr-2"></i>
+                            <span>Active in 45 countries</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-aos="fade-up" data-aos-delay="200">
+                    <div class="timeline-dot"></div>
+                    <div class="bg-green-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Education For All</h3>
+                        <p class="text-gray-600 mb-4">Building schools, training teachers, and providing educational
+                            materials to ensure every child has access to quality education.</p>
+                        <div class="flex items-center text-green-600">
+                            <i class="fas fa-graduation-cap mr-2"></i>
+                            <span>125,000 students enrolled</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-aos="fade-up" data-aos-delay="400">
+                    <div class="timeline-dot"></div>
+                    <div class="bg-purple-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Healthcare Access</h3>
+                        <p class="text-gray-600 mb-4">Mobile clinics, medical training, and healthcare infrastructure
+                            development in remote areas.</p>
+                        <div class="flex items-center text-purple-600">
+                            <i class="fas fa-heartbeat mr-2"></i>
+                            <span>50,000 patients treated monthly</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-aos="fade-up" data-aos-delay="600">
+                    <div class="timeline-dot"></div>
+                    <div class="bg-orange-50 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Economic Empowerment</h3>
+                        <p class="text-gray-600 mb-4">Microfinance, vocational training, and small business development
+                            programs to break the cycle of poverty.</p>
+                        <div class="flex items-center text-orange-600">
+                            <i class="fas fa-briefcase mr-2"></i>
+                            <span>15,000 businesses launched</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Donor Wall -->
+    <section id="donors" class="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Our Champions</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Celebrating the generous hearts that make our mission possible.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12">
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">Michael Chen</p>
+                    <p class="text-xs text-gray-500">Major Donor</p>
+                </div>
+
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">Sarah Johnson</p>
+                    <p class="text-xs text-gray-500">Legacy Circle</p>
+                </div>
+
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/men/67.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">David Rodriguez</p>
+                    <p class="text-xs text-gray-500">Platinum</p>
+                </div>
+
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">Emily Watson</p>
+                    <p class="text-xs text-gray-500">Gold Circle</p>
+                </div>
+
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/men/54.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">James Wilson</p>
+                    <p class="text-xs text-gray-500">Ambassador</p>
+                </div>
+
+                <div class="donor-avatar text-center">
+                    <img src="https://randomuser.me/api/portraits/women/72.jpg" alt="Donor avatar"
+                        class="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg">
+                    <p class="text-sm font-semibold text-gray-700">Lisa Anderson</p>
+                    <p class="text-xs text-gray-500">Founding Member</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">Donation Levels</h3>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg">
+                        <i class="fas fa-star text-3xl text-yellow-500 mb-2"></i>
+                        <h4 class="font-bold text-gray-900">Bronze</h4>
+                        <p class="text-sm text-gray-600">$100 - $499</p>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg">
+                        <i class="fas fa-medal text-3xl text-gray-600 mb-2"></i>
+                        <h4 class="font-bold text-gray-900">Silver</h4>
+                        <p class="text-sm text-gray-600">$500 - $999</p>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-lg">
+                        <i class="fas fa-crown text-3xl text-yellow-600 mb-2"></i>
+                        <h4 class="font-bold text-gray-900">Gold</h4>
+                        <p class="text-sm text-gray-600">$1,000 - $4,999</p>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-lg">
+                        <i class="fas fa-gem text-3xl text-purple-600 mb-2"></i>
+                        <h4 class="font-bold text-gray-900">Platinum</h4>
+                        <p class="text-sm text-gray-600">$5,000+</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Storytelling Section -->
+    <section id="stories" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Stories of Hope</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Witness the transformative power of compassion through the eyes of those we serve.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <div class="video-container shadow-2xl">
+                        <iframe src="https://player.vimeo.com/video/169599296" title="Hope Foundation Impact Story"
+                            frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen
+                            aria-label="Video showing the impact of Hope Foundation's work">
+                        </iframe>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl">
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Maria's Story</h3>
+                        <p class="text-gray-600 mb-4">"Thanks to the clean water well in our village, my children no
+                            longer miss school to fetch water. They're thriving in their education and dreaming of
+                            becoming doctors and teachers."</p>
+                        <div class="flex items-center">
+                            <img src="https://randomuser.me/api/portraits/women/25.jpg" alt="Maria"
+                                class="w-12 h-12 rounded-full mr-3">
+                            <div>
+                                <p class="font-semibold text-gray-900">Maria Santos</p>
+                                <p class="text-sm text-gray-600">Guatemala</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Ahmed's Journey</h3>
+                        <p class="text-gray-600 mb-4">"The vocational training program gave me the skills to start my
+                            own business. Now I employ five people from my community, and together we're building a
+                            better future."</p>
+                        <div class="flex items-center">
+                            <img src="https://randomuser.me/api/portraits/men/78.jpg" alt="Ahmed"
+                                class="w-12 h-12 rounded-full mr-3">
+                            <div>
+                                <p class="font-semibold text-gray-900">Ahmed Hassan</p>
+                                <p class="text-sm text-gray-600">Kenya</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-xl">
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Lin's Achievement</h3>
+                        <p class="text-gray-600 mb-4">"With access to healthcare in our remote village, my grandmother
+                            received the treatment she needed. The mobile clinic saved her life and brought hope to our
+                            entire family."</p>
+                        <div class="flex items-center">
+                            <img src="https://randomuser.me/api/portraits/women/33.jpg" alt="Lin"
+                                class="w-12 h-12 rounded-full mr-3">
+                            <div>
+                                <p class="font-semibold text-gray-900">Lin Wei</p>
+                                <p class="text-sm text-gray-600">Myanmar</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Floating Donation Button -->
+    <div class="fixed bottom-6 right-6 z-40">
+        <button onclick="openDonationForm()"
+            class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 floating-animation"
+            aria-label="Open donation form">
+            <i class="fas fa-heart mr-2"></i>
+            Donate
+        </button>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scroll-to-top"
+        class="fixed bottom-6 left-6 bg-gray-800 text-white p-3 rounded-full shadow-lg scroll-to-top z-40"
+        aria-label="Scroll to top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <!-- Donation Form Overlay -->
+    <div id="donation-overlay" class="fixed inset-0 donation-overlay z-50 hidden flex items-center justify-center p-4"
+        role="dialog" aria-labelledby="donation-title" aria-modal="true">
+        <div class="bg-white rounded-2xl md:p-8 p-4 max-w-md w-full transform transition-all duration-300 scale-95"
+            id="donation-form">
+            <div class="text-center mb-6">
+                <h2 id="donation-title" class="md:text-3xl text-2xl font-bold text-gray-900 mb-2">Make a Donation</h2>
+                <p class="text-gray-600">Your generosity transforms lives</p>
+            </div>
+
+            <form class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Amount</label>
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <button type="button"
+                            class="donation-amount bg-gray-100 hover:bg-blue-100 hover:border-blue-500 border-2 border-gray-200 rounded-lg p-3 text-center font-semibold transition-all"
+                            data-amount="25">$25</button>
+                        <button type="button"
+                            class="donation-amount bg-gray-100 hover:bg-blue-100 hover:border-blue-500 border-2 border-gray-200 rounded-lg p-3 text-center font-semibold transition-all"
+                            data-amount="50">$50</button>
+                        <button type="button"
+                            class="donation-amount bg-gray-100 hover:bg-blue-100 hover:border-blue-500 border-2 border-gray-200 rounded-lg p-3 text-center font-semibold transition-all"
+                            data-amount="100">$100</button>
+                    </div>
+                    <input required type="number" placeholder="Custom amount"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        id="custom-amount" aria-label="Custom donation amount">
+                </div>
+
+                <div>
+                    <label for="donor-name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="donor-name"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required>
+                </div>
+
+                <div>
+                    <label for="donor-email" class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                    <input type="email" id="donor-email"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required>
+                </div>
+
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="mr-2" id="monthly-donation">
+                        <span class="text-sm text-gray-700">Make this a monthly donation</span>
+                    </label>
+                </div>
+
+                <div class="flex gap-4 md:flex-row flex-col">
+                    <button type="submit"
+                        class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        <i class="fas fa-heart mr-2"></i>
+                        Donate Now
+                    </button>
+                    <button type="button" onclick="closeDonationForm()"
+                        class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8 mb-12">
+                <!-- Organization Info -->
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23667eea'/%3E%3Cpath d='M20 8v24M12 16l8 8 8-8' stroke='white' stroke-width='2' fill='none'/%3E%3C/svg%3E"
+                            alt="Hope Foundation Logo" class="h-10 w-10">
+                        <span class="ml-3 text-2xl font-bold">Hope Foundation</span>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed">
+                        Transforming lives worldwide through sustainable solutions in education, healthcare, clean
+                        water, and economic empowerment.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300"
+                            aria-label="Facebook">
+                            <i class="fab fa-facebook-f text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300"
+                            aria-label="Twitter">
+                            <i class="fab fa-twitter text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300"
+                            aria-label="Instagram">
+                            <i class="fab fa-instagram text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300"
+                            aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300"
+                            aria-label="YouTube">
+                            <i class="fab fa-youtube text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#about" class="text-gray-300 hover:text-white transition-colors duration-300">About
+                                Us</a></li>
+                        <li><a href="#programs"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Our Programs</a>
+                        </li>
+                        <li><a href="#impact"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Impact Report</a>
+                        </li>
+                        <li><a href="#stories"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Success
+                                Stories</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Annual
+                                Reports</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Financial
+                                Transparency</a></li>
+                        <li><a href="#"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Careers</a></li>
+                    </ul>
+                </div>
+
+                <!-- Get Involved -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Get Involved</h3>
+                    <ul class="space-y-3">
+                        <li><a onclick="openDonationForm()" href="#"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Donate</a>
+                        </li>
+                        <li><a href="#"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Volunteer</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Corporate
+                                Partnership</a></li>
+                        <li><a href="#"
+                                class="text-gray-300 hover:text-white transition-colors duration-300">Fundraise</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Monthly
+                                Giving</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Legacy
+                                Giving</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors duration-300">Shop to
+                                Give</a></li>
+                    </ul>
+                </div>
+
+                <!-- Newsletter & Contact -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Stay Connected</h3>
+                    <p class="text-gray-300 mb-4">Get updates on our latest impact and stories from the field.</p>
+                    <form class="space-y-3" id="newsletter-form">
+                        <input type="email" placeholder="Your email address"
+                            class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required aria-label="Email address for newsletter">
+                        <button type="submit"
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                            Subscribe
+                        </button>
+                    </form>
+
+                    <div class="mt-6 space-y-2">
+                        <div class="flex items-center text-gray-300">
+                            <i class="fas fa-map-marker-alt mr-3 text-blue-400"></i>
+                            <span>123 Hope Street, Global City, GC 12345</span>
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i class="fas fa-phone mr-3 text-blue-400"></i>
+                            <span>+1 (555) 123-HOPE</span>
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i class="fas fa-envelope mr-3 text-blue-400"></i>
+                            <span>info@hopefoundation.org</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Legal Links & Copyright -->
+            <div class="border-t border-gray-800 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                    <div class="flex flex-wrap justify-center md:justify-start space-x-6 text-sm">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">Privacy
+                            Policy</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">Terms of
+                            Service</a>
+                        <a href="#"
+                            class="text-gray-400 hover:text-white transition-colors duration-300">Accessibility</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">Donor
+                            Privacy</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">Whistleblower
+                            Policy</a>
+                    </div>
+                    <p class="text-gray-400 text-sm">
+                        © 2024 Hope Foundation. All rights reserved. EIN: 12-3456789
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function () {
+            const menu = document.getElementById('mobile-menu');
+            const button = this;
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+            menu.classList.toggle('hidden');
+            button.setAttribute('aria-expanded', !isExpanded);
+        });
+
+        // Smooth scroll navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+
+                    // Update active nav link
+                    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                    this.classList.add('active');
+                    // close mobile menu if open
+                    const menu = document.getElementById('mobile-menu');
+                    const btn = document.getElementById('mobile-menu-button');
+                    if (!menu.classList.contains('hidden')) {
+                        menu.classList.add('hidden');
+                        btn.setAttribute('aria-expanded', 'false');
+                    }
+
+                }
+            });
+        });
+
+        // Dynamic star ratings
+        document.querySelectorAll('.star-rating').forEach(rating => {
+            const targetRating = parseInt(rating.dataset.rating);
+            const stars = rating.querySelectorAll('.star');
+
+            stars.forEach((star, index) => {
+                if (index < targetRating) {
+                    star.classList.add('active');
+                }
+
+                star.addEventListener('mouseenter', () => {
+                    stars.forEach((s, i) => {
+                        s.classList.toggle('active', i <= index);
+                    });
+                });
+
+                star.addEventListener('mouseleave', () => {
+                    stars.forEach((s, i) => {
+                        s.classList.toggle('active', i < targetRating);
+                    });
+                });
+            });
+        });
+
+        // Impact counter animation
+        function animateCounters() {
+            const counters = document.querySelectorAll('.impact-counter');
+
+            counters.forEach(counter => {
+                const target = parseInt(counter.dataset.target);
+                const duration = 2000;
+                const increment = target / (duration / 16);
+                let current = 0;
+
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        counter.textContent = target.toLocaleString();
+                        clearInterval(timer);
+                    } else {
+                        counter.textContent = Math.floor(current).toLocaleString();
+                    }
+                }, 16);
+            });
+        }
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.3,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.id === 'impact') {
+                        animateCounters();
+                    }
+                    entry.target.classList.add('fade-in-up');
+                }
+            });
+        }, observerOptions);
+
+        // Observe sections for animations
+        document.querySelectorAll('section').forEach(section => {
+            observer.observe(section);
+        });
+
+        // Donation form functions
+        function openDonationForm() {
+            const overlay = document.getElementById('donation-overlay');
+            const form = document.getElementById('donation-form');
+
+            // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
+
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                form.classList.remove('scale-95');
+                form.classList.add('scale-100');
+            }, 10);
+
+            // Focus management for accessibility
+            document.getElementById('custom-amount').focus();
+        }
+
+        function closeDonationForm() {
+            const overlay = document.getElementById('donation-overlay');
+            const form = document.getElementById('donation-form');
+
+            // Re-enable background scrolling
+            document.body.style.overflow = '';
+
+            form.classList.remove('scale-100');
+            form.classList.add('scale-95');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        // Donation amount selection
+        document.querySelectorAll('.donation-amount').forEach(button => {
+            button.addEventListener('click', function () {
+                document.querySelectorAll('.donation-amount').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                    btn.classList.add('bg-gray-100', 'border-gray-200');
+                });
+
+                this.classList.remove('bg-gray-100', 'border-gray-200');
+                this.classList.add('bg-blue-500', 'text-white', 'border-blue-500');
+
+                document.getElementById('custom-amount').value = this.dataset.amount;
+            });
+        });
+
+        // Close donation form with Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeDonationForm();
+            }
+        });
+
+        // Close donation form when clicking outside
+        document.getElementById('donation-overlay').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeDonationForm();
+            }
+        });
+
+        // Scroll to top functionality
+        const scrollToTopButton = document.getElementById('scroll-to-top');
+
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollToTopButton.classList.add('visible');
+            } else {
+                scrollToTopButton.classList.remove('visible');
+            }
+        });
+
+        scrollToTopButton.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Form submission
+        document.querySelector('#donation-form form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Simulate donation processing
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            submitButton.disabled = true;
+
+            setTimeout(() => {
+                submitButton.innerHTML = '<i class="fas fa-check mr-2"></i>Thank You!';
+
+                setTimeout(() => {
+                    closeDonationForm();
+                    // Reset form
+                    this.reset();
+                    document.querySelectorAll('.donation-amount').forEach(btn => {
+                        btn.classList.remove('bg-blue-500', 'text-white', 'border-blue-500');
+                        btn.classList.add('bg-gray-100', 'border-gray-200');
+                    });
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
+                }, 2000);
+            }, 2000);
+        });
+
+        // Initialize animations on load
+        window.addEventListener('load', () => {
+            document.querySelector('#home .fade-in-up').style.animationDelay = '0.3s';
+        });
+    </script>
+</body>
+
+</html>
