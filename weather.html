@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Effect Simulator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700&display=swap');
+
+    :root {
+      --primary: #4e95d6;
+      --primary-light: #7bb5e8;
+      --secondary: #ffb347;
+      --accent: #ff6b6b;
+      --dark: #2c3e50;
+      --light: #f8fafc;
+      --glass-bg: rgba(255, 255, 255, 0.35);
+      --glass-border: rgba(255, 255, 255, 0.4);
+      --glass-shadow: rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Baloo 2', cursive;
+    }
+
+    body {
+      overflow: hidden;
+      color: var(--dark);
+      background: linear-gradient(180deg, #1a4b78 0%, #3a6ea8 30%, #87ceeb 70%, #d6eaf8 100%);
+      height: 100vh;
+      width: 100vw;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 10;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.2) inset;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+
+    .header:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .logo-container:hover {
+      transform: translateY(-1px);
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 18px;
+      box-shadow: 
+        0 6px 20px rgba(102, 126, 234, 0.25),
+        0 1px 0 rgba(255, 255, 255, 0.2) inset;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+      border-radius: 20px;
+    }
+
+    .logo svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      z-index: 1;
+      position: relative;
+    }
+
+    .site-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .site-title h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--dark);
+      letter-spacing: -0.02em;
+      margin: 0;
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .site-title p {
+      font-size: 0.8rem;
+      color: rgba(44, 62, 80, 0.65);
+      font-weight: 400;
+      margin: 0;
+      letter-spacing: 0.01em;
+    }
+
+    .info-button {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 1.1rem;
+      font-weight: 600;
+      box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.06),
+        0 1px 0 rgba(255, 255, 255, 0.2) inset;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .info-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .info-button:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.25);
+      box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.3) inset;
+    }
+
+    .info-button:hover::before {
+      opacity: 1;
+    }
+
+    .info-button:active {
+      transform: translateY(0);
+    }
+
+    /* Mobile header optimization */
+    @media (max-width: 768px) {
+      .header {
+        padding: 0.625rem 1.25rem;
+      }
+
+      .logo-container {
+        gap: 0.875rem;
+      }
+
+      .logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 14px;
+      }
+
+      .logo svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .site-title h1 {
+        font-size: 1.375rem;
+      }
+
+      .site-title p {
+        font-size: 0.75rem;
+      }
+
+      .info-button {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        font-size: 1rem;
+      }
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 90%;
+      max-width: 480px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 28px;
+      box-shadow: 
+        0 16px 32px rgba(0, 0, 0, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.3) inset;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .controls:hover {
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.4) inset;
+    }
+
+    .controls-header {
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .controls-header:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .controls-header h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--dark);
+      letter-spacing: -0.025em;
+      margin: 0;
+    }
+
+    .toggle-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .toggle-icon:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.05);
+    }
+
+    .chevron-icon {
+      width: 16px;
+      height: 16px;
+      fill: var(--dark);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toggle-icon.rotated .chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    .controls-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .controls-content.open {
+      max-height: 340px;
+    }
+
+    .controls-inner {
+      padding: 1.25rem 1.5rem 1.25rem 1.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 0.4rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.75rem;
+      cursor: pointer;
+      border-radius: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tab::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .tab:hover::before {
+      opacity: 1;
+    }
+
+    .tab svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+      transition: transform 0.3s ease;
+    }
+
+    .tab:hover svg {
+      transform: scale(1.1);
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      box-shadow: 
+        0 6px 12px rgba(78, 149, 214, 0.25),
+        0 1px 0 rgba(255, 255, 255, 0.3) inset;
+      color: white;
+      font-weight: 600;
+      transform: translateY(-1px);
+    }
+
+    .tab.active::before {
+      display: none;
+    }
+
+    .slider-container {
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .slider-container:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .slider-label span:last-child {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.2rem 0.6rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .slider:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .slider::-webkit-slider-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      cursor: pointer;
+      box-shadow: 
+        0 4px 12px rgba(78, 149, 214, 0.4),
+        0 0 0 2px white,
+        0 0 0 4px rgba(255, 255, 255, 0.2);
+      border: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 
+        0 6px 20px rgba(78, 149, 214, 0.5),
+        0 0 0 2px white,
+        0 0 0 6px rgba(255, 255, 255, 0.3);
+    }
+
+    .slider::-webkit-slider-thumb:active {
+      transform: scale(1.25);
+      box-shadow: 
+        0 8px 24px rgba(78, 149, 214, 0.6),
+        0 0 0 2px white,
+        0 0 0 8px rgba(255, 255, 255, 0.4);
+    }
+
+    .slider::-moz-range-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      border: none;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      cursor: pointer;
+      box-shadow: 
+        0 4px 12px rgba(78, 149, 214, 0.4),
+        0 0 0 2px white,
+        0 0 0 4px rgba(255, 255, 255, 0.2);
+      border: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .slider::-moz-range-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 
+        0 6px 20px rgba(78, 149, 214, 0.5),
+        0 0 0 2px white,
+        0 0 0 6px rgba(255, 255, 255, 0.3);
+    }
+
+    .warning {
+      color: var(--accent);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: none;
+      font-weight: 600;
+    }
+
+    .info-panel {
+      position: fixed;
+      top: 5rem;
+      right: 1rem;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      background: var(--glass-bg);
+      border: 2px solid var(--glass-border);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px var(--glass-shadow);
+      padding: 1.2rem;
+      font-size: 1rem;
+      max-width: 320px;
+      transition: all 0.3s ease;
+      transform: translateX(110%);
+      display: none;
+    }
+
+    .info-title {
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      color: var(--dark);
+      font-size: 1.3rem;
+    }
+
+    .info-content {
+      line-height: 1.6;
+      color: var(--dark);
+    }
+
+    .hide-info {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: var(--primary);
+      border: 2px solid white;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .hide-info:hover {
+      background: var(--primary-light);
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        bottom: 1rem;
+      }
+      
+      .header {
+        padding: 0.75rem 1rem;
+      }
+
+      .site-title h1 {
+        font-size: 1.3rem;
+      }
+
+      .site-title p {
+        font-size: 0.8rem;
+      }
+    }
+
+    .swipe-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      color: var(--light);
+      font-size: 1.3rem;
+      text-align: center;
+      background: rgba(26, 75, 120, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 1rem 2rem;
+      border-radius: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .swipe-indicator.show {
+      opacity: 1;
+    }
+
+    .device-controls {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: rgba(44, 62, 80, 0.8);
+      text-align: left;
+      font-weight: 400;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.75rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .desktop-controls,
+    .mobile-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: rgba(44, 62, 80, 0.8);
+      font-weight: 500;
+    }
+
+    .keyboard-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 0.3rem 0.5rem;
+      margin: 0 0.1rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.7rem;
+      min-width: 28px;
+      height: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--dark);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .keyboard-key:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    /* Specific layout for arrow keys */
+    .control-row:first-child {
+      margin-bottom: 0.15rem;
+    }
+
+    .control-row:first-child .keyboard-key:first-child {
+      margin-right: 0.4rem;
+    }
+
+    .control-row:last-child {
+      margin-top: 0.15rem;
+    }
+
+    .control-row:last-child .keyboard-key:first-child {
+      margin-right: 0.4rem;
+    }
+
+    .control-label {
+      font-weight: 600;
+      margin-right: 0.5rem;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    /* Default: Show desktop controls, hide mobile */
+    .mobile-controls {
+      display: none;
+    }
+
+    .touch-gesture {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 0.25rem 0.5rem;
+      margin: 0 0.1rem;
+      font-size: 0.7rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--dark);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      white-space: nowrap;
+    }
+
+    /* Mobile-specific styles */
+    .device-controls.is-mobile .desktop-controls {
+      display: none;
+    }
+
+    .device-controls.is-mobile .mobile-controls {
+      display: flex;
+    }
+
+    /* CSS Media Query for responsive design */
+    @media (max-width: 768px), (hover: none) {
+      .device-controls .desktop-controls {
+        display: none !important;
+      }
+      
+      .device-controls .mobile-controls {
+        display: flex !important;
+      }
+    }
+
+    /* Mobile-specific responsive styles */
+    @media (max-width: 768px) {
+      .controls {
+        bottom: 1.5rem;
+        max-width: 420px;
+      }
+
+      .controls-header {
+        padding: 0.75rem 1.25rem;
+      }
+
+      .controls-inner {
+        padding: 1rem 1.25rem 1rem 1.25rem;
+      }
+
+      .tabs {
+        margin-bottom: 0.875rem;
+        padding: 0.35rem;
+      }
+
+      .tab {
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8rem;
+      }
+
+      .slider-container {
+        margin-bottom: 0.875rem;
+        padding: 0.875rem;
+      }
+
+      .slider-label {
+        margin-bottom: 0.65rem;
+        font-size: 0.8rem;
+      }
+
+      .device-controls {
+        padding: 0.65rem;
+        font-size: 0.75rem;
+        margin-top: 0.65rem;
+      }
+      
+      .control-row {
+        gap: 0.3rem;
+        font-size: 0.75rem;
+      }
+      
+      .keyboard-key {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.4rem;
+        min-width: 24px;
+        height: 24px;
+        margin: 0.05rem;
+      }
+      
+      .touch-gesture {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+        margin: 0.05rem;
+      }
+
+      .controls-content.open {
+        max-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<header class="header">
+  <div class="logo-container">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zm0 18c-3.35 0-6-2.57-6-6.2 0-2.34 1.95-5.44 6-9.14 4.05 3.7 6 6.79 6 9.14 0 3.63-2.65 6.2-6 6.2zm-4.17-6c.37 0 .67.26.74.62.41 2.22 2.28 2.98 3.64 2.87.43-.02.79.32.79.75 0 .4-.32.73-.72.75-2.13.13-4.62-1.09-5.19-4.12-.08-.45.28-.87.74-.87z"/>
+      </svg>
+    </div>
+    <div class="site-title">
+      <h1>Weather Playground</h1>
+      <p>Fun with weather effects!</p>
+    </div>
+  </div>
+  <button class="info-button" id="info-button">i</button>
+</header>
+
+<div class="controls">
+  <div class="controls-header" id="controls-header">
+    <h2>Weather Controls</h2>
+    <span class="toggle-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="chevron-icon">
+        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+      </svg>
+    </span>
+  </div>
+  <div class="controls-content" id="controls-content">
+    <div class="controls-inner">
+      <div class="tabs">
+        <div class="tab active" data-mode="rain">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 5.5C13 3.57 11.43 2 9.5 2 7.466 2 6.25 3.525 6.25 5h2c0-.415 0-1 1.25-1a1.5 1.5 0 0 1 0 3H5.5C4.122 7 3 8.122 3 9.5S4.122 12 5.5 12h.5c.39 1.725 1.92 3 3.75 3 1.118 0 2.238-.48 3-1.333.762.853 1.882 1.333 3 1.333 2.056 0 3.714-1.614 3.96-3.642.15.082.316.142.49.142a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 0-2.45 2H9.5a1.5 1.5 0 0 1 0-3h4a2.5 2.5 0 0 0 2.5-2.5h-2a.5.5 0 0 1-.5.5h-2.25a1.5 1.5 0 0 1 1.5-1.5V5.5zm-5 7.5a2 2 0 0 1-2-2c0-.552.448-1 1-1s1 .448 1 1v1h1a1 1 0 0 1-1 1zm8 0a2 2 0 0 1-2-2c0-.552.448-1 1-1s1 .448 1 1v1h1a1 1 0 0 1-1 1z"/>
+          </svg>
+          Rain
+        </div>
+        <div class="tab" data-mode="snow">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M20.79,13.95L18.46,14.57L16.46,13.44V10.56L18.46,9.43L20.79,10.05L21.31,8.12L19.54,7.65L20,5.88L18.07,5.36L17.45,7.69L15.45,8.82L13,7.38V5.12L14.71,3.41L13.29,2L12,3.29L10.71,2L9.29,3.41L11,5.12V7.38L8.5,8.82L6.5,7.69L5.92,5.36L4,5.88L4.47,7.65L2.7,8.12L3.22,10.05L5.55,9.43L7.55,10.56V13.45L5.55,14.58L3.22,13.96L2.7,15.89L4.47,16.36L4,18.12L5.93,18.64L6.55,16.31L8.55,15.18L11,16.62V18.88L9.29,20.59L10.71,22L12,20.71L13.29,22L14.7,20.59L13,18.88V16.62L15.5,15.17L17.5,16.3L18.12,18.63L20,18.12L19.53,16.35L21.3,15.88L20.79,13.95M9.5,10.56L12,9.11L14.5,10.56V13.44L12,14.89L9.5,13.44V10.56Z"/>
+          </svg>
+          Snow
+        </div>
+        <div class="tab" data-mode="leaves">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/>
+          </svg>
+          Leaves
+        </div>
+      </div>
+      
+      <div class="slider-container">
+        <div class="slider-label">
+          <span>Intensity</span>
+          <span id="intensity-value">500</span>
+        </div>
+        <input type="range" min="100" max="2000" value="500" class="slider" id="intensity-slider">
+        <div class="warning" id="intensity-warning">⚠️ High particle count may affect performance</div>
+      </div>
+
+      <div class="device-controls" id="device-controls">
+        <div class="desktop-controls">
+            <div class="control-row">
+                <span class="keyboard-key">←</span><span class="keyboard-key">→</span> Wind Direction, 
+            </div>
+            <div class="control-row">
+                <span class="keyboard-key">↑</span><span class="keyboard-key">↓</span> Adjust Intensity
+            </div>
+        </div>
+        
+        <div class="mobile-controls">
+          <span class="touch-gesture">👆 Swipe ←→ Wind Direction,</span> 
+          <span class="touch-gesture">🎚️ Slider Intensity</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="info-panel" id="info-panel">
+  <button class="hide-info" id="hide-info">×</button>
+  <div class="info-title">How to Play</div>
+  <div class="info-content">
+    <p>Welcome to the Weather Playground! 🌈</p>
+    <p>Choose a weather effect and watch it come to life!</p>
+    <p>• On mobile, swipe left or right to change wind direction.</p>
+    <p>• On desktop, use arrow keys to control wind (←→) and intensity (↑↓).</p>
+    <p>Have fun exploring different weather patterns!</p>
+  </div>
+</div>
+
+<div class="swipe-indicator" id="swipe-indicator">
+  Wind Direction Changed
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  // Main application
+  const WeatherApp = {
+    // Configuration
+    config: {
+      mode: 'rain',
+      intensity: 500,
+      windDirection: 0,
+      targetWindDirection: 0, // Target wind direction for smooth interpolation
+      maxParticles: 2000,
+      bounds: {
+        width: 50,
+        height: 50,
+        depth: 50
+      }
+    },
+    
+    // DOM elements
+    elements: {},
+    
+    // Three.js objects
+    three: {
+      scene: null,
+      camera: null,
+      renderer: null,
+      particles: null,
+      geometry: null,
+      material: null,
+      clock: null,
+      textures: {}
+    },
+    
+    // Touch handling
+    touch: {
+      startX: 0,
+      startY: 0,
+      lastTouchWind: 0
+    },
+    
+    // UI state
+    uiState: {
+      isSliderFocused: false,
+      isInfoPanelVisible: false,
+      isControlsOpen: true
+    },
+    
+    // Animation cache for performance
+    animationCache: {
+      time: 0,
+      deltaAccumulator: 0,
+      frameCount: 0,
+      targetFPS: 60,
+      lastUpdateTime: 0
+    },
+    
+    // Initialize the application
+    init() {
+      this.initElements();
+      
+      // Apply mobile detection early
+      this.detectAndApplyMobileClass();
+      
+      this.initThree();
+      this.createTextures();
+      this.createParticles();
+      this.setupEventListeners();
+      this.animate();
+      
+      // Open controls by default
+      this.elements.controlsContent.classList.add('open');
+      
+      // Show swipe indicator on mobile after a delay
+      if (this.isMobile()) {
+        setTimeout(() => {
+          this.showSwipeIndicator('Swipe ←→ to change wind direction');
+        }, 2000);
+      }
+    },
+    
+    // Initialize DOM elements
+    initElements() {
+      this.elements = {
+        canvas: document.getElementById('scene'),
+        intensitySlider: document.getElementById('intensity-slider'),
+        intensityValue: document.getElementById('intensity-value'),
+        intensityWarning: document.getElementById('intensity-warning'),
+        tabs: document.querySelectorAll('.tab'),
+        infoPanel: document.getElementById('info-panel'),
+        hideInfo: document.getElementById('hide-info'),
+        infoButton: document.getElementById('info-button'),
+        swipeIndicator: document.getElementById('swipe-indicator'),
+        controlsHeader: document.getElementById('controls-header'),
+        controlsContent: document.getElementById('controls-content'),
+        toggleIcon: document.querySelector('.toggle-icon'),
+        deviceControls: document.getElementById('device-controls')
+      };
+    },
+    
+    // Initialize Three.js with optimized settings
+    initThree() {
+      // Create scene
+      this.three.scene = new THREE.Scene();
+      
+      // Create camera with optimized settings
+      const fov = 60;
+      const aspect = window.innerWidth / window.innerHeight;
+      const near = 0.1;
+      const far = 1000;
+      this.three.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+      this.three.camera.position.z = 20;
+      
+      // Create renderer with performance optimizations
+      this.three.renderer = new THREE.WebGLRenderer({
+        canvas: this.elements.canvas,
+        antialias: window.devicePixelRatio < 2, // Only enable on low-DPI screens
+        alpha: true,
+        powerPreference: "high-performance",
+        stencil: false,
+        depth: true
+      });
+      
+      this.three.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.three.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      
+      // Optimize renderer settings for better performance
+      this.three.renderer.sortObjects = false; // Disable sorting for particles
+      this.three.renderer.outputEncoding = THREE.sRGBEncoding;
+      
+      // Create clock for animation
+      this.three.clock = new THREE.Clock();
+    },
+    
+    // Create textures for particles
+    createTextures() {
+      // Create raindrop texture
+      const rainCanvas = document.createElement('canvas');
+      rainCanvas.width = 32;
+      rainCanvas.height = 128;
+      const rainCtx = rainCanvas.getContext('2d');
+      const rainGradient = rainCtx.createLinearGradient(0, 0, 0, 128);
+      rainGradient.addColorStop(0, 'rgba(180, 215, 255, 0.9)');
+      rainGradient.addColorStop(1, 'rgba(180, 215, 255, 0)');
+      rainCtx.fillStyle = rainGradient;
+      rainCtx.beginPath();
+      rainCtx.ellipse(16, 32, 4, 64, 0, 0, Math.PI * 2);
+      rainCtx.fill();
+      this.three.textures.rain = new THREE.CanvasTexture(rainCanvas);
+      
+      // Create snowflake texture
+      const snowCanvas = document.createElement('canvas');
+      snowCanvas.width = 64;
+      snowCanvas.height = 64;
+      const snowCtx = snowCanvas.getContext('2d');
+      
+      // Draw a snowflake
+      snowCtx.translate(32, 32);
+      for (let i = 0; i < 6; i++) {
+        snowCtx.rotate(Math.PI / 3);
+        snowCtx.beginPath();
+        snowCtx.moveTo(0, 0);
+        snowCtx.lineTo(0, -28);
+        snowCtx.lineWidth = 2;
+        snowCtx.strokeStyle = 'rgba(240, 250, 255, 0.95)';
+        snowCtx.stroke();
+        
+        // Add branches
+        for (let j = 0; j < 3; j++) {
+          const y = -8 - j * 8;
+          snowCtx.beginPath();
+          snowCtx.moveTo(0, y);
+          snowCtx.lineTo(6, y - 4);
+          snowCtx.stroke();
+          
+          snowCtx.beginPath();
+          snowCtx.moveTo(0, y);
+          snowCtx.lineTo(-6, y - 4);
+          snowCtx.stroke();
+        }
+      }
+      this.three.textures.snow = new THREE.CanvasTexture(snowCanvas);
+      
+      // Create leaf texture
+      const leafCanvas = document.createElement('canvas');
+      leafCanvas.width = 64;
+      leafCanvas.height = 64;
+      const leafCtx = leafCanvas.getContext('2d');
+      
+      // Draw a leaf
+      leafCtx.translate(32, 32);
+      leafCtx.beginPath();
+      leafCtx.moveTo(0, -25);
+      leafCtx.bezierCurveTo(15, -15, 20, 0, 0, 25);
+      leafCtx.bezierCurveTo(-20, 0, -15, -15, 0, -25);
+      
+      // Add vein
+      leafCtx.moveTo(0, -25);
+      leafCtx.lineTo(0, 25);
+      
+      // Add side veins
+      for (let i = -20; i <= 20; i += 10) {
+        const x = i > 0 ? 10 : -10;
+        leafCtx.moveTo(0, i);
+        leafCtx.lineTo(x * Math.abs(i) / 20, i);
+      }
+      
+      leafCtx.strokeStyle = 'rgba(30, 80, 30, 0.6)';
+      leafCtx.lineWidth = 1;
+      leafCtx.stroke();
+      
+      // Fill with gradient
+      const leafGradient = leafCtx.createRadialGradient(0, 0, 0, 0, 0, 25);
+      leafGradient.addColorStop(0, 'rgba(120, 220, 100, 0.95)');
+      leafGradient.addColorStop(0.5, 'rgba(60, 180, 60, 0.95)');
+      leafGradient.addColorStop(1, 'rgba(30, 130, 30, 0.95)');
+      leafCtx.fillStyle = leafGradient;
+      leafCtx.fill();
+      
+      this.three.textures.leaf = new THREE.CanvasTexture(leafCanvas);
+    },
+    
+    // Create particles based on current mode
+    createParticles() {
+      // Remove existing particles if any
+      if (this.three.particles) {
+        this.three.scene.remove(this.three.particles);
+        this.three.geometry.dispose();
+        this.three.material.dispose();
+      }
+      
+      // Create geometry
+      this.three.geometry = new THREE.BufferGeometry();
+      
+      // Create positions, velocities, rotations and sizes for particles
+      const count = this.config.intensity;
+      const positions = new Float32Array(count * 3);
+      const velocities = new Float32Array(count * 3);
+      const rotations = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const phases = new Float32Array(count); // For more natural movement
+      
+      // Half width/height/depth of the bounds
+      const halfWidth = this.config.bounds.width / 2;
+      const halfHeight = this.config.bounds.height / 2;
+      const halfDepth = this.config.bounds.depth / 2;
+      
+      for (let i = 0; i < count; i++) {
+        // Position - distribute particles across the scene
+        positions[i * 3] = (Math.random() - 0.5) * this.config.bounds.width;  // x
+        positions[i * 3 + 1] = (Math.random() - 0.5) * this.config.bounds.height;  // y
+        positions[i * 3 + 2] = (Math.random() - 0.5) * this.config.bounds.depth;  // z
+        
+        // Random phase for more natural movement
+        phases[i] = Math.random() * Math.PI * 2;
+        
+        // Set properties based on mode
+        if (this.config.mode === 'rain') {
+          // Rain falls straight down and fast
+          velocities[i * 3] = 0; // No initial horizontal velocity
+          velocities[i * 3 + 1] = -Math.random() * 0.5 - 0.5; // Fast downward velocity
+          velocities[i * 3 + 2] = 0;
+          sizes[i] = Math.random() * 0.1 + 0.1; // Smaller size for rain
+          
+          // No rotation for rain
+          rotations[i * 3] = 0;
+          rotations[i * 3 + 1] = 0;
+          rotations[i * 3 + 2] = 0;
+        } 
+        else if (this.config.mode === 'snow') {
+          // Snow falls gently with some horizontal drift
+          velocities[i * 3] = (Math.random() - 0.5) * 0.05; // Slight horizontal drift
+          velocities[i * 3 + 1] = -Math.random() * 0.1 - 0.05; // Moderate downward velocity
+          velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.05; // Some depth movement
+          sizes[i] = Math.random() * 0.15 + 0.15; // Larger size for snow
+          
+          // Slow rotation for snow
+          rotations[i * 3] = (Math.random() - 0.5) * 0.01;
+          rotations[i * 3 + 1] = (Math.random() - 0.5) * 0.01;
+          rotations[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
+        } 
+        else if (this.config.mode === 'leaves') {
+          // Leaves fall with swaying motion
+          velocities[i * 3] = (Math.random() - 0.5) * 0.1; // More horizontal movement
+          // Improved: Faster downward velocity for leaves
+          velocities[i * 3 + 1] = -Math.random() * 0.1 - 0.05; // Moderate downward velocity
+          velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1; // More depth movement
+          sizes[i] = Math.random() * 0.2 + 0.3; // Larger size for leaves
+          
+          // More rotation for leaves
+          rotations[i * 3] = (Math.random() - 0.5) * 0.03;
+          rotations[i * 3 + 1] = (Math.random() - 0.5) * 0.03;
+          rotations[i * 3 + 2] = (Math.random() - 0.5) * 0.03;
+        }
+      }
+      
+      // Add attributes to geometry
+      this.three.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      this.three.geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+      this.three.geometry.setAttribute('rotation', new THREE.BufferAttribute(rotations, 3));
+      this.three.geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+      this.three.geometry.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
+      
+      // Create material based on mode
+      let texture, size, color;
+      
+      if (this.config.mode === 'rain') {
+        texture = this.three.textures.rain;
+        size = 0.5;
+        color = 0x89b9fa;
+      } else if (this.config.mode === 'snow') {
+        texture = this.three.textures.snow;
+        size = 0.8;
+        color = 0xffffff;
+      } else if (this.config.mode === 'leaves') {
+        texture = this.three.textures.leaf;
+        size = 1.2;
+        color = 0xc0e791;
+      }
+      
+      this.three.material = new THREE.PointsMaterial({
+        map: texture,
+        size: size,
+        transparent: true,
+        opacity: 0.8,
+        color: color,
+        alphaTest: 0.1,
+        depthWrite: false
+      });
+      
+      // Create particles
+      this.three.particles = new THREE.Points(this.three.geometry, this.three.material);
+      this.three.scene.add(this.three.particles);
+    },
+    
+    // Set wind value and update UI with smooth interpolation
+    setWind(value) {
+      // Clamp wind value between -2.5 and 2.5
+      this.config.targetWindDirection = Math.max(-2.5, Math.min(2.5, value));
+    },
+    
+    // Smooth interpolation helper function
+    lerp(start, end, factor) {
+      return start + (end - start) * factor;
+    },
+    
+    // Smooth step function for easing
+    smoothStep(t) {
+      return t * t * (3 - 2 * t);
+    },
+    
+    // Set up event listeners
+    setupEventListeners() {
+      // Window resize
+      window.addEventListener('resize', () => {
+        this.onResize();
+        // Re-apply mobile detection on resize/orientation change
+        this.detectAndApplyMobileClass();
+      });
+      
+      // Intensity slider
+      this.elements.intensitySlider.addEventListener('input', (e) => {
+        this.config.intensity = parseInt(e.target.value);
+        this.elements.intensityValue.textContent = this.config.intensity;
+        
+        // Show warning if intensity is high
+        if (this.config.intensity > 1000) {
+          this.elements.intensityWarning.style.display = 'block';
+        } else {
+          this.elements.intensityWarning.style.display = 'none';
+        }
+        
+        this.createParticles();
+      });
+      
+      // Track slider focus state to prevent arrow key conflicts
+      this.elements.intensitySlider.addEventListener('focus', () => {
+        this.uiState.isSliderFocused = true;
+      });
+      
+      this.elements.intensitySlider.addEventListener('blur', () => {
+        this.uiState.isSliderFocused = false;
+      });
+      
+      // Mode tabs with smooth transitions
+      this.elements.tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Update active tab
+          this.elements.tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          
+          const newMode = tab.dataset.mode;
+          
+          // Smooth transition between modes
+          if (this.config.mode !== newMode) {
+            // Fade out current particles
+            if (this.three.material) {
+              const startOpacity = this.three.material.opacity;
+              const fadeOut = () => {
+                this.three.material.opacity = Math.max(0, this.three.material.opacity - 0.05);
+                if (this.three.material.opacity > 0) {
+                  requestAnimationFrame(fadeOut);
+                } else {
+                  // Switch mode and recreate particles
+                  this.config.mode = newMode;
+                  this.createParticles();
+                  
+                  // Fade in new particles
+                  this.three.material.opacity = 0;
+                  const fadeIn = () => {
+                    this.three.material.opacity = Math.min(0.8, this.three.material.opacity + 0.05);
+                    if (this.three.material.opacity < 0.8) {
+                      requestAnimationFrame(fadeIn);
+                    }
+                  };
+                  fadeIn();
+                }
+              };
+              fadeOut();
+            } else {
+              // Fallback if no material exists
+              this.config.mode = newMode;
+              this.createParticles();
+            }
+          }
+        });
+      });
+      
+      // Info panel
+      this.elements.hideInfo.addEventListener('click', () => {
+        this.elements.infoPanel.style.transform = 'translateX(110%)';
+        setTimeout(() => {
+          this.elements.infoPanel.style.display = 'none';
+          this.uiState.isInfoPanelVisible = false;
+        }, 300);
+      });
+      
+      this.elements.infoButton.addEventListener('click', () => {
+        if (!this.uiState.isInfoPanelVisible) {
+          this.elements.infoPanel.style.display = 'block';
+          setTimeout(() => {
+            this.elements.infoPanel.style.transform = 'translateX(0)';
+            this.uiState.isInfoPanelVisible = true;
+          }, 10);
+        } else {
+          this.elements.infoPanel.style.transform = 'translateX(110%)';
+          setTimeout(() => {
+            this.elements.infoPanel.style.display = 'none';
+            this.uiState.isInfoPanelVisible = false;
+          }, 300);
+        }
+      });
+      
+      // Controls toggle
+      this.elements.controlsHeader.addEventListener('click', () => {
+        this.uiState.isControlsOpen = !this.uiState.isControlsOpen;
+        
+        if (this.uiState.isControlsOpen) {
+          this.elements.controlsContent.classList.add('open');
+          this.elements.toggleIcon.classList.remove('rotated');
+        } else {
+          this.elements.controlsContent.classList.remove('open');
+          this.elements.toggleIcon.classList.add('rotated');
+        }
+      });
+      
+      // Touch for mobile 
+      let touchStart = null;
+      let lastTouchWind = 0;
+      
+      document.body.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          lastTouchWind = this.config.windDirection;
+        }
+      });
+      
+      document.body.addEventListener('touchmove', (e) => {
+        if (touchStart && e.touches.length === 1) {
+          const dx = e.touches[0].clientX - touchStart.x;
+          // Swipe left = wind blows left, swipe right = wind blows right
+          const windChange = dx / (window.innerWidth / 5);
+          this.setWind(lastTouchWind + windChange);
+          this.showSwipeIndicator(`Wind: ${this.config.windDirection.toFixed(1)}`);
+        }
+      });
+      
+      document.body.addEventListener('touchend', () => {
+        touchStart = null;
+      });
+      
+      // Keyboard controls for desktop
+      document.addEventListener('keydown', (e) => {
+        // Skip if slider is focused to prevent conflicts
+        if (this.uiState.isSliderFocused) {
+          return;
+        }
+        
+        // Left arrow wind blows left 
+        if (e.key === 'ArrowLeft') {
+          this.setWind(this.config.windDirection - 0.2);
+          this.showSwipeIndicator(`Wind: ${this.config.windDirection.toFixed(1)}`);
+        }
+        // Right arrow wind blows right 
+        else if (e.key === 'ArrowRight') {
+          this.setWind(this.config.windDirection + 0.2);
+          this.showSwipeIndicator(`Wind: ${this.config.windDirection.toFixed(1)}`);
+        }
+        // Up arrow  increase intensity 
+        else if (e.key === 'ArrowUp') {
+          this.config.intensity = Math.min(this.config.intensity + 100, this.config.maxParticles);
+          this.elements.intensitySlider.value = this.config.intensity;
+          this.elements.intensityValue.textContent = this.config.intensity;
+          
+          if (this.config.intensity > 1000) {
+            this.elements.intensityWarning.style.display = 'block';
+          }
+          
+          this.createParticles();
+          this.showSwipeIndicator(`Intensity: ${this.config.intensity}`);
+        }
+        // Down arrow decrease intensity 
+        else if (e.key === 'ArrowDown') {
+          this.config.intensity = Math.max(this.config.intensity - 100, 100);
+          this.elements.intensitySlider.value = this.config.intensity;
+          this.elements.intensityValue.textContent = this.config.intensity;
+          
+          if (this.config.intensity <= 1000) {
+            this.elements.intensityWarning.style.display = 'none';
+          }
+          
+          this.createParticles();
+          this.showSwipeIndicator(`Intensity: ${this.config.intensity}`);
+        }
+      });
+    },
+    
+    // Handle window resize
+    onResize() {
+      // Update camera
+      this.three.camera.aspect = window.innerWidth / window.innerHeight;
+      this.three.camera.updateProjectionMatrix();
+      
+      // Update renderer
+      this.three.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.three.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    },
+    
+    // Show swipe indicator with message
+    showSwipeIndicator(message) {
+      this.elements.swipeIndicator.textContent = message;
+      this.elements.swipeIndicator.classList.add('show');
+      
+      setTimeout(() => {
+        this.elements.swipeIndicator.classList.remove('show');
+      }, 1500);
+    },
+    
+    // Check if device is mobile with enhanced detection
+    isMobile() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+             (window.innerWidth <= 768) ||
+             ('ontouchstart' in window) ||
+             (navigator.maxTouchPoints > 0);
+    },
+    
+    // Update particle positions and rotations with optimized performance
+    updateParticles(delta, time) {
+      if (!this.three.particles) return;
+      
+      // Smooth wind direction interpolation
+      const windLerpFactor = Math.min(delta * 8, 1); // Adjust speed of wind changes
+      this.config.windDirection = this.lerp(
+        this.config.windDirection, 
+        this.config.targetWindDirection, 
+        this.smoothStep(windLerpFactor)
+      );
+      
+      const positions = this.three.geometry.attributes.position.array;
+      const velocities = this.three.geometry.attributes.velocity.array;
+      const rotations = this.three.geometry.attributes.rotation.array;
+      const phases = this.three.geometry.attributes.phase.array;
+      const count = this.config.intensity;
+      
+      // Cache frequently used values for performance
+      const halfWidth = this.config.bounds.width / 2;
+      const halfHeight = this.config.bounds.height / 2;
+      const halfDepth = this.config.bounds.depth / 2;
+      const windForce = this.config.windDirection;
+      const windStrength = Math.abs(windForce);
+      
+      // Pre-calculate time-based values
+      const timeOffset1 = time * 0.5;
+      const timeOffset2 = time * 0.4;
+      const timeOffset3 = time * 1.2;
+      const timeOffset4 = time * 0.8;
+      const timeOffset5 = time * 1.0;
+      
+      // Batch process particles for better performance
+      for (let i = 0; i < count; i++) {
+        const i3 = i * 3;
+        const phase = phases[i];
+        
+        // Store current position for calculations
+        let x = positions[i3];
+        let y = positions[i3 + 1];
+        let z = positions[i3 + 2];
+        
+        // Apply mode specific physics with smoother calculations
+        if (this.config.mode === 'rain') {
+          // Rain physics - fast falling with smooth wind influence
+          const windEffect = windForce * delta * 3;
+          const fallSpeed = velocities[i3 + 1] * delta * 20;
+          
+          x += windEffect;
+          y += fallSpeed;
+          
+          // Add smooth angled falling based on wind
+          if (windStrength > 0.1) {
+            const windAngle = Math.atan2(windForce, 12);
+            const angleEffect = delta * 0.15;
+            x += Math.sin(windAngle) * angleEffect;
+            y += Math.cos(windAngle) * angleEffect;
+          }
+        } 
+        else if (this.config.mode === 'snow') {
+          // Enhanced snow physics with smoother swaying
+          const windEffect = windForce * delta * 1.5;
+          const fallSpeed = velocities[i3 + 1] * delta * 10;
+          
+          x += windEffect;
+          y += fallSpeed;
+          
+          // Smoother swaying motion with multiple harmonics
+          const swayX = Math.sin(timeOffset1 + phase) * 0.04 + 
+                       Math.sin(timeOffset1 * 1.7 + phase * 2) * 0.02;
+          const swayZ = Math.cos(timeOffset2 + phase) * 0.04 + 
+                       Math.cos(timeOffset2 * 1.3 + phase * 1.5) * 0.02;
+          
+          x += swayX * delta * 2;
+          z += swayZ * delta * 2;
+          
+          // Smooth rotation with wind influence
+          const rotSpeed = delta * (0.15 + windStrength * 0.1);
+          rotations[i3] += rotSpeed;
+          rotations[i3 + 1] += rotSpeed * 0.8;
+          rotations[i3 + 2] += rotSpeed * 1.2;
+        } 
+        else if (this.config.mode === 'leaves') {
+          // Enhanced leaf physics with more realistic movement
+          const windEffect = windForce * delta * 3.5;
+          const gravity = delta * 1.2;
+          const fallSpeed = velocities[i3 + 1] * delta * 8;
+          
+          x += windEffect;
+          y -= gravity; // Apply gravity
+          y += fallSpeed;
+          
+          // Complex swaying motion for leaves with wind influence
+          const windInfluence = 1 + windStrength * 0.5;
+          const swayX = (Math.sin(timeOffset3 + phase) * 0.1 + 
+                        Math.sin(timeOffset3 * 2.1 + phase * 3) * 0.05) * windInfluence;
+          const swayY = Math.cos(timeOffset4 + phase * 2) * 0.06 * windInfluence;
+          const swayZ = (Math.cos(timeOffset5 + phase) * 0.1 + 
+                        Math.cos(timeOffset5 * 1.6 + phase * 2.5) * 0.04) * windInfluence;
+          
+          x += swayX * delta * 2;
+          y += swayY * delta * 0.5; // Reduced vertical sway
+          z += swayZ * delta * 2;
+          
+          // Dynamic rotation based on movement and wind
+          const rotSpeedBase = delta * 0.8;
+          const windRotBonus = windStrength * 0.4;
+          rotations[i3] += rotSpeedBase * (1 + windRotBonus);
+          rotations[i3 + 1] += rotSpeedBase * (1.3 + windRotBonus * 0.8);
+          rotations[i3 + 2] += rotSpeedBase * (1.1 + windRotBonus * 1.2);
+        }
+        
+        // Optimized boundary checking and particle reset
+        let needsReset = false;
+        
+        if (y < -halfHeight) {
+          // Reset Y position to top with small random offset
+          y = halfHeight + Math.random() * 5;
+          needsReset = true;
+        }
+        
+        if (x < -halfWidth - 10) {
+          x = halfWidth + Math.random() * 10;
+          needsReset = true;
+        } else if (x > halfWidth + 10) {
+          x = -halfWidth - Math.random() * 10;
+          needsReset = true;
+        }
+        
+        // If particle was reset, randomize its position more naturally
+        if (needsReset) {
+          // Distribute particles more naturally based on wind direction
+          if (windForce > 0) {
+            // Wind blowing right, bias spawn towards left
+            x = -halfWidth + Math.random() * halfWidth * 1.5;
+          } else if (windForce < 0) {
+            // Wind blowing left, bias spawn towards right
+            x = Math.random() * halfWidth * 1.5;
+          }
+          
+          // Random Z position with slight preference for center
+          z = (Math.random() - 0.5) * this.config.bounds.depth * 0.8;
+        }
+        
+        // Update positions
+        positions[i3] = x;
+        positions[i3 + 1] = y;
+        positions[i3 + 2] = z;
+      }
+      
+      // Mark geometry for update
+      this.three.geometry.attributes.position.needsUpdate = true;
+    },
+    
+    // Optimized animation loop with smoother frame timing
+    animate() {
+      requestAnimationFrame(() => this.animate());
+      
+      const currentTime = performance.now();
+      let delta = this.three.clock.getDelta();
+      const time = this.three.clock.getElapsedTime();
+      
+      // Cap delta to prevent large jumps during lag
+      delta = Math.min(delta, 1/30); // Max 30fps minimum
+      
+      // Smooth frame timing
+      this.animationCache.deltaAccumulator += delta;
+      this.animationCache.frameCount++;
+      
+      // Update animation cache
+      this.animationCache.time = time;
+      
+      // Update particles with smooth delta
+      this.updateParticles(delta, time);
+      
+      // Render scene with optimized settings
+      this.three.renderer.render(this.three.scene, this.three.camera);
+      
+      // Performance monitoring (optional - can be removed in production)
+      if (this.animationCache.frameCount % 60 === 0) {
+        const avgDelta = this.animationCache.deltaAccumulator / 60;
+        const fps = 1 / avgDelta;
+        
+        // Auto-adjust quality based on performance
+        if (fps < 30 && this.config.intensity > 500) {
+          console.log(`Performance adjustment: reducing particles from ${this.config.intensity}`);
+          this.config.intensity = Math.max(this.config.intensity * 0.8, 300);
+          this.elements.intensitySlider.value = this.config.intensity;
+          this.elements.intensityValue.textContent = Math.round(this.config.intensity);
+          this.createParticles();
+        }
+        
+        // Reset accumulator
+        this.animationCache.deltaAccumulator = 0;
+        this.animationCache.frameCount = 0;
+      }
+    },
+    
+    // Enhanced method to properly detect and apply mobile class
+    detectAndApplyMobileClass() {
+      const deviceControls = document.getElementById('device-controls');
+      if (deviceControls) {
+        if (this.isMobile()) {
+          deviceControls.classList.add('is-mobile');
+        } else {
+          deviceControls.classList.remove('is-mobile');
+        }
+      }
+    }
+  };
+  
+  // Initialize app when DOM is loaded
+  document.addEventListener('DOMContentLoaded', () => WeatherApp.init());
+</script>
+</body>
+</html>
