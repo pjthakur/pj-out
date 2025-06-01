@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapturePro Enterprise - Professional Screen Capture Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --primary-600: #4f46e5;
+            --primary-700: #4338ca;
+            --primary-800: #3730a3;
+            --surface-glass: rgba(255, 255, 255, 0.95);
+            --surface-dark: rgba(15, 23, 42, 0.95);
+            --accent-blue: #0ea5e9;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+        }
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .enterprise-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        }
+
+        .glass-pro {
+            backdrop-filter: blur(20px) saturate(180%);
+            background: var(--surface-glass);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-glass-pro {
+            backdrop-filter: blur(20px) saturate(180%);
+            background: var(--surface-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-700), var(--primary-800));
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .tool-active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)) !important;
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .animate-float-delayed {
+            animation: float 4s ease-in-out infinite;
+            animation-delay: 0.5s;
+        }
+
+        .animate-glow {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px rgba(79, 70, 229, 0.3);
+            }
+
+            to {
+                box-shadow: 0 0 20px rgba(79, 70, 229, 0.6), 0 0 30px rgba(79, 70, 229, 0.4);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-8px) rotate(2deg);
+            }
+        }
+
+        .brush-size-indicator {
+            border-radius: 50%;
+            background: currentColor;
+            transition: all 0.2s ease;
+        }
+
+        .color-gradient {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd);
+            background-size: 300% 300%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .capture-flash {
+            animation: captureFlash 0.5s ease-out;
+        }
+
+        @keyframes captureFlash {
+            0% {
+                background: rgba(255, 255, 255, 0.8);
+            }
+
+            100% {
+                background: transparent;
+            }
+        }
+
+        .slide-up-enter {
+            animation: slideUpEnter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUpEnter {
+            0% {
+                transform: translateY(100px) scale(0.9);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .canvas-overlay {
+            cursor: crosshair;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .enterprise-shadow {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        .premium-border {
+            border: 2px solid transparent;
+            background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #667eea, #764ba2) border-box;
+        }
+
+        .mesh-gradient {
+            background:
+                radial-gradient(at 40% 20%, hsla(228, 100%, 74%, 1) 0px, transparent 50%),
+                radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 1) 0px, transparent 50%),
+                radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 1) 0px, transparent 50%),
+                radial-gradient(at 80% 50%, hsla(340, 100%, 76%, 1) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, hsla(22, 100%, 77%, 1) 0px, transparent 50%),
+                radial-gradient(at 80% 100%, hsla(242, 100%, 70%, 1) 0px, transparent 50%),
+                radial-gradient(at 0% 0%, hsla(343, 100%, 76%, 1) 0px, transparent 50%);
+        }
+
+        /* Mobile optimization for 360px viewport */
+        .mobile-container {
+            max-width: 360px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 360px) {
+            .mobile-container {
+                max-width: 100%;
+                margin: 0;
+            }
+            
+            .glass-pro {
+                margin: 0.75rem;
+            }
+            
+            .grid-cols-5 {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 0.375rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 overflow-x-hidden">
+    <!-- Simple Header -->
+    <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        <div class="relative z-10 p-4">
+            <div class="flex items-center justify-between mobile-container">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">Screenshot Tool</h1>
+                    </div>
+                </div>
+                <button id="settingsBtn" class="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all duration-300">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 1l3.09 5.26L22 9l-5.26 3.09L14 22l-2-1.09L7 22l-3.09-5.26L0 15l5.26-3.09L8 2l2 1.09z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="mobile-container bg-white min-h-screen relative">
+        <!-- Professional Capture Area -->
+        <div id="captureArea" class="capture-area relative bg-gradient-to-br from-white to-gray-50">
+            <!-- Simple instruction header -->
+            <div class="px-4 py-3 text-center">
+                <div class="text-gray-600 text-sm font-medium bg-white/80 p-2 rounded-lg shadow-sm inline-block">
+                    📸 Capture this area • Draw annotations below • Export when ready
+                </div>
+            </div>
+
+            <!-- Simplified Demo Content -->
+            <div class="p-6">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Sample Content</h2>
+                        <div class="flex space-x-1">
+                            <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                            <div class="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm leading-relaxed mb-4">
+                        This is a sample content area that you can annotate and capture. 
+                        Use the drawing tools below to add annotations, then capture the screenshot.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                            <div class="text-lg font-semibold text-blue-600">Demo</div>
+                            <div class="text-xs text-gray-600">Content</div>
+                        </div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <div class="text-lg font-semibold text-green-600">Ready</div>
+                            <div class="text-xs text-gray-600">To Edit</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Canvas Overlay -->
+        <canvas id="annotationCanvas"
+            class="canvas-overlay absolute top-0 left-0 w-full h-full pointer-events-none z-10"
+            style="display: none;"></canvas>
+
+        <!-- Professional Toolbar -->
+        <div class="bg-white m-4 rounded-2xl p-4 shadow-lg border border-gray-200">
+            <!-- Drawing Tools -->
+            <div class="mb-4">
+                <h3 class="text-sm font-semibold text-gray-800 mb-3">Tools</h3>
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300 tool-active"
+                        data-tool="pen" data-tooltip="Pen">
+                        <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                    </button>
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300"
+                        data-tool="highlighter" data-tooltip="Highlighter">
+                        <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.78 15.78l-3.56-3.56V8.66L12 5.44 8.78 8.66v3.56l-3.56 3.56 1.41 1.41L8.78 15.78h6.44l2.15 1.41 1.41-1.41z" />
+                        </svg>
+                    </button>
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300"
+                        data-tool="rectangle" data-tooltip="Rectangle">
+                        <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        </svg>
+                    </button>
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300"
+                        data-tool="arrow" data-tooltip="Arrow">
+                        <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300"
+                        data-tool="text" data-tooltip="Text">
+                        <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 2a1 1 0 000 2h2v12a1 1 0 102 0V4h2a1 1 0 100-2H6z" />
+                        </svg>
+                    </button>
+                    <button class="tool-btn tooltip btn-secondary p-3 rounded-xl text-center transition-all duration-300"
+                        data-tool="eraser" data-tooltip="Eraser">
+                        <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84L11.63 5.4a4.008 4.008 0 0 1 5.66 0l-.05.16z" />
+                        </svg>
+                    </button>
+                    <button id="clearBtn" class="tooltip bg-red-100 text-red-600 p-3 rounded-xl text-center hover:bg-red-200 transition-all duration-300"
+                        data-tooltip="Clear">
+                        <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Colors & Size -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-gray-800">Color & Size</h3>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-500">Size:</span>
+                        <div id="brushSizeIndicator" class="brush-size-indicator w-3 h-3 bg-red-500"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-8 gap-2 mb-3">
+                    <div class="color-option w-8 h-8 bg-red-500 rounded-lg cursor-pointer border-2 border-gray-300 hover:scale-110 transition-transform duration-200 tool-active"
+                        data-color="#EF4444"></div>
+                    <div class="color-option w-8 h-8 bg-blue-500 rounded-lg cursor-pointer border-2 border-transparent hover:scale-110 transition-transform duration-200"
+                        data-color="#3B82F6"></div>
+                    <div class="color-option w-8 h-8 bg-green-500 rounded-lg cursor-pointer border-2 border-transparent hover:scale-110 transition-transform duration-200"
+                        data-color="#22C55E"></div>
+                    <div class="color-option w-8 h-8 bg-yellow-500 rounded-lg cursor-pointer border-2 border-transparent hover:scale-110 transition-transform duration-200"
+                        data-color="#EAB308"></div>
+                    <div class="color-option w-8 h-8 bg-purple-500 rounded-lg cursor-pointer border-2 border-transparent hover:scale-110 transition-transform duration-200"
+                        data-color="#A855F7"></div>
+                    <div class="color-option w-8 h-8 bg-black rounded-lg cursor-pointer border-2 border-transparent hover:scale-110 transition-transform duration-200"
+                        data-color="#000000"></div>
+                    <div class="color-option w-8 h-8 bg-white rounded-lg cursor-pointer border-2 border-gray-300 hover:scale-110 transition-transform duration-200"
+                        data-color="#FFFFFF"></div>
+                    <button id="customColorBtn" class="w-8 h-8 bg-gradient-to-br from-pink-500 to-violet-500 rounded-lg cursor-pointer hover:scale-110 transition-transform duration-200">
+                        <svg class="w-4 h-4 mx-auto text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 5.26L22 9l-5.26 3.09L14 22l-2-1.09L7 22l-3.09-5.26L0 15l5.26-3.09L8 2l2 1.09z" />
+                        </svg>
+                    </button>
+                </div>
+                <input type="range" id="brushSize" min="1" max="15" value="3"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500">
+                <input type="color" id="customColor" class="hidden" value="#3B82F6">
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button id="undoBtn" class="tooltip btn-secondary py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-center"
+                    data-tooltip="Undo">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+                    </svg>
+                    Undo
+                </button>
+                <button id="redoBtn" class="tooltip btn-secondary py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300 flex items-center justify-center"
+                    data-tooltip="Redo">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z" />
+                    </svg>
+                    Redo
+                </button>
+            </div>
+
+            <!-- Capture & Export -->
+            <button id="captureBtn" class="btn-primary w-full text-white py-4 px-4 rounded-2xl font-semibold text-lg mb-3">
+                <div class="flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    <span>Capture Screenshot</span>
+                </div>
+            </button>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <button id="exportPngBtn" class="btn-secondary py-2 px-3 rounded-xl text-sm font-medium transition-all duration-300">
+                    PNG
+                </button>
+                <button id="exportJpgBtn" class="btn-secondary py-2 px-3 rounded-xl text-sm font-medium transition-all duration-300">
+                    JPG
+                </button>
+            </div>
+        </div>
+
+        <!-- Simple Screenshots Section -->
+        <div id="screenshotsSection" class="m-4 bg-white rounded-2xl p-4 shadow-lg border border-gray-200" style="display: none;">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-800">Screenshots</h3>
+                <div class="flex items-center space-x-3">
+                    <span id="screenshotCount" class="text-xs text-gray-500">0 saved</span>
+                    <button id="clearAllBtn" class="text-xs text-red-500 hover:text-red-700 transition-colors">Clear All</button>
+                </div>
+            </div>
+            <div id="screenshotsCarousel" class="flex space-x-3 overflow-x-auto pb-2 scroll-smooth" style="scroll-snap-type: x mandatory;">
+                <!-- Screenshots will be added here -->
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="fixed inset-0 bg-black/50 z-50 flex items-end" style="display: none;">
+            <div class="w-full max-w-sm mx-auto glass-pro rounded-t-3xl p-6 slide-up-enter">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">Settings</h3>
+                    <button id="closeSettings" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-sm font-semibold text-gray-800 mb-3 block">Image Quality</label>
+                        <input type="range" id="qualitySlider" min="0.1" max="1" value="0.9" step="0.1"
+                            class="w-full accent-indigo-600">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Low</span>
+                            <span>High</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-semibold text-gray-800 mb-3 block">Auto-save</label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="autoSave" class="accent-indigo-600">
+                            <span class="ml-2 text-sm text-gray-600">Automatically save screenshots</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-semibold text-gray-800 mb-3 block">Show Grid</label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showGrid" class="accent-indigo-600">
+                            <span class="ml-2 text-sm text-gray-600">Display alignment grid</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Professional Loading Overlay -->
+        <div id="loadingOverlay" class="fixed inset-0 dark-glass-pro flex items-center justify-center z-50"
+            style="display: none;">
+            <div class="text-center text-white">
+                <div class="relative">
+                    <div
+                        class="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4">
+                    </div>
+                    <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-indigo-400 rounded-full animate-spin mx-auto"
+                        style="animation-duration: 1.5s;"></div>
+                </div>
+                <p class="text-lg font-semibold mb-2">Processing Screenshot</p>
+                <p class="text-sm text-white/70">Please wait while we capture and enhance your image...</p>
+            </div>
+        </div>
+
+        <!-- Enhanced Notifications -->
+        <div id="notification"
+            class="fixed top-4 right-4 z-50 transform translate-x-full transition-transform duration-500"
+            style="display: none;">
+            <div class="glass-pro rounded-xl p-4 shadow-xl border-l-4 border-green-500">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <svg id="notificationIcon" class="w-5 h-5 text-green-500" fill="currentColor"
+                            viewBox="0 0 24 24">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p id="notificationTitle" class="text-sm font-semibold text-gray-800">Success!</p>
+                        <p id="notificationText" class="text-xs text-gray-600">Screenshot captured successfully</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class EnterpriseScreenCaptureApp {
+            constructor() {
+                this.screenshots = [];
+                this.currentTool = 'pen';
+                this.currentColor = '#EF4444';
+                this.brushSize = 3;
+                this.isDrawing = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.undoStack = [];
+                this.redoStack = [];
+                this.paths = [];
+                this.settings = {
+                    quality: 0.9,
+                    autoSave: false,
+                    showGrid: false
+                };
+
+                this.initializeElements();
+                this.bindEvents();
+                this.setupCanvas();
+                this.loadSettings();
+            }
+
+            initializeElements() {
+                // Main elements
+                this.captureBtn = document.getElementById('captureBtn');
+                this.canvas = document.getElementById('annotationCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.captureArea = document.getElementById('captureArea');
+                this.screenshotsSection = document.getElementById('screenshotsSection');
+                this.screenshotsCarousel = document.getElementById('screenshotsCarousel');
+                this.screenshotCount = document.getElementById('screenshotCount');
+                this.loadingOverlay = document.getElementById('loadingOverlay');
+                this.notification = document.getElementById('notification');
+                this.notificationTitle = document.getElementById('notificationTitle');
+                this.notificationText = document.getElementById('notificationText');
+                this.notificationIcon = document.getElementById('notificationIcon');
+
+                // Tool elements
+                this.toolButtons = document.querySelectorAll('.tool-btn');
+                this.colorOptions = document.querySelectorAll('.color-option');
+                this.brushSizeSlider = document.getElementById('brushSize');
+                this.brushSizeIndicator = document.getElementById('brushSizeIndicator');
+                this.customColorBtn = document.getElementById('customColorBtn');
+                this.customColor = document.getElementById('customColor');
+
+                // Action buttons
+                this.undoBtn = document.getElementById('undoBtn');
+                this.redoBtn = document.getElementById('redoBtn');
+                this.clearBtn = document.getElementById('clearBtn');
+                this.exportPngBtn = document.getElementById('exportPngBtn');
+                this.exportJpgBtn = document.getElementById('exportJpgBtn');
+                this.clearAllBtn = document.getElementById('clearAllBtn');
+
+                // Settings
+                this.settingsBtn = document.getElementById('settingsBtn');
+                this.settingsPanel = document.getElementById('settingsPanel');
+                this.closeSettings = document.getElementById('closeSettings');
+                this.qualitySlider = document.getElementById('qualitySlider');
+                this.autoSaveCheckbox = document.getElementById('autoSave');
+                this.showGridCheckbox = document.getElementById('showGrid');
+            }
+
+            bindEvents() {
+                // Main functionality
+                this.captureBtn.addEventListener('click', () => this.captureScreenshot());
+
+                // Tool selection
+                this.toolButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => this.selectTool(e.target.closest('.tool-btn')));
+                });
+
+                // Color selection
+                this.colorOptions.forEach(option => {
+                    option.addEventListener('click', (e) => this.selectColor(e.target));
+                });
+
+                // Brush size
+                this.brushSizeSlider.addEventListener('input', (e) => this.updateBrushSize(e.target.value));
+
+                // Custom color
+                this.customColorBtn.addEventListener('click', () => this.customColor.click());
+                this.customColor.addEventListener('change', (e) => this.setCustomColor(e.target.value));
+
+                // Action buttons
+                this.undoBtn.addEventListener('click', () => this.undo());
+                this.redoBtn.addEventListener('click', () => this.redo());
+                this.clearBtn.addEventListener('click', () => this.clearCanvas());
+                this.exportPngBtn.addEventListener('click', () => this.exportScreenshot('png'));
+                this.exportJpgBtn.addEventListener('click', () => this.exportScreenshot('jpg'));
+                this.clearAllBtn.addEventListener('click', () => this.clearAllScreenshots());
+
+                // Settings
+                this.settingsBtn.addEventListener('click', () => this.showSettings());
+                this.closeSettings.addEventListener('click', () => this.hideSettings());
+                this.settingsPanel.addEventListener('click', (e) => {
+                    if (e.target === this.settingsPanel) this.hideSettings();
+                });
+                this.qualitySlider.addEventListener('input', (e) => this.updateQuality(e.target.value));
+                this.autoSaveCheckbox.addEventListener('change', (e) => this.updateAutoSave(e.target.checked));
+                this.showGridCheckbox.addEventListener('change', (e) => this.updateShowGrid(e.target.checked));
+
+                // Canvas events - Enhanced touch handling
+                this.canvas.addEventListener('touchstart', (e) => this.startDrawing(e), { passive: false });
+                this.canvas.addEventListener('touchmove', (e) => this.draw(e), { passive: false });
+                this.canvas.addEventListener('touchend', (e) => this.stopDrawing(e), { passive: false });
+
+                this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+                this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+                this.canvas.addEventListener('mouseup', (e) => this.stopDrawing(e));
+                this.canvas.addEventListener('mouseleave', (e) => this.stopDrawing(e));
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+            }
+
+            setupCanvas() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.updateBrushSize(this.brushSize);
+            }
+
+            resizeCanvas() {
+                const rect = this.captureArea.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+                this.redrawCanvas();
+            }
+
+            selectTool(button) {
+                this.toolButtons.forEach(btn => btn.classList.remove('tool-active'));
+                button.classList.add('tool-active');
+                this.currentTool = button.dataset.tool;
+
+                // Show canvas for drawing tools
+                if (['pen', 'highlighter', 'rectangle', 'circle', 'arrow', 'text', 'eraser', 'blur'].includes(this.currentTool)) {
+                    this.canvas.style.display = 'block';
+                    this.canvas.style.pointerEvents = 'auto';
+                }
+
+                // Update cursor based on tool
+                this.updateCursor();
+            }
+
+            selectColor(colorElement) {
+                this.colorOptions.forEach(option => option.classList.remove('tool-active'));
+                colorElement.classList.add('tool-active');
+                this.currentColor = colorElement.dataset.color;
+            }
+
+            setCustomColor(color) {
+                this.currentColor = color;
+                // Remove active class from preset colors
+                this.colorOptions.forEach(option => option.classList.remove('tool-active'));
+            }
+
+            updateBrushSize(size) {
+                this.brushSize = parseInt(size);
+                this.brushSizeIndicator.style.width = (size * 2) + 'px';
+                this.brushSizeIndicator.style.height = (size * 2) + 'px';
+            }
+
+            updateCursor() {
+                const cursors = {
+                    pen: 'crosshair',
+                    highlighter: 'crosshair',
+                    rectangle: 'crosshair',
+                    circle: 'crosshair',
+                    arrow: 'crosshair',
+                    text: 'text',
+                    eraser: 'grab',
+                    blur: 'crosshair'
+                };
+                this.canvas.style.cursor = cursors[this.currentTool] || 'crosshair';
+            }
+
+            getCoordinates(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                return {
+                    x: (clientX - rect.left) * (this.canvas.width / rect.width),
+                    y: (clientY - rect.top) * (this.canvas.height / rect.height)
+                };
+            }
+
+            startDrawing(e) {
+                e.preventDefault();
+                this.isDrawing = true;
+                this.canvas.style.display = 'block';
+                this.canvas.style.pointerEvents = 'auto';
+
+                const coords = this.getCoordinates(e);
+                this.startX = coords.x;
+                this.startY = coords.y;
+
+                this.saveState();
+
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+
+                switch (this.currentTool) {
+                    case 'pen':
+                        this.ctx.globalCompositeOperation = 'source-over';
+                        this.ctx.strokeStyle = this.currentColor;
+                        this.ctx.lineWidth = this.brushSize;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.startX, this.startY);
+                        break;
+                    case 'highlighter':
+                        this.ctx.globalCompositeOperation = 'multiply';
+                        this.ctx.strokeStyle = this.currentColor + '80';
+                        this.ctx.lineWidth = this.brushSize * 3;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.startX, this.startY);
+                        break;
+                    case 'eraser':
+                        this.ctx.globalCompositeOperation = 'destination-out';
+                        this.ctx.lineWidth = this.brushSize * 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.startX, this.startY);
+                        break;
+                    case 'text':
+                        this.addText(this.startX, this.startY);
+                        break;
+                }
+            }
+
+            draw(e) {
+                if (!this.isDrawing) return;
+                e.preventDefault();
+
+                const coords = this.getCoordinates(e);
+
+                switch (this.currentTool) {
+                    case 'pen':
+                    case 'highlighter':
+                    case 'eraser':
+                        this.ctx.lineTo(coords.x, coords.y);
+                        this.ctx.stroke();
+                        break;
+                    case 'rectangle':
+                    case 'circle':
+                    case 'arrow':
+                        this.redrawCanvas();
+                        this.drawShape(coords.x, coords.y);
+                        break;
+                }
+            }
+
+            stopDrawing(e) {
+                if (!this.isDrawing) return;
+                e.preventDefault();
+                this.isDrawing = false;
+
+                this.ctx.globalCompositeOperation = 'source-over';
+                this.redoStack = [];
+            }
+
+            drawShape(currentX, currentY) {
+                this.ctx.strokeStyle = this.currentColor;
+                this.ctx.lineWidth = this.brushSize;
+                this.ctx.fillStyle = this.currentColor + '20';
+
+                switch (this.currentTool) {
+                    case 'rectangle':
+                        const width = currentX - this.startX;
+                        const height = currentY - this.startY;
+                        this.ctx.strokeRect(this.startX, this.startY, width, height);
+                        this.ctx.fillRect(this.startX, this.startY, width, height);
+                        break;
+                    case 'circle':
+                        const radius = Math.sqrt(Math.pow(currentX - this.startX, 2) + Math.pow(currentY - this.startY, 2));
+                        this.ctx.beginPath();
+                        this.ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
+                        this.ctx.stroke();
+                        this.ctx.fill();
+                        break;
+                    case 'arrow':
+                        this.drawArrow(this.startX, this.startY, currentX, currentY);
+                        break;
+                }
+            }
+
+            drawArrow(startX, startY, endX, endY) {
+                const headlen = 15;
+                const angle = Math.atan2(endY - startY, endX - startX);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(startX, startY);
+                this.ctx.lineTo(endX, endY);
+                this.ctx.stroke();
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(endX, endY);
+                this.ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                this.ctx.moveTo(endX, endY);
+                this.ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                this.ctx.stroke();
+            }
+
+            addText(x, y) {
+                const text = prompt('Enter text:');
+                if (text && text.trim()) {
+                    this.ctx.font = `${this.brushSize * 6}px Inter`;
+                    this.ctx.fillStyle = this.currentColor;
+                    this.ctx.fillText(text, x, y);
+                }
+            }
+
+            saveState() {
+                this.undoStack.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+                if (this.undoStack.length > 50) {
+                    this.undoStack.shift();
+                }
+            }
+
+            undo() {
+                if (this.undoStack.length > 0) {
+                    this.redoStack.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+                    const previousState = this.undoStack.pop();
+                    this.ctx.putImageData(previousState, 0, 0);
+                }
+            }
+
+            redo() {
+                if (this.redoStack.length > 0) {
+                    this.undoStack.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+                    const nextState = this.redoStack.pop();
+                    this.ctx.putImageData(nextState, 0, 0);
+                }
+            }
+
+            clearCanvas() {
+                this.saveState();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.canvas.style.display = 'none';
+                this.canvas.style.pointerEvents = 'none';
+            }
+
+            redrawCanvas() {
+                if (this.undoStack.length > 0) {
+                    const currentState = this.undoStack[this.undoStack.length - 1];
+                    this.ctx.putImageData(currentState, 0, 0);
+                }
+            }
+
+            async captureScreenshot() {
+                this.showLoading();
+                this.captureArea.classList.add('capture-flash');
+
+                try {
+                    const canvasVisible = this.canvas.style.display !== 'none';
+                    if (canvasVisible) {
+                        this.canvas.style.display = 'none';
+                    }
+
+                    const canvas = await html2canvas(this.captureArea, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        quality: this.settings.quality
+                    });
+
+                    if (canvasVisible) {
+                        this.canvas.style.display = 'block';
+
+                        const finalCanvas = document.createElement('canvas');
+                        finalCanvas.width = canvas.width;
+                        finalCanvas.height = canvas.height;
+                        const finalCtx = finalCanvas.getContext('2d');
+
+                        finalCtx.drawImage(canvas, 0, 0);
+
+                        const scaleX = canvas.width / this.canvas.width;
+                        const scaleY = canvas.height / this.canvas.height;
+                        finalCtx.save();
+                        finalCtx.scale(scaleX, scaleY);
+                        finalCtx.drawImage(this.canvas, 0, 0);
+                        finalCtx.restore();
+
+                        this.addScreenshot(finalCanvas.toDataURL('image/png', this.settings.quality));
+                    } else {
+                        this.addScreenshot(canvas.toDataURL('image/png', this.settings.quality));
+                    }
+
+                    this.showNotification('Screenshot Captured!', 'Screenshot saved successfully', 'success');
+
+                    if (this.settings.autoSave) {
+                        this.exportScreenshot('png');
+                    }
+                } catch (error) {
+                    console.error('Error capturing screenshot:', error);
+                    this.showNotification('Capture Failed', 'Error capturing screenshot', 'error');
+                } finally {
+                    this.hideLoading();
+                    this.captureArea.classList.remove('capture-flash');
+                }
+            }
+
+            addScreenshot(dataUrl) {
+                const screenshot = {
+                    id: Date.now(),
+                    dataUrl: dataUrl,
+                    timestamp: new Date().toLocaleString(),
+                    size: this.calculateImageSize(dataUrl)
+                };
+
+                this.screenshots.unshift(screenshot);
+                this.updateScreenshotsDisplay();
+            }
+
+            calculateImageSize(dataUrl) {
+                const sizeInBytes = Math.round((dataUrl.length * 0.75) / 1024);
+                return sizeInBytes > 1024 ? `${(sizeInBytes / 1024).toFixed(1)} MB` : `${sizeInBytes} KB`;
+            }
+
+            updateScreenshotsDisplay() {
+                if (this.screenshots.length === 0) {
+                    this.screenshotsSection.style.display = 'none';
+                    return;
+                }
+
+                this.screenshotsSection.style.display = 'block';
+                this.screenshotCount.textContent = `${this.screenshots.length} saved`;
+
+                this.screenshotsCarousel.innerHTML = this.screenshots.map(screenshot => `
+                    <div class="flex-shrink-0 w-48 bg-gray-50 rounded-xl p-3 border border-gray-200" style="scroll-snap-align: center;">
+                        <img src="${screenshot.dataUrl}" class="w-full h-24 object-cover rounded-lg mb-2 cursor-pointer" alt="Screenshot" onclick="app.viewScreenshot('${screenshot.id}')">
+                        <div class="flex justify-between items-center">
+                            <div class="text-xs text-gray-500">${screenshot.size}</div>
+                            <div class="flex space-x-1">
+                                <button onclick="app.downloadScreenshot('${screenshot.id}')" class="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="app.shareScreenshot('${screenshot.id}')" class="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.50-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="app.deleteScreenshot('${screenshot.id}')" class="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            downloadScreenshot(id) {
+                const screenshot = this.screenshots.find(s => s.id == id);
+                if (screenshot) {
+                    const link = document.createElement('a');
+                    link.download = `capturepro-${screenshot.id}.png`;
+                    link.href = screenshot.dataUrl;
+                    link.click();
+                    this.showNotification('Download Started', 'Screenshot downloaded successfully', 'success');
+                }
+            }
+
+            shareScreenshot(id) {
+                const screenshot = this.screenshots.find(s => s.id == id);
+                if (screenshot && navigator.share) {
+                    const blob = this.dataURLtoBlob(screenshot.dataUrl);
+                    const file = new File([blob], `capturepro-${screenshot.id}.png`, { type: 'image/png' });
+                    navigator.share({
+                        files: [file],
+                        title: 'CapturePro Screenshot'
+                    });
+                } else {
+                    // Fallback to copy to clipboard
+                    navigator.clipboard.writeText(screenshot.dataUrl);
+                    this.showNotification('Copied to Clipboard', 'Screenshot data copied', 'success');
+                }
+            }
+
+            dataURLtoBlob(dataURL) {
+                const arr = dataURL.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new Blob([u8arr], { type: mime });
+            }
+
+            viewScreenshot(id) {
+                const screenshot = this.screenshots.find(s => s.id == id);
+                if (screenshot) {
+                    const newWindow = window.open();
+                    newWindow.document.write(`<img src="${screenshot.dataUrl}" style="max-width: 100%; height: auto;">`);
+                }
+            }
+
+            deleteScreenshot(id) {
+                this.screenshots = this.screenshots.filter(s => s.id != id);
+                this.updateScreenshotsDisplay();
+                this.showNotification('Screenshot Deleted', 'Screenshot removed successfully', 'success');
+            }
+
+            clearAllScreenshots() {
+                if (confirm('Are you sure you want to delete all screenshots?')) {
+                    this.screenshots = [];
+                    this.updateScreenshotsDisplay();
+                    this.showNotification('All Screenshots Cleared', 'All screenshots have been deleted', 'success');
+                }
+            }
+
+            exportScreenshot(format) {
+                if (this.screenshots.length === 0) {
+                    this.showNotification('No Screenshots', 'Please capture a screenshot first', 'error');
+                    return;
+                }
+
+                const latestScreenshot = this.screenshots[0];
+                const link = document.createElement('a');
+                link.download = `capturepro-export.${format}`;
+
+                if (format === 'jpg') {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                        link.href = canvas.toDataURL('image/jpeg', this.settings.quality);
+                        link.click();
+                    };
+                    img.src = latestScreenshot.dataUrl;
+                } else {
+                    link.href = latestScreenshot.dataUrl;
+                    link.click();
+                }
+
+                this.showNotification('Export Complete', `Screenshot exported as ${format.toUpperCase()}`, 'success');
+            }
+
+            showSettings() {
+                this.settingsPanel.style.display = 'flex';
+            }
+
+            hideSettings() {
+                this.settingsPanel.style.display = 'none';
+                this.saveSettings();
+            }
+
+            updateQuality(value) {
+                this.settings.quality = parseFloat(value);
+            }
+
+            updateAutoSave(enabled) {
+                this.settings.autoSave = enabled;
+            }
+
+            updateShowGrid(enabled) {
+                this.settings.showGrid = enabled;
+                // Implement grid display logic here
+            }
+
+            loadSettings() {
+                const savedSettings = localStorage.getItem('capturepro-settings');
+                if (savedSettings) {
+                    this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+                    this.qualitySlider.value = this.settings.quality;
+                    this.autoSaveCheckbox.checked = this.settings.autoSave;
+                    this.showGridCheckbox.checked = this.settings.showGrid;
+                }
+            }
+
+            saveSettings() {
+                localStorage.setItem('capturepro-settings', JSON.stringify(this.settings));
+            }
+
+            handleKeyboard(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case 'z':
+                            e.preventDefault();
+                            if (e.shiftKey) {
+                                this.redo();
+                            } else {
+                                this.undo();
+                            }
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            this.captureScreenshot();
+                            break;
+                    }
+                }
+            }
+
+            showLoading() {
+                this.loadingOverlay.style.display = 'flex';
+            }
+
+            hideLoading() {
+                this.loadingOverlay.style.display = 'none';
+            }
+
+            showNotification(title, message, type = 'success') {
+                this.notificationTitle.textContent = title;
+                this.notificationText.textContent = message;
+
+                const iconPaths = {
+                    success: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                    error: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+                    info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                };
+
+                const colors = {
+                    success: 'text-green-500 border-green-500',
+                    error: 'text-red-500 border-red-500',
+                    info: 'text-blue-500 border-blue-500'
+                };
+
+                this.notificationIcon.innerHTML = `<path d="${iconPaths[type]}"/>`;
+                this.notification.querySelector('.glass-pro').className = `glass-pro rounded-xl p-4 shadow-xl border-l-4 ${colors[type]}`;
+
+                this.notification.style.display = 'block';
+                this.notification.style.transform = 'translateX(0)';
+
+                setTimeout(() => {
+                    this.notification.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        this.notification.style.display = 'none';
+                    }, 500);
+                }, 3000);
+            }
+        }
+
+        // Initialize the enhanced app
+        const app = new EnterpriseScreenCaptureApp();
+
+        // Add some professional touches
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add loading animation to initial elements
+            const elements = document.querySelectorAll('.slide-up-enter');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
+        });
+    </script>
+</body>
+
+</html>
