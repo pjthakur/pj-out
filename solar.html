@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmos Pro | Advanced Orbital Mechanics Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cosmic: {
+                            50: '#f0f4ff',
+                            100: '#e0e9ff',
+                            200: '#c7d6ff',
+                            300: '#a5b8ff',
+                            400: '#8491ff',
+                            500: '#6366f1',
+                            600: '#5145e6',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        },
+                        accent: {
+                            purple: '#7c3aed',
+                            pink: '#be185d',
+                            blue: '#1e40af'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.8s ease-out',
+                        'fade-in': 'fadeIn 1s ease-out',
+                        'scale-in': 'scaleIn 0.6s ease-out',
+                        'orbit': 'orbit 20s linear infinite',
+                        'tilt': 'tilt 10s ease-in-out infinite',
+                        'twinkle': 'twinkle 4s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        glow: {
+                            'from': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.5)' },
+                            'to': { boxShadow: '0 0 30px rgba(99, 102, 241, 0.8)' },
+                        },
+                        slideUp: {
+                            'from': { transform: 'translateY(50px)', opacity: '0' },
+                            'to': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            'from': { opacity: '0' },
+                            'to': { opacity: '1' },
+                        },
+                        scaleIn: {
+                            'from': { transform: 'scale(0.8)', opacity: '0' },
+                            'to': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        orbit: {
+                            'from': { transform: 'rotate(0deg)' },
+                            'to': { transform: 'rotate(360deg)' },
+                        },
+                        tilt: {
+                            '0%, 100%': { transform: 'rotate(0deg)' },
+                            '25%': { transform: 'rotate(1deg)' },
+                            '75%': { transform: 'rotate(-1deg)' },
+                        },
+                        twinkle: {
+                            '0%': { opacity: '0.7' },
+                            '100%': { opacity: '1' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cosmic-gradient {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #1e40af 50%, #7c3aed 75%, #be185d 100%) !important;
+        }
+
+        .star-field {
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, #ffffff, transparent),
+                radial-gradient(2px 2px at 40px 70px, #ffffff, transparent),
+                radial-gradient(1px 1px at 90px 40px, #ffffff, transparent),
+                radial-gradient(1px 1px at 130px 80px, #ffffff, transparent),
+                radial-gradient(2px 2px at 160px 30px, #ffffff, transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-cosmic {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-cosmic:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
+        }
+
+        .orbit-path {
+            stroke: rgba(99, 102, 241, 0.3);
+            stroke-width: 1;
+            fill: none;
+            stroke-dasharray: 5, 5;
+            animation: dash 20s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        .planet-trail {
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .controls-sidebar {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .controls-sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .mobile-controls {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mobile-controls.hidden {
+            transform: translateY(100%);
+        }
+
+        .feature-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .parallax-stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(1px 1px at 25px 25px, white, transparent),
+                radial-gradient(1px 1px at 125px 125px, white, transparent),
+                radial-gradient(2px 2px at 250px 75px, white, transparent);
+            background-size: 300px 300px;
+            animation: orbit 100s linear infinite;
+        }
+
+        .page-transition {
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .page-hidden {
+            opacity: 0;
+            transform: translateY(50px);
+            pointer-events: none;
+        }
+
+        .landing-page {
+            min-height: 100vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        .simulation-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #1e1e3f 100%);
+        }
+
+        .simulation-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 160px 30px, rgba(255,255,255,0.9), transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            pointer-events: none;
+            z-index: -1;
+            animation: twinkle 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .metric-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-outline-cosmic {
+            border: 2px solid rgba(99, 102, 241, 0.5);
+            background: rgba(99, 102, 241, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-cosmic:hover {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Cursor pointer for all clickable elements */
+        button,
+        .btn-cosmic,
+        .btn-outline-cosmic,
+        .feature-card,
+        input[type="range"],
+        input[type="checkbox"],
+        select,
+        .cursor-pointer,
+        [onclick],
+        a {
+            cursor: pointer;
+        }
+
+        /* Ensure form controls have pointer cursor */
+        .slider,
+        .form-checkbox {
+            cursor: pointer;
+        }
+
+        /* Navigation links */
+        nav a:hover {
+            cursor: pointer;
+        }
+
+        /* Ensure cosmic background always shows */
+        body.cosmic-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #1e40af 50%, #7c3aed 75%, #be185d 100%);
+            position: relative;
+        }
+
+        body.cosmic-bg::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(2px 2px at 160px 30px, rgba(255,255,255,0.8), transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Hide scrollbars for all browsers */
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+
+        *::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+
+        /* Ensure scrolling still works */
+        html, body {
+            overflow-x: hidden;
+        }
+
+        /* Hide scrollbar for specific elements that might have scrollbars */
+        .overflow-y-auto::-webkit-scrollbar,
+        .overflow-auto::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar,
+        #desktopSidebar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .overflow-y-auto,
+        .overflow-auto,
+        .sidebar,
+        #desktopSidebar {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+    </style>
+</head>
+
+<body class="overflow-x-hidden cosmic-bg">
+    <!-- Landing Page -->
+    <div id="landingPage" class="landing-page page-transition cosmic-gradient">
+        <!-- Parallax Background -->
+        <div class="parallax-stars opacity-30"></div>
+
+        <!-- Navigation -->
+        <nav class="fixed top-0 left-0 right-0 z-50 glass-dark">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-3">
+                        <div
+                            class="w-10 h-10 rounded-full bg-gradient-to-r from-cosmic-400 to-cosmic-600 flex items-center justify-center animate-glow">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="text-xl font-bold text-white">Cosmos Pro</span>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-8">
+                        <a href="#features" class="text-gray-300 hover:text-white transition-colors">Features</a>
+                        <a href="#technology" class="text-gray-300 hover:text-white transition-colors">Technology</a>
+                        <a href="#contact" class="text-gray-300 hover:text-white transition-colors">Contact</a>
+                        <button id="launchSimBtn" class="btn-cosmic px-6 py-2 rounded-lg text-white font-medium">
+                            Launch Simulation
+                        </button>
+                    </div>
+                    <button class="md:hidden text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="relative min-h-screen flex items-center justify-center pt-16">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div class="animate-fade-in">
+                    <h1 class="text-5xl md:text-7xl font-bold text-white mb-6 animate-slide-up">
+                        The Future of
+                        <span class="text-gradient block">Orbital Mechanics</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto animate-slide-up"
+                        style="animation-delay: 0.2s">
+                        Experience planetary dynamics like never before with our advanced simulation platform.
+                        Trusted by leading aerospace companies and educational institutions worldwide.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up"
+                        style="animation-delay: 0.4s">
+                        <button id="heroLaunchBtn"
+                            class="btn-cosmic px-8 py-4 rounded-lg text-white font-semibold text-lg flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <span>Launch Platform</span>
+                        </button>
+                        <button class="btn-outline-cosmic px-8 py-4 rounded-lg text-white font-semibold text-lg flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            <span>View Demo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Floating Planet Animation -->
+                <div class="absolute top-1/2 left-1/4 w-16 h-16 bg-blue-500 rounded-full opacity-60 animate-float"
+                    style="animation-delay: 0s"></div>
+                <div class="absolute top-1/3 right-1/4 w-12 h-12 bg-red-500 rounded-full opacity-60 animate-float"
+                    style="animation-delay: 2s"></div>
+                <div class="absolute bottom-1/3 left-1/3 w-8 h-8 bg-yellow-500 rounded-full opacity-60 animate-float"
+                    style="animation-delay: 4s"></div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="py-20 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div class="metric-card p-6 rounded-xl text-center animate-scale-in">
+                        <div class="text-3xl font-bold text-white mb-2">500+</div>
+                        <div class="text-gray-400">Enterprise Clients</div>
+                    </div>
+                    <div class="metric-card p-6 rounded-xl text-center animate-scale-in" style="animation-delay: 0.1s">
+                        <div class="text-3xl font-bold text-white mb-2">99.9%</div>
+                        <div class="text-gray-400">Accuracy Rate</div>
+                    </div>
+                    <div class="metric-card p-6 rounded-xl text-center animate-scale-in" style="animation-delay: 0.2s">
+                        <div class="text-3xl font-bold text-white mb-2">24/7</div>
+                        <div class="text-gray-400">Support</div>
+                    </div>
+                    <div class="metric-card p-6 rounded-xl text-center animate-scale-in" style="animation-delay: 0.3s">
+                        <div class="text-3xl font-bold text-white mb-2">1M+</div>
+                        <div class="text-gray-400">Simulations Run</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+                        Revolutionary <span class="text-gradient">Features</span>
+                    </h2>
+                    <p class="text-xl text-gray-300 max-w-2xl mx-auto">
+                        Advanced capabilities that set the industry standard for orbital mechanics simulation
+                    </p>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Real-Time Physics</h3>
+                        <p class="text-gray-300">
+                            Advanced gravitational calculations with sub-millisecond precision for accurate orbital
+                            predictions.
+                        </p>
+                    </div>
+
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Interactive Controls</h3>
+                        <p class="text-gray-300">
+                            Intuitive drag-and-drop interface with precision sliders for mass, velocity, and orbital
+                            parameters.
+                        </p>
+                    </div>
+
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Analytics Dashboard</h3>
+                        <p class="text-gray-300">
+                            Comprehensive data visualization and orbital analysis tools for research and education.
+                        </p>
+                    </div>
+
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Mobile Optimized</h3>
+                        <p class="text-gray-300">
+                            Seamless experience across all devices with touch-optimized controls and responsive design.
+                        </p>
+                    </div>
+
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-teal-500 to-green-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Enterprise Security</h3>
+                        <p class="text-gray-300">
+                            Bank-level encryption and security protocols trusted by Fortune 500 aerospace companies.
+                        </p>
+                    </div>
+
+                    <div class="feature-card glass-effect p-8 rounded-xl">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-4">Predictive Modeling</h3>
+                        <p class="text-gray-300">
+                            AI-powered trajectory prediction and collision detection for mission planning applications.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technology Section -->
+        <section id="technology" class="py-20 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+                        Cutting-Edge <span class="text-gradient">Technology</span>
+                    </h2>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white mb-6">Built for Performance</h3>
+                        <div class="space-y-6">
+                            <div class="flex items-start space-x-4">
+                                <div
+                                    class="w-8 h-8 bg-cosmic-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-white mb-2">WebGL Acceleration</h4>
+                                    <p class="text-gray-300">Hardware-accelerated rendering for smooth 60fps simulations
+                                        with thousands of objects.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <div
+                                    class="w-8 h-8 bg-cosmic-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-white mb-2">Advanced Physics Engine</h4>
+                                    <p class="text-gray-300">Proprietary n-body simulation algorithms optimized for
+                                        astronomical accuracy.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <div
+                                    class="w-8 h-8 bg-cosmic-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-white mb-2">Cloud Computing</h4>
+                                    <p class="text-gray-300">Distributed processing for complex multi-body simulations
+                                        and large-scale scenarios.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <div class="glass-effect p-8 rounded-xl">
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-cosmic-600/20 p-4 rounded-lg text-center">
+                                    <div class="text-2xl font-bold text-white">60</div>
+                                    <div class="text-sm text-gray-300">FPS</div>
+                                </div>
+                                <div class="bg-cosmic-600/20 p-4 rounded-lg text-center">
+                                    <div class="text-2xl font-bold text-white">&lt;1ms</div>
+                                    <div class="text-sm text-gray-300">Latency</div>
+                                </div>
+                                <div class="bg-cosmic-600/20 p-4 rounded-lg text-center">
+                                    <div class="text-2xl font-bold text-white">10K+</div>
+                                    <div class="text-sm text-gray-300">Objects</div>
+                                </div>
+                                <div class="bg-cosmic-600/20 p-4 rounded-lg text-center">
+                                    <div class="text-2xl font-bold text-white">99.99%</div>
+                                    <div class="text-sm text-gray-300">Uptime</div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm text-gray-400 mb-2">Performance Metrics</div>
+                                <div class="w-full bg-gray-800/80 rounded-full h-3 border border-gray-600/50">
+                                    <div class="bg-gradient-to-r from-green-400 to-cyan-400 h-3 rounded-full shadow-lg"
+                                        style="width: 95%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section id="contact" class="py-20 relative">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div class="glass-dark p-12 rounded-2xl">
+                    <h2 class="text-4xl font-bold text-white mb-6">
+                        Ready to Explore the <span class="text-gradient">Universe</span>?
+                    </h2>
+                    <p class="text-xl text-gray-300 mb-8">
+                        Join thousands of researchers, educators, and space enthusiasts using Cosmos Pro
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button id="finalLaunchBtn"
+                            class="btn-cosmic px-8 py-4 rounded-lg text-white font-semibold text-lg flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <span>Start Your Journey</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="border-t border-white/10 p-8 text-center text-gray-400">
+            <p>&copy; 2025 Cosmos Pro. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Simulation Page -->
+    <div id="simulationPage" class="simulation-page page-transition page-hidden">
+        <!-- Header -->
+        <header class="absolute top-0 left-0 right-0 z-50 p-4">
+            <div class="flex items-center justify-between mx-auto">
+                <div id="simulationHeader" class="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-all duration-300 group">
+                    <div
+                        class="w-10 h-10 rounded-full bg-gradient-to-r from-cosmic-400 to-cosmic-600 flex items-center justify-center animate-glow group-hover:scale-110 transition-transform duration-300">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="group-hover:transform group-hover:translateX-1 transition-transform duration-300">
+                        <h1 class="text-xl font-bold text-white">Solar System Simulation</h1>
+                        <p class="text-sm text-gray-300">Interactive Orbital Mechanics</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Toggle Button -->
+                <button id="toggleSidebar"
+                    class="hidden lg:flex items-center space-x-2 px-4 py-2 glass-effect rounded-lg text-white hover:bg-white/10 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <span>Controls</span>
+                </button>
+
+                <!-- Mobile Toggle Button -->
+                <button id="toggleMobileControls"
+                    class="lg:hidden flex items-center space-x-2 px-4 py-2 glass-effect rounded-lg text-white hover:bg-white/10 transition-all duration-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Desktop Sidebar Controls -->
+        <div id="desktopSidebar"
+            class="controls-sidebar hidden lg:block fixed left-0 top-0 h-full w-80 glass-effect border-r border-white/10 z-40 p-6 pt-24 overflow-y-auto">
+            <div class="space-y-6">
+                <div class="text-center sticky top-0 bg-gray-900/95 backdrop-blur-md border-b border-white/10 pb-4 mb-4 -mx-6 px-6 pt-2">
+                    <h2 class="text-2xl font-bold text-white mb-2">Control Panel</h2>
+                    <p class="text-gray-300 text-sm">Adjust planetary properties and observe orbital dynamics</p>
+                </div>
+
+                <!-- Planet Selection -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Selected Planet</label>
+                    <select id="planetSelect"
+                        class="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-cosmic-500 focus:border-transparent transition-all">
+                        <option value="0">Mercury</option>
+                        <option value="1">Venus</option>
+                        <option value="2">Earth</option>
+                        <option value="3">Mars</option>
+                        <option value="4">Jupiter</option>
+                        <option value="5">Saturn</option>
+                        <option value="6">Uranus</option>
+                        <option value="7">Neptune</option>
+                    </select>
+                </div>
+
+                <!-- Mass Control -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Mass</label>
+                    <div class="space-y-2">
+                        <input type="range" id="massSlider"
+                            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" min="0.1"
+                            max="5" step="0.1" value="1">
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>0.1x</span>
+                            <span id="massValue" class="text-white font-medium">1.0x</span>
+                            <span>5.0x</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Velocity Control -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Orbital Velocity</label>
+                    <div class="space-y-2">
+                        <input type="range" id="velocitySlider"
+                            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider" min="0.5"
+                            max="3" step="0.1" value="1">
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>0.5x</span>
+                            <span id="velocityValue" class="text-white font-medium">1.0x</span>
+                            <span>3.0x</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Simulation</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="pauseBtn"
+                            class="px-4 py-2 bg-cosmic-600 hover:bg-cosmic-700 text-white rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1H8zM11 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1h-2z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>Pause</span>
+                        </button>
+                        <button id="resetBtn"
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Display Options</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="showOrbits" checked
+                                class="form-checkbox h-4 w-4 text-cosmic-600 rounded">
+                            <span class="text-sm text-gray-300">Show Orbital Paths</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="showTrails"
+                                class="form-checkbox h-4 w-4 text-cosmic-600 rounded">
+                            <span class="text-sm text-gray-300">Show Planetary Trails</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-white">Planet Information</label>
+                    <div id="planetInfo" class="glass-effect rounded-lg p-4 space-y-2">
+                        <div class="text-xs text-gray-400">Select a planet to view details</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Controls -->
+        <div id="mobileControls"
+            class="mobile-controls lg:hidden fixed bottom-0 left-0 right-0 glass-effect border-t border-white/10 z-40 p-4 hidden">
+            <div class="max-w-md mx-auto space-y-4">
+                <!-- Planet Selection -->
+                <div class="flex items-center space-x-4">
+                    <label class="text-sm font-medium text-white min-w-fit">Planet:</label>
+                    <select id="planetSelectMobile"
+                        class="flex-1 bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        <option value="0">Mercury</option>
+                        <option value="1">Venus</option>
+                        <option value="2">Earth</option>
+                        <option value="3">Mars</option>
+                        <option value="4">Jupiter</option>
+                        <option value="5">Saturn</option>
+                        <option value="6">Uranus</option>
+                        <option value="7">Neptune</option>
+                    </select>
+                </div>
+
+                <!-- Sliders -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-white mb-1">Mass</label>
+                        <input type="range" id="massSliderMobile"
+                            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="0.1" max="5"
+                            step="0.1" value="1">
+                        <div class="text-xs text-center text-gray-400 mt-1">
+                            <span id="massValueMobile">1.0x</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-white mb-1">Velocity</label>
+                        <input type="range" id="velocitySliderMobile"
+                            class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" min="0.5" max="3"
+                            step="0.1" value="1">
+                        <div class="text-xs text-center text-gray-400 mt-1">
+                            <span id="velocityValueMobile">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex space-x-3">
+                    <button id="pauseBtnMobile"
+                        class="flex-1 px-4 py-2 bg-cosmic-600 hover:bg-cosmic-700 text-white rounded-lg text-sm transition-all flex items-center justify-center space-x-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1H8zM11 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1h-2z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Pause</span>
+                    </button>
+                    <button id="resetBtnMobile"
+                        class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-all flex items-center justify-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Reset</span>
+                    </button>
+                    <button id="optionsBtnMobile"
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Options Panel -->
+        <div id="mobileOptionsPanel"
+            class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-end">
+            <div class="w-full glass-effect border-t border-white/10 p-6 rounded-t-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-white">Display Options</h3>
+                    <button id="closeMobileOptions" class="text-gray-400 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-white">Show Orbital Paths</span>
+                        <input type="checkbox" id="showOrbitsMobile" checked
+                            class="form-checkbox h-5 w-5 text-cosmic-600 rounded bg-gray-700 border-gray-600">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-white">Show Planetary Trails</span>
+                        <input type="checkbox" id="showTrailsMobile"
+                            class="form-checkbox h-5 w-5 text-cosmic-600 rounded bg-gray-700 border-gray-600">
+                    </label>
+                </div>
+
+                <!-- Planet Info for Mobile -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-white mb-3">Planet Information</h4>
+                    <div id="planetInfoMobile" class="glass-effect rounded-lg p-4 space-y-2">
+                        <div class="text-xs text-gray-400">Select a planet to view details</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvasContainer" class="absolute inset-0 lg:ml-80 transition-all duration-300">
+            <canvas id="solarSystemCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50"
+            style="display: none;">
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 border-4 border-cosmic-600 border-t-transparent rounded-full animate-spin mx-auto mb-4">
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Initializing Solar System</h2>
+                <p class="text-gray-400">Loading orbital mechanics...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Page transition functionality
+        function showSimulation() {
+            const landingPage = document.getElementById('landingPage');
+            const simulationPage = document.getElementById('simulationPage');
+            const loadingScreen = document.getElementById('loadingScreen');
+
+            // Hide landing page
+            landingPage.classList.add('page-hidden');
+
+            // Show simulation page after transition
+            setTimeout(() => {
+                landingPage.style.display = 'none';
+                simulationPage.classList.remove('page-hidden');
+                loadingScreen.style.display = 'flex';
+
+                // Initialize simulation
+                if (!window.solarSystemInstance) {
+                    window.solarSystemInstance = new SolarSystemSimulation();
+                }
+            }, 800);
+        }
+
+        function showLanding() {
+            const landingPage = document.getElementById('landingPage');
+            const simulationPage = document.getElementById('simulationPage');
+
+            // Hide simulation page
+            simulationPage.classList.add('page-hidden');
+
+            // Show landing page after transition
+            setTimeout(() => {
+                landingPage.style.display = 'block';
+                landingPage.classList.remove('page-hidden');
+            }, 800);
+        }
+
+        // Event listeners for navigation
+        document.getElementById('launchSimBtn').addEventListener('click', showSimulation);
+        document.getElementById('heroLaunchBtn').addEventListener('click', showSimulation);
+        document.getElementById('finalLaunchBtn').addEventListener('click', showSimulation);
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Make simulation header clickable to return to landing page
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const simulationHeader = document.getElementById('simulationHeader');
+                if (simulationHeader) {
+                    simulationHeader.addEventListener('click', showLanding);
+                }
+            }, 1000);
+        });
+
+        class SolarSystemSimulation {
+            constructor() {
+                this.canvas = document.getElementById('solarSystemCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvasContainer = document.getElementById('canvasContainer');
+
+                this.isPaused = false;
+                this.selectedPlanet = 0;
+                this.showOrbits = true;
+                this.showTrails = false;
+                this.isDragging = false;
+                this.dragPlanet = null;
+                this.trails = [];
+
+                this.setupCanvas();
+                this.initializePlanets();
+                this.setupEventListeners();
+                this.setupControls();
+
+                // Hide loading screen and start animation
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    this.animate();
+                }, 1500);
+            }
+
+            setupCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvasContainer.getBoundingClientRect();
+                    this.canvas.width = rect.width;
+                    this.canvas.height = rect.height;
+                    this.centerX = this.canvas.width / 2;
+                    this.centerY = this.canvas.height / 2;
+                    
+                    // Calculate scale factor based on canvas size
+                    // Use the smaller dimension to ensure planets fit in both width and height
+                    const minDimension = Math.min(this.canvas.width, this.canvas.height);
+                    this.scaleFactor = minDimension / 600; // Base scale on 600px reference
+                    
+                    // Update planet distances when canvas resizes
+                    if (this.planets) {
+                        this.updatePlanetDistances();
+                    }
+                };
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+            }
+
+            updatePlanetDistances() {
+                // Base distances that work well on a 600px canvas
+                const baseDistances = [60, 80, 110, 140, 180, 220, 260, 300];
+                
+                this.planets.forEach((planet, index) => {
+                    planet.baseDistance = baseDistances[index];
+                    planet.distance = planet.baseDistance * this.scaleFactor;
+                });
+
+                // Update sun size as well
+                if (this.sun) {
+                    this.sun.radius = 20 * this.scaleFactor;
+                }
+            }
+
+            initializePlanets() {
+                this.sun = {
+                    x: this.centerX,
+                    y: this.centerY,
+                    radius: 20 * (this.scaleFactor || 1),
+                    mass: 1000,
+                    color: '#FDB813'
+                };
+
+                // Base distances for responsive scaling
+                const baseDistances = [60, 80, 110, 140, 180, 220, 260, 300];
+
+                this.planets = [
+                    { name: 'Mercury', baseDistance: 60, distance: 60, angle: 0, speed: 0.02, radius: 4, mass: 0.33, color: '#8C7853', originalSpeed: 0.02, originalMass: 0.33 },
+                    { name: 'Venus', baseDistance: 80, distance: 80, angle: 1, speed: 0.015, radius: 6, mass: 4.87, color: '#FFC649', originalSpeed: 0.015, originalMass: 4.87 },
+                    { name: 'Earth', baseDistance: 110, distance: 110, angle: 2, speed: 0.01, radius: 7, mass: 5.97, color: '#6B93D6', originalSpeed: 0.01, originalMass: 5.97 },
+                    { name: 'Mars', baseDistance: 140, distance: 140, angle: 3, speed: 0.008, radius: 5, mass: 0.64, color: '#CD5C5C', originalSpeed: 0.008, originalMass: 0.64 },
+                    { name: 'Jupiter', baseDistance: 180, distance: 180, angle: 4, speed: 0.005, radius: 15, mass: 1898, color: '#D8CA9D', originalSpeed: 0.005, originalMass: 1898 },
+                    { name: 'Saturn', baseDistance: 220, distance: 220, angle: 5, speed: 0.003, radius: 12, mass: 568, color: '#FAD5A5', originalSpeed: 0.003, originalMass: 568 },
+                    { name: 'Uranus', baseDistance: 260, distance: 260, angle: 6, speed: 0.002, radius: 10, mass: 86.8, color: '#4FD0E7', originalSpeed: 0.002, originalMass: 86.8 },
+                    { name: 'Neptune', baseDistance: 300, distance: 300, angle: 7, speed: 0.0015, radius: 9, mass: 102, color: '#4B70DD', originalSpeed: 0.0015, originalMass: 102 }
+                ];
+
+                // Apply initial scaling if scaleFactor is available
+                if (this.scaleFactor) {
+                    this.updatePlanetDistances();
+                }
+
+                // Initialize trails
+                this.trails = this.planets.map(() => []);
+            }
+
+            setupEventListeners() {
+                // Mouse events
+                this.canvas.addEventListener('mousedown', this.handleStart.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleEnd.bind(this));
+
+                // Touch events
+                this.canvas.addEventListener('touchstart', this.handleStart.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleMove.bind(this));
+                this.canvas.addEventListener('touchend', this.handleEnd.bind(this));
+
+                // Prevent default touch behaviors
+                this.canvas.addEventListener('touchstart', e => e.preventDefault());
+                this.canvas.addEventListener('touchmove', e => e.preventDefault());
+            }
+
+            setupControls() {
+                // Desktop controls
+                const planetSelect = document.getElementById('planetSelect');
+                const massSlider = document.getElementById('massSlider');
+                const velocitySlider = document.getElementById('velocitySlider');
+                const pauseBtn = document.getElementById('pauseBtn');
+                const resetBtn = document.getElementById('resetBtn');
+                const showOrbits = document.getElementById('showOrbits');
+                const showTrails = document.getElementById('showTrails');
+
+                // Mobile controls
+                const planetSelectMobile = document.getElementById('planetSelectMobile');
+                const massSliderMobile = document.getElementById('massSliderMobile');
+                const velocitySliderMobile = document.getElementById('velocitySliderMobile');
+                const pauseBtnMobile = document.getElementById('pauseBtnMobile');
+                const resetBtnMobile = document.getElementById('resetBtnMobile');
+
+                // Sidebar toggle
+                const toggleSidebar = document.getElementById('toggleSidebar');
+                const desktopSidebar = document.getElementById('desktopSidebar');
+                const toggleMobileControls = document.getElementById('toggleMobileControls');
+                const mobileControls = document.getElementById('mobileControls');
+
+                // Planet selection
+                [planetSelect, planetSelectMobile].forEach(select => {
+                    select.addEventListener('change', (e) => {
+                        this.selectedPlanet = parseInt(e.target.value);
+                        this.updateControls();
+                        this.updatePlanetInfo();
+                        this.updatePlanetInfoMobile();
+                        // Sync both selects
+                        planetSelect.value = this.selectedPlanet;
+                        planetSelectMobile.value = this.selectedPlanet;
+                    });
+                });
+
+                // Mass sliders
+                [massSlider, massSliderMobile].forEach(slider => {
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        this.planets[this.selectedPlanet].mass = this.planets[this.selectedPlanet].originalMass * value;
+                        document.getElementById('massValue').textContent = value.toFixed(1) + 'x';
+                        document.getElementById('massValueMobile').textContent = value.toFixed(1) + 'x';
+                        // Sync both sliders
+                        massSlider.value = value;
+                        massSliderMobile.value = value;
+                        this.updatePlanetInfo();
+                        this.updatePlanetInfoMobile();
+                    });
+                });
+
+                // Velocity sliders
+                [velocitySlider, velocitySliderMobile].forEach(slider => {
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        this.planets[this.selectedPlanet].speed = this.planets[this.selectedPlanet].originalSpeed * value;
+                        document.getElementById('velocityValue').textContent = value.toFixed(1) + 'x';
+                        document.getElementById('velocityValueMobile').textContent = value.toFixed(1) + 'x';
+                        // Sync both sliders
+                        velocitySlider.value = value;
+                        velocitySliderMobile.value = value;
+                        this.updatePlanetInfo();
+                        this.updatePlanetInfoMobile();
+                    });
+                });
+
+                // Pause buttons
+                [pauseBtn, pauseBtnMobile].forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.isPaused = !this.isPaused;
+                        const playIcon = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                        </svg>`;
+                        const pauseIcon = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1H8zM11 5a1 1 0 00-1 1v8a1 1 0 001 1h2a1 1 0 001-1V6a1 1 0 00-1-1h-2z" clip-rule="evenodd"></path>
+                        </svg>`;
+                        
+                        if (this.isPaused) {
+                            pauseBtn.innerHTML = `${playIcon}<span>Play</span>`;
+                            pauseBtnMobile.innerHTML = `${playIcon}<span>Play</span>`;
+                        } else {
+                            pauseBtn.innerHTML = `${pauseIcon}<span>Pause</span>`;
+                            pauseBtnMobile.innerHTML = `${pauseIcon}<span>Pause</span>`;
+                        }
+                    });
+                });
+
+                // Reset buttons
+                [resetBtn, resetBtnMobile].forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.resetSimulation();
+                    });
+                });
+
+                // Display options
+                showOrbits.addEventListener('change', (e) => {
+                    this.showOrbits = e.target.checked;
+                    // Sync with mobile checkbox
+                    const showOrbitsMobile = document.getElementById('showOrbitsMobile');
+                    if (showOrbitsMobile) {
+                        showOrbitsMobile.checked = this.showOrbits;
+                    }
+                });
+
+                showTrails.addEventListener('change', (e) => {
+                    this.showTrails = e.target.checked;
+                    if (!this.showTrails) {
+                        this.trails = this.planets.map(() => []);
+                    }
+                    // Sync with mobile checkbox
+                    const showTrailsMobile = document.getElementById('showTrailsMobile');
+                    if (showTrailsMobile) {
+                        showTrailsMobile.checked = this.showTrails;
+                    }
+                });
+
+                // Sidebar toggle
+                toggleSidebar.addEventListener('click', () => {
+                    desktopSidebar.classList.toggle('collapsed');
+                    const isCollapsed = desktopSidebar.classList.contains('collapsed');
+                    this.canvasContainer.style.marginLeft = isCollapsed ? '0' : '20rem';
+                });
+
+                // Mobile controls toggle
+                toggleMobileControls.addEventListener('click', () => {
+                    mobileControls.classList.toggle('hidden');
+                });
+
+                // Mobile options panel functionality
+                const optionsBtnMobile = document.getElementById('optionsBtnMobile');
+                const mobileOptionsPanel = document.getElementById('mobileOptionsPanel');
+                const closeMobileOptions = document.getElementById('closeMobileOptions');
+                const showOrbitsMobile = document.getElementById('showOrbitsMobile');
+                const showTrailsMobile = document.getElementById('showTrailsMobile');
+
+                // Open mobile options panel
+                optionsBtnMobile.addEventListener('click', () => {
+                    mobileOptionsPanel.classList.remove('hidden');
+                    // Sync with current settings
+                    showOrbitsMobile.checked = this.showOrbits;
+                    showTrailsMobile.checked = this.showTrails;
+                    this.updatePlanetInfoMobile();
+                });
+
+                // Close mobile options panel
+                closeMobileOptions.addEventListener('click', () => {
+                    mobileOptionsPanel.classList.add('hidden');
+                });
+
+                // Close panel when clicking outside
+                mobileOptionsPanel.addEventListener('click', (e) => {
+                    if (e.target === mobileOptionsPanel) {
+                        mobileOptionsPanel.classList.add('hidden');
+                    }
+                });
+
+                // Mobile display options
+                showOrbitsMobile.addEventListener('change', (e) => {
+                    this.showOrbits = e.target.checked;
+                    // Sync with desktop checkbox
+                    showOrbits.checked = this.showOrbits;
+                });
+
+                showTrailsMobile.addEventListener('change', (e) => {
+                    this.showTrails = e.target.checked;
+                    if (!this.showTrails) {
+                        this.trails = this.planets.map(() => []);
+                    }
+                    // Sync with desktop checkbox
+                    showTrails.checked = this.showTrails;
+                });
+
+                this.updateControls();
+                this.updatePlanetInfo();
+            }
+
+            updateControls() {
+                const planet = this.planets[this.selectedPlanet];
+                const massRatio = planet.mass / planet.originalMass;
+                const speedRatio = planet.speed / planet.originalSpeed;
+
+                document.getElementById('massSlider').value = massRatio;
+                document.getElementById('massSliderMobile').value = massRatio;
+                document.getElementById('massValue').textContent = massRatio.toFixed(1) + 'x';
+                document.getElementById('massValueMobile').textContent = massRatio.toFixed(1) + 'x';
+
+                document.getElementById('velocitySlider').value = speedRatio;
+                document.getElementById('velocitySliderMobile').value = speedRatio;
+                document.getElementById('velocityValue').textContent = speedRatio.toFixed(1) + 'x';
+                document.getElementById('velocityValueMobile').textContent = speedRatio.toFixed(1) + 'x';
+            }
+
+            updatePlanetInfo() {
+                const planet = this.planets[this.selectedPlanet];
+                const info = document.getElementById('planetInfo');
+
+                info.innerHTML = `
+                    <div class="text-sm font-medium text-white">${planet.name}</div>
+                    <div class="text-xs text-gray-400">Distance: ${planet.distance}px</div>
+                    <div class="text-xs text-gray-400">Mass: ${(planet.mass / planet.originalMass).toFixed(1)}x original</div>
+                    <div class="text-xs text-gray-400">Speed: ${(planet.speed / planet.originalSpeed).toFixed(1)}x original</div>
+                    <div class="text-xs text-gray-400">Radius: ${planet.radius}px</div>
+                `;
+            }
+
+            updatePlanetInfoMobile() {
+                const planet = this.planets[this.selectedPlanet];
+                const info = document.getElementById('planetInfoMobile');
+
+                if (info) {
+                    info.innerHTML = `
+                        <div class="text-sm font-medium text-white">${planet.name}</div>
+                        <div class="text-xs text-gray-400">Distance: ${Math.round(planet.distance)}px</div>
+                        <div class="text-xs text-gray-400">Mass: ${(planet.mass / planet.originalMass).toFixed(1)}x original</div>
+                        <div class="text-xs text-gray-400">Speed: ${(planet.speed / planet.originalSpeed).toFixed(1)}x original</div>
+                        <div class="text-xs text-gray-400">Radius: ${planet.radius}px</div>
+                    `;
+                }
+            }
+
+            getEventPosition(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            handleStart(e) {
+                const pos = this.getEventPosition(e);
+
+                // Check if clicking on a planet
+                for (let i = 0; i < this.planets.length; i++) {
+                    const planet = this.planets[i];
+                    const planetX = this.centerX + Math.cos(planet.angle) * planet.distance;
+                    const planetY = this.centerY + Math.sin(planet.angle) * planet.distance;
+                    const distance = Math.sqrt((pos.x - planetX) ** 2 + (pos.y - planetY) ** 2);
+
+                    if (distance <= planet.radius + 10) {
+                        this.isDragging = true;
+                        this.dragPlanet = i;
+                        this.selectedPlanet = i;
+                        this.updateControls();
+                        this.updatePlanetInfo();
+
+                        // Update select elements
+                        document.getElementById('planetSelect').value = i;
+                        document.getElementById('planetSelectMobile').value = i;
+
+                        this.canvas.style.cursor = 'grabbing';
+                        break;
+                    }
+                }
+            }
+
+            handleMove(e) {
+                if (this.isDragging && this.dragPlanet !== null) {
+                    const pos = this.getEventPosition(e);
+                    const planet = this.planets[this.dragPlanet];
+
+                    // Calculate new distance and angle
+                    const dx = pos.x - this.centerX;
+                    const dy = pos.y - this.centerY;
+                    planet.distance = Math.sqrt(dx ** 2 + dy ** 2);
+                    planet.angle = Math.atan2(dy, dx);
+
+                    // Constrain distance based on canvas size
+                    const maxDistance = Math.min(this.canvas.width, this.canvas.height) * 0.45; // 45% of smaller dimension
+                    const minDistance = 30 * this.scaleFactor;
+                    planet.distance = Math.max(minDistance, Math.min(maxDistance, planet.distance));
+
+                    this.updatePlanetInfo();
+                }
+            }
+
+            handleEnd(e) {
+                this.isDragging = false;
+                this.dragPlanet = null;
+                this.canvas.style.cursor = 'grab';
+            }
+
+            resetSimulation() {
+                this.planets.forEach((planet, index) => {
+                    planet.mass = planet.originalMass;
+                    planet.speed = planet.originalSpeed;
+                    planet.angle = index;
+                    planet.distance = planet.baseDistance * this.scaleFactor;
+                });
+
+                this.trails = this.planets.map(() => []);
+                this.updateControls();
+                this.updatePlanetInfo();
+            }
+
+            animate() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+
+            update() {
+                if (this.isPaused || this.isDragging) return;
+
+                this.planets.forEach((planet, index) => {
+                    planet.angle += planet.speed;
+
+                    // Add to trail
+                    if (this.showTrails) {
+                        const x = this.centerX + Math.cos(planet.angle) * planet.distance;
+                        const y = this.centerY + Math.sin(planet.angle) * planet.distance;
+                        this.trails[index].push({ x, y });
+
+                        // Limit trail length
+                        if (this.trails[index].length > 100) {
+                            this.trails[index].shift();
+                        }
+                    }
+                });
+            }
+
+            draw() {
+                // Clear canvas
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw orbital paths
+                if (this.showOrbits) {
+                    this.planets.forEach(planet => {
+                        this.ctx.beginPath();
+                        this.ctx.arc(this.centerX, this.centerY, planet.distance, 0, 2 * Math.PI);
+                        this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.3)';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.setLineDash([5, 5]);
+                        this.ctx.stroke();
+                        this.ctx.setLineDash([]);
+                    });
+                }
+
+                // Draw trails
+                if (this.showTrails) {
+                    this.trails.forEach((trail, index) => {
+                        if (trail.length > 1) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(trail[0].x, trail[0].y);
+                            for (let i = 1; i < trail.length; i++) {
+                                this.ctx.lineTo(trail[i].x, trail[i].y);
+                            }
+                            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                            this.ctx.lineWidth = 1;
+                            this.ctx.stroke();
+                        }
+                    });
+                }
+
+                // Draw sun
+                this.ctx.beginPath();
+                this.ctx.arc(this.sun.x, this.sun.y, this.sun.radius, 0, 2 * Math.PI);
+                this.ctx.fillStyle = this.sun.color;
+                this.ctx.fill();
+
+                // Add sun glow
+                const gradient = this.ctx.createRadialGradient(
+                    this.sun.x, this.sun.y, this.sun.radius,
+                    this.sun.x, this.sun.y, this.sun.radius * 2
+                );
+                gradient.addColorStop(0, 'rgba(253, 184, 19, 0.5)');
+                gradient.addColorStop(1, 'rgba(253, 184, 19, 0)');
+                this.ctx.beginPath();
+                this.ctx.arc(this.sun.x, this.sun.y, this.sun.radius * 2, 0, 2 * Math.PI);
+                this.ctx.fillStyle = gradient;
+                this.ctx.fill();
+
+                // Draw planets
+                this.planets.forEach((planet, index) => {
+                    const x = this.centerX + Math.cos(planet.angle) * planet.distance;
+                    const y = this.centerY + Math.sin(planet.angle) * planet.distance;
+
+                    // Planet body
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, planet.radius, 0, 2 * Math.PI);
+                    this.ctx.fillStyle = planet.color;
+                    this.ctx.fill();
+
+                    // Selection highlight
+                    if (index === this.selectedPlanet) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, planet.radius + 5, 0, 2 * Math.PI);
+                        this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.stroke();
+                    }
+
+                    // Planet glow
+                    const planetGradient = this.ctx.createRadialGradient(
+                        x, y, planet.radius,
+                        x, y, planet.radius * 1.5
+                    );
+                    planetGradient.addColorStop(0, `${planet.color}40`);
+                    planetGradient.addColorStop(1, 'transparent');
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, planet.radius * 1.5, 0, 2 * Math.PI);
+                    this.ctx.fillStyle = planetGradient;
+                    this.ctx.fill();
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
