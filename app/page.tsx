@@ -1014,14 +1014,14 @@ const ExpensesDashboardClient: React.FC = () => {
             className={`${theme.cardNeumorphic} rounded-3xl p-6 h-full overflow-y-auto`}
           >
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center justify-center mb-8 gap-2">
                 <div
                   className={`${theme.buttonNeumorphic} p-2 rounded-xl mr-2 ${theme.accent}`}
                 >
                   <Wallet size={20} />
                 </div>
-                <span className={`text-lg font-bold ${theme.accent}`}>
-                  Expense Manager
+                <span className={`text-2xl font-bold ${theme.accent}`}>
+                  EManager
                 </span>
               </div>
 
