@@ -1,2252 +1,2060 @@
 "use client";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Activity,
+  BookOpen,
+  Brain,
+  Droplets,
+  Salad,
+  Dumbbell,
+  Target,
+  PenTool,
+  Music,
+  Smartphone,
+  User,
+  Palette,
+  Star,
+  Zap,
+  Flame,
+  Lightbulb,
+  Gamepad2,
+  Home,
+  Settings,
+  Info,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  BarChart3,
+  Calendar,
+  TrendingUp,
+  Trophy,
+  Crown,
+  Diamond,
+  Sparkles,
+  Award,
+  ThumbsUp,
+  Heart,
+  Smile,
+  Rocket,
+  Coffee,
+  Moon,
+  Sun,
+  Users,
+  Camera,
+  Mail,
+  MapPin,
+  Phone,
+  Edit3,
+  Bell,
+  Download,
+  RefreshCw,
+  Shield,
+  HelpCircle,
+  ArrowRight,
+  Sprout,
+  AlertCircle,
+  CheckCircle,
+  X,
+  CircleDot
+} from "lucide-react";
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
-
-interface Wall {
+interface Habit {
   id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  isDragging: boolean;
-  material: "concrete" | "wood" | "metal" | "glass";
-  reflectionCoeff: number;
+  name: string;
+  color: string;
+  icon: React.ComponentType<{ className?: string }>;
+  streak: number;
+  longestStreak: number;
+  completedDates: string[];
+  target: number;
+  category: string;
+  createdAt: string;
 }
 
-interface WaveConfig {
-  frequency: number;
-  amplitude: number;
-  speed: number;
-  waveType: "sine" | "square" | "triangle" | "sawtooth";
-  phase: number;
+interface DayCompletion {
+  date: string;
+  habits: { [habitId: string]: boolean };
+  timestamp: number;
 }
 
-interface Point {
-  x: number;
-  y: number;
+interface Milestone {
+  days: number;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
 }
 
-interface WaveSource {
+interface NewHabitForm {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  category: string;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  image: React.ComponentType<{ className?: string }>;
+  joinedDate: string;
+}
+
+interface Toast {
   id: string;
-  x: number;
-  y: number;
-  isActive: boolean;
+  message: string;
+  type: "info" | "success" | "warning";
 }
 
-const WaveReflect: React.FC = () => {
-  // Refs for modal management
-  const controlPanelRef = useRef<HTMLDivElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const settingsModalRef = useRef<HTMLDivElement>(null);
-  const helpModalRef = useRef<HTMLDivElement>(null);
+const HabitTracker: React.FC = () => {
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showAddHabit, setShowAddHabit] = useState(false);
+  const [completions, setCompletions] = useState<DayCompletion[]>([]);
+  const [animatingHabit, setAnimatingHabit] = useState<string | null>(null);
+  const [celebratingMilestone, setCelebratingMilestone] = useState<{
+    habitId: string;
+    milestone: Milestone;
+  } | null>(null);
+  const [selectedHabit, setSelectedHabit] = useState<string | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [viewMode, setViewMode] = useState<
+    "overview" | "timeline" | "analytics"
+  >("overview");
+  const [monthTransition, setMonthTransition] = useState<
+    "none" | "left" | "right"
+  >("none");
+  const [newHabitForm, setNewHabitForm] = useState<NewHabitForm>({
+    name: "",
+    icon: Target,
+    category: "Health",
+  });
 
-  // Core state management
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number | null>(null);
-  const timeRef = useRef<number>(0);
-
-  // Responsive state
-  const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
-
-  // UI state
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isControlsOpen, setIsControlsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "wave" | "walls" | "sources" | "analysis"
-  >("wave");
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [showWaveNumbers, setShowWaveNumbers] = useState(false);
-
-  // Wave configuration
-  const [waveConfig, setWaveConfig] = useState<WaveConfig>({
-    frequency: 1,
-    amplitude: 50,
-    speed: 1,
-    waveType: "sine",
-    phase: 0,
+    "home" | "profile" | "settings" | "about"
+  >("home");
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: "Alex Johnson",
+    email: "alex.johnson@email.com",
+    image: User,
+    joinedDate: new Date().toISOString(),
   });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [streakCelebration, setStreakCelebration] = useState<{
+    habitId: string;
+    streak: number;
+  } | null>(null);
+  const [showMilestoneMarkers, setShowMilestoneMarkers] = useState(false);
+  const [pendingCompletions, setPendingCompletions] = useState<{
+    [habitId: string]: boolean;
+  }>({});
 
-  // Wave sources
-  const [waveSources, setWaveSources] = useState<WaveSource[]>([
-    { id: "1", x: 50, y: 150, isActive: true },
-  ]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Walls state with different materials
-  const [walls, setWalls] = useState<Wall[]>([
-    {
-      id: "1",
-      x: 300,
-      y: 100,
-      width: 15,
-      height: 100,
-      isDragging: false,
-      material: "concrete",
-      reflectionCoeff: 0.8,
-    },
-  ]);
-
-  // Canvas dimensions - responsive
-  const [canvasSize, setCanvasSize] = useState({ width: 320, height: 240 });
-
-  // Dragging state - Fixed implementation
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    wallId: string | null;
-    sourceId: string | null;
-    offset: Point;
-    startPos: Point;
-  }>({
-    isDragging: false,
-    wallId: null,
-    sourceId: null,
-    offset: { x: 0, y: 0 },
-    startPos: { x: 0, y: 0 },
-  });
-
-  // Responsive breakpoints
-  const getScreenType = useCallback((width: number) => {
-    if (width < 640) return "mobile";
-    if (width < 1024) return "tablet";
-    return "desktop";
-  }, []);
-
-  // Update screen size and responsive states
+  // Prevent background scrolling when modals are open
   useEffect(() => {
-    const updateScreenSize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      setScreenSize({ width, height });
-      setIsMobile(width < 640);
-      setIsTablet(width >= 640 && width < 1024);
-    };
-
-    updateScreenSize();
-    window.addEventListener("resize", updateScreenSize);
-
-    return () => window.removeEventListener("resize", updateScreenSize);
-  }, []);
-
-  // Prevent body scroll when modals are open
-  useEffect(() => {
-    if (isMenuOpen || isControlsOpen || isSettingsOpen || isHelpOpen) {
-      document.body.style.overflow = "hidden";
+    const isAnyModalOpen = showCheckIn || showAddHabit || celebratingMilestone !== null || streakCelebration !== null;
+    
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     }
 
+    // Cleanup function to restore scrolling when component unmounts
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     };
-  }, [isMenuOpen, isControlsOpen, isSettingsOpen, isHelpOpen]);
+  }, [showCheckIn, showAddHabit, celebratingMilestone, streakCelebration]);
 
-  // Click outside to close modals
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        controlPanelRef.current &&
-        !controlPanelRef.current.contains(event.target as Node)
-      ) {
-        if (isControlsOpen) setIsControlsOpen(false);
-      }
+  const milestones: Milestone[] = [
+    {
+      days: 3,
+      title: "First Steps",
+      icon: Sprout,
+      color: "from-green-400 to-emerald-500",
+    },
+    {
+      days: 7,
+      title: "One Week Strong",
+      icon: Sparkles,
+      color: "from-emerald-400 to-green-500",
+    },
+    {
+      days: 14,
+      title: "Two Week Warrior",
+      icon: Zap,
+      color: "from-green-400 to-teal-500",
+    },
+    {
+      days: 21,
+      title: "Habit Former",
+      icon: Trophy,
+      color: "from-teal-400 to-green-500",
+    },
+    {
+      days: 30,
+      title: "Monthly Master",
+      icon: Crown,
+      color: "from-lime-400 to-green-500",
+    },
+    {
+      days: 60,
+      title: "Consistency Champion",
+      icon: Flame,
+      color: "from-green-500 to-emerald-500",
+    },
+    {
+      days: 90,
+      title: "Quarterly Queen/King",
+      icon: Diamond,
+      color: "from-emerald-500 to-green-600",
+    },
+    {
+      days: 180,
+      title: "Half-Year Hero",
+      icon: Star,
+      color: "from-green-600 to-teal-600",
+    },
+    {
+      days: 365,
+      title: "Year-Long Legend",
+      icon: Target,
+      color: "from-gradient-rainbow",
+    },
+  ];
 
-      if (
-        mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(event.target as Node)
-      ) {
-        if (isMenuOpen) setIsMenuOpen(false);
-      }
+  const habitIcons = [
+    Activity,
+    BookOpen,
+    Brain,
+    Droplets,
+    Salad,
+    Dumbbell,
+    Target,
+    PenTool,
+    Music,
+    Smartphone,
+    Coffee,
+    Palette,
+    Star,
+    Zap,
+    Flame,
+    Lightbulb,
+    Gamepad2,
+    Home,
+  ];
 
-      if (
-        settingsModalRef.current &&
-        !settingsModalRef.current.contains(event.target as Node)
-      ) {
-        if (isSettingsOpen) setIsSettingsOpen(false);
-      }
-
-      if (
-        helpModalRef.current &&
-        !helpModalRef.current.contains(event.target as Node)
-      ) {
-        if (isHelpOpen) setIsHelpOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isControlsOpen, isMenuOpen, isSettingsOpen, isHelpOpen]);
-
-  // Material properties
-  const materialProperties = {
-    concrete: { color: "#ef4444", reflectionCoeff: 0.8, name: "Concrete" },
-    wood: { color: "#d97706", reflectionCoeff: 0.6, name: "Wood" },
-    metal: { color: "#6b7280", reflectionCoeff: 0.9, name: "Metal" },
-    glass: { color: "#3b82f6", reflectionCoeff: 0.4, name: "Glass" },
+  const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+    'Activity': Activity,
+    'BookOpen': BookOpen,
+    'Brain': Brain,
+    'Droplets': Droplets,
+    'Salad': Salad,
+    'Dumbbell': Dumbbell,
+    'Target': Target,
+    'PenTool': PenTool,
+    'Music': Music,
+    'Smartphone': Smartphone,
+    'Coffee': Coffee,
+    'Palette': Palette,
+    'Star': Star,
+    'Zap': Zap,
+    'Flame': Flame,
+    'Lightbulb': Lightbulb,
+    'Gamepad2': Gamepad2,
+    'Home': Home,
+    'User': User,
+    'Smile': Smile,
+    'Diamond': Diamond,
+    'Rocket': Rocket,
+    'Plus': Plus,
+    'Trophy': Trophy,
+    'Crown': Crown,
+    'Sprout': Sprout,
+    'Sparkles': Sparkles
   };
 
-  // Wave function implementations
-  const waveFunction = useCallback(
-    (x: number, t: number, config: WaveConfig, sourceX: number = 0): number => {
-      const { frequency, amplitude, speed, waveType, phase } = config;
-      const distance = Math.abs(x - sourceX);
-      const wavePhase =
-        2 * Math.PI * frequency * (t * speed - distance / 100) + phase;
+  const componentToName: { [key: string]: string } = {
+    [Activity.name]: 'Activity',
+    [BookOpen.name]: 'BookOpen',
+    [Brain.name]: 'Brain',
+    [Droplets.name]: 'Droplets',
+    [Salad.name]: 'Salad',
+    [Dumbbell.name]: 'Dumbbell',
+    [Target.name]: 'Target',
+    [PenTool.name]: 'PenTool',
+    [Music.name]: 'Music',
+    [Smartphone.name]: 'Smartphone',
+    [Coffee.name]: 'Coffee',
+    [Palette.name]: 'Palette',
+    [Star.name]: 'Star',
+    [Zap.name]: 'Zap',
+    [Flame.name]: 'Flame',
+    [Lightbulb.name]: 'Lightbulb',
+    [Gamepad2.name]: 'Gamepad2',
+    [Home.name]: 'Home',
+    [User.name]: 'User',
+    [Smile.name]: 'Smile',
+    [Diamond.name]: 'Diamond',
+    [Rocket.name]: 'Rocket',
+    [Plus.name]: 'Plus',
+    [Trophy.name]: 'Trophy',
+    [Crown.name]: 'Crown',
+    [Sprout.name]: 'Sprout',
+    [Sparkles.name]: 'Sparkles'
+  };
 
-      switch (waveType) {
-        case "sine":
-          return amplitude * Math.sin(wavePhase);
-        case "square":
-          return amplitude * Math.sign(Math.sin(wavePhase));
-        case "triangle":
-          return amplitude * (2 / Math.PI) * Math.asin(Math.sin(wavePhase));
-        case "sawtooth":
-          return (
-            amplitude * (2 / Math.PI) * ((wavePhase % (2 * Math.PI)) - Math.PI)
+  const getIconFromName = (iconName: string): React.ComponentType<{ className?: string }> => {
+    return iconMap[iconName] || Target;
+  };
+
+  const getNameFromIcon = (icon: React.ComponentType<{ className?: string }>): string => {
+    return componentToName[icon.name] || 'Target';
+  };
+
+  const categories = [
+    "Health",
+    "Learning",
+    "Wellness",
+    "Productivity",
+    "Creative",
+    "Social",
+  ];
+  // mock data
+  const generateMockData = useCallback(() => {
+    const mockHabits: Habit[] = [
+      {
+        id: "1",
+        name: "Morning Workout",
+        color: "from-green-500 to-emerald-600",
+        icon: Dumbbell,
+        streak: 0,
+        longestStreak: 0,
+        completedDates: [],
+        target: 30,
+        category: "Health",
+        createdAt: new Date(
+          Date.now() - 180 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      },
+      {
+        id: "2",
+        name: "Read 30 Minutes",
+        color: "from-emerald-500 to-teal-500",
+        icon: BookOpen,
+        streak: 0,
+        longestStreak: 0,
+        completedDates: [],
+        target: 30,
+        category: "Learning",
+        createdAt: new Date(
+          Date.now() - 160 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      },
+      {
+        id: "3",
+        name: "Meditation",
+        color: "from-teal-500 to-green-500",
+        icon: Brain,
+        streak: 0,
+        longestStreak: 0,
+        completedDates: [],
+        target: 30,
+        category: "Wellness",
+        createdAt: new Date(
+          Date.now() - 140 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      },
+      {
+        id: "4",
+        name: "Drink 8 Glasses",
+        color: "from-lime-500 to-green-500",
+        icon: Droplets,
+        streak: 0,
+        longestStreak: 0,
+        completedDates: [],
+        target: 30,
+        category: "Health",
+        createdAt: new Date(
+          Date.now() - 120 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      },
+    ];
+
+    // Generate realistic completion data for the past 6 months (180 days)
+    const mockCompletions: DayCompletion[] = [];
+    const today = new Date();
+
+    // Generate data for the past 180 days
+    for (let i = 179; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = formatDate(date);
+
+      const dayCompletion: DayCompletion = {
+        date: dateStr,
+        habits: {},
+        timestamp: date.getTime(),
+      };
+
+      // Add realistic completion patterns for each habit
+      mockHabits.forEach((habit) => {
+        let completionChance = 0.7; // Base 70% completion rate
+
+        // Adjust based on habit type and patterns
+        if (habit.name === "Morning Workout") {
+          // Lower completion on weekends, improving over time
+          const weekendPenalty =
+            date.getDay() === 0 || date.getDay() === 6 ? 0.3 : 0;
+          const daysSinceStart = Math.floor(
+            (date.getTime() - new Date(habit.createdAt).getTime()) /
+              (24 * 60 * 60 * 1000)
           );
-        default:
-          return amplitude * Math.sin(wavePhase);
+          completionChance =
+            Math.min(0.85, 0.4 + daysSinceStart / 200) - weekendPenalty;
+        } else if (habit.name === "Read 30 Minutes") {
+          // More consistent, slightly better on weekends
+          const weekendBonus =
+            date.getDay() === 0 || date.getDay() === 6 ? 0.1 : 0;
+          completionChance = 0.8 + weekendBonus;
+        } else if (habit.name === "Meditation") {
+          // Building up over time, some dips for realism
+          const daysSinceStart = Math.floor(
+            (date.getTime() - new Date(habit.createdAt).getTime()) /
+              (24 * 60 * 60 * 1000)
+          );
+          const cyclicVariation = Math.sin(daysSinceStart / 10) * 0.2; // Some ups and downs
+          completionChance = Math.min(
+            0.9,
+            0.3 + daysSinceStart / 150 + cyclicVariation
+          );
+        } else if (habit.name === "Drink 8 Glasses") {
+          // Very consistent
+          completionChance = 0.88;
+        }
+
+        // Create realistic streaks and breaks
+        if (Math.random() < Math.max(0.1, completionChance)) {
+          dayCompletion.habits[habit.id] = true;
+        }
+      });
+
+      mockCompletions.push(dayCompletion);
+    }
+
+    // Calculate streaks and longest streaks
+    mockHabits.forEach((habit) => {
+      const completedDates = mockCompletions
+        .filter((c) => c.habits[habit.id])
+        .map((c) => c.date);
+
+      habit.completedDates = completedDates;
+
+      // Calculate current streak
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let tempStreak = 0;
+
+      // Calculate current streak from today backwards
+      for (let i = 0; i < 180; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = formatDate(date);
+        const completion = mockCompletions.find((c) => c.date === dateStr);
+
+        if (completion && completion.habits[habit.id]) {
+          if (i === 0 || currentStreak === i) {
+            currentStreak = i + 1;
+          }
+        } else if (i === 0) {
+          break; // If today is not completed, current streak is 0
+        } else {
+          break; // Break in streak
+        }
       }
+
+      // Calculate longest streak
+      let maxStreak = 0;
+      tempStreak = 0;
+      for (let i = 179; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = formatDate(date);
+        const completion = mockCompletions.find((c) => c.date === dateStr);
+
+        if (completion && completion.habits[habit.id]) {
+          tempStreak++;
+          maxStreak = Math.max(maxStreak, tempStreak);
+        } else {
+          tempStreak = 0;
+        }
+      }
+
+      habit.streak = currentStreak;
+      habit.longestStreak = maxStreak;
+    });
+
+    return { habits: mockHabits, completions: mockCompletions };
+  }, []);
+
+  const formatDate = (date: Date): string => {
+    return date.toISOString().split("T")[0];
+  };
+
+  useEffect(() => {
+    // Clear localStorage to start fresh (temporary)
+    localStorage.removeItem("habit-tracker-habits");
+    localStorage.removeItem("habit-tracker-completions");
+    localStorage.removeItem("habit-tracker-profile");
+    
+    const savedHabits = localStorage.getItem("habit-tracker-habits");
+    const savedCompletions = localStorage.getItem("habit-tracker-completions");
+    const savedProfile = localStorage.getItem("habit-tracker-profile");
+
+    if (savedHabits && savedCompletions) {
+      try {
+        const parsedHabits = JSON.parse(savedHabits);
+        // Convert icon names back to React components
+        const habitsWithIcons = parsedHabits.map((habit: any) => ({
+          ...habit,
+          icon: typeof habit.icon === 'string' ? getIconFromName(habit.icon) : habit.icon
+        }));
+        setHabits(habitsWithIcons);
+        setCompletions(JSON.parse(savedCompletions));
+      } catch (e) {
+        console.error("Failed to load data:", e);
+        const mockData = generateMockData();
+        setHabits(mockData.habits);
+        setCompletions(mockData.completions);
+      }
+    } else {
+      const mockData = generateMockData();
+      setHabits(mockData.habits);
+      setCompletions(mockData.completions);
+    }
+
+    if (savedProfile) {
+      try {
+        const parsedProfile = JSON.parse(savedProfile);
+        // Convert image name back to React component
+        const profileWithIcon = {
+          ...parsedProfile,
+          image: typeof parsedProfile.image === 'string' ? getIconFromName(parsedProfile.image) : parsedProfile.image
+        };
+        setUserProfile(profileWithIcon);
+      } catch (e) {
+        console.error("Failed to load profile:", e);
+      }
+    }
+  }, [generateMockData]);
+
+  useEffect(() => {
+    if (habits.length > 0) {
+      // Convert React components to strings for storage
+      const habitsForStorage = habits.map(habit => ({
+        ...habit,
+        icon: getNameFromIcon(habit.icon)
+      }));
+      localStorage.setItem("habit-tracker-habits", JSON.stringify(habitsForStorage));
+    }
+  }, [habits]);
+
+  useEffect(() => {
+    if (completions.length > 0) {
+      localStorage.setItem(
+        "habit-tracker-completions",
+        JSON.stringify(completions)
+      );
+    }
+  }, [completions]);
+
+  useEffect(() => {
+    // Convert React component to string for storage
+    const profileForStorage = {
+      ...userProfile,
+      image: getNameFromIcon(userProfile.image)
+    };
+    localStorage.setItem("habit-tracker-profile", JSON.stringify(profileForStorage));
+  }, [userProfile]);
+
+  const getDaysInMonth = (date: Date): number => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getMonthName = (date: Date): string => {
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+
+  const calculateStreak = useCallback(
+    (habit: Habit): number => {
+      const today = new Date();
+      let streak = 0;
+      let checkDate = new Date(today);
+
+      const todayStr = formatDate(today);
+      const todayCompletion = completions.find((c) => c.date === todayStr);
+
+      if (!todayCompletion?.habits[habit.id]) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+
+      while (checkDate >= new Date(habit.createdAt)) {
+        const dateStr = formatDate(checkDate);
+        const completion = completions.find((c) => c.date === dateStr);
+
+        if (completion && completion.habits[habit.id]) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+
+      return streak;
     },
-    []
+    [completions]
   );
 
-  // Enhanced wave reflection calculation
-  const calculateWaveAtPoint = useCallback(
-    (
-      x: number,
-      t: number,
-      config: WaveConfig,
-      walls: Wall[],
-      sources: WaveSource[]
-    ): number => {
-      let totalAmplitude = 0;
+  const getHabitCompletion = (habitId: string, date: Date): boolean => {
+    const dateStr = formatDate(date);
+    const completion = completions.find((c) => c.date === dateStr);
+    return completion?.habits[habitId] || false;
+  };
 
-      // Calculate waves from all active sources
-      sources.forEach((source) => {
-        if (!source.isActive) return;
+  const showToast = (
+    message: string,
+    type: "info" | "success" | "warning" = "info"
+  ) => {
+    const id = Date.now().toString();
+    const newToast = { id, message, type };
+    setToasts((prev) => [...prev, newToast]);
 
-        // Direct wave
-        totalAmplitude += waveFunction(x, t, config, source.x);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3000);
+  };
 
-        // Reflected waves from each wall
-        walls.forEach((wall) => {
-          const distanceToWall = Math.abs(source.x - wall.x);
-          const distanceFromWallToPoint = Math.abs(x - wall.x);
-          const totalDistance = distanceToWall + distanceFromWallToPoint;
-          const timeDelay = totalDistance / (config.speed * 100);
+  const toggleHabitCompletion = (habitId: string) => {
+    setPendingCompletions((prev) => ({
+      ...prev,
+      [habitId]: !prev[habitId],
+    }));
+  };
 
-          // Only calculate reflection if the wave has reached the wall
-          if (t * config.speed * 100 > distanceToWall) {
-            const reflectedAmplitude =
-              wall.reflectionCoeff *
-              waveFunction(
-                source.x,
-                t - timeDelay,
-                { ...config, phase: config.phase + Math.PI },
-                wall.x
-              );
+  const submitCheckIn = () => {
+    const today = formatDate(currentDate);
+    const existingCompletion = completions.find((c) => c.date === today);
 
-            // Add phase shift based on distance from wall
-            const phaseShift =
-              (2 * Math.PI * config.frequency * distanceFromWallToPoint) / 100;
-            totalAmplitude += reflectedAmplitude * Math.cos(phaseShift);
-          }
-        });
-      });
+    let newCompletions: DayCompletion[];
 
-      return totalAmplitude;
-    },
-    [waveFunction]
-  );
-
-  // Enhanced canvas rendering with responsive scaling
-  const drawWave = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      config: WaveConfig,
-      walls: Wall[],
-      sources: WaveSource[],
-      time: number
-    ) => {
-      const { width, height } = ctx.canvas;
-      const scale = Math.min(width / 800, height / 600); // Responsive scaling
-
-      // Clear canvas with animated background
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, "#0f172a");
-      gradient.addColorStop(0.5, "#1e293b");
-      gradient.addColorStop(1, "#0f172a");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Draw responsive grid
-      if (showGrid) {
-        ctx.strokeStyle = `rgba(51, 65, 85, ${
-          0.3 + 0.2 * Math.sin(time * 0.5)
-        })`;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([5 * scale, 5 * scale]);
-
-        const gridSize = Math.max(25, 50 * scale);
-
-        for (let x = 0; x < width; x += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, height);
-          ctx.stroke();
-        }
-
-        for (let y = 0; y < height; y += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(width, y);
-          ctx.stroke();
-        }
-
-        ctx.setLineDash([]);
-      }
-
-      // Draw wave sources with responsive sizing
-      sources.forEach((source, index) => {
-        const pulse = source.isActive ? 1 + 0.3 * Math.sin(time * 5) : 0.5;
-        const radius = Math.max(8, 15 * scale) * pulse;
-
-        // Source glow effect
-        const sourceGradient = ctx.createRadialGradient(
-          source.x,
-          source.y,
-          0,
-          source.x,
-          source.y,
-          radius * 2
-        );
-        sourceGradient.addColorStop(0, source.isActive ? "#10b981" : "#6b7280");
-        sourceGradient.addColorStop(
-          0.5,
-          source.isActive
-            ? "rgba(16, 185, 129, 0.5)"
-            : "rgba(107, 114, 128, 0.5)"
-        );
-        sourceGradient.addColorStop(1, "transparent");
-
-        ctx.fillStyle = sourceGradient;
-        ctx.fillRect(
-          source.x - radius * 2,
-          source.y - radius * 2,
-          radius * 4,
-          radius * 4
-        );
-
-        // Source core
-        ctx.fillStyle = source.isActive ? "#10b981" : "#6b7280";
-        ctx.beginPath();
-        ctx.arc(source.x, source.y, radius, 0, 2 * Math.PI);
-        ctx.fill();
-
-        // Source label - responsive font size
-        if (showWaveNumbers) {
-          ctx.fillStyle = "white";
-          ctx.font = `bold ${Math.max(10, 12 * scale)}px Roboto`;
-          ctx.textAlign = "center";
-          ctx.fillText(
-            `S${index + 1}`,
-            source.x,
-            source.y - radius - 10 * scale
-          );
-        }
-      });
-
-      // Draw walls with responsive sizing and material effects
-      walls.forEach((wall, index) => {
-        const material = materialProperties[wall.material];
-        const shadowOffset = wall.isDragging ? 8 * scale : 3 * scale;
-
-        // Wall shadow
-        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-        ctx.fillRect(
-          wall.x + shadowOffset,
-          wall.y + shadowOffset,
-          wall.width,
-          wall.height
-        );
-
-        // Wall gradient based on material
-        const wallGradient = ctx.createLinearGradient(
-          wall.x,
-          wall.y,
-          wall.x + wall.width,
-          wall.y + wall.height
-        );
-        wallGradient.addColorStop(0, material.color);
-        wallGradient.addColorStop(0.5, material.color + "88");
-        wallGradient.addColorStop(1, material.color);
-
-        ctx.fillStyle = wallGradient;
-        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-
-        // Wall border with material-specific styling
-        ctx.strokeStyle = material.color;
-        ctx.lineWidth = wall.isDragging ? 3 * scale : 2 * scale;
-        ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
-
-        // Material indicator - responsive font
-        ctx.fillStyle = "white";
-        ctx.font = `bold ${Math.max(8, 10 * scale)}px Roboto`;
-        ctx.textAlign = "center";
-        ctx.fillText(
-          material.name[0],
-          wall.x + wall.width / 2,
-          wall.y + wall.height / 2 + 3 * scale
-        );
-
-        // Reflection coefficient display
-        if (showWaveNumbers) {
-          ctx.fillStyle = "white";
-          ctx.font = `${Math.max(10, 12 * scale)}px Roboto`;
-          ctx.textAlign = "center";
-          ctx.fillText(
-            `R: ${(wall.reflectionCoeff * 100).toFixed(0)}%`,
-            wall.x + wall.width / 2,
-            wall.y - 10 * scale
-          );
-        }
-      });
-
-      // Draw composite wave with responsive line width
-      if (isPlaying) {
-        ctx.strokeStyle = "#3b82f6";
-        ctx.lineWidth = Math.max(2, 3 * scale);
-        ctx.shadowColor = "#3b82f6";
-        ctx.shadowBlur = 10 * scale;
-        ctx.beginPath();
-
-        const centerY = height / 2;
-        const step = Math.max(1, 2 * scale);
-
-        for (let x = 0; x < width; x += step) {
-          const y =
-            centerY + calculateWaveAtPoint(x, time, config, walls, sources);
-          if (x === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
-
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // Draw individual source waves (faint) - responsive
-        sources.forEach((source, index) => {
-          if (!source.isActive) return;
-
-          ctx.strokeStyle = `hsla(${index * 60}, 70%, 60%, 0.3)`;
-          ctx.lineWidth = Math.max(1, 1 * scale);
-          ctx.beginPath();
-
-          for (let x = 0; x < width; x += step) {
-            const y = centerY + waveFunction(x, time, config, source.x);
-            if (x === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
+    if (existingCompletion) {
+      newCompletions = completions.map((c) =>
+        c.date === today
+          ? {
+              ...c,
+              habits: { ...c.habits, ...pendingCompletions },
+              timestamp: Date.now(),
             }
-          }
+          : c
+      );
+    } else {
+      const newCompletion: DayCompletion = {
+        date: today,
+        habits: { ...pendingCompletions },
+        timestamp: Date.now(),
+      };
+      newCompletions = [...completions, newCompletion];
+    }
 
-          ctx.stroke();
-        });
+    setCompletions(newCompletions);
+
+    Object.entries(pendingCompletions).forEach(([habitId, isCompleted]) => {
+      if (isCompleted) {
+        const habit = habits.find((h) => h.id === habitId);
+        if (habit) {
+          const oldStreak = calculateStreak(habit);
+
+          setTimeout(() => {
+            const newStreak = calculateStreak(habit);
+
+            setHabits((prevHabits) =>
+              prevHabits.map((h) =>
+                h.id === habitId
+                  ? {
+                      ...h,
+                      streak: newStreak + 1,
+                      longestStreak: Math.max(
+                        h.longestStreak || 0,
+                        newStreak + 1
+                      ),
+                      completedDates: newCompletions
+                        .filter((c) => c.habits[habitId])
+                        .map((c) => c.date),
+                    }
+                  : h
+              )
+            );
+
+            const finalStreak = newStreak + 1;
+
+            setAnimatingHabit(habitId);
+
+            setTimeout(() => {
+              setStreakCelebration({ habitId, streak: finalStreak });
+              setTimeout(() => setStreakCelebration(null), 2000);
+            }, 200);
+
+            const achievedMilestone = milestones.find(
+              (m) => m.days === finalStreak
+            );
+            if (achievedMilestone) {
+              setTimeout(() => {
+                setCelebratingMilestone({
+                  habitId,
+                  milestone: achievedMilestone,
+                });
+                setTimeout(() => setCelebratingMilestone(null), 4000);
+              }, 2500);
+            }
+
+            setTimeout(() => setAnimatingHabit(null), 1500);
+          }, 100);
+        }
       }
+    });
 
-      // Performance indicator - responsive positioning and font
-      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-      ctx.font = `${Math.max(10, 12 * scale)}px Roboto`;
-      ctx.textAlign = "right";
-      ctx.fillText(`FPS: ${Math.round(60)}`, width - 10 * scale, 20 * scale);
-    },
-    [calculateWaveAtPoint, waveFunction, showGrid, showWaveNumbers, isPlaying]
-  );
+    setPendingCompletions({});
+    setShowCheckIn(false);
+  };
 
-  // Fixed dragging implementation with responsive touch handling
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+  const getCircularTimelineData = (habit: Habit) => {
+    const daysInMonth = getDaysInMonth(selectedMonth);
+    const centerX = 120;
+    const centerY = 120;
+    const radius = 75;
+    const days = [];
 
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-      const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    for (let day = 1; day <= daysInMonth; day++) {
+      const angle = (day / daysInMonth) * 2 * Math.PI - Math.PI / 2;
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
 
-      // Responsive hit detection - larger touch areas on mobile
-      const hitRadius = isMobile ? 30 : 20;
+      const numberRadius = radius + 20;
+      const numberX = centerX + numberRadius * Math.cos(angle);
+      const numberY = centerY + numberRadius * Math.sin(angle);
 
-      // Check for wall collision
-      const clickedWall = walls.find(
-        (wall) =>
-          x >= wall.x - hitRadius / 2 &&
-          x <= wall.x + wall.width + hitRadius / 2 &&
-          y >= wall.y - hitRadius / 2 &&
-          y <= wall.y + wall.height + hitRadius / 2
+      const date = new Date(
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth(),
+        day
+      );
+      const isCompleted = getHabitCompletion(habit.id, date);
+      const isToday =
+        formatDate(date) === formatDate(currentDate) &&
+        selectedMonth.getMonth() === currentDate.getMonth() &&
+        selectedMonth.getFullYear() === currentDate.getFullYear();
+
+      days.push({
+        day,
+        x,
+        y,
+        numberX,
+        numberY,
+        isCompleted,
+        isToday,
+        date,
+      });
+    }
+
+    return days;
+  };
+
+  const getMonthProgress = (habit: Habit): number => {
+    const daysInMonth = getDaysInMonth(selectedMonth);
+    let completedDays = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth(),
+        day
+      );
+      if (getHabitCompletion(habit.id, date)) {
+        completedDays++;
+      }
+    }
+
+    return daysInMonth > 0 ? (completedDays / daysInMonth) * 100 : 0;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+
+    const touchEnd = {
+      x: e.changedTouches[0].clientX,
+      y: e.changedTouches[0].clientY,
+    };
+
+    const deltaX = touchStart.x - touchEnd.x;
+    const deltaY = touchStart.y - touchEnd.y;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        navigateMonth("next");
+      } else {
+        navigateMonth("prev");
+      }
+    }
+
+    setTouchStart(null);
+  };
+
+  const navigateMonth = (direction: "next" | "prev") => {
+    setMonthTransition(direction === "next" ? "left" : "right");
+
+    setTimeout(() => {
+      setSelectedMonth((prev) =>
+        direction === "next"
+          ? new Date(prev.getFullYear(), prev.getMonth() + 1)
+          : new Date(prev.getFullYear(), prev.getMonth() - 1)
       );
 
-      // Check for source collision
-      const clickedSource = waveSources.find((source) => {
-        const distance = Math.sqrt((x - source.x) ** 2 + (y - source.y) ** 2);
-        return distance <= hitRadius;
-      });
+      setTimeout(() => {
+        setMonthTransition("none");
+      }, 150);
+    }, 150);
+  };
 
-      if (clickedWall) {
-        setDragState({
-          isDragging: true,
-          wallId: clickedWall.id,
-          sourceId: null,
-          offset: { x: x - clickedWall.x, y: y - clickedWall.y },
-          startPos: { x: clickedWall.x, y: clickedWall.y },
-        });
+  const getNextMilestone = (habit: Habit): Milestone | null => {
+    return milestones.find((m) => m.days > habit.streak) || null;
+  };
 
-        setWalls((prev) =>
-          prev.map((wall) =>
-            wall.id === clickedWall.id ? { ...wall, isDragging: true } : wall
-          )
-        );
+  const getAchievedMilestones = (habit: Habit): Milestone[] => {
+    return milestones.filter((m) => m.days <= habit.longestStreak);
+  };
 
-        canvas.setPointerCapture(e.pointerId);
-      } else if (clickedSource) {
-        setDragState({
-          isDragging: true,
-          wallId: null,
-          sourceId: clickedSource.id,
-          offset: { x: x - clickedSource.x, y: y - clickedSource.y },
-          startPos: { x: clickedSource.x, y: clickedSource.y },
-        });
+  const getTodayCompletionRate = (): number => {
+    const today = formatDate(currentDate);
+    const todayCompletion = completions.find((c) => c.date === today);
+    const completedCount = habits.filter(
+      (h) => todayCompletion?.habits[h.id]
+    ).length;
+    return habits.length > 0 ? (completedCount / habits.length) * 100 : 0;
+  };
 
-        canvas.setPointerCapture(e.pointerId);
-      }
-    },
-    [walls, waveSources, isMobile]
-  );
+  const addNewHabit = () => {
+    if (!newHabitForm.name.trim()) return;
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (!dragState.isDragging) return;
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const x =
-        (e.clientX - rect.left) * (canvas.width / rect.width) -
-        dragState.offset.x;
-      const y =
-        (e.clientY - rect.top) * (canvas.height / rect.height) -
-        dragState.offset.y;
-
-      if (dragState.wallId) {
-        setWalls((prev) =>
-          prev.map((wall) =>
-            wall.id === dragState.wallId
-              ? {
-                  ...wall,
-                  x: Math.max(0, Math.min(canvasSize.width - wall.width, x)),
-                  y: Math.max(0, Math.min(canvasSize.height - wall.height, y)),
-                }
-              : wall
-          )
-        );
-      } else if (dragState.sourceId) {
-        const margin = isMobile ? 30 : 20;
-        setWaveSources((prev) =>
-          prev.map((source) =>
-            source.id === dragState.sourceId
-              ? {
-                  ...source,
-                  x: Math.max(margin, Math.min(canvasSize.width - margin, x)),
-                  y: Math.max(margin, Math.min(canvasSize.height - margin, y)),
-                }
-              : source
-          )
-        );
-      }
-    },
-    [dragState, canvasSize, isMobile]
-  );
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      canvas.releasePointerCapture(e.pointerId);
-
-      setDragState({
-        isDragging: false,
-        wallId: null,
-        sourceId: null,
-        offset: { x: 0, y: 0 },
-        startPos: { x: 0, y: 0 },
-      });
-
-      setWalls((prev) => prev.map((wall) => ({ ...wall, isDragging: false })));
-    },
-    []
-  );
-
-  // Animation loop
-  const animate = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    if (isPlaying) {
-      timeRef.current += 0.02;
-    }
-
-    drawWave(ctx, waveConfig, walls, waveSources, timeRef.current);
-
-    animationRef.current = requestAnimationFrame(animate);
-  }, [drawWave, waveConfig, walls, waveSources, isPlaying]);
-
-  // Responsive canvas resize handler
-  const handleResize = useCallback(() => {
-    const updateCanvasSize = () => {
-      const container = document.getElementById("canvas-container");
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const containerWidth = rect.width;
-        const padding = isMobile ? 16 : 32;
-
-        let width = Math.max(320, containerWidth - padding);
-        let height;
-
-        if (isMobile) {
-          // Significantly more height on mobile
-          height = Math.min(600, width * 1.5); // More vertical space
-          if (window.innerHeight < 600) {
-            height = Math.min(500, width * 1.2); // Still more than before
-          }
-        } else if (isTablet) {
-          height = Math.min(500, width * 0.65);
-        } else {
-          height = Math.min(600, width * 0.6);
-        }
-
-        setCanvasSize({ width, height });
-      }
-    };
-
-    updateCanvasSize();
-  }, [isMobile, isTablet]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
-
-      switch (e.key.toLowerCase()) {
-        case " ":
-          e.preventDefault();
-          setIsControlsOpen((prev) => !prev);
-          break;
-        case "p":
-          setIsPlaying((prev) => !prev);
-          break;
-        case "r":
-          // Reset simulation with responsive positioning
-          const wallX = isMobile
-            ? canvasSize.width * 0.6
-            : canvasSize.width * 0.75;
-          const sourceX = isMobile ? 30 : 50;
-
-          setWalls([
-            {
-              id: "1",
-              x: wallX,
-              y: canvasSize.height * 0.3,
-              width: isMobile ? 15 : 20,
-              height: canvasSize.height * 0.35,
-              isDragging: false,
-              material: "concrete",
-              reflectionCoeff: 0.8,
-            },
-          ]);
-          setWaveSources([
-            { id: "1", x: sourceX, y: canvasSize.height * 0.5, isActive: true },
-          ]);
-          timeRef.current = 0;
-          break;
-        case "g":
-          setShowGrid((prev) => !prev);
-          break;
-        case "n":
-          setShowWaveNumbers((prev) => !prev);
-          break;
-        case "h":
-          setIsHelpOpen(true);
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [canvasSize, isMobile]);
-
-  // Initialize canvas and animation
-  useEffect(() => {
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, [handleResize]);
-
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      canvas.width = canvasSize.width;
-      canvas.height = canvasSize.height;
-    }
-  }, [canvasSize]);
-
-  useEffect(() => {
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [animate]);
-
-  // Form validation
-  const validateFrequency = (value: number): boolean =>
-    value >= 0.1 && value <= 10;
-  const validateAmplitude = (value: number): boolean =>
-    value >= 10 && value <= 150;
-  const validateSpeed = (value: number): boolean => value >= 0.1 && value <= 5;
-  const validatePhase = (value: number): boolean => value >= 0 && value <= 360;
-
-  // Utility functions with responsive positioning
-  const addWall = useCallback(
-    (material: Wall["material"] = "concrete") => {
-      const wallWidth = isMobile ? 15 : 20;
-      const wallHeight = isMobile ? 80 : 100;
-
-      const newWall: Wall = {
-        id: Date.now().toString(),
-        x: Math.random() * (canvasSize.width - wallWidth - 40) + 20,
-        y: Math.random() * (canvasSize.height - wallHeight - 40) + 20,
-        width: wallWidth,
-        height: wallHeight,
-        isDragging: false,
-        material,
-        reflectionCoeff: materialProperties[material].reflectionCoeff,
-      };
-      setWalls((prev) => [...prev, newWall]);
-    },
-    [canvasSize, isMobile]
-  );
-
-  const addWaveSource = useCallback(() => {
-    const margin = isMobile ? 30 : 40;
-    const newSource: WaveSource = {
+    const newHabit: Habit = {
       id: Date.now().toString(),
-      x: Math.random() * (canvasSize.width - margin * 2) + margin,
-      y: Math.random() * (canvasSize.height - margin * 2) + margin,
-      isActive: true,
+      name: newHabitForm.name.trim(),
+      icon: newHabitForm.icon,
+      category: newHabitForm.category,
+      color: "from-green-500 to-emerald-500",
+      streak: 0,
+      longestStreak: 0,
+      completedDates: [],
+      target: 30,
+      createdAt: new Date().toISOString(),
     };
-    setWaveSources((prev) => [...prev, newSource]);
-  }, [canvasSize, isMobile]);
 
-  // Responsive Control Panel
-  const ControlPanel = useMemo(
-    () => (
-      <div
-        ref={controlPanelRef}
-        className={`fixed ${
-          isMobile
-            ? "top-16 left-0 right-0 mx-2 w-auto"
-            : isTablet
-            ? "top-20 right-2 w-72"
-            : "top-20 right-4 w-80"
-        } bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl transition-all duration-300 ${
-          isControlsOpen
-            ? "translate-y-0 opacity-100"
-            : isMobile
-            ? "-translate-y-full opacity-0 pointer-events-none"
-            : "translate-x-full opacity-0 pointer-events-none"
-        } z-40 `}
-      >
-        <div className={`p-${isMobile ? "4" : "6"}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3
-              className={`${
-                isMobile ? "text-lg" : "text-xl"
-              } font-bold text-gray-900`}
-            >
-              Wave Controls
-            </h3>
-            <button
-              onClick={() => setIsControlsOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              title="Close Controls (Space)"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+    setHabits((prev) => [...prev, newHabit]);
+    setNewHabitForm({ name: "", icon: Target, category: "Health" });
+    setShowAddHabit(false);
+    showToast("New habit added successfully!", "success");
+  };
+
+  const getCurrentDayCompletions = () => {
+    const today = formatDate(currentDate);
+    const todayCompletion = completions.find((c) => c.date === today);
+    const actualCompletions = todayCompletion?.habits || {};
+
+    return { ...actualCompletions, ...pendingCompletions };
+  };
+
+  const updateProfile = () => {
+    setIsEditingProfile(false);
+    showToast("Profile updated successfully!", "success");
+  };
+
+  const getTotalStats = () => {
+    const totalHabits = habits.length;
+    const totalCompletions = completions.reduce((acc, comp) => {
+      return acc + Object.values(comp.habits).filter(Boolean).length;
+    }, 0);
+    const bestStreak = Math.max(...habits.map((h) => h.longestStreak || 0), 0);
+    const daysActive = new Set(completions.map((c) => c.date)).size;
+
+    return { totalHabits, totalCompletions, bestStreak, daysActive };
+  };
+
+  // Navigation items
+  const navItems = [
+    { id: "home", label: "Home", icon: Home },
+    { id: "profile", label: "Profile", icon: User },
+    { id: "settings", label: "Settings", icon: Settings },
+    { id: "about", label: "About", icon: Info },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "profile":
+        const stats = getTotalStats();
+        return (
+          <div className="space-y-6 mb-6">
+            {/* profile header */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-4xl">
+                  <userProfile.image className="w-10 h-10 text-white" />
+                </div>
+                {isEditingProfile ? (
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      value={userProfile.name}
+                      onChange={(e) =>
+                        setUserProfile((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white text-center placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-400/50"
+                    />
+                    <input
+                      type="email"
+                      value={userProfile.email}
+                      onChange={(e) =>
+                        setUserProfile((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white text-center placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-400/50"
+                    />
+                    <div className="grid grid-cols-6 gap-2">
+                      {[
+                        User,
+                        Smile,
+                        Star,
+                        Zap,
+                        Flame,
+                        Diamond,
+                        Target,
+                        Plus,
+                        Dumbbell,
+                        Brain,
+                        BookOpen,
+                        Palette,
+                      ].map((Emoji) => (
+                        <button
+                          key={Emoji.name}
+                          onClick={() =>
+                            setUserProfile((prev) => ({
+                              ...prev,
+                              image: Emoji,
+                            }))
+                          }
+                          className={`p-3 cursor-pointer text-2xl rounded-xl border transition-all flex items-center justify-center ${
+                            userProfile.image === Emoji
+                              ? "border-green-400 bg-white/20"
+                              : "border-white/20 bg-white/10"
+                          }`}
+                        >
+                          <Emoji className="w-8 h-8 text-white" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => setIsEditingProfile(false)}
+                        className="flex-1 bg-white/10 cursor-pointer border border-white/30 text-white py-3 rounded-2xl font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={updateProfile}
+                        className="flex-1 bg-gradient-to-r from-green-500 cursor-pointer to-emerald-500 text-white py-3 rounded-2xl font-semibold"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      {userProfile.name}
+                    </h2>
+                    <p className="text-white/70 mb-4">{userProfile.email}</p>
+                    <button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="bg-white/20 border cursor-pointer border-white/30 text-white px-6 py-2 rounded-2xl font-medium hover:bg-white/30 transition-all"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* stats */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <h3 className="text-white font-bold text-xl mb-4">
+                Your Journey
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+                  <p className="text-3xl font-bold text-white">
+                    {stats.totalHabits}
+                  </p>
+                  <p className="text-white/60 text-sm">Total Habits</p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+                  <p className="text-3xl font-bold text-white">
+                    {stats.totalCompletions}
+                  </p>
+                  <p className="text-white/60 text-sm">Completions</p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+                  <p className="text-3xl font-bold text-white">
+                    {stats.bestStreak}
+                  </p>
+                  <p className="text-white/60 text-sm">Best Streak</p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+                  <p className="text-3xl font-bold text-white">
+                    {stats.daysActive}
+                  </p>
+                  <p className="text-white/60 text-sm">Active Days</p>
+                </div>
+              </div>
+            </div>
+
+            {/* achievement badges */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <h3 className="text-white font-bold text-xl mb-4">
+                Achievements
+              </h3>
+              <div className="grid grid-cols-3 gap-3">
+                {milestones
+                  .filter((m) => habits.some((h) => h.longestStreak >= m.days))
+                  .map((milestone) => (
+                    <div
+                      key={milestone.days}
+                      className="bg-white/5 rounded-2xl p-3 text-center border border-white/10"
+                    >
+                      <div className="text-2xl mb-1 flex justify-center">
+                        <milestone.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <p className="text-white/80 text-xs font-medium">
+                        {milestone.title}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* interactive milestone markers */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-bold text-xl">
+                  Milestone Progress
+                </h3>
+                <button
+                  onClick={() => setShowMilestoneMarkers(!showMilestoneMarkers)}
+                  className="bg-white/20 border cursor-pointer border-white/30 text-white px-4 py-2 rounded-2xl font-medium hover:bg-white/30 transition-all text-sm"
+                >
+                  {showMilestoneMarkers ? "Hide" : "Show"} Details
+                </button>
+              </div>
+
+              {showMilestoneMarkers && (
+                <div className="space-y-4">
+                  {habits.map((habit) => {
+                    const achievedMilestones = getAchievedMilestones(habit);
+                    const nextMilestone = getNextMilestone(habit);
+
+                    return (
+                      <div
+                        key={habit.id}
+                        className="bg-white/5 rounded-2xl p-4 border border-white/10"
+                      >
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className="text-xl">
+                            <habit.icon className="w-6 h-6 text-white" />
+                          </span>
+                          <div className="flex-1">
+                            <h4 className="text-white font-medium">
+                              {habit.name}
+                            </h4>
+                            <p className="text-white/60 text-sm">
+                              Current streak: {habit.streak} days
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {achievedMilestones.map((milestone) => (
+                            <div
+                              key={milestone.days}
+                              className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl px-3 py-1 flex items-center space-x-2"
+                            >
+                              <span className="text-sm">
+                                <milestone.icon className="w-4 h-4 text-white" />
+                              </span>
+                              <span className="text-green-100 text-xs font-medium">
+                                {milestone.title}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {nextMilestone && (
+                          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-white/80 text-sm">
+                                Next Milestone:
+                              </span>
+                              <span className="text-green-300 text-sm font-medium">
+                                {nextMilestone.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-1000"
+                                  style={{
+                                    width: `${
+                                      (habit.streak / nextMilestone.days) * 100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="text-white/60 text-xs">
+                                {habit.streak}/{nextMilestone.days}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
+        );
 
+      case "settings":
+        return (
+          <div className="space-y-6 mb-6">
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-6">Settings</h2>
+
+              <div className="space-y-4">
+                {[
+                  {
+                    icon: Bell,
+                    title: "Notifications",
+                    subtitle: "Manage your habit reminders",
+                  },
+                  {
+                    icon: Moon,
+                    title: "Dark Mode",
+                    subtitle: "Switch between themes",
+                  },
+                  {
+                    icon: Download,
+                    title: "Data Export",
+                    subtitle: "Export your habit data",
+                  },
+                  {
+                    icon: RefreshCw,
+                    title: "Sync Settings",
+                    subtitle: "Cloud backup options",
+                  },
+                  {
+                    icon: Target,
+                    title: "Goal Settings",
+                    subtitle: "Customize your targets",
+                  },
+                  {
+                    icon: Smartphone,
+                    title: "Widget Settings",
+                    subtitle: "Home screen widgets",
+                  },
+                  {
+                    icon: Shield,
+                    title: "Privacy",
+                    subtitle: "Data and privacy settings",
+                  },
+                  {
+                    icon: HelpCircle,
+                    title: "Help & Support",
+                    subtitle: "Get help and contact us",
+                  },
+                ].map((setting, index) => (
+                  <button
+                    key={index}
+                    onClick={() =>
+                      showToast("This feature is coming soon!", "info")
+                    }
+                    className="w-full flex cursor-pointer items-center space-x-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                  >
+                    <span className="text-2xl">
+                      <setting.icon className="w-6 h-6 text-white" />
+                    </span>
+                    <div className="flex-1 text-left">
+                      <p className="text-white font-medium">{setting.title}</p>
+                      <p className="text-white/60 text-sm">
+                        {setting.subtitle}
+                      </p>
+                    </div>
+                    <span className="text-white/40">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case "about":
+        return (
+          <div className="space-y-6 mb-6">
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-3xl flex items-center justify-center text-3xl">
+                  <Target className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent mb-2">
+                  Habit Flow
+                </h2>
+                <p className="text-white/70">Version 1.0.0</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <h3 className="text-white font-bold mb-2">About the App</h3>
+                  <p className="text-white/80 text-sm leading-relaxed">
+                    Habit Flow is a modern, beautifully designed habit tracking
+                    app that helps you build better daily routines. Track your
+                    progress with stunning circular timelines, celebrate
+                    milestones, and transform your life one habit at a time.
+                  </p>
+                </div>
+
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <h3 className="text-white font-bold mb-2">Features</h3>
+                  <ul className="text-white/80 text-sm space-y-1">
+                    <li>• Beautiful glassmorphism design</li>
+                    <li>• Circular timeline visualization</li>
+                    <li>• Interactive milestone markers</li>
+                    <li>• Streak celebrations & animations</li>
+                    <li>• Offline-first functionality</li>
+                    <li>• Comprehensive analytics</li>
+                    <li>• Customizable habit categories</li>
+                  </ul>
+                </div>
+
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <h3 className="text-white font-bold mb-2">Developer</h3>
+                  <p className="text-white/80 text-sm">
+                    Created with ❤️ using React and TypeScript
+                  </p>
+                </div>
+
+                <div className="text-center">
+                  <button
+                    onClick={() =>
+                      showToast("Thanks for using Habit Flow!", "success")
+                    }
+                    className="bg-gradient-to-r from-green-500 cursor-pointer to-emerald-500 text-white px-8 py-3 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform transition-all duration-200 hover:scale-105"
+                  >
+                    Rate This App ⭐
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <>
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 mb-6 shadow-2xl">
+              <div className="flex items-center justify-center mb-6">
+                <div className="relative w-32 h-32">
+                  <svg className="transform -rotate-90 w-32 h-32">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="rgba(255,255,255,0.1)"
+                      strokeWidth="8"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      stroke="url(#todayGradient)"
+                      strokeWidth="8"
+                      fill="transparent"
+                      strokeDasharray={`${2 * Math.PI * 56}`}
+                      strokeDashoffset={`${
+                        2 * Math.PI * 56 * (1 - getTodayCompletionRate() / 100)
+                      }`}
+                      className="transition-all duration-1000 ease-out"
+                      strokeLinecap="round"
+                    />
+                    <defs>
+                      <linearGradient
+                        id="todayGradient"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                      >
+                        <stop offset="0%" stopColor="#10B981" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-white">
+                      {Math.round(getTodayCompletionRate())}%
+                    </span>
+                    <span className="text-white/60 text-xs">Today</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center bg-white/5 rounded-2xl p-3 border border-white/10">
+                  <p className="text-white/60 text-xs uppercase tracking-wide mb-1">
+                    Best Streak
+                  </p>
+                  <p className="text-white text-xl font-bold">
+                    {Math.max(...habits.map((h) => h.longestStreak || 0), 0)}
+                  </p>
+                </div>
+                <div className="text-center bg-white/5 rounded-2xl p-3 border border-white/10">
+                  <p className="text-white/60 text-xs uppercase tracking-wide mb-1">
+                    Active
+                  </p>
+                  <p className="text-white text-xl font-bold">
+                    {habits.filter((h) => calculateStreak(h) > 0).length}
+                  </p>
+                </div>
+                <div className="text-center bg-white/5 rounded-2xl p-3 border border-white/10">
+                  <p className="text-white/60 text-xs uppercase tracking-wide mb-1">
+                    Habits
+                  </p>
+                  <p className="text-white text-xl font-bold">
+                    {habits.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-2 mb-6 shadow-xl">
+              <div className="flex space-x-1">
+                {[
+                  { id: "overview", label: "Overview", icon: BarChart3 },
+                  { id: "timeline", label: "Timeline", icon: CircleDot },
+                  { id: "analytics", label: "Analytics", icon: TrendingUp },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewMode(tab.id as any)}
+                    className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all duration-200 cursor-pointer ${
+                      viewMode === tab.id
+                        ? "bg-white/20 text-white shadow-lg"
+                        : "text-white/60 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="text-sm">
+                      <tab.icon className="w-4 h-4 text-white" />
+                    </span>
+                    <span className="text-xs">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-4 mb-6 shadow-xl">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => navigateMonth("prev")}
+                  className="text-white/70 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  <span className="text-xl">
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                  </span>
+                </button>
+                <div className="text-center overflow-hidden">
+                  <div
+                    className={`transition-transform duration-300 ${
+                      monthTransition === "left"
+                        ? "transform translate-x-full opacity-0"
+                        : monthTransition === "right"
+                        ? "transform -translate-x-full opacity-0"
+                        : "transform translate-x-0 opacity-100"
+                    }`}
+                  >
+                    <h2 className="text-white font-semibold text-lg">
+                      {getMonthName(selectedMonth)}
+                    </h2>
+                    <p className="text-white/50 text-xs">Swipe to navigate</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigateMonth("next")}
+                  className="text-white/70 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  <span className="text-xl">
+                    <ChevronRight className="w-4 h-4 text-white" />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {viewMode === "overview" && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {habits.map((habit) => {
+                  const progress = getMonthProgress(habit);
+                  const streak = calculateStreak(habit);
+                  const nextMilestone = getNextMilestone(habit);
+                  const isAnimating = animatingHabit === habit.id;
+
+                  return (
+                    <div
+                      key={habit.id}
+                      onClick={() =>
+                        setSelectedHabit(
+                          selectedHabit === habit.id ? null : habit.id
+                        )
+                      }
+                      className={`backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl cursor-pointer transform transition-all duration-500 hover:scale-105 ${
+                        isAnimating
+                          ? "scale-110 shadow-2xl bg-white/20 ring-2 ring-green-400/50"
+                          : ""
+                      } ${
+                        selectedHabit === habit.id
+                          ? "ring-2 ring-green-400/50"
+                          : ""
+                      }`}
+                    >
+                      <div className="relative w-20 h-20 mx-auto mb-4">
+                        <svg className="transform -rotate-90 w-20 h-20">
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="32"
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="4"
+                            fill="transparent"
+                          />
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="32"
+                            stroke={`url(#gradient-${habit.id})`}
+                            strokeWidth="4"
+                            fill="transparent"
+                            strokeDasharray={`${2 * Math.PI * 32}`}
+                            strokeDashoffset={`${
+                              2 * Math.PI * 32 * (1 - progress / 100)
+                            }`}
+                            className="transition-all duration-1000 ease-out"
+                            strokeLinecap="round"
+                          />
+                          <defs>
+                            <linearGradient
+                              id={`gradient-${habit.id}`}
+                              x1="0%"
+                              y1="0%"
+                              x2="100%"
+                              y2="100%"
+                            >
+                              <stop offset="0%" stopColor="#10B981" />
+                              <stop offset="100%" stopColor="#059669" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-2xl">
+                            <habit.icon className="w-6 h-6 text-white" />
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-center">
+                        <h3 className="text-white font-bold text-sm mb-2">
+                          {habit.name}
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="bg-white/10 rounded-xl px-3 py-1">
+                            <span className="text-white/80 text-xs flex items-center space-x-1">
+                              <Flame className="w-3 h-3 text-white" />
+                              <span>{streak} days</span>
+                            </span>
+                          </div>
+                          <div className="text-white/60 text-xs">
+                            {Math.round(progress)}% this month
+                          </div>
+                          {nextMilestone && (
+                            <div className="text-green-300 text-xs">
+                              Next: {nextMilestone.title}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {viewMode === "timeline" && (
+              <div className="space-y-6 mb-6">
+                {habits.map((habit) => {
+                  const timelineData = getCircularTimelineData(habit);
+                  const streak = calculateStreak(habit);
+                  const progress = getMonthProgress(habit);
+
+                  return (
+                    <div
+                      key={habit.id}
+                      className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">
+                            <habit.icon className="w-6 h-6 text-white" />
+                          </span>
+                          <div>
+                            <h3 className="text-white font-bold">
+                              {habit.name}
+                            </h3>
+                            <p className="text-white/60 text-sm flex items-center space-x-1">
+                              <Flame className="w-3 h-3 text-white" />
+                              <span>{streak} day streak</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="relative flex justify-center items-center">
+                        <svg width="240" height="240" className="mx-auto">
+                          <circle
+                            cx="120"
+                            cy="120"
+                            r="75"
+                            fill="none"
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                          />
+
+                          {timelineData.map((day) => (
+                            <g key={day.day}>
+                              <circle
+                                cx={day.x}
+                                cy={day.y}
+                                r={day.isToday ? "8" : "6"}
+                                fill={
+                                  day.isCompleted
+                                    ? "#10B981"
+                                    : day.isToday
+                                    ? getCurrentDayCompletions()[habit.id] ===
+                                      false
+                                      ? "rgba(239, 68, 68, 0.4)"
+                                      : "rgba(255, 255, 255, 0.2)"
+                                    : "rgba(255, 255, 255, 0.2)"
+                                }
+                                stroke={day.isToday ? "#FFFFFF" : "none"}
+                                strokeWidth={day.isToday ? "2" : "0"}
+                                className="transition-all duration-300"
+                              />
+                              <text
+                                x={day.numberX}
+                                y={day.numberY + 4}
+                                textAnchor="middle"
+                                className="fill-white text-xs font-medium"
+                                style={{ fontSize: "10px" }}
+                              >
+                                {day.day}
+                              </text>
+                            </g>
+                          ))}
+
+                          <text
+                            x="120"
+                            y="115"
+                            textAnchor="middle"
+                            className="fill-white text-sm font-bold"
+                          >
+                            {getMonthName(selectedMonth).split(" ")[0]}
+                          </text>
+                          <text
+                            x="120"
+                            y="130"
+                            textAnchor="middle"
+                            className="fill-white/60 text-xs"
+                          >
+                            {Math.round(progress)}% Complete
+                          </text>
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {viewMode === "analytics" && (
+              <div className="space-y-6 mb-6">
+                <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+                  <h3 className="text-white font-bold mb-4">
+                    {getMonthName(selectedMonth)} Statistics
+                  </h3>
+                  <div className="space-y-4">
+                    {habits.map((habit) => {
+                      const streak = calculateStreak(habit);
+                      const progress = getMonthProgress(habit);
+                      const completionRate = habit.completedDates.length;
+
+                      return (
+                        <div
+                          key={habit.id}
+                          className="bg-white/5 rounded-2xl p-4 border border-white/10"
+                        >
+                          <div className="flex items-center space-x-3 mb-3">
+                            <span className="text-xl">
+                              <habit.icon className="w-6 h-6 text-white" />
+                            </span>
+                            <div className="flex-1">
+                              <h4 className="text-white font-medium">
+                                {habit.name}
+                              </h4>
+                              <p className="text-white/60 text-sm">
+                                {habit.category}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 text-center">
+                            <div>
+                              <p className="text-white/60 text-xs uppercase">
+                                Current
+                              </p>
+                              <p className="text-white font-bold">{streak}d</p>
+                            </div>
+                            <div>
+                              <p className="text-white/60 text-xs uppercase">
+                                Best
+                              </p>
+                              <p className="text-white font-bold">
+                                {habit.longestStreak}d
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-white/60 text-xs uppercase">
+                                Total
+                              </p>
+                              <p className="text-white font-bold">
+                                {completionRate}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <div className="flex justify-between text-xs text-white/60 mb-1">
+                              <span>This Month</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full bg-gradient-to-r ${habit.color} transition-all duration-1000`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 overflow-hidden">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 left-0 right-0 z-[60] flex flex-col items-center space-y-2">
+        {toasts.map((toast) => (
           <div
-            className={`flex border-b border-gray-200 mb-4 ${
-              isMobile ? "text-sm" : ""
-            } overflow-x-auto`}
+            key={toast.id}
+            className={`backdrop-blur-xl border rounded-2xl px-6 py-3 shadow-2xl transform animate-slide-down ${
+              toast.type === "success"
+                ? "bg-green-500/20 border-green-400/30 text-green-100"
+                : toast.type === "warning"
+                ? "bg-yellow-500/20 border-yellow-400/30 text-yellow-100"
+                : "bg-blue-500/20 border-blue-400/30 text-blue-100"
+            }`}
           >
-            {[
-              { 
-                id: "wave", 
-                label: "Wave", 
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0 4 4 6 0" />
-                  </svg>
-                )
-              },
-              { 
-                id: "walls", 
-                label: "Walls", 
-                icon: (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="4" y="4" width="4" height="16" />
-                    <rect x="10" y="4" width="4" height="16" />
-                    <rect x="16" y="4" width="4" height="16" />
-                  </svg>
-                )
-              },
-              { 
-                id: "sources", 
-                label: "Sources", 
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="3" />
-                    <circle cx="12" cy="12" r="6" strokeDasharray="2 2" opacity="0.5" />
-                    <circle cx="12" cy="12" r="9" strokeDasharray="3 3" opacity="0.3" />
-                  </svg>
-                )
-              },
-              { 
-                id: "analysis", 
-                label: "Analysis", 
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
-                  </svg>
-                )
-              },
-            ].map((tab) => (
+            <p className="font-medium text-sm">{toast.message}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-40 h-40 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 right-8 w-32 h-32 bg-emerald-500/15 rounded-full blur-2xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-32 left-6 w-36 h-36 bg-teal-500/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        <div className="absolute bottom-20 right-12 w-28 h-28 bg-lime-500/15 rounded-full blur-2xl animate-pulse delay-500"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/20 px-4 py-4 shadow-xl">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center">
+              <Target className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">
+                Habit Flow
+              </h1>
+              <p className="text-white/60 text-xs">
+                Welcome back, {userProfile.name.split(" ")[0]}!
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            {activeTab === "home" && (
+              <>
+                <button
+                  onClick={() => setShowAddHabit(true)}
+                  className="bg-white/20 border border-white/30 text-white p-2 rounded-2xl backdrop-blur-sm hover:bg-white/30 transition-all duration-200 shadow-lg cursor-pointer"
+                >
+                  <Plus className="w-5 h-5 text-white" />
+                </button>
+                <button
+                  onClick={() => setShowCheckIn(true)}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform transition-all duration-200 hover:scale-105 text-sm cursor-pointer"
+                >
+                  Check In
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="relative z-10 max-w-md mx-auto p-4 pb-24 mt-20"
+        onTouchStart={activeTab === "home" ? handleTouchStart : undefined}
+        onTouchEnd={activeTab === "home" ? handleTouchEnd : undefined}
+      >
+        {renderContent()}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 backdrop-blur-xl bg-white/10 border-t border-white/20 px-4 py-2 shadow-2xl">
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center justify-around">
+            {navItems.map((item) => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-shrink-0 py-2 px-3 text-sm font-medium transition-colors cursor-pointer flex items-center space-x-2 ${
-                  activeTab === tab.id
-                    ? "border-b-2 border-blue-500 text-blue-600"
-                    : "text-gray-500 hover:text-gray-700"
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center space-y-1 py-2 px-4 rounded-2xl transition-all duration-200 cursor-pointer ${
+                  activeTab === item.id
+                    ? "bg-white/20 shadow-lg transform scale-105"
+                    : "hover:bg-white/10"
                 }`}
               >
-                {tab.icon}
-                <span>{tab.label}</span>
+                <span
+                  className={`text-xl transition-all duration-200 ${
+                    activeTab === item.id ? "transform scale-110" : ""
+                  }`}
+                >
+                  <item.icon className="w-6 h-6 text-white" />
+                </span>
+                <span
+                  className={`text-xs font-medium transition-all duration-200 ${
+                    activeTab === item.id ? "text-white" : "text-white/60"
+                  }`}
+                >
+                  {item.label}
+                </span>
               </button>
             ))}
           </div>
-          <div className=" max-h-[calc(60vh)] overflow-y-auto   ">
-            {activeTab === "wave" && (
-              <div className={`space-y-${isMobile ? "4" : "6"}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">
-                    Animation
-                  </span>
+        </div>
+      </div>
+
+      {/* Streak Celebration */}
+      {streakCelebration && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 pointer-events-none">
+          <div className="text-center transform animate-bounce">
+            <div className="text-6xl mb-4 animate-pulse flex justify-center">
+              <Flame className="w-16 h-16 text-orange-500" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {streakCelebration.streak} Day
+              {streakCelebration.streak > 1 ? "s" : ""}!
+            </h2>
+            <h3 className="text-xl font-semibold bg-gradient-to-r from-lime-400 to-green-500 bg-clip-text text-transparent">
+              Amazing streak!
+            </h3>
+          </div>
+        </div>
+      )}
+
+      {/* Check-in Modal */}
+      {showCheckIn && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all duration-300 scale-100 max-h-[80vh] overflow-y-auto">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Daily Check-in
+              </h2>
+              <p className="text-white/70">
+                Mark your completed habits for today
+              </p>
+              <div className="mt-4 bg-white/10 rounded-2xl p-3">
+                <p className="text-white/60 text-sm">
+                  {currentDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-8">
+              {habits.map((habit) => {
+                const currentCompletions = getCurrentDayCompletions();
+                const isCompleted = currentCompletions[habit.id] || false;
+                const streak = calculateStreak(habit);
+
+                return (
                   <button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-sm flex items-center space-x-1 ${
-                      isPlaying
-                        ? "bg-red-400 text-white hover:bg-red-500"
-                        : "bg-green-400 text-white hover:bg-green-500"
+                    key={habit.id}
+                    onClick={() => toggleHabitCompletion(habit.id)}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                      isCompleted
+                        ? "bg-white/20 border-green-400/50 shadow-lg shadow-green-400/20"
+                        : "bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30"
                     }`}
-                    title="Play/Pause (P)"
                   >
-                    {isPlaying ? (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    )}
-                    <span>{isPlaying ? "Pause" : "Play"}</span>
-                  </button>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Wave Type
-                  </label>
-                  <select
-                    value={waveConfig.waveType}
-                    onChange={(e) =>
-                      setWaveConfig((prev) => ({
-                        ...prev,
-                        waveType: e.target.value as any,
-                      }))
-                    }
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer text-sm"
-                  >
-                    <option value="sine">Sine Wave</option>
-                    <option value="square">Square Wave</option>
-                    <option value="triangle">Triangle Wave</option>
-                    <option value="sawtooth">Sawtooth Wave</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency: {waveConfig.frequency.toFixed(1)} Hz
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="10"
-                    step="0.1"
-                    value={waveConfig.frequency}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (validateFrequency(value)) {
-                        setWaveConfig((prev) => ({
-                          ...prev,
-                          frequency: value,
-                        }));
-                      }
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amplitude: {waveConfig.amplitude}px
-                  </label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="150"
-                    step="5"
-                    value={waveConfig.amplitude}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (validateAmplitude(value)) {
-                        setWaveConfig((prev) => ({
-                          ...prev,
-                          amplitude: value,
-                        }));
-                      }
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Speed: {waveConfig.speed.toFixed(1)}x
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="5"
-                    step="0.1"
-                    value={waveConfig.speed}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (validateSpeed(value)) {
-                        setWaveConfig((prev) => ({ ...prev, speed: value }));
-                      }
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phase: {waveConfig.phase.toFixed(0)}°
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="10"
-                    value={(waveConfig.phase * 180) / Math.PI}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (validatePhase(value)) {
-                        setWaveConfig((prev) => ({
-                          ...prev,
-                          phase: (value * Math.PI) / 180,
-                        }));
-                      }
-                    }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === "walls" && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Drag walls in the canvas to change reflection points.
-                  Different materials have different reflection coefficients.
-                </p>
-
-                <div
-                  className={`grid ${
-                    isMobile ? "grid-cols-1" : "grid-cols-2"
-                  } gap-2 mb-4`}
-                >
-                  {Object.entries(materialProperties).map(
-                    ([material, props]) => (
-                      <button
-                        key={material}
-                        onClick={() => addWall(material as Wall["material"])}
-                        className="flex items-center space-x-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        <div
-                          className="w-3 h-3 rounded"
-                          style={{ backgroundColor: props.color }}
-                        />
-                        <div className="text-left">
-                          <div className="text-xs font-medium">
-                            {props.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {(props.reflectionCoeff * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  )}
-                </div>
-
-                <div className="bg-blue-50 p-3 rounded-lg max-h-32 overflow-y-auto">
-                  <h4 className="font-medium text-blue-900 mb-2 text-sm">
-                    Active Walls ({walls.length})
-                  </h4>
-                  {walls.map((wall) => (
-                    <div
-                      key={wall.id}
-                      className="flex justify-between items-center py-1 border-b border-blue-200 last:border-b-0"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-2 h-2 rounded"
-                          style={{
-                            backgroundColor:
-                              materialProperties[wall.material].color,
-                          }}
-                        />
-                        <span className="text-xs text-blue-700">
-                          {materialProperties[wall.material].name} (
-                          {Math.round(wall.x)}, {Math.round(wall.y)})
+                    <div className="flex items-center space-x-4">
+                      <span className="text-2xl">
+                        <habit.icon className="w-6 h-6 text-white" />
+                      </span>
+                      <div className="text-left">
+                        <span className="text-white font-medium block">
+                          {habit.name}
+                        </span>
+                        <span className="text-white/60 text-sm flex items-center space-x-1">
+                          <Flame className="w-3 h-3 text-white" />
+                          <span>{streak} days</span>
                         </span>
                       </div>
-                      <button
-                        onClick={() =>
-                          setWalls((prev) =>
-                            prev.filter((w) => w.id !== wall.id)
-                          )
-                        }
-                        className="text-red-500 hover:text-red-700 cursor-pointer text-sm"
-                      >
-                        ✕
-                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "sources" && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Manage wave sources. Drag sources in the canvas to reposition
-                  them.
-                </p>
-
-                <button
-                  onClick={addWaveSource}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors cursor-pointer text-sm"
-                >
-                  Add Wave Source
-                </button>
-
-                <div className="bg-green-50 p-3 rounded-lg max-h-32 overflow-y-auto">
-                  <h4 className="font-medium text-green-900 mb-2 text-sm">
-                    Active Sources ({waveSources.length})
-                  </h4>
-                  {waveSources.map((source, index) => (
                     <div
-                      key={source.id}
-                      className="flex justify-between items-center py-1 border-b border-green-200 last:border-b-0"
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                        isCompleted
+                          ? "bg-green-500 border-green-500 shadow-lg shadow-green-500/30"
+                          : "border-white/40 hover:border-white/60"
+                      }`}
                     >
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() =>
-                            setWaveSources((prev) =>
-                              prev.map((s) =>
-                                s.id === source.id
-                                  ? { ...s, isActive: !s.isActive }
-                                  : s
-                              )
-                            )
-                          }
-                          className={`w-4 h-4 rounded-full border transition-colors cursor-pointer ${
-                            source.isActive
-                              ? "bg-green-500 border-green-500"
-                              : "bg-gray-200 border-gray-400"
-                          }`}
-                        />
-                        <span className="text-xs text-green-700">
-                          Source {index + 1} ({Math.round(source.x)},{" "}
-                          {Math.round(source.y)})
-                        </span>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setWaveSources((prev) =>
-                            prev.filter((s) => s.id !== source.id)
-                          )
-                        }
-                        className="text-red-500 hover:text-red-700 cursor-pointer text-sm"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "analysis" && (
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                    Wave Properties
-                  </h4>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>
-                      Wavelength: {(100 / waveConfig.frequency).toFixed(1)}px
-                    </div>
-                    <div>Period: {(1 / waveConfig.frequency).toFixed(2)}s</div>
-                    <div>Peak Amplitude: {waveConfig.amplitude}px</div>
-                    <div>
-                      Active Sources:{" "}
-                      {waveSources.filter((s) => s.isActive).length}
-                    </div>
-                    <div>Active Reflectors: {walls.length}</div>
-                    <div>
-                      Phase Shift:{" "}
-                      {((waveConfig.phase * 180) / Math.PI).toFixed(0)}°
-                    </div>
-                    <div>
-                      Screen: {getScreenType(screenSize.width)} (
-                      {screenSize.width}×{screenSize.height})
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2 text-sm">
-                    Reflection Analysis
-                  </h4>
-                  <div className="text-xs text-blue-700 space-y-1">
-                    <div>
-                      Avg Reflection:{" "}
-                      {(
-                        walls.reduce(
-                          (sum, wall) => sum + wall.reflectionCoeff,
-                          0
-                        ) / walls.length || 0
-                      ).toFixed(2)}
-                    </div>
-                    <div>
-                      Standing Wave Nodes:{" "}
-                      {Math.floor(
-                        canvasSize.width / (100 / waveConfig.frequency / 2)
+                      {isCompleted && (
+                        <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-yellow-900 mb-2 text-sm">
-                    Visualization
-                  </h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showGrid}
-                        onChange={(e) => setShowGrid(e.target.checked)}
-                        className="cursor-pointer"
-                      />
-                      <span className="text-xs text-yellow-700">
-                        Show Grid (G)
-                      </span>
-                    </label>
-
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showWaveNumbers}
-                        onChange={(e) => setShowWaveNumbers(e.target.checked)}
-                        className="cursor-pointer"
-                      />
-                      <span className="text-xs text-yellow-700">
-                        Show Labels (N)
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    ),
-    [
-      isControlsOpen,
-      activeTab,
-      waveConfig,
-      walls,
-      waveSources,
-      canvasSize,
-      isPlaying,
-      showGrid,
-      showWaveNumbers,
-      addWall,
-      addWaveSource,
-      isMobile,
-      isTablet,
-      screenSize,
-    ]
-  );
-
-  // Responsive Settings Modal
-  const SettingsModal = useMemo(
-    () => (
-      <div
-        className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-          isSettingsOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-        <div
-          ref={settingsModalRef}
-          className={`relative bg-white rounded-2xl p-4 w-full max-h-[80vh] overflow-y-auto ${
-            isMobile ? "max-w-sm" : isTablet ? "max-w-md" : "max-w-lg"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3
-              className={`${
-                isMobile ? "text-lg" : "text-xl"
-              } font-bold text-gray-900`}
-            >
-              Settings
-            </h3>
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">
-                Display Options
-              </h4>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-700">Show Grid</span>
-                  <input
-                    type="checkbox"
-                    checked={showGrid}
-                    onChange={(e) => setShowGrid(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-700">
-                    Show Wave Numbers
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={showWaveNumbers}
-                    onChange={(e) => setShowWaveNumbers(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Device Info</h4>
-              <div className="text-sm text-gray-600 space-y-1">
-                <div>
-                  Screen: {screenSize.width}×{screenSize.height}
-                </div>
-                <div>Type: {getScreenType(screenSize.width)}</div>
-                <div>
-                  Canvas: {canvasSize.width}×{canvasSize.height}
-                </div>
-                <div>Touch: {isMobile ? "Optimized" : "Desktop"}</div>
-                <div>Rendering: Hardware Accelerated</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                // Reset all settings to default
-                setShowGrid(true);
-                setShowWaveNumbers(false);
-                setWaveConfig({
-                  frequency: 2,
-                  amplitude: 50,
-                  speed: 2,
-                  waveType: "sine",
-                  phase: 0,
-                });
-                setIsSettingsOpen(false);
-              }}
-              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
-            >
-              Reset to Defaults
-            </button>
-          </div>
-        </div>
-      </div>
-    ),
-    [
-      isSettingsOpen,
-      showGrid,
-      showWaveNumbers,
-      canvasSize,
-      screenSize,
-      isMobile,
-      isTablet,
-      getScreenType,
-    ]
-  );
-
-  // Responsive Help Modal
-  const HelpModal = useMemo(
-    () => (
-      <div
-        className={`fixed inset-0 z-50 flex items-center justify-center p-2 transition-all duration-300 ${
-          isHelpOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-        <div
-          ref={helpModalRef}
-          className={`relative bg-white rounded-2xl p-4 w-full ${
-            isMobile ? "max-w-sm" : isTablet ? "max-w-lg" : "max-w-2xl"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3
-              className={`${
-                isMobile ? "text-lg" : "text-xl"
-              } font-bold text-gray-900`}
-            >
-              Help & Shortcuts
-            </h3>
-            <button
-              onClick={() => setIsHelpOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto ">
-            {!isMobile && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">
-                  Keyboard Shortcuts
-                </h4>
-                <div
-                  className={`grid ${
-                    isTablet ? "grid-cols-1" : "grid-cols-2"
-                  } gap-4 text-sm`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        Space
-                      </span>
-                      <span>Toggle Controls</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        P
-                      </span>
-                      <span>Play/Pause</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        R
-                      </span>
-                      <span>Reset</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        G
-                      </span>
-                      <span>Toggle Grid</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        N
-                      </span>
-                      <span>Toggle Numbers</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
-                        H
-                      </span>
-                      <span>Help</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">How to Use</h4>
-              <div className="text-sm text-gray-600 space-y-2">
-                <div>
-                  • <strong>Drag walls and sources</strong>{" "}
-                  {isMobile ? "with your finger" : "with mouse"} to change wave
-                  patterns
-                </div>
-                <div>
-                  • <strong>Add different materials</strong> with varying
-                  reflection coefficients
-                </div>
-                <div>
-                  • <strong>Multiple wave sources</strong> create complex
-                  interference patterns
-                </div>
-                <div>
-                  • <strong>Toggle source activation</strong> to see individual
-                  wave contributions
-                </div>
-                <div>
-                  • <strong>Adjust wave parameters</strong> to see how
-                  frequency, amplitude, and phase affect patterns
-                </div>
-                {isMobile && (
-                  <div>
-                    • <strong>Use quick controls</strong> at the bottom of the
-                    canvas for easy adjustments
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Wave Physics</h4>
-              <div className="text-sm text-gray-600 space-y-2">
-                <div>
-                  • <strong>Blue waves</strong> represent the composite wave
-                  pattern
-                </div>
-                <div>
-                  • <strong>Faint colored waves</strong> show individual source
-                  contributions
-                </div>
-                <div>
-                  • <strong>Standing waves</strong> form when reflected waves
-                  interfere with original waves
-                </div>
-                <div>
-                  • <strong>Different materials</strong> reflect different
-                  amounts of wave energy
-                </div>
-              </div>
-            </div>
-
-            {isMobile && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">Mobile Tips</h4>
-                <div className="text-sm text-gray-600 space-y-2">
-                  <div>
-                    • <strong>Larger touch areas</strong> make dragging easier
-                    on mobile
-                  </div>
-                  <div>
-                    • <strong>Responsive canvas</strong> adapts to your screen
-                    size
-                  </div>
-                  <div>
-                    • <strong>Portrait mode</strong> optimizes the layout for
-                    phone use
-                  </div>
-                  <div>
-                    • <strong>Quick controls</strong> provide easy access to
-                    common settings
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    ),
-    [isHelpOpen, isMobile, isTablet]
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 font-['Roboto',sans-serif]">
-      {/* Professional Header - Responsive */}
-      <header className="relative z-50 bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          <div
-            className={`flex justify-between items-center ${
-              isMobile ? "h-14" : "h-16"
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div
-                className={`${
-                  isMobile ? "w-8 h-8" : "w-10 h-10"
-                } bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center`}
-              >
-                <span
-                  className={`text-white font-bold ${
-                    isMobile ? "text-lg" : "text-xl"
-                  }`}
-                >
-                  W
-                </span>
-              </div>
-              <div>
-                <h1
-                  className={`${
-                    isMobile ? "text-lg" : "text-xl"
-                  } font-bold text-white`}
-                >
-                  WaveReflect Pro
-                </h1>
-                {!isMobile && (
-                  <p className="text-sm text-blue-200">
-                    Advanced Sound Wave Simulation
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div
-              className={`hidden ${
-                isMobile ? "sm" : "md"
-              }:flex items-center space-x-2`}
-            >
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm ${
-                  isPlaying
-                    ? "bg-red-500 text-white hover:bg-red-700"
-                    : "bg-green-500 text-white hover:bg-green-700"
-                }`}
-                title="Play/Pause (P)"
-              >
-                {isPlaying ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                )}
-                <span className="hidden lg:inline">
-                  {isPlaying ? "Pause" : "Play"}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setIsControlsOpen(true)}
-                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer text-sm"
-                title="Open Controls (Space)"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
-                  />
-                </svg>
-                <span className="hidden lg:inline">Controls</span>
-              </button>
-
-              {!isMobile && (
-                <>
-                  <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
-                    title="Settings"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
                   </button>
-
-                  <button
-                    onClick={() => setIsHelpOpen(true)}
-                    className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
-                    title="Help (H)"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </button>
-                </>
-              )}
+                );
+              })}
             </div>
 
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`${
-                isMobile ? "sm" : "md"
-              }:hidden p-2 text-white hover:bg-white/20 rounded-lg transition-colors cursor-pointer`}
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setPendingCompletions({});
+                  setShowCheckIn(false);
+                }}
+                className="flex-1 bg-white/10 border border-white/30 text-white py-4 rounded-2xl font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={
-                    isMenuOpen
-                      ? "M6 18L18 6M6 6l12 12"
-                      : "M4 6h16M4 12h16M4 18h16"
-                  }
-                />
-              </svg>
-            </button>
+                Close
+              </button>
+              <button
+                onClick={submitCheckIn}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform transition-all duration-200 hover:scale-105 cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Mobile Menu - Responsive */}
-        {isMenuOpen && (
-          <div
-            ref={mobileMenuRef}
-            className={`${
-              isMobile ? "sm" : "md"
-            }:hidden bg-white/10 backdrop-blur-md border-t border-white/20`}
-          >
-            <div className="px-4 py-3 space-y-2">
-              <button
-                onClick={() => {
-                  setIsPlaying(!isPlaying);
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors cursor-pointer text-sm ${
-                  isPlaying
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-green-600 text-white hover:bg-green-700"
-                }`}
-              >
-                {isPlaying ? (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                )}
-                <span>{isPlaying ? "Pause Animation" : "Play Animation"}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsControlsOpen(true);
-                  setIsMenuOpen(false);
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer text-sm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
-                  />
-                </svg>
-                <span>Wave Controls</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsSettingsOpen(true);
-                  setIsMenuOpen(false);
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer text-sm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <span>Settings</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsHelpOpen(true);
-                  setIsMenuOpen(false);
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer text-sm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>Help & Shortcuts</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Main Content - Responsive */}
-      <main className="relative z-10">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-          {/* Hero Section - Responsive */}
-          <div className="text-center mb-6 sm:mb-8">
-            <h2
-              className={`${
-                isMobile ? "text-2xl sm:text-3xl" : "text-4xl md:text-6xl"
-              } font-bold text-white mb-4`}
-            >
-              Wave Reflection
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                {" "}
-                Simulation
-              </span>
+      {/* Add Habit Modal */}
+      {showAddHabit && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-8 max-w-sm w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
+              Add New Habit
             </h2>
-            <p
-              className={`${
-                isMobile ? "text-base" : "text-xl"
-              } text-blue-200 max-w-3xl mx-auto px-4`}
-            >
-              Experience real-time sound wave physics with interactive
-              reflection barriers and multiple wave sources.
-              {isMobile
-                ? " Drag with your finger to create patterns."
-                : " Drag walls and sources to create complex interference patterns."}
-            </p>
-          </div>
-
-          {/* Status Bar - Responsive */}
-          <div
-            className={`flex ${
-              isMobile
-                ? "flex-wrap justify-center"
-                : "justify-center items-center"
-            } space-x-4 mb-6 text-sm text-blue-200`}
-          >
-            <div className="flex items-center space-x-2 mb-2 sm:mb-0">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  isPlaying ? "bg-green-500" : "bg-red-500"
-                }`}
-              />
-              <span>{isPlaying ? "Playing" : "Paused"}</span>
-            </div>
-            <div className="mb-2 sm:mb-0">
-              Sources: {waveSources.filter((s) => s.isActive).length}/
-              {waveSources.length}
-            </div>
-            <div className="mb-2 sm:mb-0">Walls: {walls.length}</div>
-            <div className="mb-2 sm:mb-0">
-              Freq: {waveConfig.frequency.toFixed(1)} Hz
-            </div>
-            {!isMobile && (
+            <div className="space-y-4">
               <div>
-                Canvas: {canvasSize.width}×{canvasSize.height}
+                <label className="text-white/80 text-sm font-medium block mb-2">
+                  Habit Name
+                </label>
+                <input
+                  type="text"
+                  value={newHabitForm.name}
+                  onChange={(e) =>
+                    setNewHabitForm((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Morning Jog"
+                  className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-400/50 focus:border-transparent"
+                />
               </div>
-            )}
-          </div>
-
-          {/* Canvas Container - Fully Responsive */}
-          <div
-            id="canvas-container"
-            className={`relative bg-white/5 backdrop-blur-sm rounded-2xl ${
-              isMobile ? "p-2" : "p-4 md:p-8"
-            } shadow-2xl border border-white/10`}
-          >
-            <canvas
-              ref={canvasRef}
-              width={canvasSize.width}
-              height={canvasSize.height}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              className="w-full h-auto rounded-xl shadow-inner cursor-crosshair touch-none"
-              style={{ maxWidth: "100%", height: "auto" }}
-            />
-
-            {/* Canvas Overlay Info - Responsive */}
-            <div
-              className={`absolute ${
-                isMobile ? "top-2 left-2" : "top-8 left-8"
-              } bg-black/50 backdrop-blur-sm rounded-lg p-2 text-white ${
-                isMobile ? "text-xs" : "text-sm"
-              }`}
-            >
-              <div
-                className={`grid ${
-                  isMobile
-                    ? "grid-cols-2 gap-1"
-                    : "grid-cols-1 md:grid-cols-2 gap-2"
-                }`}
-              >
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>Wave</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Source</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-sm"></div>
-                  <span>Wall</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full opacity-50"></div>
-                  <span>Faint</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Buttons - Responsive */}
-            <div
-              className={`absolute ${
-                isMobile ? "top-2 right-2" : "top-8 right-8"
-              } flex space-x-1`}
-            >
-              <button
-                onClick={() => addWall()}
-                className={`bg-red-600/80 hover:bg-red-600 text-white ${
-                  isMobile ? "p-1.5" : "p-2"
-                } rounded-lg transition-colors cursor-pointer`}
-                title="Add Wall"
-              >
-                <svg
-                  className={`${isMobile ? "w-3 h-3" : "w-4 h-4"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </button>
-
-              <button
-                onClick={addWaveSource}
-                className={`bg-green-600/80 hover:bg-green-600 text-white ${
-                  isMobile ? "p-1.5" : "p-2"
-                } rounded-lg transition-colors cursor-pointer`}
-                title="Add Wave Source"
-              >
-                <svg
-                  className={`${isMobile ? "w-3 h-3" : "w-4 h-4"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Quick Controls for Mobile - Enhanced */}
-            <div
-              className={`${
-                isMobile ? "block" : "hidden"
-              } absolute bottom-2 left-2 right-2 bg-black/50 backdrop-blur-sm rounded-lg p-3`}
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-white mb-1">
-                    Freq: {waveConfig.frequency.toFixed(1)}
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="10"
-                    step="0.1"
-                    value={waveConfig.frequency}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (validateFrequency(value)) {
-                        setWaveConfig((prev) => ({
-                          ...prev,
-                          frequency: value,
-                        }));
+              <div>
+                <label className="text-white/80 text-sm font-medium block mb-2">
+                  Icon
+                </label>
+                <div className="grid grid-cols-6 gap-3">
+                  {habitIcons.map((Icon) => (
+                    <button
+                      key={Icon.name}
+                      onClick={() =>
+                        setNewHabitForm((prev) => ({ ...prev, icon: Icon }))
                       }
-                    }}
-                    className="w-full h-1 bg-gray-600 rounded cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-white mb-1">
-                    Amp: {waveConfig.amplitude}
-                  </label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="150"
-                    step="5"
-                    value={waveConfig.amplitude}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (validateAmplitude(value)) {
-                        setWaveConfig((prev) => ({
-                          ...prev,
-                          amplitude: value,
-                        }));
-                      }
-                    }}
-                    className="w-full h-1 bg-gray-600 rounded cursor-pointer"
-                  />
+                      className={`bg-white/10 hover:bg-white/20 border rounded-xl p-3 text-xl transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                        newHabitForm.icon === Icon
+                          ? "border-green-400 bg-white/20"
+                          : "border-white/20"
+                      }`}
+                    >
+                      <Icon className="w-6 h-6 text-white" />
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              <div className="flex justify-center mt-2">
-                <button
-                  onClick={() => setIsControlsOpen(true)}
-                  className="bg-blue-600/80 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition-colors cursor-pointer"
+              <div>
+                <label className="text-white/80 text-sm font-medium block mb-2">
+                  Category
+                </label>
+                <select
+                  value={newHabitForm.category}
+                  onChange={(e) =>
+                    setNewHabitForm((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-green-400/50"
                 >
-                  More Controls
-                </button>
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                      className="bg-slate-800 text-white"
+                    >
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          </div>
-
-          {/* Feature Grid - Responsive */}
-          <div
-            className={`grid ${
-              isMobile
-                ? "grid-cols-1 gap-4"
-                : isTablet
-                ? "grid-cols-2 gap-6"
-                : "md:grid-cols-4 gap-6"
-            } mt-8 sm:mt-16`}
-          >
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10 hover:bg-white/10 transition-colors">
-              <div
-                className={`${
-                  isMobile ? "w-10 h-10" : "w-12 h-12"
-                } bg-blue-500 rounded-lg flex items-center justify-center mb-4`}
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => {
+                  setShowAddHabit(false);
+                  setNewHabitForm({ name: "", icon: Target, category: "Health" });
+                }}
+                className="flex-1 bg-white/10 border border-white/30 text-white py-4 rounded-2xl font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
               >
-                <svg
-                  className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-              </div>
-              <h3
-                className={`${
-                  isMobile ? "text-lg" : "text-xl"
-                } font-bold text-white mb-2`}
+                Cancel
+              </button>
+              <button
+                onClick={addNewHabit}
+                disabled={!newHabitForm.name.trim()}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 cursor-pointer"
               >
-                Real-Time Physics
-              </h3>
-              <p
-                className={`text-blue-200 ${isMobile ? "text-sm" : "text-sm"}`}
-              >
-                Authentic wave behavior with accurate reflection coefficients
-                and interference patterns.
-              </p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10 hover:bg-white/10 transition-colors">
-              <div
-                className={`${
-                  isMobile ? "w-10 h-10" : "w-12 h-12"
-                } bg-green-500 rounded-lg flex items-center justify-center mb-4`}
-              >
-                <svg
-                  className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <h3
-                className={`${
-                  isMobile ? "text-lg" : "text-xl"
-                } font-bold text-white mb-2`}
-              >
-                Touch Optimized
-              </h3>
-              <p
-                className={`text-blue-200 ${isMobile ? "text-sm" : "text-sm"}`}
-              >
-                Fully responsive design with touch-friendly controls for mobile
-                devices and tablets.
-              </p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10 hover:bg-white/10 transition-colors">
-              <div
-                className={`${
-                  isMobile ? "w-10 h-10" : "w-12 h-12"
-                } bg-purple-500 rounded-lg flex items-center justify-center mb-4`}
-              >
-                <svg
-                  className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z"
-                  />
-                </svg>
-              </div>
-              <h3
-                className={`${
-                  isMobile ? "text-lg" : "text-xl"
-                } font-bold text-white mb-2`}
-              >
-                Advanced Analysis
-              </h3>
-              <p
-                className={`text-blue-200 ${isMobile ? "text-sm" : "text-sm"}`}
-              >
-                Multiple wave types, frequency analysis, and standing wave
-                pattern visualization.
-              </p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10 hover:bg-white/10 transition-colors">
-              <div
-                className={`${
-                  isMobile ? "w-10 h-10" : "w-12 h-12"
-                } bg-orange-500 rounded-lg flex items-center justify-center mb-4`}
-              >
-                <svg
-                  className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2M7 4h10M7 4L5.5 6M17 4l1.5 2M6 8v8a2 2 0 002 2h8a2 2 0 002-2V8M10 12h4"
-                  />
-                </svg>
-              </div>
-              <h3
-                className={`${
-                  isMobile ? "text-lg" : "text-xl"
-                } font-bold text-white mb-2`}
-              >
-                Multiple Sources
-              </h3>
-              <p
-                className={`text-blue-200 ${isMobile ? "text-sm" : "text-sm"}`}
-              >
-                Create complex interference patterns with multiple wave sources
-                and materials.
-              </p>
+                Add Habit
+              </button>
             </div>
           </div>
         </div>
-      </main>
+      )}
 
-      {/* Modals and Panels - All Responsive */}
-      {ControlPanel}
-      {SettingsModal}
-      {HelpModal}
-
-      {/* Footer - Responsive */}
-      <footer className="bg-black/20 border-t border-white/10 mt-8 sm:mt-16">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-          <div className="text-center text-blue-200">
-            <p className={`${isMobile ? "text-sm" : ""}`}>
-              &copy; 2025 WaveReflect Pro. Advanced Wave Simulation Technology.
+      {/* Milestone Celebration */}
+      {celebratingMilestone && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="backdrop-blur-2xl bg-white/20 border border-white/30 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center transform animate-bounce">
+            <div className="text-6xl mb-4 animate-pulse flex justify-center">
+              <celebratingMilestone.milestone.icon className="w-16 h-16 text-yellow-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Milestone Achieved!
+            </h2>
+            <h3 className="text-xl font-semibold bg-gradient-to-r from-lime-400 to-green-500 bg-clip-text text-transparent mb-4">
+              {celebratingMilestone.milestone.title}
+            </h3>
+            <p className="text-white/80 mb-6">
+              You've completed {celebratingMilestone.milestone.days} days of{" "}
+              {habits.find((h) => h.id === celebratingMilestone.habitId)?.name}!
             </p>
-            <p className={`${isMobile ? "text-xs" : "text-sm"} mt-2`}>
-              {isMobile
-                ? "Tap canvas to interact"
-                : "Press H for help and keyboard shortcuts"}
-            </p>
+            <div className="text-4xl animate-bounce flex justify-center">
+              <Sparkles className="w-10 h-10 text-yellow-400" />
+            </div>
           </div>
         </div>
-      </footer>
+      )}
+
+      <style jsx>{`
+        @keyframes slide-down {
+          from {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
 
-export default WaveReflect;
+export default HabitTracker;
