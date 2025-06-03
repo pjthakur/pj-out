@@ -1,1290 +1,1084 @@
-"use client";
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Sun, Moon, Menu, X, ChevronRight, Calendar, Tag, MapPin, Search, Instagram, Twitter, Facebook, Youtube, ArrowRight } from 'lucide-react';
+"use client"; 
+import Head from 'next/head';
+import { NextPage } from 'next';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent, useMemo } from 'react';
+import type { JSX } from 'react';
+import { FiMessageSquare, FiUsers, FiSettings, FiSun, FiMoon, FiSend, FiPlusCircle, FiSearch, FiLogOut, FiChevronDown, FiX, FiPaperclip, FiImage, FiFile, FiDownload } from 'react-icons/fi';
+import { FaHashtag, FaRegSmile } from "react-icons/fa";
+import EmojiPicker, { EmojiClickData, Theme as EmojiPickerTheme } from 'emoji-picker-react';
+
+type Theme = 'light' | 'dark';
+
+interface Room {
+ id: string;
+ name: string;
+ icon?: JSX.Element;
+ unread?: number;
+ type: 'channel' | 'dm';
+ avatar?: string;
+ description?: string;
+}
+
+interface Message {
+ id:string;
+ text: string;
+ sender: 'user' | 'other';
+ timestamp: Date;
+ roomId: string;
+ avatar?: string;
+ senderName?: string;
+ attachment?: Attachment;
+}
+
+interface Attachment {
+ type: 'image' | 'file';
+ url: string;
+ name: string;
+ size?: number;
+}
+
+interface ToastMessage {
+ id: number;
+ message: string;
+ type: 'info' | 'success' | 'error';
+}
 
 
-const TravelBlog = () => {
-  const [currentView, setCurrentView] = useState('home');
-  const [currentPostId, setCurrentPostId] = useState<number | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
-  const [showSearchInput, setShowSearchInput] = useState(false);
-  const [currentBrowseView, setCurrentBrowseView] = useState('destinations');
-  const [isThemeChanging, setIsThemeChanging] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
+const USER_AVATAR = 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YXZhdGFyfGVufDB8fDB8fHww';
+const CURRENT_USER_NAME = "You";
 
+const INITIAL_ROOMS: Room[] = [
+ { id: '1', name: 'general', icon: <FaHashtag className="text-gray-400" />, unread: 3, type: 'channel', description: 'General team discussions' },
+ { id: '2', name: 'random', icon: <FaHashtag className="text-gray-400" />, type: 'channel', description: 'Anything under the sun' },
+ { id: '3', name: 'dev-team', icon: <FaHashtag className="text-gray-400" />, unread: 1, type: 'channel', description: 'Software development discussions' },
+ { id: '6', name: 'design-talk', icon: <FaHashtag className="text-gray-400" />, type: 'channel', description: 'All about UI/UX and graphics' },
+ { id: '7', name: 'product-updates', icon: <FaHashtag className="text-gray-400" />, unread: 2, type: 'channel', description: 'Latest news on product development' },
+ { id: '4', name: 'Alice Wonderland', avatar: 'https://plus.unsplash.com/premium_photo-1671656349218-5218444643d8?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YXZhdGFyfGVufDB8fDB8fHww', type: 'dm' },
+ { id: '5', name: 'Bob The Builder', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXZhdGFyfGVufDB8fDB8fHww', type: 'dm' },
+ { id: '8', name: 'Charlie Brown', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YXZhdGFyfGVufDB8fDB8fHww', type: 'dm', unread: 1 },
+ { id: '9', name: 'Diana Prince', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YXZhdGFyfGVufDB8fDB8fHww', type: 'dm' },
+];
+
+const INITIAL_MESSAGES: Message[] = [
+ { id: 'm1', roomId: '1', text: 'Hello team! Any updates on project Alpha?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 65), senderName: 'Eve', avatar: 'https://plus.unsplash.com/premium_photo-1670884441012-c5cf195c062a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8YXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm2', roomId: '1', text: 'Hey Eve! I just pushed the latest commits.', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 63), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm3', roomId: '1', text: 'Great, I\'ll check them out. Thanks!', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 61), senderName: 'Eve', avatar: 'https://plus.unsplash.com/premium_photo-1670884441012-c5cf195c062a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8YXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm20', roomId: '1', text: 'Meeting at 3 PM today to discuss the new roadmap. 📅', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 30), senderName: 'David Lee', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8YXZhdGFyfGVufDB8fDB8fHww'},
+ { id: 'm4', roomId: '2', text: 'Anyone seen that new cat video? Hilarious! 😹', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 50), senderName: 'Charlie', avatar: 'https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D' },
+ { id: 'm7', roomId: '2', text: 'Check out this image I found!', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 48), senderName: 'Charlie', avatar: 'https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D', attachment: { type: 'image', url: 'https://images.unsplash.com/photo-1546587348-d12660c30c50?q=80&w=3174&auto=format&fit=crop&ixlib=rb-4.1.3', name: 'landscape.jpg' }},
+ { id: 'm21', roomId: '2', text: 'I agree, super funny! 😂 Have you tried the new coffee shop downtown?', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 45), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm22', roomId: '2', text: 'Not yet, is it any good?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 44), senderName: 'Charlie', avatar: 'https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D' },
+ { id: 'm23', roomId: '3', text: 'Need help with a TypeScript error, anyone free?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 20), senderName: 'Grace', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8YXZhdGFyfGVufDB8fDB8fHww'},
+ { id: 'm24', roomId: '3', text: 'Sure, I can take a look. What\'s the issue?', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 18), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm25', roomId: '3', text: 'Thanks! It\'s related to generics.', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 17), senderName: 'Grace', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8YXZhdGFyfGVufDB8fDB8fHww'},
+ { id: 'm5', roomId: '4', text: 'Hi Alice! How are you doing?', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 12), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm6', roomId: '4', text: 'Doing great! Just working on a new feature. You?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 11), senderName: 'Alice Wonderland', avatar: 'https://plus.unsplash.com/premium_photo-1671656349218-5218444643d8?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm26', roomId: '4', text: 'Pretty busy, but good! Want to grab lunch next week?', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 5), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm27', roomId: '5', text: 'Hey Bob, can you send me the report? 📄', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 25), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME, attachment: { type: 'file', name: 'request-details.pdf', url: '#', size: 120 * 1024 } },
+ { id: 'm28', roomId: '5', text: 'Sure, sending it over now.', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 23), senderName: 'Bob The Builder', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm29', roomId: '6', text: 'What does everyone think of the new logo proposal?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 40), senderName: 'Sophia', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D' },
+ { id: 'm30', roomId: '6', text: 'I like it! The colors are vibrant. 👍', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 38), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm31', roomId: '6', text: 'Here\'s a mockup I made.', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 35), senderName: 'Sophia', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D', attachment: { type: 'image', url: 'https://images.unsplash.com/photo-1611262588024-d12430b98920?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2F0JTIwYXZhdGFyfGVufDB8fDB8fHww', name: 'logo_mockup.png'}},
+ { id: 'm32', roomId: '7', text: '📢 New version 2.5.0 is now live! Check out the release notes.', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 55), senderName: 'Product Team Bot', avatar: 'https://plus.unsplash.com/premium_photo-1677094310956-7f88ae5f5c6b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Ym90JTIwYXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm33', roomId: '7', text: 'Awesome! Excited to try the new features. 🎉', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 52), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm34', roomId: '8', text: 'Hey, are we still on for coffee tomorrow?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 8), senderName: 'Charlie Brown', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YXZhdGFyfGVufDB8fDB8fHww' },
+ { id: 'm35', roomId: '8', text: 'Yes! Looking forward to it. ☕', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 7), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+ { id: 'm36', roomId: '9', text: 'Can you review this document when you have a moment?', sender: 'other', timestamp: new Date(Date.now() - 1000 * 60 * 15), senderName: 'Diana Prince', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YXZhdGFyfGVufDB8fDB8fHww', attachment: { type: 'file', url: '#', name: 'project_proposal.docx', size: 256 * 1024 }},
+ { id: 'm37', roomId: '9', text: 'Will do! I\'ll get to it this afternoon.', sender: 'user', timestamp: new Date(Date.now() - 1000 * 60 * 14), avatar: USER_AVATAR, senderName: CURRENT_USER_NAME },
+];
+
+
+const HomePage: NextPage = () => {
+ const [appTheme, setAppTheme] = useState<Theme>('light');
+ const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
+ const [selectedRoomId, setSelectedRoomId] = useState<string | null>(INITIAL_ROOMS[0]?.id || null);
+ const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+ const [currentMessage, setCurrentMessage] = useState<string>('');
+ const [toasts, setToasts] = useState<ToastMessage[]>([]);
+ const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
  
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
-    if (savedDarkMode) {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
-    }
-  }, []);
+ const [searchTerm, setSearchTerm] = useState('');
+ const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
+ const [isNewDMModalOpen, setIsNewDMModalOpen] = useState(false);
+ const [newChannelName, setNewChannelName] = useState('');
+ const [newDMUsername, setNewDMUsername] = useState('');
+ const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+ const [selectedFile, setSelectedFile] = useState<File | null>(null);
+ const [isUploading, setIsUploading] = useState(false);
+ const [isClient, setIsClient] = useState(false);
+
+ const messagesEndRef = useRef<HTMLDivElement | null>(null);
+ const fileInputRef = useRef<HTMLInputElement | null>(null);
+ const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+ const emojiButtonRef = useRef<HTMLButtonElement | null>(null);
+ const messageInputRef = useRef<HTMLInputElement | null>(null);
 
 
-  const toggleDarkMode = () => {
-    const newMode = !darkMode;
-    setIsThemeChanging(true); 
+ useEffect(() => {
+   setIsClient(true); 
+   const storedTheme = localStorage.getItem('chat-app-theme') as Theme | null;
+   if (storedTheme) {
+     setAppTheme(storedTheme);
+     document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+   } else {
+     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+     const initialTheme = prefersDark ? 'dark' : 'light';
+     setAppTheme(initialTheme);
+     document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+     localStorage.setItem('chat-app-theme', initialTheme);
+   }
+ }, []);
 
-    
-    setTimeout(() => {
-      if (newMode) {
-        document.body.classList.add('dark-theme');
-      } else {
-        document.body.classList.remove('dark-theme');
-      }
-      localStorage.setItem('darkMode', String(newMode));
-      setDarkMode(newMode);
+ const toggleTheme = () => {
+   setAppTheme(prevTheme => {
+     const newTheme = prevTheme === 'light' ? 'dark' : 'light';
+     localStorage.setItem('chat-app-theme', newTheme);
+     document.documentElement.classList.toggle('dark', newTheme === 'dark');
+     return newTheme;
+   });
+ };
 
+ const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
+   const newToast = { id: Date.now(), message, type };
+   setToasts(prevToasts => [...prevToasts, newToast]);
+   setTimeout(() => {
+     setToasts(prevToasts => prevToasts.filter(t => t.id !== newToast.id));
+   }, 3000);
+ };
+
+ const filteredRoomsAndDMs = useMemo(() => {
+   if (searchTerm.trim() === '') {
+     return [];
+   }
+   return rooms.filter(room =>
+     room.name.toLowerCase().includes(searchTerm.toLowerCase())
+   );
+ }, [searchTerm, rooms]);
+
+ const handleSelectRoom = (roomId: string) => {
+   setSelectedRoomId(roomId);
+   setRooms(prevRooms => prevRooms.map(r => {
+     if (r.id === roomId) {
+       const { unread, ...rest } = r;
+       return rest;
+     }
+     return r;
+   }));
+   setIsMobileMenuOpen(false);
+   setIsEmojiPickerOpen(false);
+ };
+
+ const handleSendMessage = (e: FormEvent) => {
+   e.preventDefault();
+   if ((!currentMessage.trim() && !selectedFile) || !selectedRoomId) return;
+
+   let attachment: Attachment | undefined;
+   setIsUploading(true); 
+
+   if (selectedFile) {
+     const fileType = selectedFile.type.startsWith('image/') ? 'image' : 'file';
+     const objectURL = URL.createObjectURL(selectedFile); 
      
-      setTimeout(() => {
-        setIsThemeChanging(false);
-      }, 50);
-    }, 300); 
-  };
-  
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
+     attachment = {
+       type: fileType,
+       url: objectURL, 
+       name: selectedFile.name,
+       size: selectedFile.size
+     };
+   }
 
-  const handleNewsletterSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubscribed(true);
-    setEmailInput('');
-    setTimeout(() => setIsSubscribed(false), 3000);
-  };
+   const newMessage: Message = {
+     id: `msg-${Date.now()}`,
+     text: currentMessage.trim(),
+     sender: 'user',
+     timestamp: new Date(),
+     roomId: selectedRoomId,
+     avatar: USER_AVATAR,
+     senderName: CURRENT_USER_NAME,
+     attachment
+   };
+   
+   setMessages(prevMessages => [...prevMessages, newMessage]);
+   setCurrentMessage('');
+   setSelectedFile(null);
+   if (fileInputRef.current) fileInputRef.current.value = ''; 
+   messageInputRef.current?.focus(); 
+   setIsUploading(false); 
 
-  type ViewType = 'home' | 'about' | 'post' | 'destinations' | 'blog';
+   const selectedRoom = rooms.find(r => r.id === selectedRoomId);
+   if (selectedRoom) {
+     setTimeout(() => {
+       const replyText = selectedRoom.type === 'dm' 
+           ? `Got your message! I'll reply soon.`
+           : `Thanks for posting in ${selectedRoom.name}!`;
+       
+       const replyMessage: Message = {
+         id: `reply-${Date.now()}`,
+         text: replyText,
+         sender: 'other',
+         timestamp: new Date(),
+         roomId: selectedRoomId,
+         avatar: selectedRoom.type === 'dm' ? selectedRoom.avatar : 'https://plus.unsplash.com/premium_photo-1677094310956-7f88ae5f5c6b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Ym90JTIwYXZhdGFyfGVufDB8fDB8fHww',
+         senderName: selectedRoom.type === 'dm' ? selectedRoom.name : 'Channel Bot'
+       };
+       setMessages(prevMessages => [...prevMessages, replyMessage]);
+     }, 1500);
+   }
+ };
 
-  const navigateTo = (view: ViewType, postId: number | null = null) => {
-    setCurrentView(view);
-    setCurrentPostId(postId);
-    setIsSidebarOpen(false);
-    if (view === 'blog') {
-      setActiveCategory('');
-    } else {
-      setSearchQuery('');
-      setShowSearchInput(false);
-    }
-    window.scrollTo(0, 0);
-  };
+ const handleAddChannel = (e: FormEvent) => {
+   e.preventDefault();
+   if (!newChannelName.trim()) return;
+   const channelName = newChannelName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+   
+   if (rooms.some(room => room.type === 'channel' && room.name === channelName)) {
+     showToast(`Channel #${channelName} already exists`, 'error');
+     return;
+   }
 
-  const notImplemented = (feature: string) => showToastMessage(`${feature} will be added soon.`);
+   const newChannel: Room = {
+     id: `channel-${Date.now()}`,
+     name: channelName,
+     icon: <FaHashtag className="text-gray-400" />,
+     type: 'channel',
+     description: `Discussions for #${channelName}`
+   };
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'The Enchanting Streets of Paris',
-      excerpt: 'Exploring the hidden gems of Paris beyond the Eiffel Tower and Louvre...',
-      content: `
-<h1>The Enchanting Streets of Paris</h1>
-<img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&h=600&fit=crop" alt="Paris Streets" class="post-image" />
-<h2>Beyond the Tourist Spots</h2>
-<p>Paris has always been known for its iconic landmarks - the Eiffel Tower, the Louvre, Notre-Dame. But the true essence of Paris lies in its charming streets and hidden corners that most tourists never discover.</p>
-<h2>Le Marais: A Cultural Haven</h2>
-<p>The historic Le Marais district was my favorite discovery. With its preserved pre-revolutionary buildings and vibrant Jewish and LGBTQ+ communities, it's a place where history and modernity blend seamlessly.</p>
-      `,
-      date: 'March 15, 2025',
-      image: 'https://plus.unsplash.com/premium_photo-1688410049290-d7394cc7d5df?w=500&auto=format&fit=crop&q=60',
-      featuredImage: 'https://plus.unsplash.com/premium_photo-1661919210043-fd847a58522d?w=500&auto=format&fit=crop&q=60',
-      category: 'Europe',
-      location: 'Paris, France',
-      author: 'Lily Adams',
-      authorImage: 'https://i.pravatar.cc/40?u=LilyParis'
-    },
-    {
-      id: 2,
-      title: 'Kyoto in Cherry Blossom Season',
-      excerpt: 'Experiencing the magical sakura season in Japan\'s cultural capital...',
-      content: `
-<h1>Kyoto in Cherry Blossom Season</h1>
-<img src="https://plus.unsplash.com/premium_photo-1744865471089-01408227d295?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8S3lvdG8lMjBpbiUyMENoZXJyeSUyMEJsb3Nzb20lMjBTZWFzb258ZW58MHx8MHx8fDA%3D" alt="Kyoto Cherry Blossoms" class="post-image" />
-<h2>A Timeless Experience</h2>
-<p>Visiting Kyoto during cherry blossom season has been on my bucket list for years, and this spring I finally made it happen. The experience exceeded every expectation, transforming the already beautiful city into something truly magical.</p>
-      `,
-      date: 'April 2, 2025',
-      image: 'https://images.unsplash.com/photo-1558862107-d49ef2a04d72?w=500&auto=format&fit=crop&q=60',
-      featuredImage: 'https://plus.unsplash.com/premium_photo-1661964177687-57387c2cbd14?w=500&auto=format&fit=crop&q=60',
-      category: 'Asia',
-      location: 'Kyoto, Japan',
-      author: 'Lily Adams',
-      authorImage: 'https://i.pravatar.cc/40?u=LilyKyoto'
-    },
-     {
-      id: 3,
-      title: 'Trekking Through Patagonia',
-      excerpt: 'Adventures in one of Earth\'s last true wilderness frontiers...',
-      content: `
-<h1>Trekking Through Patagonia</h1>
-<img src="https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=1200&h=600&fit=crop" alt="Patagonia Mountains" class="post-image" />
-<h2>The Edge of the World</h2>
-<p>There are few places left on Earth that make you feel like you've reached the end of the world. Patagonia is one of them. Spanning Chile and Argentina at the southern tip of South America, this region captivated me with its raw, untamed landscapes and ever-changing weather.</p>
-      `,
-      date: 'February 20, 2025',
-      image: 'https://plus.unsplash.com/premium_photo-1697729940854-0f73aadaff88?w=500&auto=format&fit=crop&q=60',
-      featuredImage: 'https://images.unsplash.com/photo-1478827387698-1527781a4887?w=500&auto=format&fit=crop&q=60',
-      category: 'South America',
-      location: 'Torres del Paine, Chile',
-      author: 'Lily Adams',
-      authorImage: 'https://i.pravatar.cc/40?u=LilyPatagonia'
-    },
-    {
-      id: 7, 
-      title: 'Where to Travel in 2025 Based on Your Zodiac Sign',
-      excerpt: 'Let the stars guide your next adventure with these cosmic travel recommendations...',
-      content: `
-<h1>Where to Travel in 2025 Based on Your Zodiac Sign</h1>
-<img src="https://plus.unsplash.com/premium_photo-1700763472780-1174dae06186?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8em9kaWFjJTIwdHJhdmVsfGVufDB8fDB8fHww" alt="Zodiac Travel" class="post-image" />
-<p>Ready for your next adventure? The stars know exactly where you should go! Here's my cosmic guide to the perfect 2025 destinations for each zodiac sign.</p>
-<h2>Aries (March 21 - April 19): Iceland</h2>
-<p>For the bold and adventurous Aries, Iceland offers the perfect playground.</p>
-      `,
-      date: 'January 5, 2025',
-      image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=60',
-      featuredImage: 'https://images.unsplash.com/photo-1746310783422-16df7622e7c9?w=500&auto=format&fit=crop&q=60',
-      category: 'Travel Tips',
-      location: 'Global',
-      author: 'Lily Adams',
-      authorImage: 'https://i.pravatar.cc/40?u=LilyZodiac',
-      featured: true
-    },
-  ];
+   setRooms(prevRooms => [...prevRooms, newChannel]);
+   setIsAddChannelModalOpen(false);
+   setNewChannelName('');
+   showToast(`Channel #${channelName} created successfully!`, 'success');
+   setSelectedRoomId(newChannel.id);
+ };
 
-  const continentData = [
-    { name: 'Africa', image: 'https://plus.unsplash.com/premium_photo-1661936361131-c421746dcd0d?w=500&q=60', countries: ['Tanzania', 'Morocco', 'Egypt'] },
-    { name: 'Asia', image: 'https://images.unsplash.com/photo-1574236170878-f66e35f83207?w=500&q=60', countries: ['Japan', 'Thailand', 'India'] },
-    { name: 'Europe', image: 'https://images.unsplash.com/photo-1491557345352-5929e343eb89?w=500&q=60', countries: ['France', 'Italy', 'Spain'] },
-    { name: 'North America', image: 'https://images.unsplash.com/photo-1603015245012-68988952fc73?w=500&q=60', countries: ['USA', 'Canada', 'Mexico'] },
-    { name: 'Oceania', image: 'https://images.unsplash.com/photo-1656177303261-bb9dfbdd37ae?w=500&q=60', countries: ['Australia', 'New Zealand'] },
-    { name: 'South America', image: 'https://images.unsplash.com/photo-1619546952812-520e98064a52?w=500&q=60', countries: ['Chile', 'Peru', 'Brazil'] },
-  ];
+ const handleAddNewDM = (e: FormEvent) => {
+   e.preventDefault();
+   if (!newDMUsername.trim()) return;
 
-  const popularDestinations = [
-    { name: 'Greece', image: 'https://plus.unsplash.com/premium_photo-1661964068107-6d7f6f4fea51?w=500&q=60' },
-    { name: 'Italy', image: 'https://images.unsplash.com/photo-1499678329028-101435549a4e?w=500&q=60' },
-    { name: 'Bali', image: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=500&q=60' },
-  ];
+   if (rooms.some(room => room.type === 'dm' && room.name.toLowerCase() === newDMUsername.trim().toLowerCase())) {
+     showToast(`DM with ${newDMUsername} already exists`, 'error');
+     return;
+   }
 
-  const travelTypes = [
-    { name: 'Solo Travel' }, { name: 'Budget Travel' }, { name: 'Luxury Travel' },
-    { name: 'Adventure' }, { name: 'Family' }, { name: 'Cultural' },
+   const avatarIndex = Math.floor(Math.random() * 70) + 1; 
+   const gender = Math.random() > 0.5 ? 'men' : 'women';
+   const newDM: Room = {
+     id: `dm-${Date.now()}`,
+     name: newDMUsername.trim(),
+     type: 'dm',
+     avatar: `https://randomuser.me/api/portraits/${gender}/${avatarIndex}.jpg`
+   };
 
-  ];
+   setRooms(prevRooms => [...prevRooms, newDM]);
+   setIsNewDMModalOpen(false);
+   setNewDMUsername('');
+   showToast(`DM with ${newDMUsername} created successfully!`, 'success');
+   setSelectedRoomId(newDM.id);
+ };
 
-  const categories = Array.from(new Set(blogPosts.map(post => post.category)));
-  const recentPostsAll = [...blogPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+ const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+   if (e.target.files && e.target.files.length > 0) {
+     const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) { 
+       showToast('File is too large (max 10MB).', 'error');
+       return;
+     }
+     setSelectedFile(file);
+     showToast(`Selected: ${file.name}`, 'info');
+     setIsEmojiPickerOpen(false);
+   }
+ };
 
-  const filteredPosts = blogPosts.filter(post => {
-    const matchesSearch = !searchQuery || 
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !activeCategory || post.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+ const triggerFileInput = () => {
+   fileInputRef.current?.click();
+ };
 
-  const featuredPost = blogPosts.find(post => post.featured) || blogPosts[0] || null;
+ const handleClearFile = () => {
+   setSelectedFile(null);
+   if (fileInputRef.current) {
+     fileInputRef.current.value = '';
+   }
+ };
 
-  const navItems = [
-    { label: 'Home', action: () => navigateTo('home') },
-    { label: 'About', action: () => navigateTo('about') },
-    { label: 'Blog', action: () => navigateTo('blog') },
-    { label: 'Destinations', action: () => { setCurrentBrowseView('destinations'); navigateTo('destinations'); } },
-  ];
+ const onEmojiPickerClick = (emojiData: EmojiClickData) => {
+   setCurrentMessage(prev => prev + emojiData.emoji);
+   messageInputRef.current?.focus(); 
+ };
 
+ useEffect(() => {
+   function handleClickOutside(event: MouseEvent) {
+     if (isEmojiPickerOpen && 
+         emojiPickerRef.current && 
+         !emojiPickerRef.current.contains(event.target as Node) &&
+         emojiButtonRef.current &&
+         !emojiButtonRef.current.contains(event.target as Node)
+         ) {
+       setIsEmojiPickerOpen(false);
+     }
+   }
+   document.addEventListener('mousedown', handleClickOutside);
+   return () => {
+     document.removeEventListener('mousedown', handleClickOutside);
+   };
+ }, [isEmojiPickerOpen]);
 
-  const renderHome = () => {
-    if (!featuredPost) return <div className="text-center py-10">No featured post available.</div>;
-    return (
-    <div className="w-full page-content">
-      <section className="hero-section">
-        <div className="hero-image-container">
-          <img src={featuredPost.featuredImage} alt={featuredPost.title} className="hero-image" />
-          <div className="featured-badge">FEATURED POST</div>
-        </div>
-        <div className="hero-content">
-          <h1 className="hero-title">{featuredPost.title}</h1>
-          <p className="hero-excerpt">{featuredPost.excerpt}</p>
-          <div className="post-meta hero-meta">
-            <span><Calendar size={16} /> {featuredPost.date}</span>
-            <span><Tag size={16} /> {featuredPost.category}</span>
-            <span><MapPin size={16} /> {featuredPost.location}</span>
-          </div>
-          <button onClick={() => navigateTo('post', featuredPost.id)} className="button button-primary">
-            VIEW POST <ArrowRight size={16} className="ml-2" />
-          </button>
-        </div>
-      </section>
+ const filteredMessages = useMemo(() => {
+   return messages
+     .filter(msg => msg.roomId === selectedRoomId)
+     .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+ }, [messages, selectedRoomId]);
 
-      <section className="travel-types-section">
-        <h2 className="section-subtitle text-center">I'm looking for...</h2>
-        <div className="travel-types-grid">
-          {travelTypes.map(type => (
-            <button key={type.name} onClick={() => { setActiveCategory(type.name); navigateTo('blog'); }} className="travel-type-button">
-              {type.name}
-            </button>
-          ))}
-        </div>
-      </section>
+ useEffect(() => {
+   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+ }, [filteredMessages]);
 
-      <section className="latest-posts-section">
-        <div className="text-center">
-          <h3 className="section-title-italic">Recent</h3>
-          <h2 className="section-title-caps">Posts</h2>
-        </div>
-        <div className="post-grid">
-          {recentPostsAll.slice(0, 3).map(post => (
-            <div key={post.id} className="card post-card" onClick={() => navigateTo('post', post.id)}>
-              <div className="post-card-image-container">
-                <img src={post.image} alt={post.title} className="post-card-image" />
-                <div className="post-card-category-badge">{post.category}</div>
-              </div>
-              <div className="post-card-content">
-                <h3 className="post-card-title">{post.title}</h3>
-                <div className="post-meta"><Calendar size={14} /> {post.date}</div>
-                <span className="post-card-readmore">VIEW POST <ArrowRight size={14} /></span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  )};
+ const selectedRoomDetails = rooms.find(room => room.id === selectedRoomId);
 
-  const renderAbout = () => (
-    <div className="page-content page-about">
-      <div className="card about-card">
-        <div className="about-image-container">
-          <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=80" alt="Author portrait" className="about-image" />
-        </div>
-        <div className="about-content">
-          <h2 className="about-title">ABOUT LILY</h2>
-          <p className="about-subtitle">The Wandering Spirit</p>
-          <p className="about-text">I'm Lily, a passionate traveler sharing stories and guides from around the globe. Join me on this journey of discovery!</p>
-          <p className="about-text">This blog is a collection of my adventures, tips, and insights to help you plan your own unforgettable trips.</p>
-          <button onClick={() => notImplemented("About Page")} className="button button-primary">
-            MORE ABOUT ME
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+ // Clear unread count for initially selected room
+ useEffect(() => {
+   if (selectedRoomId) {
+     setRooms(prevRooms => prevRooms.map(r => {
+       if (r.id === selectedRoomId) {
+         const { unread, ...rest } = r;
+         return rest;
+       }
+       return r;
+     }));
+   }
+ }, []); // Run only once on component mount
 
-  const renderDestinations = () => (
-    <div className="page-content page-destinations">
-      <section className="destinations-hero">
-        <img src="https://images.unsplash.com/photo-1488085061387-422e29b40080?q=80&w=1920&auto=format&fit=crop" alt="World destinations" className="destinations-hero-image" />
-        <div className="destinations-hero-overlay">
-          <div className="destinations-hero-content">
-            <h1 className="destinations-hero-title">Discover Your Next Adventure</h1>
-            <p className="destinations-hero-subtitle">From majestic mountains to pristine beaches, find inspiration.</p>
-          </div>
-        </div>
-      </section>
-      
-      <section className="continent-explorer">
-        <div className="section-header">
-          <h2 className="section-title">Explore by Continent</h2>
-          {currentBrowseView !== 'destinations' && (
-            <button onClick={() => setCurrentBrowseView('destinations')} className="button-link back-button">
-              <ChevronRight size={16} className="mr-1 rotate-180" /> Back
-            </button>
-          )}
-        </div>
-        
-        {currentBrowseView === 'destinations' ? (
-          <div className="continent-grid">
-            {continentData.map(continent => (
-              <div key={continent.name} onClick={() => setCurrentBrowseView(continent.name)} className="card continent-card">
-                <div className="continent-card-image-container">
-                  <img src={continent.image} alt={continent.name} className="continent-card-image" />
-                  <div className="continent-card-overlay">
-                    <h3 className="continent-card-title">{continent.name}</h3>
-                  </div>
-                </div>
-                <div className="continent-card-countries">{continent.countries.join(', ')}...</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card continent-detail-view">
-            {(() => {
-              const continent = continentData.find(c => c.name === currentBrowseView);
-              if (!continent) return <p>Continent not found.</p>;
-              return (
-                <>
-                  <img src={continent.image} alt={continent.name} className="continent-detail-image" />
-                  <h1 className="continent-detail-title">{continent.name}</h1>
-                  <p className="continent-detail-description">Discover {continent.countries.length} unique countries in {continent.name}.</p>
-                  <h3 className="section-subtitle">Countries in {continent.name}</h3>
-                  <div className="countries-grid">
-                    {continent.countries.map(country => (
-                      <button key={country} onClick={() => notImplemented(`${country} guides`)} className="country-button">
-                        {country}
-                      </button>
-                    ))}
-                  </div>
-                  <h3 className="section-subtitle">Travel Guides for {continent.name}</h3>
-                  <div className="post-grid">
-                    {blogPosts.filter(p => p.category === continent.name).slice(0,3).map(post => (
-                       <div key={post.id} onClick={() => navigateTo('post', post.id)} className="card post-card-condensed">
-                         <img src={post.image} alt={post.title} className="post-card-condensed-image"/>
-                         <div className="post-card-condensed-content">
-                           <h4 className="post-card-condensed-title">{post.title}</h4>
-                           <p className="post-meta text-xs">{post.date}</p>
+ return (
+   <>
+     <Head>
+       <title>Chat App Pro</title>
+       <meta name="description" content="A feature-rich messaging application" />
+       <link rel="icon" href="/favicon.ico" />
+     </Head>
+
+     <style jsx global>{`
+       :root {
+         --bg-primary: #ffffff; --bg-secondary: #f3f4f6; --bg-tertiary: #e5e7eb; --bg-hover: #d1d5db;
+         --text-primary: #1f2937; --text-secondary: #4b5563; --text-accent: #3b82f6;
+         --border-color: #d1d5db; --sidebar-bg: #f9fafb; --sidebar-text: #374151;
+         --sidebar-hover-bg: #e5e7eb; --sidebar-active-bg: #dbeafe; --sidebar-active-text: #2563eb;
+         --input-bg: #ffffff; --input-border: #cbd5e1; --message-user-bg: #3b82f6;
+         --message-user-text: #ffffff; --message-other-bg: #e5e7eb; --message-other-text: #1f2937;
+         --shadow-color: rgba(0, 0, 0, 0.1); --modal-overlay: rgba(0, 0, 0, 0.5);
+       }
+       html.dark {
+         --bg-primary: #111827; --bg-secondary: #1f2937; --bg-tertiary: #374151; --bg-hover: #4b5563;
+         --text-primary: #f3f4f6; --text-secondary: #9ca3af; --text-accent: #60a5fa;
+         --border-color: #374151; --sidebar-bg: #1f2937; --sidebar-text: #d1d5db;
+         --sidebar-hover-bg: #374151; --sidebar-active-bg: #1e40af; --sidebar-active-text: #eff6ff;
+         --input-bg: #1f2937; --input-border: #4b5563; --message-user-bg: #2563eb;
+         --message-user-text: #ffffff; --message-other-bg: #374151; --message-other-text: #f3f4f6;
+         --shadow-color: rgba(0, 0, 0, 0.3); --modal-overlay: rgba(0, 0, 0, 0.7);
+       }
+       html {
+         height: 100%;
+         overflow: hidden; 
+       }
+       body { 
+         background-color: var(--bg-primary); 
+         color: var(--text-primary); 
+         transition: background-color 0.3s ease, color 0.3s ease; 
+         font-family: 'Inter', sans-serif; 
+         height: 100%;
+         overflow: hidden; 
+         overflow-x: hidden; 
+       }
+       
+       /* Hide all scrollbars globally */
+       * {
+         scrollbar-width: none; /* Firefox */
+         -ms-overflow-style: none; /* Internet Explorer 10+ */
+       }
+       *::-webkit-scrollbar { 
+         display: none; /* WebKit */
+       }
+       
+       html.dark .EmojiPickerReact {
+         --epr-bg-color: var(--bg-secondary);
+         --epr-text-color: var(--text-primary);
+         --epr-search-input-bg-color: var(--input-bg);
+         --epr-category-label-bg-color: var(--bg-secondary);
+         --epr-hover-bg-color: var(--bg-tertiary);
+         --epr-focus-bg-color: var(--bg-hover);
+         --epr-border-color: var(--border-color);
+       }
+       
+       /* Animation Keyframes */
+       @keyframes slideInFromLeft {
+         0% { transform: translateX(-100%); opacity: 0; }
+         100% { transform: translateX(0); opacity: 1; }
+       }
+       
+       @keyframes slideInFromRight {
+         0% { transform: translateX(100%); opacity: 0; }
+         100% { transform: translateX(0); opacity: 1; }
+       }
+       
+       @keyframes fadeInUp {
+         0% { transform: translateY(20px); opacity: 0; }
+         100% { transform: translateY(0); opacity: 1; }
+       }
+       
+       @keyframes fadeInDown {
+         0% { transform: translateY(-20px); opacity: 0; }
+         100% { transform: translateY(0); opacity: 1; }
+       }
+       
+       @keyframes scaleIn {
+         0% { transform: scale(0.8); opacity: 0; }
+         100% { transform: scale(1); opacity: 1; }
+       }
+       
+       @keyframes pulse {
+         0% { transform: scale(1); }
+         50% { transform: scale(1.05); }
+         100% { transform: scale(1); }
+       }
+       
+       @keyframes bounce {
+         0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+         40% { transform: translateY(-10px); }
+         60% { transform: translateY(-5px); }
+       }
+       
+       @keyframes shake {
+         0%, 100% { transform: translateX(0); }
+         10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+         20%, 40%, 60%, 80% { transform: translateX(2px); }
+       }
+       
+       @keyframes glow {
+         0% { box-shadow: 0 0 5px var(--text-accent); }
+         50% { box-shadow: 0 0 20px var(--text-accent), 0 0 30px var(--text-accent); }
+         100% { box-shadow: 0 0 5px var(--text-accent); }
+       }
+       
+       @keyframes typing {
+         0% { width: 0; }
+         100% { width: 100%; }
+       }
+       
+       @keyframes blink {
+         0%, 50% { opacity: 1; }
+         51%, 100% { opacity: 0; }
+       }
+       
+       /* Animation Classes */
+       .animate-slideInLeft {
+         animation: slideInFromLeft 0.5s ease-out forwards;
+       }
+       
+       .animate-slideInRight {
+         animation: slideInFromRight 0.5s ease-out forwards;
+       }
+       
+       .animate-fadeInUp {
+         animation: fadeInUp 0.3s ease-out forwards;
+       }
+       
+       .animate-fadeInDown {
+         animation: fadeInDown 0.3s ease-out forwards;
+       }
+       
+       .animate-scaleIn {
+         animation: scaleIn 0.2s ease-out forwards;
+       }
+       
+       .animate-pulse {
+         animation: pulse 2s infinite;
+       }
+       
+       .animate-shake {
+         animation: shake 0.5s ease-in-out;
+       }
+       
+       .animate-glow {
+         animation: glow 2s ease-in-out infinite;
+       }
+       
+       /* Interactive Animations */
+       .hover-lift {
+         transition: transform 0.2s ease, box-shadow 0.2s ease;
+       }
+       
+       .hover-lift:hover {
+         transform: translateY(-2px);
+         box-shadow: 0 4px 12px var(--shadow-color);
+       }
+       
+       .hover-scale {
+         transition: transform 0.2s ease;
+       }
+       
+       .hover-scale:hover {
+         transform: scale(1.05);
+       }
+       
+       .hover-rotate {
+         transition: transform 0.3s ease;
+       }
+       
+       .hover-rotate:hover {
+         transform: rotate(180deg);
+       }
+       
+       .hover-glow {
+         transition: box-shadow 0.3s ease;
+       }
+       
+       .hover-glow:hover {
+         box-shadow: 0 0 15px var(--text-accent);
+       }
+       
+       /* Button Animations */
+       .btn-animate {
+         position: relative;
+         overflow: hidden;
+         transition: all 0.3s ease;
+       }
+       
+       .btn-animate::before {
+         content: '';
+         position: absolute;
+         top: 0;
+         left: -100%;
+         width: 100%;
+         height: 100%;
+         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+         transition: left 0.5s ease;
+       }
+       
+       .btn-animate:hover::before {
+         left: 100%;
+       }
+       
+       .btn-animate:active {
+         transform: scale(0.98);
+       }
+       
+       /* Message Animations */
+       .message-enter {
+         animation: fadeInUp 0.4s ease-out forwards;
+         opacity: 0;
+         transform: translateY(20px);
+       }
+       
+       .message-user {
+         animation: slideInFromRight 0.4s ease-out forwards;
+       }
+       
+       .message-other {
+         animation: slideInFromLeft 0.4s ease-out forwards;
+       }
+       
+       /* Sidebar Animations */
+       .sidebar-item {
+         transition: all 0.2s ease;
+         position: relative;
+       }
+       
+       .sidebar-item::before {
+         content: '';
+         position: absolute;
+         left: 0;
+         top: 0;
+         height: 100%;
+         width: 3px;
+         background-color: var(--text-accent);
+         transform: scaleY(0);
+         transition: transform 0.2s ease;
+       }
+       
+       .sidebar-item:hover::before,
+       .sidebar-item.active::before {
+         transform: scaleY(1);
+       }
+       
+       .sidebar-item:hover {
+         transform: translateX(5px);
+         background-color: var(--sidebar-hover-bg);
+       }
+       
+       /* Modal Animations */
+       .modal-overlay {
+         animation: fadeInUp 0.3s ease-out forwards;
+       }
+       
+       .modal-content {
+         animation: scaleIn 0.3s ease-out forwards;
+       }
+       
+       /* Toast Animations */
+       @keyframes slideInFromTop {
+         0% { transform: translateY(-100px) scale(0.8); opacity: 0; }
+         100% { transform: translateY(0) scale(1); opacity: 1; }
+       }
+       
+       @keyframes slideOutToTop {
+         0% { transform: translateY(0) scale(1); opacity: 1; }
+         100% { transform: translateY(-100px) scale(0.8); opacity: 0; }
+       }
+       
+       .toast-enter {
+         animation: slideInFromTop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+       }
+       
+       .toast-exit {
+         animation: slideOutToTop 0.3s ease-in forwards;
+       }
+       
+       /* Loading Animations */
+       .loading-dots {
+         display: inline-flex;
+         gap: 2px;
+       }
+       
+       .loading-dots span {
+         width: 4px;
+         height: 4px;
+         border-radius: 50%;
+         background-color: currentColor;
+         animation: bounce 1.4s ease-in-out infinite both;
+       }
+       
+       .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+       .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+       .loading-dots span:nth-child(3) { animation-delay: 0s; }
+       
+       /* Emoji Picker Animations */
+       .emoji-picker-enter {
+         animation: scaleIn 0.2s ease-out forwards;
+         transform-origin: bottom right;
+       }
+       
+       /* Stagger Animation for Lists */
+       .stagger-item {
+         opacity: 0;
+         transform: translateY(20px);
+         animation: fadeInUp 0.4s ease-out forwards;
+       }
+       
+       .stagger-item:nth-child(1) { animation-delay: 0.1s; }
+       .stagger-item:nth-child(2) { animation-delay: 0.2s; }
+       .stagger-item:nth-child(3) { animation-delay: 0.3s; }
+       .stagger-item:nth-child(4) { animation-delay: 0.4s; }
+       .stagger-item:nth-child(5) { animation-delay: 0.5s; }
+       .stagger-item:nth-child(6) { animation-delay: 0.6s; }
+       .stagger-item:nth-child(7) { animation-delay: 0.7s; }
+       .stagger-item:nth-child(8) { animation-delay: 0.8s; }
+       .stagger-item:nth-child(9) { animation-delay: 0.9s; }
+       .stagger-item:nth-child(10) { animation-delay: 1.0s; }
+       
+       /* Smooth Transitions */
+       * {
+         transition-property: color, background-color, border-color, box-shadow, transform;
+         transition-duration: 0.2s;
+         transition-timing-function: ease;
+       }
+       
+       /* Focus Animations */
+       input:focus, textarea:focus, button:focus {
+         outline: none;
+         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+         animation: glow 0.3s ease-out;
+       }
+     `}</style>
+
+     <div className="flex h-screen antialiased text-gray-800 dark:text-gray-200 overflow-hidden">
+       
+       <div className={`
+         ${isMobileMenuOpen ? 'fixed inset-0 z-40 flex' : 'hidden md:fixed md:inset-y-0 md:flex'} 
+         md:w-72 flex-col bg-[var(--sidebar-bg)] border-r border-[var(--border-color)] transition-transform duration-300 ease-in-out
+         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+       `}>
+         <div className="flex flex-col h-full">
+           <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--border-color)] shrink-0 animate-fadeInDown">
+             <div className="flex items-center">
+               <FiMessageSquare className="w-8 h-8 text-[var(--text-accent)] hover-scale" />
+               <span className="ml-2 text-xl font-semibold text-[var(--sidebar-text)]">Convey</span>
+             </div>
+             <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-1 text-[var(--sidebar-text)] hover:text-[var(--text-accent)] cursor-pointer hover-scale">
+               <FiX className="w-6 h-6" />
+             </button>
+           </div>
+
+           <div className="p-4 border-b border-[var(--border-color)] animate-fadeInLeft" style={{ animationDelay: '0.2s' }}>
+               <div className="flex items-center">
+                   <img src={USER_AVATAR} alt="User Avatar" className="w-10 h-10 rounded-full mr-3 object-cover hover-scale"/>
+                   <div>
+                       <p className="font-semibold text-[var(--sidebar-text)]">{CURRENT_USER_NAME}</p>
+                       <p className="text-xs text-green-500 animate-pulse">Online</p>
+                   </div>
+                   <FiChevronDown className="ml-auto text-[var(--sidebar-text)] cursor-pointer hover-scale hover-rotate" onClick={() => showToast('Profile options coming soon!', 'info')} />
+               </div>
+           </div>
+
+           <div className="p-4 animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
+             <div className="relative">
+               <FiSearch className="absolute w-5 h-5 text-gray-400 top-1/2 left-3 transform -translate-y-1/2 hover-scale" />
+               <input
+                 type="text"
+                 placeholder="Search channels or DMs..."
+                 className="w-full py-2 pl-10 pr-4 text-sm border rounded-lg bg-[var(--input-bg)] border-[var(--input-border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--text-accent)] focus:border-[var(--text-accent)] outline-none transition-all duration-300 hover-glow"
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+               />
+             </div>
+             
+             {filteredRoomsAndDMs.length > 0 && searchTerm.trim() !== '' && (
+               <div className="mt-2 p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto animate-scaleIn">
+                 <h3 className="text-xs font-semibold px-2 py-1 text-[var(--text-secondary)]">Search Results</h3>
+                 {filteredRoomsAndDMs.map(room => (
+                   <a
+                     key={room.id}
+                     href="#"
+                     onClick={(e) => { e.preventDefault(); handleSelectRoom(room.id); setSearchTerm(''); }}
+                     className="flex items-center px-2 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--sidebar-hover-bg)] rounded-md cursor-pointer hover-lift"
+                   >
+                     {room.type === 'channel' ? (
+                       room.icon || <FaHashtag className="mr-2 text-base text-gray-400 hover-scale" />
+                     ) : (
+                       <img src={room.avatar} alt={room.name} className="w-6 h-6 mr-2 rounded-full object-cover hover-scale" />
+                     )}
+                     <span>{room.name}</span>
+                     <span className="ml-auto text-xs text-[var(--text-secondary)]">{room.type === 'channel' ? 'Channel' : 'DM'}</span>
+                   </a>
+                 ))}
+               </div>
+             )}
+           </div>
+
+           <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
+             <h3 className="px-2 pt-2 pb-1 text-xs font-semibold tracking-wider uppercase text-[var(--text-secondary)] animate-fadeInDown">Channels</h3>
+             {rooms.filter(r => r.type === 'channel').map((room, index) => (
+               <a
+                 key={room.id}
+                 href="#"
+                 onClick={(e) => { e.preventDefault(); handleSelectRoom(room.id); }}
+                 className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg group cursor-pointer sidebar-item stagger-item hover-lift
+                   ${selectedRoomId === room.id 
+                     ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] active' 
+                     : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--text-primary)]'
+                   }
+                 `}
+                 style={{ animationDelay: `${index * 0.1}s` }}
+               >
+                 {room.icon || <FaHashtag className="mr-3 text-base text-gray-400 hover-scale" />}
+                 <span className="flex-1 truncate">{room.name}</span>
+                 {room.unread && room.unread > 0 && (
+                   <span className="px-2 py-0.5 ml-auto text-xs font-medium text-white bg-red-500 rounded-full">{room.unread}</span>
+                 )}
+               </a>
+             ))}
+             <button 
+               type="button"
+               onClick={() => setIsAddChannelModalOpen(true)}
+               className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--text-primary)] group cursor-pointer sidebar-item hover-lift btn-animate"
+             >
+               <FiPlusCircle className="mr-3 text-base text-gray-400 group-hover:text-[var(--text-accent)] hover-rotate" />
+               Add Channel
+             </button>
+
+             <h3 className="px-2 pt-4 pb-1 text-xs font-semibold tracking-wider uppercase text-[var(--text-secondary)] animate-fadeInDown" style={{ animationDelay: '0.5s' }}>Direct Messages</h3>
+             {rooms.filter(r => r.type === 'dm').map((room, index) => (
+               <a
+                 key={room.id}
+                 href="#"
+                 onClick={(e) => { e.preventDefault(); handleSelectRoom(room.id); }}
+                 className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg group cursor-pointer sidebar-item stagger-item hover-lift
+                   ${selectedRoomId === room.id 
+                     ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] active' 
+                     : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--text-primary)]'
+                   }
+                 `}
+                 style={{ animationDelay: `${(index + 6) * 0.1}s` }}
+               >
+                 <img src={room.avatar} alt={room.name} className="w-6 h-6 mr-3 rounded-full object-cover hover-scale" />
+                 <span className="flex-1 truncate">{room.name}</span>
+                  {room.unread && room.unread > 0 && (
+                   <span className="px-2 py-0.5 ml-auto text-xs font-medium text-white bg-red-500 rounded-full">{room.unread}</span>
+                 )}
+               </a>
+             ))}
+              <button 
+               type="button"
+               onClick={() => setIsNewDMModalOpen(true)}
+               className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--text-primary)] group cursor-pointer sidebar-item hover-lift btn-animate"
+             >
+               <FiPlusCircle className="mr-3 text-base text-gray-400 group-hover:text-[var(--text-accent)] hover-rotate" />
+               New DM
+             </button>
+           </nav>
+
+           <div className="p-3 mt-auto border-t border-[var(--border-color)] animate-fadeInUp" style={{ animationDelay: '1.2s' }}>
+             <div className="flex items-center justify-between">
+                <button type="button" onClick={() => showToast('Settings page coming soon.', 'info')} className="p-2 text-sm rounded-md text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] cursor-pointer hover-scale btn-animate" title="Settings">
+                   <FiSettings className="w-5 h-5 hover-rotate" />
+                 </button>
+               <button type="button" onClick={toggleTheme} className="p-2 rounded-md text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] cursor-pointer hover-scale btn-animate" title={`Switch to ${appTheme === 'light' ? 'Dark' : 'Light'} Mode`}>
+                 {appTheme === 'light' ? <FiMoon className="w-5 h-5 hover-rotate" /> : <FiSun className="w-5 h-5 hover-rotate" />}
+               </button>
+                <button type="button" onClick={() => showToast('Logout feature coming soon.', 'info')} className="p-2 text-sm rounded-md text-red-500 hover:bg-red-100 dark:hover:bg-red-800 dark:hover:text-red-300 cursor-pointer hover-scale btn-animate" title="Logout">
+                   <FiLogOut className="w-5 h-5 hover-scale" />
+                 </button>
+             </div>
+           </div>
+         </div>
+       </div>
+       
+       {isMobileMenuOpen && (
+         <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+       )}
+
+       <div className="flex flex-col flex-1 md:ml-72 h-screen bg-[var(--bg-secondary)] overflow-hidden"> 
+         <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 border-b border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 animate-fadeInDown">
+           <div className="flex items-center min-w-0"> 
+              <button type="button" onClick={() => setIsMobileMenuOpen(true)} className="md:hidden mr-3 p-1 text-[var(--text-primary)] hover:text-[var(--text-accent)] shrink-0 cursor-pointer hover-scale">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+               </svg>
+             </button>
+             {selectedRoomDetails ? (
+               <div className="flex items-center animate-fadeInRight">
+                 {selectedRoomDetails.type === 'dm' && selectedRoomDetails.avatar && (
+                   <img src={selectedRoomDetails.avatar} alt={selectedRoomDetails.name} className="w-8 h-8 mr-3 rounded-full object-cover shrink-0 hover-scale"/>
+                 )}
+                 {selectedRoomDetails.type === 'channel' && selectedRoomDetails.icon && (
+                   <div className="mr-3 text-[var(--text-secondary)] shrink-0 hover-scale">{selectedRoomDetails.icon}</div>
+                 )}
+                 <h2 className="text-lg font-semibold text-[var(--text-primary)] truncate">{selectedRoomDetails.name}</h2>
+                 {selectedRoomDetails.type === 'dm' && <span className="ml-2 w-2.5 h-2.5 bg-green-500 rounded-full shrink-0 animate-pulse"></span>}
+               </div>
+             ) : (
+               <h2 className="text-lg font-semibold text-[var(--text-primary)] animate-fadeInRight">Select a conversation</h2>
+             )}
+           </div>
+           <div className="flex items-center space-x-1 sm:space-x-3 shrink-0 animate-fadeInLeft">
+             <button type="button" onClick={() => showToast('Call feature coming soon!', 'info')} className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] cursor-pointer hover-scale btn-animate">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.362-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 6.75z" /></svg>
+             </button>
+              <button type="button" onClick={() => showToast('Video call feature coming soon!', 'info')} className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] cursor-pointer hover-scale btn-animate">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" /></svg>
+             </button>
+             <button type="button" onClick={() => showToast('Room info panel coming soon!', 'info')} className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] cursor-pointer hover-scale btn-animate">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+             </button>
+           </div>
+         </div>
+
+         <div className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto"> 
+           {selectedRoomId ? (
+             filteredMessages.length > 0 ? (
+               filteredMessages.map((msg, index) => (
+                 <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} message-enter`} style={{ animationDelay: `${index * 0.1}s` }}>
+                   <div className={`flex items-end gap-3 max-w-[90%] xs:max-w-[80%] sm:max-w-xs lg:max-w-md hover-lift ${msg.sender === 'user' ? 'flex-row-reverse message-user' : 'message-other'}`}> 
+                      {msg.sender === 'other' && (
+                         <img src={msg.avatar} alt={msg.senderName || "Avatar"} className="w-8 h-8 rounded-full object-cover self-start shrink-0 hover-scale"/>
+                       )}
+                     <div className={`p-3 rounded-xl shadow-md transition-all duration-300 hover:shadow-lg ${msg.sender === 'user' ? 'bg-[var(--message-user-bg)] text-[var(--message-user-text)] rounded-br-none' : 'bg-[var(--message-other-bg)] text-[var(--message-other-text)] rounded-bl-none'}`}>
+                       {msg.sender === 'other' && msg.senderName && (
+                         <p className="text-xs font-semibold mb-1 opacity-80">{msg.senderName}</p>
+                       )}
+                       {msg.text && <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>}
+                       
+                       {msg.attachment && (
+                         <div className={`mt-2 ${!msg.text ? 'mt-0' : ''} animate-fadeInUp`}>
+                           {msg.attachment?.type === 'image' ? (
+                             <div className="relative group">
+                               <img src={msg.attachment?.url} alt={msg.attachment?.name} className="max-w-full h-auto rounded-lg max-h-60 object-cover cursor-pointer transition-transform duration-300 hover:scale-105" onClick={() => window.open(msg.attachment?.url, '_blank')}/>
+                               <p className="text-xs mt-1 opacity-70">{msg.attachment?.name}</p>
+                             </div>
+                           ) : (
+                             <div className="flex items-center p-2 bg-black/10 dark:bg-white/10 rounded-lg hover-lift">
+                               <FiFile className="mr-2 text-lg shrink-0 text-[var(--text-accent)] hover-scale" />
+                               <div className="truncate">
+                                 <p className="text-xs font-medium truncate">{msg.attachment.name}</p>
+                                 {msg.attachment.size && (<p className="text-xs opacity-70">{(msg.attachment.size / 1024).toFixed(1)} KB</p>)}
+                               </div>
+                               <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" download={msg.attachment.name} className="ml-auto p-1 text-[var(--text-accent)] hover:text-opacity-80 cursor-pointer hover-scale">
+                                 <FiDownload className="w-4 h-4" />
+                               </a>
+                             </div>
+                           )}
                          </div>
-                       </div>
-                    ))}
-                    {blogPosts.filter(p => p.category === continent.name).length === 0 && <p className="no-results-text">No guides for {continent.name} yet.</p>}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
-      </section>
-    </div>
-  );
+                       )}
+                       <p className={`text-xs mt-1 opacity-70 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
+                         {isClient ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
+                       </p>
+                     </div>
+                      {msg.sender === 'user' && (
+                         <img src={msg.avatar} alt={msg.senderName || "User Avatar"} className="w-8 h-8 rounded-full object-cover self-start shrink-0 hover-scale"/>
+                       )}
+                   </div>
+                 </div>
+               ))
+             ) : (
+               <div className="flex flex-col items-center justify-center h-full text-center text-[var(--text-secondary)] animate-fadeInUp">
+                 <FiMessageSquare className="w-16 h-16 mb-4 opacity-50 animate-pulse" />
+                 <p className="text-xl font-semibold">No messages yet</p>
+                 <p>Be the first to send a message in {selectedRoomDetails?.type === 'channel' ? '#' : ''}{selectedRoomDetails?.name || 'this room'}.</p>
+               </div>
+             )
+           ) : (
+             <div className="flex flex-col items-center justify-center h-full text-center text-[var(--text-secondary)] animate-fadeInUp">
+               <FiUsers className="w-16 h-16 mb-4 opacity-50 animate-pulse" />
+               <p className="text-xl font-semibold">Welcome to Convey!</p>
+               <p>Select a channel or DM from the sidebar to start chatting.</p>
+             </div>
+           )}
+           <div ref={messagesEndRef} />
+         </div>
 
-  const renderBlog = () => (
-    <div className="page-content page-blog">
-      <section className="blog-hero">
-        <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&auto=format&fit=crop" alt="Travel blogging" className="blog-hero-image" />
-        <div className="blog-hero-overlay">
-          <div className="blog-hero-content">
-            <h1 className="blog-hero-title">Travel Stories & Inspiration</h1>
-            <p className="blog-hero-subtitle">Guides, tips, and adventures to fuel your wanderlust.</p>
-            <div className="search-bar-container">
-              <input type="text" placeholder="Search articles..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
-              <Search className="search-icon" size={20} />
-            </div>
-          </div>
-        </div>
-      </section>
+         {selectedRoomId && (
+           <div className="p-4 sm:p-3 border-t border-[var(--border-color)] bg-[var(--bg-primary)] shrink-0 animate-fadeInUp"> 
+             {selectedFile && (
+               <div className="mb-3 p-2 bg-[var(--bg-tertiary)] rounded-lg flex items-center animate-slideInLeft">
+                 {selectedFile.type.startsWith('image/') ? <FiImage className="mr-2 text-[var(--text-secondary)] shrink-0 hover-scale" /> : <FiFile className="mr-2 text-[var(--text-secondary)] shrink-0 hover-scale" />}
+                 <span className="text-sm truncate flex-1 mr-2">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                 <button type="button" onClick={handleClearFile} className="p-1 ml-auto text-[var(--text-secondary)] hover:text-[var(--text-accent)] rounded-full cursor-pointer hover-scale">
+                   <FiX className="w-4 h-4" />
+                 </button>
+               </div>
+             )}
+             
+             <form onSubmit={handleSendMessage} className="flex items-center space-x-2 sm:space-x-3">
+               <button type="button" onClick={triggerFileInput} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] rounded-full hover:bg-[var(--bg-tertiary)] cursor-pointer hover-scale btn-animate">
+                 <FiPaperclip className="w-5 h-5" />
+               </button>
+               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,application/pdf,.doc,.docx,.txt,.zip,.mp4,.mov,.mp3"/>
+               
+               <input
+                 ref={messageInputRef}
+                 type="text"
+                 value={currentMessage}
+                 onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value)}
+                 placeholder={`Message ${selectedRoomDetails?.type === 'channel' ? '#' : ''}${selectedRoomDetails?.name || '...'}`}
+                 className="flex-1 px-3 py-2 text-sm border rounded-lg bg-[var(--input-bg)] border-[var(--input-border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--text-accent)] focus:border-[var(--text-accent)] outline-none transition-all duration-300 hover-glow"
+               />
+               
+               <div className="relative">
+                 <button 
+                   type="button"
+                   ref={emojiButtonRef}
+                   onClick={() => setIsEmojiPickerOpen(prev => !prev)}
+                   className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] rounded-full hover:bg-[var(--bg-tertiary)] cursor-pointer hover-scale btn-animate"
+                 >
+                   <FaRegSmile className="w-5 h-5" />
+                 </button>
+                 
+                 {isEmojiPickerOpen && (
+                   <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-20 emoji-picker-enter">
+                      <EmojiPicker
+                         onEmojiClick={onEmojiPickerClick}
+                         autoFocusSearch={false}
+                         theme={appTheme === 'dark' ? EmojiPickerTheme.DARK : EmojiPickerTheme.LIGHT}
+                         height={350}
+                         width={320}
+                         lazyLoadEmojis={true}
+                         previewConfig={{showPreview: false}} 
+                       />
+                   </div>
+                 )}
+               </div>
+               
+               <button
+                 type="submit"
+                 className="p-2 rounded-lg bg-[var(--text-accent)] text-white hover:bg-opacity-90 focus:ring-2 focus:ring-offset-1 focus:ring-[var(--text-accent)] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer hover-scale btn-animate animate-glow"
+                 disabled={(!currentMessage.trim() && !selectedFile) || isUploading}
+               >
+                 {isUploading ? (
+                   <div className="loading-dots">
+                     <span></span>
+                     <span></span>
+                     <span></span>
+                   </div>
+                 ) : (
+                   <FiSend className="w-5 h-5" />
+                 )}
+               </button>
+             </form>
+           </div>
+         )}
+       </div>
+     </div>
 
-      <nav className="category-filter">
-        <button onClick={() => setActiveCategory('')} className={`category-button ${!activeCategory ? 'active' : ''}`}>All</button>
-        {categories.map(cat => (
-          <button key={cat} onClick={() => setActiveCategory(cat)} className={`category-button ${activeCategory === cat ? 'active' : ''}`}>{cat}</button>
-        ))}
-      </nav>
+     {isAddChannelModalOpen && (
+       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--modal-overlay)] p-4 modal-overlay">
+         <div className="bg-[var(--bg-primary)] rounded-lg shadow-xl w-full max-w-md p-6 modal-content">
+           <div className="flex items-center justify-between mb-4">
+             <h3 className="text-lg font-semibold text-[var(--text-primary)]">Create New Channel</h3>
+             <button type="button" onClick={() => {setIsAddChannelModalOpen(false); setNewChannelName('');}} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-accent)] cursor-pointer hover-scale"><FiX className="w-5 h-5" /></button>
+           </div>
+           <form onSubmit={handleAddChannel}>
+             <div className="mb-4">
+               <label htmlFor="channelName" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Channel Name</label>
+               <div className="flex items-center">
+                 <span className="mr-2 text-[var(--text-secondary)]"><FaHashtag /></span>
+                 <input id="channelName" type="text" placeholder="e.g. marketing-updates" value={newChannelName} onChange={(e) => setNewChannelName(e.target.value)} className="flex-1 px-3 py-2 text-sm border rounded-md bg-[var(--input-bg)] border-[var(--input-border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--text-accent)] outline-none transition-all duration-300" required />
+               </div>
+               <p className="mt-1 text-xs text-[var(--text-secondary)]">Use lowercase letters, numbers, and hyphens. Will be auto-formatted.</p>
+             </div>
+             <div className="flex justify-end space-x-3">
+               <button type="button" onClick={() => {setIsAddChannelModalOpen(false); setNewChannelName('');}} className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] cursor-pointer hover-lift btn-animate">Cancel</button>
+               <button type="submit" className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--text-accent)] text-white hover:bg-opacity-90 disabled:opacity-50 cursor-pointer hover-lift btn-animate" disabled={!newChannelName.trim()}>Create Channel</button>
+             </div>
+           </form>
+         </div>
+       </div>
+     )}
 
-      <section className="blog-grid-section">
-        <div className="post-grid">
-          {filteredPosts.length > 0 ? filteredPosts.map(post => (
-            <div key={post.id} className="card post-card" onClick={() => navigateTo('post', post.id)}>
-              <div className="post-card-image-container">
-                <img src={post.image} alt={post.title} className="post-card-image" />
-                <div className="post-card-category-badge">{post.category}</div>
-              </div>
-              <div className="post-card-content">
-                <h3 className="post-card-title">{post.title}</h3>
-                <div className="post-meta-multiple">
-                  <span><Calendar size={12}/> {post.date}</span>
-                  <span><MapPin size={12}/> {post.location}</span>
-                </div>
-                <p className="post-card-excerpt">{post.excerpt}</p>
-                <span className="post-card-readmore">READ MORE <ArrowRight size={16} /></span>
-              </div>
-            </div>
-          )) : (
-            <p className="no-results-text col-span-full">No articles found.</p>
-          )}
-        </div>
-      </section>
-      
-      <section className="newsletter-section card">
-        <h2 className="section-title text-center">Join Our Community</h2>
-        <p className="text-center mb-6">Get travel inspiration and tips straight to your inbox.</p>
-        <form onSubmit={handleNewsletterSubscribe} className="newsletter-form">
-          <input 
-            type="email" 
-            placeholder="Your email address" 
-            required 
-            className="form-input flex-grow"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-          />
-          <button type="submit" className="button button-primary">
-            {isSubscribed ? 'Subscribed!' : 'Subscribe'}
-          </button>
-        </form>
-      </section>
-    </div>
-  );
+     {isNewDMModalOpen && (
+       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--modal-overlay)] p-4 modal-overlay">
+         <div className="bg-[var(--bg-primary)] rounded-lg shadow-xl w-full max-w-md p-6 modal-content">
+           <div className="flex items-center justify-between mb-4">
+             <h3 className="text-lg font-semibold text-[var(--text-primary)]">Start Direct Message</h3>
+             <button type="button" onClick={() => {setIsNewDMModalOpen(false); setNewDMUsername('');}} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-accent)] cursor-pointer hover-scale"><FiX className="w-5 h-5" /></button>
+           </div>
+           <form onSubmit={handleAddNewDM}>
+             <div className="mb-4">
+               <label htmlFor="dmUsername" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Username or Name</label>
+               <input id="dmUsername" type="text" placeholder="e.g. John Doe" value={newDMUsername} onChange={(e) => setNewDMUsername(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-md bg-[var(--input-bg)] border-[var(--input-border)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--text-accent)] outline-none transition-all duration-300" required />
+             </div>
+             <div className="flex justify-end space-x-3">
+               <button type="button" onClick={() => {setIsNewDMModalOpen(false); setNewDMUsername('');}} className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] cursor-pointer hover-lift btn-animate">Cancel</button>
+               <button type="submit" className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--text-accent)] text-white hover:bg-opacity-90 disabled:opacity-50 cursor-pointer hover-lift btn-animate" disabled={!newDMUsername.trim()}>Start Chat</button>
+             </div>
+           </form>
+         </div>
+       </div>
+     )}
 
-  const renderPost = () => {
-    const post = blogPosts.find(p => p.id === currentPostId);
-    if (!post) return <div className="text-center py-10">Post not found.</div>;
-    
-    return (
-      <article className="card post-full-content">
-        <button 
-          onClick={() => navigateTo('blog')} 
-          className="back-button-post"
-          aria-label="Back to blog"
-        >
-          <ChevronRight size={20} className="back-icon" />
-          <span>Back to Blog</span>
-        </button>
-        
-        <img src={post.featuredImage} alt={post.title} className="post-full-image" />
-        <h1 className="post-full-title">{post.title}</h1>
-        <div className="post-full-meta">
-          <img src={post.authorImage} alt={post.author} className="author-image" />
-          <div>
-            <p className="author-name">{post.author}</p>
-            <p className="post-date">{post.date}</p>
-          </div>
-        </div>
-        <div className="prose-content" dangerouslySetInnerHTML={{ __html: post.content }} />
-        
-        <div className="related-posts-section">
-          <h3 className="section-subtitle">You might also like</h3>
-          <div className="post-grid related-posts-grid">
-            {recentPostsAll.filter(p => p.id !== currentPostId).slice(0, 2).map(relatedPost => (
-              <div key={relatedPost.id} onClick={() => navigateTo('post', relatedPost.id)} className="card post-card-condensed">
-                <img src={relatedPost.image} alt={relatedPost.title} className="post-card-condensed-image"/>
-                <div className="post-card-condensed-content">
-                  <h4 className="post-card-condensed-title">{relatedPost.title}</h4>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </article>
-    );
-  };
-
-  return (
-    <div className={`app-wrapper ${darkMode ? 'dark-theme-active' : ''}`}>
-      <div className={`theme-transition-overlay ${isThemeChanging ? 'active' : ''}`}></div>
-      
-      <header className="main-header">
-        <div className="container header-container">
-          <div className="header-left">
-            <button onClick={() => setIsSidebarOpen(true)} className="icon-button mobile-menu-button" aria-label="Open menu"><Menu size={24} /></button>
-            <h1 onClick={() => navigateTo('home')} className="site-title">Wanderlust</h1>
-          </div>
-          <nav className="main-nav">
-            {navItems.map(item => (
-              <div key={item.label} className="nav-item-wrapper">
-                <button onClick={item.action} className="nav-link">
-                  {item.label}
-                </button>
-              </div>
-            ))}
-          </nav>
-          <div className="header-right">
-            {currentView === 'blog' && (
-              <button onClick={() => setShowSearchInput(!showSearchInput)} className="icon-button" aria-label="Toggle search"><Search size={20} /></button>
-            )}
-            <button onClick={toggleDarkMode} className="icon-button" aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>{darkMode ? <Sun size={20} /> : <Moon size={20} />}</button>
-          </div>
-        </div>
-        {showSearchInput && currentView === 'blog' && (
-          <div className="search-bar-fullwidth"><input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input-fullwidth" /></div>
-        )}
-      </header>
-      
-      <div className={`mobile-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="mobile-sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
-        <div className="mobile-sidebar-content">
-          <div className="mobile-sidebar-header">
-            <h2 className="mobile-sidebar-title">Menu</h2>
-            <button onClick={() => setIsSidebarOpen(false)} className="icon-button" aria-label="Close menu"><X size={24} /></button>
-          </div>
-          <nav className="mobile-sidebar-nav">
-            <ul>
-              {navItems.map(item => (
-                <li key={item.label}>
-                  <button onClick={() => { if(item.action) item.action(); setIsSidebarOpen(false); }} className="mobile-nav-link">
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      </div>
-      
-      <main className="main-content container">
-        {currentView === 'home' && renderHome()}
-        {currentView === 'about' && renderAbout()}
-        {currentView === 'blog' && renderBlog()}
-        {currentView === 'destinations' && renderDestinations()}
-        {currentView === 'post' && renderPost()}
-      </main>
-      
-      <footer className="main-footer">
-        <div className="container footer-container">
-          <div className="footer-column">
-            <h3 className="footer-heading">Wanderlust</h3>
-            <p className="footer-text">Explore the world with us.</p>
-            <div className="social-icons">
-               {[Instagram, Facebook, Twitter, Youtube].map((Icon, idx) => (
-                <button key={idx} onClick={() => notImplemented("Social Media")} className="social-icon-button"><Icon size={20} /></button>
-              ))}
-            </div>
-          </div>
-          <div className="footer-column">
-            <h3 className="footer-heading">Explore</h3>
-            <ul className="footer-links">
-              {['Home', 'About', 'Blog', 'Destinations'].map(label => (
-                <li key={label}><button onClick={() => navigateTo(label.toLowerCase() as ViewType)} className="footer-link">{label}</button></li>
-              ))}
-            </ul>
-          </div>
-          <div className="footer-column">
-            <h3 className="footer-heading">Categories</h3>
-            <ul className="footer-links">
-              {categories.slice(0, 4).map(cat => (
-                <li key={cat}><button onClick={() => { setActiveCategory(cat); navigateTo('blog'); }} className="footer-link">{cat}</button></li>
-              ))}
-            </ul>
-          </div>
-          <div className="footer-column">
-            <h3 className="footer-heading">Newsletter</h3>
-            <form onSubmit={handleNewsletterSubscribe} className="newsletter-form">
-              <input 
-                type="email" 
-                placeholder="Your email address" 
-                required 
-                className="form-input flex-grow"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-              />
-              <button type="submit" className="button button-primary">
-                {isSubscribed ? 'Subscribed!' : 'Subscribe'}
-              </button>
-            </form>
-          </div>
-        </div>
-        <div className="footer-bottom-text">© {new Date().getFullYear()} Wanderlust. All rights reserved.</div>
-      </footer>
-      
-      {showToast && (
-        <div className="toast-notification">
-          <AlertCircle size={22} className="toast-icon" />
-          <div className="toast-content">
-            <p className="toast-title">Heads up!</p>
-            <p className="toast-message">{toastMessage}</p>
-          </div>
-          <button onClick={() => setShowToast(false)} className="toast-close-button"><X size={18}/></button>
-        </div>
-      )}
-      
-      <style jsx global>{`
-        
-        :root {
-          --font-primary: 'Inter', sans-serif;
-          --font-serif: 'Lora', serif;
-          --transition-duration: 0.3s;
-
-          
-          --bg-primary: #ffffff;
-          --bg-secondary: #f9fafb; 
-          --bg-tertiary: #f3f4f6; 
-          --bg-overlay: rgba(255, 255, 255, 0.8);
-
-          --text-primary: #1f2937; 
-          --text-secondary: #4b5563; 
-          --text-muted: #6b7280; 
-          --text-on-accent: #ffffff;
-          --text-accent: #0d9488; 
-          --text-accent-hover: #0f766e; 
-          --text-inverted: #ffffff; 
-          
-          --border-primary: #e5e7eb; 
-          --border-secondary: #d1d5db; 
-
-          --accent-primary: #14b8a6; 
-          --accent-secondary: #0d9488; 
-          --accent-hover: #0f766e; 
-          --accent-bg-subtle: #ccfbf1; 
-
-          --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-          --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-          --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-          --image-filter: none;
-          --prose-text: var(--text-primary);
-          --prose-headings: var(--text-primary);
-          --prose-links: var(--text-accent);
-          --prose-hr: var(--border-secondary);
-        }
-
-        body.dark-theme {
-          
-          --bg-primary: #111827; 
-          --bg-secondary: #1f2937; 
-          --bg-tertiary: #374151; 
-          --bg-overlay: rgba(17, 24, 39, 0.8);
-
-          --text-primary: #f3f4f6; 
-          --text-secondary: #9ca3af; 
-          --text-muted: #6b7280; 
-          --text-on-accent: #111827; 
-          --text-accent: #2dd4bf; 
-          --text-accent-hover: #5eead4; 
-          --text-inverted: #1f2937; 
-          
-          --border-primary: #374151;
-          --border-secondary: #4b5563; 
-
-          --accent-primary: #2dd4bf; 
-          --accent-secondary: #5eead4;
-          --accent-hover: #99f6e4;  
-          --accent-bg-subtle: #0f766e; 
-
-          --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-          --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.26);
-          --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-          
-          --image-filter: brightness(0.85) contrast(1.05);
-          --prose-text: var(--text-secondary);
-          --prose-headings: var(--text-primary);
-          --prose-links: var(--text-accent);
-          --prose-hr: var(--border-secondary);
-        }
-
-        
-        body { 
-          font-family: var(--font-primary); 
-          background-color: var(--bg-primary);
-          color: var(--text-primary);
-          transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease;
-          margin: 0;
-          -webkit-font-smoothing: antialiased; 
-          -moz-osx-font-smoothing: grayscale;
-        }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap');
-        
-        .app-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
-        .container { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
-        .page-content { padding-top: 2rem; padding-bottom: 2rem; }
-
-        h1, h2, h3, h4, h5, h6 { font-family: var(--font-serif); color: var(--text-primary); margin-bottom: 1rem; }
-        p { color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem; }
-        a { color: var(--text-accent); text-decoration: none; transition: color var(--transition-duration) ease; }
-        a:hover { color: var(--text-accent-hover); }
-        img { max-width: 100%; height: auto; display: block; }
-        img:not(.icon) { filter: var(--image-filter); transition: filter var(--transition-duration) ease; }
-        
-        .button {
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem; 
-          font-weight: 500;
-          text-align: center;
-          cursor: pointer;
-          transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease, transform var(--transition-duration) ease;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid transparent;
-          box-shadow: none;
-        }
-        .button:hover { transform: translateY(-1px); }
-        .button-primary { background-color: var(--accent-primary); color: var(--text-on-accent); }
-        .button-primary:hover { background-color: var(--accent-hover); }
-        .button-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-secondary); }
-        .button-secondary:hover { background-color: var(--border-primary); }
-        .button-link { background: none; border: none; box-shadow: none; padding: 0; color: var(--text-accent); }
-        .button-link:hover { color: var(--text-accent-hover); text-decoration: underline; transform: none; }
-
-        .icon-button {
-          background: none; border: none; padding: 0.5rem; cursor: pointer;
-          color: var(--text-secondary); border-radius: 0.5rem;
-          transition: color var(--transition-duration) ease, background-color var(--transition-duration) ease;
-        }
-        .icon-button:hover { color: var(--text-accent); background-color: var(--bg-tertiary); }
-
-        .card {
-          background-color: var(--bg-secondary);
-          border: none;
-          border-radius: 0.5rem; 
-          padding: 1.5rem;
-          box-shadow: none;
-          transition: background-color var(--transition-duration) ease, transform var(--transition-duration) ease;
-        }
-        .card:hover { transform: translateY(-2px); background-color: var(--bg-tertiary); }
-
-        .form-input {
-          padding: 0.75rem 1rem;
-          border: none;
-          border-radius: 0.375rem;
-          background-color: var(--bg-tertiary);
-          color: var(--text-primary);
-          transition: background-color var(--transition-duration) ease, box-shadow var(--transition-duration) ease;
-        }
-        .form-input:focus { outline: none; background-color: var(--bg-primary); box-shadow: 0 0 0 2px var(--accent-primary); }
-
-        .section-title { font-size: 2rem; font-weight: 600; margin-bottom: 0.5rem; text-align: center; }
-        .section-title-italic { font-size: 2.5rem; font-style: italic; font-weight: 300; margin-bottom: 0.25rem; color: var(--text-muted); text-align: center; }
-        .section-title-caps { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 2rem; text-align: center; }
-        .section-subtitle { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: var(--text-primary); }
-        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        
-        
-        .main-header { 
-          position: sticky; top: 0; z-index: 40; 
-          background-color: var(--bg-overlay); backdrop-filter: blur(8px);
-          border-bottom: 1px solid var(--border-primary);
-          box-shadow: var(--shadow-sm);
-          transition: background-color var(--transition-duration) ease, border-color var(--transition-duration) ease;
-        }
-        .header-container { display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        .site-title { font-size: 1.75rem; font-weight: 600; cursor: pointer; color: var(--text-primary); transition: color var(--transition-duration) ease; margin: 0; line-height: 1; }
-        .site-title:hover { color: var(--text-accent); }
-        .main-nav { display: none; } 
-        @media (min-width: 1024px) { .main-nav { display: flex; align-items: center; gap: 0.25rem; } }
-        .nav-item-wrapper { position: relative; }
-        .nav-link { 
-          padding: 0.5rem 0.75rem; font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); 
-          border-radius: 0.375rem; display: flex; align-items: center;
-          transition: color var(--transition-duration) ease, background-color var(--transition-duration) ease;
-          cursor: pointer;
-        }
-        .nav-link:hover { color: var(--text-accent); background-color: var(--bg-tertiary); }
-        .nav-dropdown-icon { margin-left: 0.25rem; transition: transform var(--transition-duration) ease; }
-        .nav-item-wrapper:hover .nav-dropdown-icon { transform: rotate(90deg); }
-        .nav-dropdown {
-          position: absolute; left: 0; top: 100%; margin-top: 0.5rem; width: 14rem; 
-          background-color: var(--bg-primary); border: 1px solid var(--border-primary);
-          border-radius: 0.375rem; box-shadow: var(--shadow-lg); padding: 0.5rem;
-          display: none; z-index: 50;
-        }
-        .nav-item-wrapper:hover .nav-dropdown { display: block; }
-        .nav-dropdown-link {
-          display: block; width: 100%; text-align: left;
-          padding: 0.625rem 1rem; font-size: 0.875rem; color: var(--text-primary);
-          border-radius: 0.25rem;
-          transition: color var(--transition-duration) ease, background-color var(--transition-duration) ease;
-          cursor: pointer;
-        }
-        .nav-dropdown-link:hover { color: var(--text-accent); background-color: var(--bg-tertiary); }
-        .header-right { display: flex; align-items: center; gap: 0.75rem; }
-        .mobile-menu-button { display: block; }
-        @media (min-width: 1024px) { .mobile-menu-button { display: none; } }
-        .search-bar-fullwidth { padding: 1rem; background-color: var(--bg-primary); }
-        .search-input-fullwidth {
-          width: 100%; padding: 0.75rem 1rem; border-radius: 0.375rem;
-          border: 1px solid var(--border-secondary); background-color: var(--bg-secondary);
-          color: var(--text-primary);
-        }
-        .search-input-fullwidth:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 2px var(--accent-bg-subtle); }
-        
-        
-        .mobile-sidebar { position: fixed; inset: 0; z-index: 50; transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
-        .mobile-sidebar.open { transform: translateX(0); }
-        .mobile-sidebar-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-        .mobile-sidebar-content { 
-          position: relative; width: 18rem; /* 288px */ max-width: calc(100vw - 4rem); height: 100%; 
-          background-color: var(--bg-primary); box-shadow: var(--shadow-xl);
-          display: flex; flex-direction: column;
-        }
-        .mobile-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; border-bottom: 1px solid var(--border-primary); }
-        .mobile-sidebar-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
-        .mobile-sidebar-nav { flex-grow: 1; padding: 1.25rem; overflow-y: auto; }
-        .mobile-sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .mobile-sidebar-nav li { margin-bottom: 0.25rem; }
-        .mobile-nav-link {
-          display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;
-          font-size: 1.125rem; font-weight: 500; color: var(--text-primary);
-          padding: 0.625rem 0.75rem; border-radius: 0.375rem;
-          transition: color var(--transition-duration) ease, background-color var(--transition-duration) ease;
-          cursor: pointer;
-        }
-        .mobile-nav-link:hover { color: var(--text-accent); background-color: var(--bg-tertiary); }
-        .mobile-nav-dropdown { margin-left: 1rem; margin-top: 0.25rem; padding-left: 0.75rem; border-left: 1px solid var(--border-primary); }
-        .mobile-nav-dropdown-link {
-          display: block; width: 100%; text-align: left; font-size: 1rem; color: var(--text-secondary);
-          padding: 0.5rem 0.5rem; border-radius: 0.375rem;
-          cursor: pointer;
-        }
-        .mobile-nav-dropdown-link:hover { color: var(--text-accent); background-color: var(--bg-tertiary); }
-
-        
-        .main-content { flex-grow: 1; padding-top: 2rem; padding-bottom: 2rem; }
-        
-      
-        .hero-section { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: center; margin-bottom: 4rem; }
-        @media (min-width: 1024px) { .hero-section { grid-template-columns: 1fr 1fr; } .hero-image-container { order: 2; } }
-        .hero-image-container { position: relative; }
-        .hero-image { width: 100%; height: 24rem; lg:height: 32rem; object-fit: cover; border-radius: 0.5rem; box-shadow: var(--shadow-lg); }
-        .featured-badge { 
-          position: absolute; top: 1.5rem; right: 1.5rem; 
-          background-color: var(--bg-primary); opacity: 0.9;
-          padding: 0.5rem 1rem; border-radius: 0.375rem; box-shadow: var(--shadow-sm);
-          font-size: 0.875rem; font-weight: 500; color: var(--text-accent);
-        }
-        .hero-title { font-size: 2.25rem; lg:font-size: 2.75rem; font-weight: 300; margin-bottom: 1rem; line-height: 1.2; }
-        .hero-excerpt { font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
-        .post-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem; }
-        .post-meta span { display: flex; align-items: center; gap: 0.25rem; }
-        .hero-meta { margin-bottom: 2rem; }
-        
-        .travel-types-section { margin-bottom: 5rem; }
-        .travel-types-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; }
-        .travel-type-button {
-          padding: 0.75rem; border-radius: 0.5rem; text-align: center; cursor: pointer;
-          background-color: var(--bg-tertiary); color: var(--text-primary);
-          font-size: 0.875rem; font-weight: 500; text-transform: uppercase;
-          transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease, transform var(--transition-duration) ease;
-          box-shadow: none;
-          border: none;
-        }
-        .travel-type-button:hover { background-color: var(--accent-primary); color: var(--text-on-accent); transform: translateY(-1px); }
-        
-        .latest-posts-section { margin-bottom: 3rem; }
-        .post-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
-        @media (min-width: 768px) { .post-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 1024px) { .post-grid { grid-template-columns: repeat(3, 1fr); } }
-        
-        .post-card { padding: 0; overflow: hidden; cursor: pointer; transition: transform var(--transition-duration) ease, background-color var(--transition-duration) ease; border: none; border-radius: 0.5rem; background-color: var(--bg-secondary); }
-        .post-card:hover { transform: translateY(-3px); background-color: var(--bg-tertiary); }
-        .post-card-image-container { position: relative; height: 16rem; overflow: hidden; }
-        .post-card-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .post-card:hover .post-card-image { transform: scale(1.05); }
-        .post-card-category-badge {
-          position: absolute; top: 1rem; left: 1rem;
-          background-color: var(--bg-primary); opacity: 0.95;
-          padding: 0.25rem 0.75rem; border-radius: 9999px; box-shadow: none;
-          font-size: 0.75rem; text-transform: uppercase; font-weight: 500; color: var(--text-primary);
-          border: none;
-        }
-        .post-card-content { padding: 1.5rem; }
-        .post-card-title { font-size: 1.25rem; font-family: var(--font-serif); margin-bottom: 0.75rem; color: var(--text-primary); }
-        .post-card:hover .post-card-title { color: var(--text-accent); }
-        .post-card-excerpt { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; line-clamp: 3; -webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-        .post-card-readmore { display: inline-flex; align-items: center; font-size: 0.875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-accent); }
-        .post-card-readmore svg { margin-left: 0.25rem; transition: transform var(--transition-duration) ease; }
-        .post-card:hover .post-card-readmore svg { transform: translateX(4px); }
-
-        
-        .page-about { display: flex; justify-content: center; align-items: center; }
-        .about-card { display: grid; grid-template-columns: 1fr; gap: 3rem; align-items: center; max-width: 56rem; /* 896px */ }
-        @media (min-width: 1024px) { .about-card { grid-template-columns: 2fr 3fr; } }
-        .about-image-container { display: flex; justify-content: center; }
-        .about-image { width: 100%; max-width: 20rem; /* 320px */ border-radius: 0.5rem; box-shadow: var(--shadow-xl); aspect-ratio: 1/1; object-fit: cover; }
-        .about-content { text-align: center; }
-        @media (min-width: 1024px) { .about-content { text-align: left; } }
-        .about-title { font-size: 2rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 0.25rem; }
-        .about-subtitle { font-size: 1.25rem; font-style: italic; color: var(--text-accent); margin-bottom: 1.5rem; }
-        .about-text { font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.7; }
-        
-       
-        .destinations-hero { position: relative; margin-bottom: 4rem; border-radius: 0.5rem; overflow: hidden; box-shadow: none; border: none; }
-        .destinations-hero-image { width: 100%; height: 28rem; /* 448px */ object-fit: cover; }
-        .destinations-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.7)); display: flex; align-items: flex-end; }
-        .destinations-hero-content { padding: 2rem; lg:padding: 3rem; max-width: 40rem; }
-        .destinations-hero-title { font-size: 2.5rem; md:font-size: 3rem; font-family: var(--font-serif); font-weight: 300; color: var(--text-inverted); margin-bottom: 1rem; line-height: 1.2; }
-        .destinations-hero-subtitle { font-size: 1.125rem; color: #e5e7eb; /* gray-200 fixed for overlay */ margin-bottom: 1.5rem; }
-        
-        .continent-explorer { margin-bottom: 3rem; }
-        .back-button svg { transition: transform var(--transition-duration) ease; }
-        .back-button:hover svg { transform: translateX(-3px) rotate(180deg); }
-        
-        .continent-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
-        @media (min-width: 768px) { .continent-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 1024px) { .continent-grid { grid-template-columns: repeat(3, 1fr); } }
-        .continent-card { padding:0; overflow:hidden; cursor:pointer; transition: transform var(--transition-duration) ease, background-color var(--transition-duration) ease; border: none; border-radius: 0.5rem; background-color: var(--bg-secondary); }
-        .continent-card:hover { transform: translateY(-3px); background-color: var(--bg-tertiary); }
-        .continent-card-image-container { position: relative; height: 18rem; overflow: hidden; }
-        .continent-card-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .continent-card:hover .continent-card-image { transform: scale(1.05); }
-        .continent-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); display: flex; align-items: flex-end; padding: 1.5rem; }
-        .continent-card-title { font-size: 1.5rem; font-weight: 500; color: var(--text-inverted); }
-        .continent-card:hover .continent-card-title { color: var(--accent-primary); } 
-        .continent-card-countries { padding: 1rem; font-size: 0.875rem; color: var(--text-muted); }
-
-        .continent-detail-view { padding: 2rem; }
-        .continent-detail-image { width: 100%; height: 18rem; object-fit: cover; border-radius: 0.5rem; margin-bottom: 2rem; box-shadow: none; border: none; }
-        .continent-detail-title { font-size: 2.5rem; font-family: var(--font-serif); margin-bottom: 0.5rem; }
-        .continent-detail-description { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 2rem; }
-        .countries-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
-        .country-button { 
-          padding: 0.75rem; border-radius: 0.5rem; text-align: center; cursor: pointer;
-          background-color: var(--bg-tertiary); color: var(--text-primary);
-          transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease, transform var(--transition-duration) ease;
-          border: none;
-        }
-        .country-button:hover { background-color: var(--accent-primary); color: var(--text-on-accent); transform: translateY(-1px); }
-        .post-card-condensed { 
-          display: flex; 
-          flex-direction: column; 
-          overflow: hidden; 
-          cursor: pointer; 
-          border: none; 
-          border-radius: 0.75rem; 
-          transition: transform var(--transition-duration) ease, background-color var(--transition-duration) ease; 
-          background-color: var(--bg-primary);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        .post-card-condensed:hover { 
-          transform: translateY(-4px); 
-          background-color: var(--bg-secondary); 
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-        body.dark-theme .post-card-condensed {
-          background-color: var(--bg-secondary);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        body.dark-theme .post-card-condensed:hover {
-          background-color: var(--bg-tertiary);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-        }
-        .post-card-condensed-image { width:100%; height:10rem; object-fit:cover; transition: transform 0.5s ease; }
-        .post-card-condensed:hover .post-card-condensed-image { transform: scale(1.05); }
-        .post-card-condensed-content { padding: 1rem; }
-        .post-card-condensed-title { font-size: 1rem; font-weight:500; margin-bottom:0.25rem; line-clamp: 2; -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-        .post-card-condensed:hover .post-card-condensed-title { color: var(--text-accent); }
-
-        
-        .blog-hero { position: relative; margin-bottom: 0rem; border-radius: 0.5rem; overflow: hidden; box-shadow: none; border: none; }
-        .blog-hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
-        .blog-hero-overlay { background: linear-gradient(to bottom right, var(--accent-secondary) 0%, var(--accent-primary) 100%); opacity: 0.7; mix-blend-mode: multiply; position: absolute; inset:0; }
-        body.dark-theme .blog-hero-overlay { background: linear-gradient(to bottom right, var(--accent-secondary) 0%, var(--accent-primary) 100%); opacity: 0.6; }
-        .blog-hero-content { position: relative; z-index: 10; padding: 5rem 1rem; text-align: center; }
-        .blog-hero-title { font-size: 2.5rem; md:font-size: 3.5rem; color: var(--text-inverted); margin-bottom: 1rem; line-height: 1.2; }
-        .blog-hero-subtitle { font-size: 1.125rem; color: #e5e7eb; /* fixed gray-200 */ max-width: 36rem; margin: 0 auto 2rem auto; }
-        .search-bar-container { position: relative; max-width: 32rem; margin: 0 auto; }
-        .search-input {
-          width: 100%; padding: 1rem 3rem 1rem 1.25rem; border-radius: 0.5rem; 
-          background-color: var(--bg-overlay); border: none;
-          color: var(--text-inverted); placeholder-color: rgba(255,255,255,0.7);
-          box-shadow: none;
-        }
-        .search-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,255,255,0.1); }
-        .search-icon { position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.7); }
-        
-        .category-filter { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-bottom: 2rem; }
-        .category-button {
-          padding: 0.5rem 1.25rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;
-          background-color: var(--bg-tertiary); color: var(--text-primary);
-          transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease, transform var(--transition-duration) ease;
-          box-shadow: none;
-          cursor: pointer;
-          border: none;
-        }
-        .category-button:hover { background-color: var(--border-primary); transform: translateY(-1px); }
-        .category-button.active { background-color: var(--accent-primary); color: var(--text-on-accent); }
-        .category-button.active:hover { background-color: var(--accent-hover); }
-
-        .main-footer { 
-          background-color: var(--bg-secondary); border-top: 1px solid var(--border-primary);
-          padding-top: 3rem; padding-bottom: 3rem;
-          transition: background-color var(--transition-duration) ease, border-color var(--transition-duration) ease;
-        }
-        .footer-container { display: grid; grid-template-columns: 1fr; gap: 2.5rem; }
-        @media (min-width: 768px) { .footer-container { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 1024px) { .footer-container { grid-template-columns: repeat(4, 1fr); } }
-        .footer-column {}
-        .footer-heading { font-size: 1.125rem; font-weight: 500; margin-bottom: 1rem; color: var(--text-primary); }
-        .footer-text { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6; }
-        .social-icons { display: flex; gap: 1rem; }
-        .social-icon-button { color: var(--text-muted); cursor: pointer; }
-        .social-icon-button:hover { color: var(--text-accent); }
-        .footer-links { list-style: none; padding: 0; margin: 0; space-y: 0.625rem; }
-        .footer-link { font-size: 0.875rem; color: var(--text-secondary); cursor: pointer; }
-        .footer-link:hover { color: var(--text-accent); }
-        .footer-bottom-text { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-primary); text-align: center; font-size: 0.875rem; color: var(--text-muted); }
-
-       
-        .toast-notification {
-          position: fixed; 
-          bottom: 1.5rem; 
-          right: 1.5rem;
-          background-color: rgba(255, 255, 255, 0.95); 
-          border: 1px solid var(--border-primary);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05);
-          border-radius: 0.75rem; 
-          padding: 0.875rem 1.25rem;
-          display: flex; align-items: center; 
-          max-width: 20rem; min-width: 18rem;
-          z-index: 60; 
-          animation: toastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-        
-        @media (max-width: 640px) {
-          .toast-notification {
-            bottom: 1rem; right: 1rem; left: 1rem;
-            max-width: none; min-width: 0;
-            padding: 0.75rem 1rem;
-          }
-        }
-        
-        @keyframes toastSlideIn { 
-          from { 
-            opacity: 0; 
-            transform: translateY(0.75rem) translateX(0.5rem) scale(0.96); 
-          } 
-          to { 
-            opacity: 1; 
-            transform: translateY(0) translateX(0) scale(1); 
-          } 
-        }
-        
-        body.dark-theme .toast-notification {
-          background-color: rgba(31, 41, 55, 0.95);
-          border-color: var(--border-secondary);
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
-        }
-        
-        .toast-icon { 
-          color: #f59e0b; 
-          margin-right: 0.875rem; 
-          flex-shrink: 0; 
-        }
-        body.dark-theme .toast-icon { color: #fbbf24; }
-        
-        .toast-content { flex-grow: 1; }
-        .toast-title { 
-          font-weight: 600; 
-          color: var(--text-primary); 
-          font-size: 0.875rem;
-          margin-bottom: 0.125rem;
-          line-height: 1.3;
-        }
-        .toast-message { 
-          font-size: 0.8rem; 
-          color: var(--text-secondary); 
-          line-height: 1.3;
-        }
-        .toast-close-button { 
-          margin-left: 0.875rem; 
-          margin-right: -0.125rem; 
-          padding: 0.375rem; 
-          color: var(--text-muted); 
-          border-radius: 0.375rem; 
-          cursor: pointer; 
-          transition: all 0.15s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .toast-close-button:hover { 
-          color: var(--text-primary); 
-          background-color: var(--bg-tertiary); 
-          transform: scale(1.05);
-        }
-
-     
-        .theme-transition-overlay {
-          position: fixed; inset: 0;
-          background-color: var(--bg-primary); 
-          z-index: 9999;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity var(--transition-duration) ease-in-out;
-        }
-        .theme-transition-overlay.active {
-          opacity: 1;
-        }
-
-        .blog-grid-section { margin-bottom: 4rem; }
-        .post-meta-multiple { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; }
-        .post-meta-multiple span { display: flex; align-items: center; gap: 0.25rem; }
-        
-        .newsletter-section { padding: 2.5rem; text-align: center; }
-        .newsletter-form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 28rem; margin: 0 auto; }
-        @media (min-width: 640px) { .newsletter-form { flex-direction: row; } }
-        .no-results-text { text-align: center; padding: 2.5rem 0; color: var(--text-muted); font-size: 1.125rem; }
-        .col-span-full { grid-column: 1 / -1; }
-
-        
-        .post-full-content { max-width: 64rem; margin: 0 auto; position: relative; }
-        
-        .back-button-post {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1rem;
-          margin-bottom: 2rem;
-          background-color: var(--bg-tertiary);
-          color: var(--text-secondary);
-          border: none;
-          border-radius: 0.5rem;
-          font-size: 0.875rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all var(--transition-duration) ease;
-        }
-        
-        .back-button-post:hover {
-          background-color: var(--accent-primary);
-          color: var(--text-on-accent);
-          transform: translateY(-1px);
-        }
-        
-        .back-icon {
-          transform: rotate(180deg);
-          transition: transform var(--transition-duration) ease;
-        }
-        
-        .back-button-post:hover .back-icon {
-          transform: rotate(180deg) translateX(-2px);
-        }
-        
-        .post-full-image { 
-          width: 100%; 
-          height: auto; 
-          max-height: 40rem; 
-          object-fit: cover; 
-          border-radius: 0.5rem; 
-          margin-bottom: 3rem; 
-          box-shadow: none; 
-          border: none;
-        }
-        
-        .post-full-title { font-size: 2.25rem; md:font-size: 2.75rem; font-family: var(--font-serif); font-weight: 600; margin-bottom: 1.5rem; line-height: 1.2; }
-        .post-full-meta { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-primary); }
-        .author-image { width: 3rem; height: 3rem; border-radius: 9999px; box-shadow: none; border: none; }
-        .author-name { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
-        .post-date { font-size: 0.75rem; color: var(--text-muted); }
-        
-        .prose-content { 
-          line-height: 1.75; 
-          font-size: 1.125rem; 
-          color: var(--prose-text); 
-          max-width: none;
-        }
-        
-        .prose-content h1 { 
-          font-family: var(--font-serif); 
-          color: var(--prose-headings); 
-          font-size: 2.5rem;
-          font-weight: 700;
-          line-height: 1.2;
-          margin-top: 3rem; 
-          margin-bottom: 1.5rem;
-          letter-spacing: -0.025em;
-        }
-        
-        .prose-content h2 { 
-          font-family: var(--font-serif); 
-          color: var(--prose-headings); 
-          font-size: 2rem;
-          font-weight: 600;
-          line-height: 1.3;
-          margin-top: 2.5rem; 
-          margin-bottom: 1.25rem;
-          letter-spacing: -0.025em;
-        }
-        
-        .prose-content h3 { 
-          font-family: var(--font-serif); 
-          color: var(--prose-headings); 
-          font-size: 1.5rem;
-          font-weight: 600;
-          line-height: 1.4;
-          margin-top: 2rem; 
-          margin-bottom: 1rem;
-          letter-spacing: -0.015em;
-        }
-        
-        .prose-content h4 { 
-          font-family: var(--font-serif); 
-          color: var(--prose-headings); 
-          font-size: 1.25rem;
-          font-weight: 600;
-          line-height: 1.5;
-          margin-top: 1.75rem; 
-          margin-bottom: 0.75rem;
-        }
-        
-        .prose-content p { 
-          margin-bottom: 1.5rem; 
-          line-height: 1.75;
-          font-size: 1.125rem;
-          color: var(--prose-text);
-        }
-        
-        .prose-content p:first-of-type {
-          font-size: 1.25rem;
-          color: var(--text-secondary);
-          line-height: 1.7;
-          margin-bottom: 2rem;
-        }
-        
-        .prose-content a { 
-          color: var(--prose-links); 
-          text-decoration: underline; 
-          text-decoration-thickness: 2px;
-          text-underline-offset: 2px;
-          transition: color 0.2s ease;
-        }
-        
-        .prose-content a:hover {
-          color: var(--text-accent-hover);
-        }
-        
-        .prose-content hr { 
-          border: none;
-          border-top: 2px solid var(--prose-hr); 
-          margin: 3rem 0; 
-          opacity: 0.3;
-        }
-        
-        .prose-content img.post-image { 
-          border-radius: 0.5rem;  
-          box-shadow: none; 
-          filter: var(--image-filter);
-          width: 70%;
-          max-width: 600px;
-          height: auto;
-          display: block;
-        }
-        
-        @media (max-width: 768px) {
-          .prose-content img.post-image {
-            width: 90%;
-          }
-        }
-        
-        .prose-content blockquote {
-          border-left: 4px solid var(--accent-primary);
-          padding-left: 1.5rem;
-          margin: 2rem 0;
-          font-style: italic;
-          font-size: 1.2rem;
-          color: var(--text-secondary);
-          background-color: var(--bg-tertiary);
-          padding: 1.5rem;
-          border-radius: 0.5rem;
-        }
-        
-        .prose-content ul, .prose-content ol {
-          margin: 1.5rem 0;
-          padding-left: 1.5rem;
-        }
-        
-        .prose-content li {
-          margin-bottom: 0.5rem;
-          line-height: 1.7;
-        }
-
-        .related-posts-section { border-top: 1px solid var(--border-primary); padding-top: 2rem; margin-top: 3rem; }
-        .related-posts-grid { grid-template-columns: 1fr; } 
-        @media (min-width: 768px) { .related-posts-grid { grid-template-columns: repeat(2, 1fr); } }
-
-      `}</style>
-    </div>
-  );
+     <div className="fixed bottom-5 right-5 z-[100] space-y-2">
+       {toasts.map(toast => (
+         <div
+           key={toast.id}
+           className={`px-4 py-3 rounded-md shadow-lg text-sm font-medium min-w-[200px] toast-enter hover-lift
+             ${toast.type === 'success' ? 'bg-green-500 text-white' : ''}
+             ${toast.type === 'error' ? 'bg-red-500 text-white' : ''}
+             ${toast.type === 'info' ? 'bg-blue-500 text-white dark:bg-blue-600' : ''}
+           `}
+         >
+           {toast.message}
+         </div>
+       ))}
+     </div>
+     <style jsx>{`
+       @keyframes fadeInOutToast {
+         0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+         10% { opacity: 1; transform: translateY(0) scale(1); }
+         90% { opacity: 1; transform: translateY(0) scale(1); }
+         100% { opacity: 0; transform: translateY(20px) scale(0.95); }
+       }
+       .animate-fadeInOutToast {
+         animation: fadeInOutToast 3s ease-in-out forwards;
+       }
+     `}</style>
+   </>
+ );
 };
 
-export default TravelBlog;
+export default HomePage;
