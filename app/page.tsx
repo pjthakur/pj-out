@@ -1,1722 +1,1674 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Menu, X, Globe, Trophy, Target, BookOpen, Home, Info, Mail, Phone, Clock, Zap, Star, Award, Volume2, VolumeX, Moon, Sun, Share2, RotateCcw, Settings, Play, Users, Gamepad2, Brain, MapPin, Flag, ChevronDown } from 'lucide-react';
 
-// Types and Interfaces
-interface Country {
-    name: string;
-    code: string;
-    capital: string;
-    population: string;
-    funFact: string;
-    continent: string;
-    currency: string;
-    language: string;
-    flagEmoji: string;
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Plus,
+  Edit3,
+  Trash2,
+  Calendar,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  Clock,
+  Share2,
+  Github,
+  X,
+  Edit,
+  ArrowRight,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  GripVertical,
+  BarChart3,
+  PieChart,
+  Activity,
+  Target,
+  Zap,
+  Rocket,
+  Star,
+  Globe,
+  Lock,
+  Layers,
+  Undo,
+} from "lucide-react";
+
+interface GitHubIssue {
+  id: string;
+  title: string;
+  url?: string;
+  number?: number;
+  state?: "open" | "closed";
 }
 
-interface GameState {
-    currentCountry: Country | null;
-    options: Country[];
-    score: number;
-    streak: number;
-    bestStreak: number;
-    totalQuestions: number;
-    correctAnswers: number;
-    showResult: boolean;
-    isCorrect: boolean;
-    showLearnMore: boolean;
-    gameStarted: boolean;
-    gameMode: 'flags' | 'capitals' | 'mixed';
-    difficulty: 'easy' | 'medium' | 'hard';
-    timeLeft: number;
-    timerActive: boolean;
-    hintsUsed: number;
-    hintsAvailable: number;
-    selectedAnswer: Country | null;
+interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  assignee: string;
+  progress: number;
+  risk: "low" | "medium" | "high" | "critical";
+  tags?: string[];
+  githubIssues?: GitHubIssue[];
+  category: string;
 }
 
-interface Settings {
-    soundEnabled: boolean;
-    darkMode: boolean;
-    timerEnabled: boolean;
-    hintsEnabled: boolean;
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  milestones: Milestone[];
+  createdAt: string;
+  lastModified: string;
 }
 
-interface Achievement {
-    id: string;
-    title: string;
-    description: string;
-    icon: string;
-    unlocked: boolean;
-    requirement: number;
-    progress: number;
-}
-
-const GeoQuizPro: React.FC = () => {
-    // Enhanced country data with flag emojis instead of API calls
-    const countries: Country[] = useMemo(() => [
-        {
-            name: "Japan",
-            code: "JP",
-            capital: "Tokyo",
-            population: "125.8 million",
-            funFact: "Japan consists of 6,852 islands, but only about 430 are inhabited.",
-            continent: "Asia",
-            currency: "Japanese Yen (¥)",
-            language: "Japanese",
-            flagEmoji: "🇯🇵"
-        },
-        {
-            name: "Brazil",
-            code: "BR",
-            capital: "Brasília",
-            population: "215.3 million",
-            funFact: "Brazil is home to about 60% of the Amazon rainforest.",
-            continent: "South America",
-            currency: "Brazilian Real (R$)",
-            language: "Portuguese",
-            flagEmoji: "🇧🇷"
-        },
-        {
-            name: "France",
-            code: "FR",
-            capital: "Paris",
-            population: "67.8 million",
-            funFact: "France is the most visited country in the world with over 89 million tourists annually.",
-            continent: "Europe",
-            currency: "Euro (€)",
-            language: "French",
-            flagEmoji: "🇫🇷"
-        },
-        {
-            name: "Australia",
-            code: "AU",
-            capital: "Canberra",
-            population: "25.7 million",
-            funFact: "Australia is the only country that is also a continent.",
-            continent: "Oceania",
-            currency: "Australian Dollar (A$)",
-            language: "English",
-            flagEmoji: "🇦🇺"
-        },
-        {
-            name: "Canada",
-            code: "CA",
-            capital: "Ottawa",
-            population: "38.2 million",
-            funFact: "Canada has more lakes than the rest of the world combined.",
-            continent: "North America",
-            currency: "Canadian Dollar (C$)",
-            language: "English, French",
-            flagEmoji: "🇨🇦"
-        },
-        {
-            name: "Italy",
-            code: "IT",
-            capital: "Rome",
-            population: "59.1 million",
-            funFact: "Italy has more UNESCO World Heritage Sites than any other country.",
-            continent: "Europe",
-            currency: "Euro (€)",
-            language: "Italian",
-            flagEmoji: "🇮🇹"
-        },
-        {
-            name: "South Korea",
-            code: "KR",
-            capital: "Seoul",
-            population: "51.8 million",
-            funFact: "South Korea has the fastest internet speeds in the world.",
-            continent: "Asia",
-            currency: "Korean Won (₩)",
-            language: "Korean",
-            flagEmoji: "🇰🇷"
-        },
-        {
-            name: "Germany",
-            code: "DE",
-            capital: "Berlin",
-            population: "83.2 million",
-            funFact: "Germany has over 1,500 breweries and produces more than 5,000 types of beer.",
-            continent: "Europe",
-            currency: "Euro (€)",
-            language: "German",
-            flagEmoji: "🇩🇪"
-        },
-        {
-            name: "Mexico",
-            code: "MX",
-            capital: "Mexico City",
-            population: "128.9 million",
-            funFact: "Mexico City is built on a lake and is sinking at a rate of 6-8 inches per year.",
-            continent: "North America",
-            currency: "Mexican Peso ($)",
-            language: "Spanish",
-            flagEmoji: "🇲🇽"
-        },
-        {
-            name: "India",
-            code: "IN",
-            capital: "New Delhi",
-            population: "1.38 billion",
-            funFact: "India has 22 official languages and over 1,600 spoken languages.",
-            continent: "Asia",
-            currency: "Indian Rupee (₹)",
-            language: "Hindi, English",
-            flagEmoji: "🇮🇳"
-        },
-        {
-            name: "United Kingdom",
-            code: "GB",
-            capital: "London",
-            population: "67.5 million",
-            funFact: "The UK invented the world's first postage stamp in 1840.",
-            continent: "Europe",
-            currency: "British Pound (£)",
-            language: "English",
-            flagEmoji: "🇬🇧"
-        },
-        {
-            name: "Spain",
-            code: "ES",
-            capital: "Madrid",
-            population: "47.4 million",
-            funFact: "Spain has the second-highest number of UNESCO World Heritage Sites after Italy.",
-            continent: "Europe",
-            currency: "Euro (€)",
-            language: "Spanish",
-            flagEmoji: "🇪🇸"
-        },
-        {
-            name: "China",
-            code: "CN",
-            capital: "Beijing",
-            population: "1.41 billion",
-            funFact: "The Great Wall of China is not visible from space with the naked eye.",
-            continent: "Asia",
-            currency: "Chinese Yuan (¥)",
-            language: "Mandarin Chinese",
-            flagEmoji: "🇨🇳"
-        },
-        {
-            name: "Russia",
-            code: "RU",
-            capital: "Moscow",
-            population: "146.7 million",
-            funFact: "Russia spans 11 time zones, the most of any country in the world.",
-            continent: "Europe/Asia",
-            currency: "Russian Ruble (₽)",
-            language: "Russian",
-            flagEmoji: "🇷🇺"
-        },
-        {
-            name: "United States",
-            code: "US",
-            capital: "Washington, D.C.",
-            population: "333.3 million",
-            funFact: "The US has no official national language at the federal level.",
-            continent: "North America",
-            currency: "US Dollar ($)",
-            language: "English (de facto)",
-            flagEmoji: "🇺🇸"
-        },
-        {
-            name: "Argentina",
-            code: "AR",
-            capital: "Buenos Aires",
-            population: "45.8 million",
-            funFact: "Argentina is the birthplace of tango and has won the most Copa América titles.",
-            continent: "South America",
-            currency: "Argentine Peso ($)",
-            language: "Spanish",
-            flagEmoji: "🇦🇷"
-        },
-        {
-            name: "Egypt",
-            code: "EG",
-            capital: "Cairo",
-            population: "104.3 million",
-            funFact: "The Great Pyramid of Giza was the world's tallest building for over 3,800 years.",
-            continent: "Africa",
-            currency: "Egyptian Pound (£)",
-            language: "Arabic",
-            flagEmoji: "🇪🇬"
-        },
-        {
-            name: "Thailand",
-            code: "TH",
-            capital: "Bangkok",
-            population: "69.8 million",
-            funFact: "Thailand is the only Southeast Asian country never to have been colonized.",
-            continent: "Asia",
-            currency: "Thai Baht (฿)",
-            language: "Thai",
-            flagEmoji: "🇹🇭"
-        },
-        {
-            name: "Netherlands",
-            code: "NL",
-            capital: "Amsterdam",
-            population: "17.4 million",
-            funFact: "The Netherlands has more museums per square mile than any other country.",
-            continent: "Europe",
-            currency: "Euro (€)",
-            language: "Dutch",
-            flagEmoji: "🇳🇱"
-        },
-        {
-            name: "Sweden",
-            code: "SE",
-            capital: "Stockholm",
-            population: "10.4 million",
-            funFact: "Sweden has not been at war for over 200 years, since 1814.",
-            continent: "Europe",
-            currency: "Swedish Krona (kr)",
-            language: "Swedish",
-            flagEmoji: "🇸🇪"
-        }
-    ], []);
-
-    // Achievements system
-    const initialAchievements: Achievement[] = useMemo(() => [
-        {
-            id: 'first_correct',
-            title: 'First Steps',
-            description: 'Answer your first question correctly',
-            icon: '🎯',
-            unlocked: false,
-            requirement: 1,
-            progress: 0
-        },
-        {
-            id: 'streak_5',
-            title: 'Getting Hot',
-            description: 'Achieve a 5-question streak',
-            icon: '🔥',
-            unlocked: false,
-            requirement: 5,
-            progress: 0
-        },
-        {
-            id: 'streak_10',
-            title: 'On Fire',
-            description: 'Achieve a 10-question streak',
-            icon: '⚡',
-            unlocked: false,
-            requirement: 10,
-            progress: 0
-        },
-        {
-            id: 'score_50',
-            title: 'Half Century',
-            description: 'Score 50 points',
-            icon: '🏆',
-            unlocked: false,
-            requirement: 50,
-            progress: 0
-        },
-        {
-            id: 'speed_demon',
-            title: 'Speed Demon',
-            description: 'Answer 5 questions in under 3 seconds each',
-            icon: '💨',
-            unlocked: false,
-            requirement: 5,
-            progress: 0
-        }
-    ], []);
-
-    // Game State
-    const [gameState, setGameState] = useState<GameState>({
-        currentCountry: null,
-        options: [],
-        score: 0,
-        streak: 0,
-        bestStreak: 0,
-        totalQuestions: 0,
-        correctAnswers: 0,
-        showResult: false,
-        isCorrect: false,
-        showLearnMore: false,
-        gameStarted: false,
-        gameMode: 'flags',
-        difficulty: 'medium',
-        timeLeft: 15,
-        timerActive: false,
-        hintsUsed: 0,
-        hintsAvailable: 3,
-        selectedAnswer: null
-    });
-
-    // Settings State
-    const [settings, setSettings] = useState<Settings>({
-        soundEnabled: true,
-        darkMode: false,
-        timerEnabled: true,
-        hintsEnabled: true
-    });
-
-    // UI State
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
-    const [showAchievements, setShowAchievements] = useState(false);
-    const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
-    const [showCountryModal, setShowCountryModal] = useState(false);
-    const [selectedCountryDetails, setSelectedCountryDetails] = useState<Country | null>(null);
-    const [fastAnswerCount, setFastAnswerCount] = useState(0);
-    const [activeSection, setActiveSection] = useState('home');
-
-    // Refs for sections
-    const homeRef = useRef<HTMLElement>(null);
-    const featuresRef = useRef<HTMLElement>(null);
-    const howItWorksRef = useRef<HTMLElement>(null);
-    const gameRef = useRef<HTMLElement>(null);
-    const aboutRef = useRef<HTMLElement>(null);
-    const contactRef = useRef<HTMLElement>(null);
-
-    // Timer effect
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-
-        if (gameState.timerActive && gameState.timeLeft > 0 && settings.timerEnabled) {
-            interval = setInterval(() => {
-                setGameState(prev => {
-                    if (prev.timeLeft <= 1) {
-                        return {
-                            ...prev,
-                            timeLeft: 0,
-                            timerActive: false,
-                            showResult: true,
-                            isCorrect: false,
-                            totalQuestions: prev.totalQuestions + 1,
-                            streak: 0,
-                            selectedAnswer: null
-                        };
-                    }
-                    return { ...prev, timeLeft: prev.timeLeft - 1 };
-                });
-            }, 1000);
-        }
-
-        return () => clearInterval(interval);
-    }, [gameState.timerActive, gameState.timeLeft, settings.timerEnabled]);
-
-    // Prevent body scroll when modals are open
-    useEffect(() => {
-        const body = document.body;
-        if (showSettings || showAchievements || showCountryModal || isMobileMenuOpen) {
-            body.style.overflow = 'hidden';
-        } else {
-            body.style.overflow = 'unset';
-        }
-
-        return () => {
-            body.style.overflow = 'unset';
-        };
-    }, [showSettings, showAchievements, showCountryModal, isMobileMenuOpen]);
-
-    // Scroll spy effect
-    useEffect(() => {
-        const handleScroll = () => {
-            const sections = [
-                { id: 'home', ref: homeRef },
-                { id: 'features', ref: featuresRef },
-                { id: 'how-it-works', ref: howItWorksRef },
-                { id: 'game', ref: gameRef },
-                { id: 'about', ref: aboutRef },
-                { id: 'contact', ref: contactRef }
-            ];
-
-            const scrollPosition = window.scrollY + 100;
-
-            for (const section of sections) {
-                const element = section.ref.current;
-                if (element) {
-                    const { offsetTop, offsetHeight } = element;
-                    if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-                        setActiveSection(section.id);
-                        break;
-                    }
-                }
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    // Get difficulty settings
-    const getDifficultySettings = useCallback(() => {
-        switch (gameState.difficulty) {
-            case 'easy':
-                return { timeLimit: 20, countries: countries.slice(0, 10) };
-            case 'medium':
-                return { timeLimit: 15, countries: countries.slice(0, 15) };
-            case 'hard':
-                return { timeLimit: 10, countries: countries };
-            default:
-                return { timeLimit: 15, countries: countries.slice(0, 15) };
-        }
-    }, [gameState.difficulty, countries]);
-
-    // Generate random question
-    const generateQuestion = useCallback(() => {
-        const { countries: availableCountries } = getDifficultySettings();
-        const randomIndex = Math.floor(Math.random() * availableCountries.length);
-        const correctCountry = availableCountries[randomIndex];
-
-        const wrongOptions = availableCountries
-            .filter(country => country.name !== correctCountry.name)
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 3);
-
-        const allOptions = [correctCountry, ...wrongOptions].sort(() => Math.random() - 0.5);
-
-        const { timeLimit } = getDifficultySettings();
-
-        setGameState(prev => ({
-            ...prev,
-            currentCountry: correctCountry,
-            options: allOptions,
-            showResult: false,
-            showLearnMore: false,
-            timeLeft: timeLimit,
-            timerActive: settings.timerEnabled,
-            selectedAnswer: null
-        }));
-    }, [getDifficultySettings, settings.timerEnabled]);
-
-    // Check achievements
-    const checkAchievements = useCallback((newGameState: GameState) => {
-        setAchievements(prev => prev.map(achievement => {
-            if (achievement.unlocked) return achievement;
-
-            let progress = achievement.progress;
-            let unlocked = false;
-
-            switch (achievement.id) {
-                case 'first_correct':
-                    progress = newGameState.correctAnswers;
-                    unlocked = progress >= achievement.requirement;
-                    break;
-                case 'streak_5':
-                    progress = newGameState.streak;
-                    unlocked = progress >= achievement.requirement;
-                    break;
-                case 'streak_10':
-                    progress = newGameState.streak;
-                    unlocked = progress >= achievement.requirement;
-                    break;
-                case 'score_50':
-                    progress = newGameState.score;
-                    unlocked = progress >= achievement.requirement;
-                    break;
-                case 'speed_demon':
-                    progress = fastAnswerCount;
-                    unlocked = progress >= achievement.requirement;
-                    break;
-            }
-
-            return { ...achievement, progress, unlocked };
-        }));
-    }, [fastAnswerCount]);
-
-    // Scroll to section
-    const scrollToSection = useCallback((sectionId: string) => {
-        const refs: { [key: string]: React.RefObject<HTMLElement | null> } = {
-            'home': homeRef,
-            'features': featuresRef,
-            'how-it-works': howItWorksRef,
-            'game': gameRef,
-            'about': aboutRef,
-            'contact': contactRef
-        };
-
-        const ref = refs[sectionId];
-        if (ref?.current) {
-            ref.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-        setIsMobileMenuOpen(false);
-    }, []);
-
-    // Start game
-    const startGame = useCallback(() => {
-        setGameState(prev => ({
-            ...prev,
-            gameStarted: true,
-            score: 0,
-            streak: 0,
-            totalQuestions: 0,
-            correctAnswers: 0,
-            showResult: false,
-            showLearnMore: false,
-            hintsUsed: 0,
-            hintsAvailable: 3,
-            selectedAnswer: null
-        }));
-        setFastAnswerCount(0);
-        generateQuestion();
-    }, [generateQuestion]);
-
-    // Handle answer selection
-    const handleAnswer = useCallback((selectedCountry: Country) => {
-        if (gameState.showResult) return;
-
-        const answerTime = getDifficultySettings().timeLimit - gameState.timeLeft;
-        const isFastAnswer = answerTime <= 3;
-
-        if (isFastAnswer) {
-            setFastAnswerCount(prev => prev + 1);
-        }
-
-        const isCorrect = selectedCountry.name === gameState.currentCountry?.name;
-        const newStreak = isCorrect ? gameState.streak + 1 : 0;
-        const newBestStreak = Math.max(newStreak, gameState.bestStreak);
-        const newScore = isCorrect ? gameState.score + (gameState.difficulty === 'hard' ? 3 : gameState.difficulty === 'medium' ? 2 : 1) : gameState.score;
-        const newCorrectAnswers = isCorrect ? gameState.correctAnswers + 1 : gameState.correctAnswers;
-
-        const newGameState = {
-            ...gameState,
-            score: newScore,
-            streak: newStreak,
-            bestStreak: newBestStreak,
-            totalQuestions: gameState.totalQuestions + 1,
-            correctAnswers: newCorrectAnswers,
-            showResult: true,
-            isCorrect,
-            timerActive: false,
-            selectedAnswer: selectedCountry
-        };
-
-        setGameState(newGameState);
-        checkAchievements(newGameState);
-
-        if (settings.soundEnabled) {
-            console.log(isCorrect ? 'Correct sound!' : 'Wrong sound!');
-        }
-    }, [gameState, getDifficultySettings, checkAchievements, settings.soundEnabled]);
-
-    // Use hint
-    const useHint = useCallback(() => {
-        if (gameState.hintsAvailable <= 0 || !settings.hintsEnabled) return;
-
-        setGameState(prev => ({
-            ...prev,
-            hintsAvailable: prev.hintsAvailable - 1,
-            hintsUsed: prev.hintsUsed + 1
-        }));
-
-        if (gameState.currentCountry) {
-            setSelectedCountryDetails(gameState.currentCountry);
-            setShowCountryModal(true);
-        }
-    }, [gameState.hintsAvailable, gameState.currentCountry, settings.hintsEnabled]);
-
-    // Next question
-    const nextQuestion = useCallback(() => {
-        generateQuestion();
-    }, [generateQuestion]);
-
-    // Reset game
-    const resetGame = useCallback(() => {
-        setGameState(prev => ({
-            ...prev,
-            gameStarted: false,
-            score: 0,
-            streak: 0,
-            totalQuestions: 0,
-            correctAnswers: 0,
-            showResult: false,
-            showLearnMore: false,
-            hintsUsed: 0,
-            hintsAvailable: 3,
-            selectedAnswer: null
-        }));
-    }, []);
-
-    // Share results
-    const shareResults = useCallback(() => {
-        const accuracy = gameState.totalQuestions > 0
-            ? Math.round((gameState.correctAnswers / gameState.totalQuestions) * 100)
-            : 0;
-
-        const text = `I just scored ${gameState.score} points with ${accuracy}% accuracy on GeoQuiz Pro! My best streak was ${gameState.bestStreak}. Can you beat it?`;
-        const url = encodeURIComponent(window.location.href);
-        const quote = encodeURIComponent(text);
-
-        const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${quote}`;
-
-        window.open(facebookShareUrl, '_blank');
-    }, [gameState]);
-
-    // Toggle mobile menu
-    const toggleMobileMenu = useCallback(() => {
-        setIsMobileMenuOpen(prev => !prev);
-    }, []);
-
-    // Close modal when clicking outside
-    const handleModalBackdropClick = useCallback((e: React.MouseEvent, closeModal: () => void) => {
-        if (e.target === e.currentTarget) {
-            closeModal();
-        }
-    }, []);
-
-    // Calculate accuracy
-    const accuracy = gameState.totalQuestions > 0 ? Math.round((gameState.correctAnswers / gameState.totalQuestions) * 100) : 0;
-
-    return (
-        <div className={`min-h-screen transition-colors duration-300 ${settings.darkMode ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 text-white' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'} font-roboto`}>
-            {/* Roboto Font */}
-            <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
-
-            {/* Navigation */}
-            <nav className={`${settings.darkMode ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-md border-b ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} fixed top-0 w-full z-50 transition-all duration-300`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        {/* Logo */}
-                        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => scrollToSection('home')}>
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg">
-                                <Globe className="h-6 w-6 text-white" />
-                            </div>
-                            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                GeoQuiz Pro
-                            </span>
-                        </div>
-
-                        {/* Desktop Navigation */}
-                        <div className="hidden md:flex items-center space-x-8">
-                            {[
-                                { id: 'home', label: 'Home', icon: Home },
-                                { id: 'features', label: 'Features', icon: Star },
-                                { id: 'how-it-works', label: 'How It Works', icon: Info },
-                                { id: 'game', label: 'Play Game', icon: Gamepad2 },
-                                { id: 'about', label: 'About', icon: Users },
-                                { id: 'contact', label: 'Contact', icon: Mail }
-                            ].map(({ id, label, icon: Icon }) => (
-                                <button
-                                    key={id}
-                                    onClick={() => scrollToSection(id)}
-                                    className={`cursor-pointer font-medium transition-colors duration-200 flex items-center space-x-1 ${activeSection === id
-                                        ? 'text-blue-600'
-                                        : settings.darkMode
-                                            ? 'text-gray-300 hover:text-blue-400'
-                                            : 'text-gray-700 hover:text-blue-600'
-                                        }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    <span>{label}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Theme Toggle & Settings */}
-                        <div className="hidden md:flex items-center space-x-4">
-                            <button
-                                onClick={() => setSettings(prev => ({ ...prev, darkMode: !prev.darkMode }))}
-                                className={`cursor-pointer p-2 rounded-lg ${settings.darkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-all duration-200`}
-                            >
-                                {settings.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                            </button>
-
-                            <button
-                                onClick={() => setShowSettings(true)}
-                                className={`cursor-pointer p-2 rounded-lg ${settings.darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-all duration-200`}
-                            >
-                                <Settings className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        {/* Mobile Menu Button */}
-                        <div className="md:hidden flex items-center space-x-2">
-                            <button
-                                onClick={() => setSettings(prev => ({ ...prev, darkMode: !prev.darkMode }))}
-                                className={`cursor-pointer p-2 rounded-lg ${settings.darkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-all duration-200`}
-                            >
-                                {settings.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                            </button>
-                            <button
-                                onClick={toggleMobileMenu}
-                                className={`cursor-pointer ${settings.darkMode ? 'text-gray-300 hover:text-blue-400' : 'text-gray-700 hover:text-blue-600'} p-2 rounded-lg transition-colors duration-200`}
-                            >
-                                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Mobile Menu */}
-                    {isMobileMenuOpen && (
-                        <div
-                            className={`md:hidden border-t ${settings.darkMode ? 'border-gray-700 bg-gray-800/95' : 'border-gray-200 bg-white/95'} backdrop-blur-sm py-4`}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex flex-col space-y-4">
-                                {[
-                                    { id: 'home', label: 'Home', icon: Home },
-                                    { id: 'features', label: 'Features', icon: Star },
-                                    { id: 'how-it-works', label: 'How It Works', icon: Info },
-                                    { id: 'game', label: 'Play Game', icon: Gamepad2 },
-                                    { id: 'about', label: 'About', icon: Users },
-                                    { id: 'contact', label: 'Contact', icon: Mail }
-                                ].map(({ id, label, icon: Icon }) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => scrollToSection(id)}
-                                        className={`cursor-pointer font-medium transition-colors duration-200 flex items-center space-x-2 px-2 text-left ${activeSection === id
-                                            ? 'text-blue-600'
-                                            : settings.darkMode
-                                                ? 'text-gray-300 hover:text-blue-400'
-                                                : 'text-gray-700 hover:text-blue-600'
-                                            }`}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                        <span>{label}</span>
-                                    </button>
-                                ))}
-
-                                <div className={`border-t ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} pt-4`}>
-                                    <button
-                                        onClick={() => {
-                                            setShowSettings(true);
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                        className={`cursor-pointer ${settings.darkMode ? 'text-gray-300 hover:text-blue-400' : 'text-gray-700 hover:text-blue-600'} font-medium transition-colors duration-200 flex items-center space-x-2 px-2 text-left`}
-                                    >
-                                        <Settings className="h-4 w-4" />
-                                        <span>Settings</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </nav>
-
-            {/* Hero Section */}
-            <section ref={homeRef} id="home" className="pt-4 min-h-screen flex items-center justify-center">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-                    <div className="mb-8">
-                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6 py-6">
-                            Master World Geography
-                        </h1>
-                        <p className={`text-xl sm:text-2xl ${settings.darkMode ? 'text-gray-300' : 'text-gray-600'} max-w-4xl mx-auto mb-12 leading-relaxed`}>
-                            Test your knowledge of countries, flags, and cultures in our interactive geography quiz.
-                            Challenge yourself and discover fascinating facts about nations around the world.
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-                            <button
-                                onClick={() => scrollToSection('game')}
-                                className="cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2"
-                            >
-                                <Play className="h-5 w-5" />
-                                <span>Start Playing Now</span>
-                            </button>
-
-                            <button
-                                onClick={() => scrollToSection('features')}
-                                className={`cursor-pointer ${settings.darkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-white text-gray-800 hover:bg-gray-50'} px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg border-2 border-gray-200 flex items-center space-x-2`}
-                            >
-                                <Info className="h-5 w-5" />
-                                <span>Learn More</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Hero Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-4xl mx-auto">
-                        {[
-                            { number: '20+', label: 'Countries', icon: Flag },
-                            { number: '3', label: 'Game Modes', icon: Gamepad2 },
-                            { number: '5', label: 'Achievements', icon: Trophy },
-                            { number: '∞', label: 'Fun Learning', icon: Brain }
-                        ].map(({ number, label, icon: Icon }, index) => (
-                            <div key={index} className={`${settings.darkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-xl p-6 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} hover:shadow-lg transition-all duration-300`}>
-                                <Icon className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-                                <div className="text-3xl font-bold text-blue-600 mb-2">{number}</div>
-                                <div className={`text-sm ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{label}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Section */}
-            <section ref={featuresRef} id="features" className="pb-10">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className={`text-3xl sm:text-4xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-4`}>
-                            Powerful Features
-                        </h2>
-                        <p className={`text-lg ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'} max-w-2xl mx-auto`}>
-                            Everything you need to master world geography in an engaging, interactive way
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {[
-                            {
-                                icon: Flag,
-                                title: 'Flag Quiz',
-                                description: 'Test your knowledge by identifying countries from their flags',
-                                color: 'blue'
-                            },
-                            {
-                                icon: MapPin,
-                                title: 'Capital Quiz',
-                                description: 'Match countries with their capital cities',
-                                color: 'green'
-                            },
-                            {
-                                icon: Clock,
-                                title: 'Timed Challenges',
-                                description: 'Race against time with adjustable difficulty levels',
-                                color: 'orange'
-                            },
-                            {
-                                icon: Trophy,
-                                title: 'Achievement System',
-                                description: 'Unlock achievements and track your progress',
-                                color: 'purple'
-                            },
-                            {
-                                icon: Zap,
-                                title: 'Hint System',
-                                description: 'Get helpful hints when you need them most',
-                                color: 'yellow'
-                            },
-                            {
-                                icon: BookOpen,
-                                title: 'Educational Content',
-                                description: 'Learn fascinating facts about countries worldwide',
-                                color: 'red'
-                            }
-                        ].map(({ icon: Icon, title, description, color }, index) => (
-                            <div key={index} className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-xl p-6 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                                <div className={`bg-${color}-100 p-3 rounded-lg w-fit mb-4`}>
-                                    <Icon className={`h-6 w-6 text-${color}-600`} />
-                                </div>
-                                <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-2`}>{title}</h3>
-                                <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* How It Works Section */}
-            <section ref={howItWorksRef} id="how-it-works" className={`py-20 ${settings.darkMode ? 'bg-gray-800/30' : 'bg-gray-50/50'}`}>
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className={`text-3xl sm:text-4xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-4`}>
-                            How It Works
-                        </h2>
-                        <p className={`text-lg ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'} max-w-2xl mx-auto`}>
-                            Get started in three simple steps
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {[
-                            {
-                                step: '1',
-                                title: 'Choose Your Mode',
-                                description: 'Select from flag quiz, capital quiz, or mixed mode with your preferred difficulty level',
-                                icon: Settings
-                            },
-                            {
-                                step: '2',
-                                title: 'Answer Questions',
-                                description: 'Test your knowledge by selecting the correct answer from multiple choices',
-                                icon: Target
-                            },
-                            {
-                                step: '3',
-                                title: 'Learn & Improve',
-                                description: 'Discover fascinating facts about countries and track your progress',
-                                icon: Award
-                            }
-                        ].map(({ step, title, description, icon: Icon }, index) => (
-                            <div key={index} className="text-center relative">
-                                <div className="relative mb-6">
-                                    <div className={`w-16 h-16 ${settings.darkMode ? 'bg-gray-700' : 'bg-white'} rounded-full flex items-center justify-center mx-auto border-4 border-blue-600 shadow-lg`}>
-                                        <Icon className="h-7 w-7 text-blue-600" />
-                                    </div>
-                                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                                        {step}
-                                    </div>
-                                </div>
-                                <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-3`}>{title}</h3>
-                                <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{description}</p>
-
-                                {index < 2 && (
-                                    <div className="hidden md:block absolute top-8 left-full w-full">
-                                        <ChevronDown className="h-6 w-6 text-blue-600 mx-auto transform rotate-90" />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Game Section */}
-            <section ref={gameRef} id="game" className="py-6">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Game Mode & Difficulty Selection */}
-                    {!gameState.gameStarted && (
-                        <div className="mb-6">
-                            <div className="text-center mb-6">
-                                <h2 className={`text-2xl sm:text-3xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-3`}>
-                                    Ready to Play?
-                                </h2>
-                                <p className={`text-base ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                    Choose your game mode and difficulty level
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-6">
-                                {/* Game Mode */}
-                                <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-xl p-4 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}>
-                                    <h3 className={`text-base font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-3`}>Game Mode</h3>
-                                    <div className="space-y-2">
-                                        {[
-                                            { mode: 'flags' as const, label: 'Flag Quiz', desc: 'Identify countries by their flags' },
-                                            { mode: 'capitals' as const, label: 'Capital Quiz', desc: 'Match countries with capitals' },
-                                            { mode: 'mixed' as const, label: 'Mixed Quiz', desc: 'Flags and capitals combined' }
-                                        ].map(({ mode, label, desc }) => (
-                                            <button
-                                                key={mode}
-                                                onClick={() => setGameState(prev => ({ ...prev, gameMode: mode }))}
-                                                className={`cursor-pointer w-full text-left p-3 rounded-lg transition-all duration-200 ${gameState.gameMode === mode
-                                                    ? 'bg-blue-100 border-2 border-blue-500 text-blue-800'
-                                                    : settings.darkMode
-                                                        ? 'bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-200'
-                                                        : 'bg-gray-50 border border-gray-300 hover:bg-gray-100 text-gray-700'
-                                                    }`}
-                                            >
-                                                <div className="font-medium text-sm">{label}</div>
-                                                <div className="text-xs opacity-70">{desc}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Difficulty */}
-                                <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-xl p-4 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}>
-                                    <h3 className={`text-base font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-3`}>Difficulty</h3>
-                                    <div className="space-y-2">
-                                        {[
-                                            { level: 'easy' as const, label: 'Easy', desc: '10 countries, 20s timer' },
-                                            { level: 'medium' as const, label: 'Medium', desc: '15 countries, 15s timer' },
-                                            { level: 'hard' as const, label: 'Hard', desc: '20 countries, 10s timer' }
-                                        ].map(({ level, label, desc }) => (
-                                            <button
-                                                key={level}
-                                                onClick={() => setGameState(prev => ({ ...prev, difficulty: level }))}
-                                                className={`cursor-pointer w-full text-left p-3 rounded-lg transition-all duration-200 ${gameState.difficulty === level
-                                                    ? 'bg-green-100 border-2 border-green-500 text-green-800'
-                                                    : settings.darkMode
-                                                        ? 'bg-gray-700 border border-gray-600 hover:bg-gray-600 text-gray-200'
-                                                        : 'bg-gray-50 border border-gray-300 hover:bg-gray-100 text-gray-700'
-                                                    }`}
-                                            >
-                                                <div className="font-medium text-sm">{label}</div>
-                                                <div className="text-xs opacity-70">{desc}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-lg p-3 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                            <div className="flex items-center space-x-2">
-                                <div className="bg-blue-100 p-2 rounded-lg">
-                                    <Trophy className="h-4 w-4 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className={`text-xs ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Score</p>
-                                    <p className={`text-lg font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{gameState.score}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-lg p-3 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                            <div className="flex items-center space-x-2">
-                                <div className="bg-green-100 p-2 rounded-lg">
-                                    <Target className="h-4 w-4 text-green-600" />
-                                </div>
-                                <div>
-                                    <p className={`text-xs ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Streak</p>
-                                    <p className={`text-lg font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{gameState.streak}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-lg p-3 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                            <div className="flex items-center space-x-2">
-                                <div className="bg-purple-100 p-2 rounded-lg">
-                                    <Award className="h-4 w-4 text-purple-600" />
-                                </div>
-                                <div>
-                                    <p className={`text-xs ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Best</p>
-                                    <p className={`text-lg font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{gameState.bestStreak}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-lg p-3 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                            <div className="flex items-center space-x-2">
-                                <div className="bg-orange-100 p-2 rounded-lg">
-                                    <BookOpen className="h-4 w-4 text-orange-600" />
-                                </div>
-                                <div>
-                                    <p className={`text-xs ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Accuracy</p>
-                                    <p className={`text-lg font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{accuracy}%</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Game Area */}
-                    <div className={`${settings.darkMode ? 'bg-gray-800/80' : 'bg-white/80'} backdrop-blur-sm rounded-2xl shadow-2xl border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} overflow-hidden`}>
-                        {!gameState.gameStarted ? (
-                            // Start Screen
-                            <div className="p-6 text-center min-h-[350px] flex flex-col justify-center">
-                                <div className="mb-6">
-                                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Globe className="h-8 w-8 text-white" />
-                                    </div>
-                                    <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-3`}>Ready to Start?</h3>
-                                    <p className={`${settings.darkMode ? 'text-gray-300' : 'text-gray-600'} text-sm max-w-2xl mx-auto`}>
-                                        Challenge yourself with our {gameState.gameMode} quiz on {gameState.difficulty} difficulty.
-                                        Score points, build streaks, and learn amazing facts about countries worldwide!
-                                    </p>
-                                </div>
-
-                                <button
-                                    onClick={startGame}
-                                    className="cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-base hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                                >
-                                    Start {gameState.gameMode.charAt(0).toUpperCase() + gameState.gameMode.slice(1)} Quiz
-                                </button>
-                            </div>
-                        ) : (
-                            // Game Content - Optimized for No Scroll
-                            <div className="p-3 sm:p-6">
-                                {gameState.currentCountry && (
-                                    <div className="max-w-4xl mx-auto">
-                                        {/* Game Header */}
-                                        <div className="flex flex-row justify-between items-center mb-4 sm:mb-6">
-                                            <div className="flex items-center">
-                                                {settings.timerEnabled && (
-                                                    <div className={`flex items-center space-x-2 px-3 py-2 sm:px-4 sm:py-3 rounded-lg ${gameState.timeLeft <= 5 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                                                        }`}>
-                                                        <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                                                        <span className="font-bold text-sm sm:text-base">{gameState.timeLeft}s</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center space-x-2">
-                                                {settings.hintsEnabled && gameState.hintsAvailable > 0 && !gameState.showResult && (
-                                                    <button
-                                                        onClick={useHint}
-                                                        className="cursor-pointer flex items-center space-x-1 bg-yellow-100 text-yellow-700 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-yellow-200 transition-all duration-200"
-                                                    >
-                                                        <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
-                                                        <span>Hint ({gameState.hintsAvailable})</span>
-                                                    </button>
-                                                )}
-
-                                                <button
-                                                    onClick={resetGame}
-                                                    className="cursor-pointer flex items-center space-x-1 bg-gray-100 text-gray-700 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-200 transition-all duration-200"
-                                                >
-                                                    <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4" />
-                                                    <span className="hidden sm:inline">Reset</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Question Section */}
-                                        <div className="text-center mb-4 sm:mb-6">
-                                            <h3 className={`text-sm sm:text-lg font-semibold ${settings.darkMode ? 'text-gray-300' : 'text-gray-600'} mb-1 sm:mb-2`}>
-                                                {gameState.gameMode === 'flags' ? 'Which flag belongs to:' :
-                                                    gameState.gameMode === 'capitals' ? 'What is the capital of:' :
-                                                        'Question about:'}
-                                            </h3>
-                                            <h4 className="text-xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4 sm:mb-6">
-                                                {gameState?.currentCountry?.name}
-                                            </h4>
-                                        </div>
-
-                                        {/* Options Grid - Compact Design */}
-                                        <div className="mb-4 sm:mb-6">
-                                            {gameState.gameMode === 'flags' ? (
-                                                // Flag Options - Compact Layout
-                                                <div className="grid grid-cols-2 gap-2 sm:gap-4 max-w-lg sm:max-w-2xl mx-auto">
-                                                    {gameState.options.map((country, index) => {
-                                                        const isCorrectAnswer = country.name === gameState?.currentCountry?.name;
-                                                        const isSelectedAnswer = gameState.selectedAnswer && country.name === gameState.selectedAnswer.name;
-                                                        const isWrongSelection = gameState.showResult && !gameState.isCorrect && isSelectedAnswer;
-                                                        
-                                                        return (
-                                                            <div
-                                                                key={index}
-                                                                className={`relative group cursor-pointer transition-all duration-300 transform hover:scale-105 ${!gameState.showResult ? 'hover:shadow-lg' : ''}`}
-                                                                onClick={() => !gameState.showResult && handleAnswer(country)}
-                                                            >
-                                                                <div className={`
-                                                                    rounded-xl border-2 p-3 sm:p-6 text-center transition-all duration-300
-                                                                    ${gameState.showResult
-                                                                        ? isCorrectAnswer
-                                                                            ? 'border-green-400 bg-green-50 shadow-green-200'
-                                                                            : isWrongSelection
-                                                                                ? 'border-red-400 bg-red-50 shadow-red-200'
-                                                                                : settings.darkMode
-                                                                                    ? 'border-gray-600 bg-gray-700/50 opacity-50'
-                                                                                    : 'border-gray-300 bg-gray-50 opacity-50'
-                                                                        : settings.darkMode
-                                                                            ? 'border-gray-600 bg-gray-700/30 hover:border-blue-400 hover:bg-gray-600/50'
-                                                                            : 'border-gray-200 bg-white/70 hover:border-blue-400 hover:bg-blue-50/50'
-                                                                    } shadow-lg
-                                                                `}>
-                                                                    <div className="text-3xl sm:text-5xl mb-2">
-                                                                        {country.flagEmoji}
-                                                                    </div>
-                                                                    
-                                                                    {/* Result Indicators */}
-                                                                    {gameState.showResult && isCorrectAnswer && (
-                                                                        <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2">
-                                                                            <div className="bg-green-500 text-white p-1 sm:p-2 rounded-full shadow-lg">
-                                                                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                                                </svg>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                    {gameState.showResult && isWrongSelection && (
-                                                                        <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2">
-                                                                            <div className="bg-red-500 text-white p-1 sm:p-2 rounded-full shadow-lg">
-                                                                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                                                </svg>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ) : (
-                                                // Capital Options - Compact Layout
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 max-w-2xl sm:max-w-3xl mx-auto">
-                                                    {gameState.options.map((country, index) => {
-                                                        const isCorrectAnswer = country.name === gameState?.currentCountry?.name;
-                                                        const isSelectedAnswer = gameState.selectedAnswer && country.name === gameState.selectedAnswer.name;
-                                                        const isWrongSelection = gameState.showResult && !gameState.isCorrect && isSelectedAnswer;
-                                                        
-                                                        return (
-                                                            <div
-                                                                key={index}
-                                                                className={`relative group cursor-pointer transition-all duration-300 transform hover:scale-105 ${!gameState.showResult ? 'hover:shadow-lg' : ''}`}
-                                                                onClick={() => !gameState.showResult && handleAnswer(country)}
-                                                            >
-                                                                <div className={`
-                                                                    rounded-lg border-2 p-3 sm:p-4 text-left transition-all duration-300
-                                                                    ${gameState.showResult
-                                                                        ? isCorrectAnswer
-                                                                            ? 'border-green-400 bg-green-50'
-                                                                            : isWrongSelection
-                                                                                ? 'border-red-400 bg-red-50'
-                                                                                : settings.darkMode
-                                                                                    ? 'border-gray-600 bg-gray-700/50 opacity-60'
-                                                                                    : 'border-gray-300 bg-gray-50 opacity-60'
-                                                                        : settings.darkMode
-                                                                            ? 'border-gray-600 bg-gray-700/30 hover:border-blue-400 hover:bg-gray-600/50'
-                                                                            : 'border-gray-200 bg-white/70 hover:border-blue-400 hover:bg-blue-50/50'
-                                                                    } shadow-lg
-                                                                `}>
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex-1">
-                                                                            <div className={`font-bold text-sm sm:text-lg mb-1 ${
-                                                                                gameState.showResult
-                                                                                    ? isCorrectAnswer
-                                                                                        ? 'text-green-800'
-                                                                                        : isWrongSelection
-                                                                                            ? 'text-red-800'
-                                                                                            : settings.darkMode ? 'text-gray-400' : 'text-gray-600'
-                                                                                    : settings.darkMode ? 'text-gray-200' : 'text-gray-800'
-                                                                            }`}>
-                                                                                {country.capital}
-                                                                            </div>
-                                                                            {gameState.showResult && (
-                                                                                <div className={`text-xs sm:text-sm ${
-                                                                                    isCorrectAnswer ? 'text-green-600' : 
-                                                                                    isWrongSelection ? 'text-red-600' : 
-                                                                                    settings.darkMode ? 'text-gray-400' : 'text-gray-500'
-                                                                                }`}>
-                                                                                    Capital of {country.name}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        
-                                                                        {/* Result Indicators */}
-                                                                        {gameState.showResult && isCorrectAnswer && (
-                                                                            <div className="ml-2">
-                                                                                <div className="bg-green-500 text-white p-1 sm:p-2 rounded-full">
-                                                                                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                                                    </svg>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                        {gameState.showResult && isWrongSelection && (
-                                                                            <div className="ml-2">
-                                                                                <div className="bg-red-500 text-white p-1 sm:p-2 rounded-full">
-                                                                                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                                                    </svg>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Result Section - Compact */}
-                                        <div className="min-h-[120px] sm:min-h-[140px] flex flex-col justify-center">
-                                            {gameState.showResult ? (
-                                                <div className="text-center animate-in fade-in duration-500">
-                                                    <div className={`inline-flex items-center space-x-2 px-4 py-2 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base font-bold mb-3 sm:mb-4 ${gameState.isCorrect
-                                                        ? 'bg-green-100 text-green-800 border border-green-300'
-                                                        : 'bg-red-100 text-red-800 border border-red-300'
-                                                        }`}>
-                                                        <span>{gameState.isCorrect ? '🎉 Correct!' : '❌ Incorrect'}</span>
-                                                        {gameState.isCorrect && (
-                                                            <span className="text-xs sm:text-sm font-normal">
-                                                                +{gameState.difficulty === 'hard' ? '3' : gameState.difficulty === 'medium' ? '2' : '1'} pts
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Learn More Section - Compact */}
-                                                    {gameState.showLearnMore && (
-                                                        <div className={`${settings.darkMode ? 'bg-gray-700/50' : 'bg-blue-50'} rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 animate-in slide-in-from-bottom duration-500`}>
-                                                            <div className="flex items-center justify-center mb-2 sm:mb-3">
-                                                                <div className="text-lg sm:text-xl mr-2">{gameState.currentCountry.flagEmoji}</div>
-                                                                <h4 className={`text-sm sm:text-base font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
-                                                                    {gameState?.currentCountry?.name}
-                                                                </h4>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-left text-xs sm:text-sm">
-                                                                <div>
-                                                                    <p className={`font-semibold ${settings.darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Capital:</p>
-                                                                    <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{gameState.currentCountry.capital}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className={`font-semibold ${settings.darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Population:</p>
-                                                                    <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{gameState.currentCountry.population}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Action Buttons - Consistent Sizing */}
-                                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center items-center">
-                                                        <button
-                                                            onClick={() => setGameState(prev => ({ ...prev, showLearnMore: !prev.showLearnMore }))}
-                                                            className="cursor-pointer flex items-center space-x-1 sm:space-x-2 bg-blue-100 text-blue-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-200 transition-all duration-200 w-full sm:w-auto justify-center"
-                                                        >
-                                                            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
-                                                            <span>{gameState.showLearnMore ? 'Hide' : 'Learn'}</span>
-                                                        </button>
-
-                                                        <button
-                                                            onClick={shareResults}
-                                                            className="cursor-pointer flex items-center space-x-1 sm:space-x-2 bg-green-100 text-green-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-200 transition-all duration-200 w-full sm:w-auto justify-center"
-                                                        >
-                                                            <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                                            <span>Share</span>
-                                                        </button>
-
-                                                        <button
-                                                            onClick={nextQuestion}
-                                                            className="cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 w-full sm:w-auto flex items-center justify-center space-x-1 sm:space-x-2"
-                                                        >
-                                                            <span className="sm:hidden">Next →</span>
-                                                            <span className="hidden sm:inline">Next Question →</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                // Empty state
-                                                <div className="flex items-center justify-center">
-                                                    <p className={`text-xs ${settings.darkMode ? 'text-gray-400' : 'text-gray-500'} opacity-60`}>
-                                                        Select an answer to continue
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* About Section */}
-            <section ref={aboutRef} id="about" className={`py-20 ${settings.darkMode ? 'bg-gray-800/30' : 'bg-gray-50/50'}`}>
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className={`text-3xl sm:text-4xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-4`}>
-                            About GeoQuiz Pro
-                        </h2>
-                        <p className={`text-lg ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'} max-w-3xl mx-auto`}>
-                            Making geography learning fun, interactive, and accessible for everyone
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h3 className={`text-2xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-6`}>
-                                Our Mission
-                            </h3>
-                            <p className={`${settings.darkMode ? 'text-gray-300' : 'text-gray-600'} mb-6 leading-relaxed`}>
-                                We believe that learning about our world should be engaging, interactive, and fun.
-                                GeoQuiz Pro combines the excitement of gaming with educational content to help you
-                                master world geography one question at a time.
-                            </p>
-                            <p className={`${settings.darkMode ? 'text-gray-300' : 'text-gray-600'} mb-8 leading-relaxed`}>
-                                Whether you're a student preparing for exams, a teacher looking for interactive
-                                content, or simply someone curious about the world, our platform offers multiple
-                                game modes and difficulty levels to suit your needs.
-                            </p>
-
-                            <div className="space-y-4">
-                                {[
-                                    { number: '20+', label: 'Countries covered with detailed information' },
-                                    { number: '3', label: 'Different game modes for varied learning' },
-                                    { number: '100%', label: 'Free to play with no hidden costs' }
-                                ].map(({ number, label }, index) => (
-                                    <div key={index} className="flex items-center space-x-4 flex-col md:flex-row">
-                                        <div className="text-2xl font-bold text-blue-600">{number}</div>
-                                        <div className={`${settings.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{label}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            {[
-                                { title: 'Interactive Learning', desc: 'Hands-on quiz experience', icon: '🎮' },
-                                { title: 'Real Data', desc: 'Accurate country information', icon: '📊' },
-                                { title: 'Progress Tracking', desc: 'Monitor your improvement', icon: '📈' },
-                                { title: 'Mobile Friendly', desc: 'Play anywhere, anytime', icon: '📱' }
-                            ].map(({ title, desc, icon }, index) => (
-                                <div key={index} className={`${settings.darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-xl p-6 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 text-center`}>
-                                    <div className="text-3xl mb-3">{icon}</div>
-                                    <h4 className={`font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-2`}>{title}</h4>
-                                    <p className={`text-sm ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{desc}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Contact Section */}
-            <section ref={contactRef} id="contact" className="py-20">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className={`text-3xl sm:text-4xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-4`}>
-                        Get In Touch
-                    </h2>
-                    <p className={`text-lg ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'} mb-12 max-w-2xl mx-auto`}>
-                        Have questions, suggestions, or just want to say hello? We'd love to hear from you!
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                        {[
-                            { icon: Mail, title: 'Email Us', desc: 'contact@geoquizpro.com', action: 'mailto:contact@geoquizpro.com' },
-                            { icon: Phone, title: 'Call Us', desc: '+1 (555) 123-4567', action: 'tel:+15551234567' },
-                            { icon: Globe, title: 'Follow Us', desc: '@geoquizpro', action: '#' }
-                        ].map(({ icon: Icon, title, desc, action }, index) => (
-                            <a
-                                key={index}
-                                href={action}
-                                className={`cursor-pointer ${settings.darkMode ? 'bg-gray-800/70 hover:bg-gray-700/70' : 'bg-white/70 hover:bg-white/90'} backdrop-blur-sm rounded-xl p-6 border ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 block`}
-                            >
-                                <Icon className="h-8 w-8 text-blue-600 mx-auto mb-4" />
-                                <h3 className={`font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'} mb-2`}>{title}</h3>
-                                <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{desc}</p>
-                            </a>
-                        ))}
-                    </div>
-
-                    <button
-                        onClick={() => scrollToSection('game')}
-                        className="cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                    >
-                        Start Playing Now
-                    </button>
-                </div>
-            </section>
-
-            {/* Settings Modal */}
-            {showSettings && (
-                <div
-                    className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4"
-                    onClick={(e) => handleModalBackdropClick(e, () => setShowSettings(false))}
-                >
-                    <div className={`${settings.darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in duration-300`}>
-                        <div className={`p-6 border-b ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                            <div className="flex items-center justify-between">
-                                <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Settings</h3>
-                                <button
-                                    onClick={() => setShowSettings(false)}
-                                    className={`cursor-pointer ${settings.darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors duration-200`}
-                                >
-                                    <X className="h-6 w-6" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            {[
-                                { key: 'soundEnabled', label: 'Sound Effects', icon: settings.soundEnabled ? Volume2 : VolumeX },
-                                { key: 'timerEnabled', label: 'Timer', icon: Clock },
-                                { key: 'hintsEnabled', label: 'Hints', icon: Zap }
-                            ].map(({ key, label, icon: Icon }) => (
-                                <div key={key} className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <Icon className={`h-5 w-5 ${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-                                        <span className={`font-medium ${settings.darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{label}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => setSettings(prev => ({ ...prev, [key]: !prev[key as keyof Settings] }))}
-                                        className={`cursor-pointer relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${settings[key as keyof Settings] ? 'bg-blue-600' : settings.darkMode ? 'bg-gray-600' : 'bg-gray-300'
-                                            }`}
-                                    >
-                                        <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${settings[key as keyof Settings] ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
-                                        />
-                                    </button>
-                                </div>
-                            ))}
-
-                            <div className="pt-4 border-t border-gray-200">
-                                <button
-                                    onClick={() => {
-                                        setShowAchievements(true);
-                                        setShowSettings(false);
-                                    }}
-                                    className="cursor-pointer w-full flex items-center space-x-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
-                                >
-                                    <Trophy className="h-5 w-5 text-blue-600" />
-                                    <span className="font-medium text-blue-800">View Achievements</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Achievements Modal */}
-            {showAchievements && (
-                <div
-                    className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4"
-                    onClick={(e) => handleModalBackdropClick(e, () => setShowAchievements(false))}
-                >
-                    <div className={`${settings.darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl w-full max-w-2xl animate-in zoom-in duration-300 max-h-[80vh] overflow-y-auto`}>
-                        <div className={`p-6 border-b ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'} sticky top-0 ${settings.darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                            <div className="flex items-center justify-between">
-                                <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Achievements</h3>
-                                <button
-                                    onClick={() => setShowAchievements(false)}
-                                    className={`cursor-pointer ${settings.darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors duration-200`}
-                                >
-                                    <X className="h-6 w-6" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            {achievements.map((achievement) => (
-                                <div
-                                    key={achievement.id}
-                                    className={`p-4 rounded-lg border-2 transition-all duration-300 ${achievement.unlocked
-                                        ? 'border-green-500 bg-green-50'
-                                        : settings.darkMode
-                                            ? 'border-gray-600 bg-gray-700'
-                                            : 'border-gray-300 bg-gray-50'
-                                        }`}
-                                >
-                                    <div className="flex items-center space-x-4">
-                                        <div className="text-3xl">{achievement.icon}</div>
-                                        <div className="flex-1">
-                                            <h4 className={`font-bold ${achievement.unlocked
-                                                ? 'text-green-800'
-                                                : settings.darkMode
-                                                    ? 'text-gray-200'
-                                                    : 'text-gray-800'
-                                                }`}>
-                                                {achievement.title}
-                                                {achievement.unlocked && <span className="ml-2 text-green-600">✓</span>}
-                                            </h4>
-                                            <p className={`text-sm ${achievement.unlocked
-                                                ? 'text-green-600'
-                                                : settings.darkMode
-                                                    ? 'text-gray-400'
-                                                    : 'text-gray-600'
-                                                }`}>
-                                                {achievement.description}
-                                            </p>
-                                            {!achievement.unlocked && (
-                                                <div className="mt-2">
-                                                    <div className={`w-full bg-gray-200 rounded-full h-2 ${settings.darkMode ? 'bg-gray-600' : ''}`}>
-                                                        <div
-                                                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                                            style={{ width: `${Math.min((achievement.progress / achievement.requirement) * 100, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                    <p className={`text-xs mt-1 ${settings.darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        {achievement.progress} / {achievement.requirement}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Country Details Modal */}
-            {showCountryModal && selectedCountryDetails && (
-                <div
-                    className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4"
-                    onClick={(e) => handleModalBackdropClick(e, () => setShowCountryModal(false))}
-                >
-                    <div className={`${settings.darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl w-full max-w-lg animate-in zoom-in duration-300`}>
-                        <div className={`p-6 border-b ${settings.darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="font-medium">{selectedCountryDetails.flagEmoji}</div>
-                                    <h3 className={`text-xl font-bold ${settings.darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
-                                        {selectedCountryDetails.name}
-                                    </h3>
-                                </div>
-                                <button
-                                    onClick={() => setShowCountryModal(false)}
-                                    className={`cursor-pointer ${settings.darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors duration-200`}
-                                >
-                                    <X className="h-6 w-6" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-1 gap-4">
-                                {[
-                                    { label: 'Capital', value: selectedCountryDetails.capital },
-                                    { label: 'Population', value: selectedCountryDetails.population },
-                                    { label: 'Continent', value: selectedCountryDetails.continent },
-                                    { label: 'Currency', value: selectedCountryDetails.currency },
-                                    { label: 'Language', value: selectedCountryDetails.language }
-                                ].map(({ label, value }) => (
-                                    <div key={label}>
-                                        <p className={`font-semibold ${settings.darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{label}:</p>
-                                        <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{value}</p>
-                                    </div>
-                                ))}
-                                <div>
-                                    <p className={`font-semibold ${settings.darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Fun Fact:</p>
-                                    <p className={`${settings.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{selectedCountryDetails.funFact}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Footer */}
-            <footer className={`${settings.darkMode ? 'bg-gray-900 text-white' : 'bg-gray-900 text-white'} py-8 sm:py-12`}>
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-                        <div className="space-y-4">
-                            <div className="flex items-center space-x-3">
-                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg">
-                                    <Globe className="h-6 w-6 text-white" />
-                                </div>
-                                <span className="text-xl font-bold">GeoQuiz Pro</span>
-                            </div>
-                            <p className="text-gray-400 text-sm">
-                                Master world geography through interactive quizzes and discover fascinating facts about countries worldwide.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold mb-4">Quick Links</h4>
-                            <div className="space-y-2">
-                                <button onClick={() => scrollToSection('home')} className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 block text-sm text-left">Home</button>
-                                <button onClick={() => scrollToSection('features')} className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 block text-sm text-left">Features</button>
-                                <button onClick={() => scrollToSection('game')} className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 block text-sm text-left">Play Game</button>
-                                <button onClick={() => scrollToSection('about')} className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 block text-sm text-left">About</button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold mb-4">Game Features</h4>
-                            <div className="space-y-2">
-                                <p className="text-gray-400 text-sm">Flag & Capital Quiz</p>
-                                <p className="text-gray-400 text-sm">Achievement System</p>
-                                <p className="text-gray-400 text-sm">Multiple Difficulties</p>
-                                <p className="text-gray-400 text-sm">Real-time Scoring</p>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold mb-4">Contact Info</h4>
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <Mail className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-400 text-sm">contact@geoquizpro.com</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Phone className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-400 text-sm">+1 (555) 123-4567</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-gray-800 pt-6 sm:pt-8 mt-6 sm:mt-8 text-center">
-                        <p className="text-gray-400 text-sm">
-                            © 2025 GeoQuiz Pro. All rights reserved. Built with React & TypeScript.
-                        </p>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    );
+// Modern Glassmorphism Color System
+const glassColors = {
+  primary: "rgba(99, 102, 241, 0.1)",
+  secondary: "rgba(168, 85, 247, 0.1)",
+  accent: "rgba(14, 165, 233, 0.1)",
+  success: "rgba(34, 197, 94, 0.1)",
+  warning: "rgba(245, 158, 11, 0.1)",
+  danger: "rgba(239, 68, 68, 0.1)",
+  neutral: "rgba(148, 163, 184, 0.1)",
 };
 
-export default GeoQuizPro;
+const riskConfig = {
+  low: {
+    icon: "☀️",
+    label: "Clear Weather",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/20",
+    border: "border-emerald-500/30",
+  },
+  medium: {
+    icon: "⛅",
+    label: "Partly Cloudy",
+    color: "text-amber-400",
+    bg: "bg-amber-500/20",
+    border: "border-amber-500/30",
+  },
+  high: {
+    icon: "🌧️",
+    label: "Stormy",
+    color: "text-orange-400",
+    bg: "bg-orange-500/20",
+    border: "border-orange-500/30",
+  },
+  critical: {
+    icon: "⛈️",
+    label: "Severe Storm",
+    color: "text-red-400",
+    bg: "bg-red-500/20",
+    border: "border-red-500/30",
+  },
+};
+
+const WeatherIcon = ({ risk, size = 20 }: { risk: string; size?: number }) => {
+  const config = riskConfig[risk as keyof typeof riskConfig] || riskConfig.low;
+  return (
+    <span className="text-xl" style={{ fontSize: `${size}px` }}>
+      {config.icon}
+    </span>
+  );
+};
+
+// Glassmorphism Components
+const GlassCard = ({
+  children,
+  className = "",
+  ...props
+}: {
+  children: React.ReactNode;
+  className?: string;
+  [key: string]: any;
+}) => (
+  <div
+    className={`backdrop-blur-xl bg-slate-800/60 border border-slate-600/40 rounded-xl sm:rounded-2xl shadow-2xl ${className}`}
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+const GlassButton = ({
+  children,
+  variant = "primary",
+  className = "",
+  ...props
+}: {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary" | "danger";
+  className?: string;
+  [key: string]: any;
+}) => {
+  const variants = {
+    primary:
+      "bg-gradient-to-r from-indigo-500/90 to-purple-600/90 hover:from-indigo-600/90 hover:to-purple-700/90 text-white shadow-lg",
+    secondary:
+      "bg-slate-700/80 hover:bg-slate-600/80 text-slate-100 border border-slate-500/40 shadow-lg",
+    danger: "bg-red-500/90 hover:bg-red-600/90 text-white shadow-lg",
+  };
+
+  return (
+    <button
+      className={`cursor-pointer backdrop-blur-sm px-3 py-2 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-medium transition-all duration-200 ${variants[variant]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+// Landing Page Component
+const LandingPage = ({
+  onEnterDashboard,
+}: {
+  onEnterDashboard: () => void;
+}) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const features = [
+    {
+      icon: Target,
+      title: "Smart Milestone Planning",
+      description:
+        "Intelligent milestone tracking with weather-based risk assessment and automated progress calculation.",
+      color: "text-indigo-400",
+    },
+    {
+      icon: Layers,
+      title: "Resizable Workspace",
+      description:
+        "Adaptive interface with resizable panes for roadmap editing and timeline preview that works seamlessly.",
+      color: "text-purple-400",
+    },
+    {
+      icon: Globe,
+      title: "Real-time Collaboration",
+      description:
+        "Share projects instantly with shareable URLs and collaborate with your team in real-time.",
+      color: "text-cyan-400",
+    },
+    {
+      icon: BarChart3,
+      title: "Advanced Analytics",
+      description:
+        "Comprehensive analytics dashboard with progress tracking, risk distribution, and team performance metrics.",
+      color: "text-emerald-400",
+    },
+    {
+      icon: Lock,
+      title: "Enterprise Security",
+      description:
+        "Built with enterprise-grade security features and compliance standards for professional teams.",
+      color: "text-orange-400",
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast",
+      description:
+        "Optimized performance with glassmorphism design that delivers beautiful and responsive user experience.",
+      color: "text-pink-400",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900">
+      {/* Navigation */}
+      <nav className="relative z-10 p-3 sm:p-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <BarChart3 size={isMobile ? 16 : 20} className="text-white" />
+            </div>
+            <span className="text-lg sm:text-xl font-bold text-slate-100">
+              MilestonePro
+            </span>
+          </div>
+          <GlassButton
+            variant="secondary"
+            onClick={onEnterDashboard}
+            className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
+          >
+            <Rocket size={14} />
+            <span className="hidden sm:inline">Try Dashboard</span>
+            <span className="sm:hidden">Try</span>
+          </GlassButton>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative z-10 px-3 sm:px-6 py-12 sm:py-20">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-6 sm:mb-8">
+            <div className="inline-flex items-center gap-1 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs sm:text-sm mb-4 sm:mb-6">
+              <Star size={12} />
+              <span>Next-Generation Project Management</span>
+            </div>
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-slate-100 mb-4 sm:mb-6 leading-tight">
+              Plan Milestones
+              <span className="block bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                Like Weather
+              </span>
+            </h1>
+            <p className="text-base sm:text-xl text-slate-300 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
+              Revolutionary milestone planning dashboard with weather-based risk
+              visualization, real-time collaboration, and intelligent progress
+              tracking. Built for modern teams.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 sm:mb-12 px-4 sm:px-0">
+            <GlassButton
+              variant="primary"
+              onClick={onEnterDashboard}
+              className="w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-semibold flex items-center justify-center gap-2 sm:gap-3"
+            >
+              <Rocket size={18} />
+              Launch Dashboard
+              <ArrowRight size={14} />
+            </GlassButton>
+          </div>
+
+          {/* Demo Preview */}
+          <GlassCard className="p-1 max-w-4xl mx-auto mx-3 sm:mx-auto">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg sm:rounded-xl p-4 sm:p-8 border border-white/10">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                {["☀️ Clear", "⛅ Cloudy", "🌧️ Stormy", "⛈️ Critical"].map(
+                  (weather, i) => (
+                    <div
+                      key={i}
+                      className="text-center p-2 sm:p-3 rounded-md sm:rounded-lg bg-white/5 border border-white/10"
+                    >
+                      <div className="text-xs sm:text-sm text-slate-300">
+                        {weather}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+              <div className="space-y-2 sm:space-y-3">
+                {[85, 60, 25].map((progress, i) => (
+                  <div key={i} className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+                    <div className="flex-1 bg-white/10 rounded-full h-1.5 sm:h-2">
+                      <div
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-1.5 sm:h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <span className="text-slate-300 text-xs sm:text-sm font-medium">
+                      {progress}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="relative z-10 px-3 sm:px-6 py-12 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 sm:mb-16 px-4 sm:px-0">
+            <h2 className="text-2xl sm:text-4xl font-bold text-slate-100 mb-3 sm:mb-4">
+              Powerful Features for Modern Teams
+            </h2>
+            <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto">
+              Everything you need to plan, track, and deliver successful
+              projects with your team, built with cutting-edge technology.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+            {features.map((feature, index) => (
+              <GlassCard
+                key={index}
+                className="p-4 sm:p-6 group hover:bg-white/15 transition-all duration-300"
+              >
+                <div
+                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}
+                >
+                  <feature.icon
+                    size={isMobile ? 20 : 24}
+                    className={feature.color}
+                  />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-2 sm:mb-3">
+                  {feature.title}
+                </h3>
+                <p className="text-slate-300 leading-relaxed text-sm sm:text-base">
+                  {feature.description}
+                </p>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative z-10 px-3 sm:px-6 py-12 sm:py-20">
+        <div className="max-w-4xl mx-auto text-center">
+          <GlassCard className="p-6 sm:p-12">
+            <h2 className="text-2xl sm:text-4xl font-bold text-slate-100 mb-3 sm:mb-4">
+              Ready to Transform Your Project Management?
+            </h2>
+            <p className="text-slate-300 text-base sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto">
+              Join thousands of teams already using MilestonePro to deliver
+              projects faster and more efficiently than ever before.
+            </p>
+            <div className="flex justify-center">
+              <GlassButton
+                variant="primary"
+                onClick={onEnterDashboard}
+                className="w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-semibold flex items-center justify-center gap-2 sm:gap-3"
+              >
+                <Rocket size={18} />
+                Get Started Free
+                <ArrowRight size={14} />
+              </GlassButton>
+            </div>
+          </GlassCard>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 px-3 sm:px-6 py-8 sm:py-12 border-t border-white/10">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <BarChart3 size={isMobile ? 12 : 16} className="text-white" />
+            </div>
+            <span className="text-base sm:text-lg font-bold text-slate-100">
+              MilestonePro
+            </span>
+          </div>
+          <p className="text-slate-400 text-xs sm:text-sm">
+            © 2025 MilestonePro. Built with modern web technologies for the
+            future of project management.
+          </p>
+        </div>
+      </footer>
+
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+      </div>
+    </div>
+  );
+};
+
+// Resizable Panes Component
+const ResizablePanes: React.FC<{
+  leftPane: React.ReactNode;
+  rightPane: React.ReactNode;
+  defaultLeftWidth?: number;
+}> = ({ leftPane, rightPane, defaultLeftWidth = 50 }) => {
+  const [leftWidth, setLeftWidth] = useState(defaultLeftWidth);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.max(20, Math.min(80, newLeftWidth)));
+    },
+    [isDragging]
+  );
+
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  return (
+    <div ref={containerRef} className="flex h-full w-full">
+      <div style={{ width: `${leftWidth}%` }} className="h-full overflow-auto">
+        {leftPane}
+      </div>
+      <div
+        onMouseDown={handleMouseDown}
+        className="w-1 cursor-col-resize bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center"
+      >
+        <GripVertical size={12} className="text-white/60" />
+      </div>
+      <div
+        style={{ width: `${100 - leftWidth}%` }}
+        className="h-full overflow-auto"
+      >
+        {rightPane}
+      </div>
+    </div>
+  );
+};
+
+// Mobile Accordion Component
+const MobileAccordion: React.FC<{
+  sections: Array<{
+    title: string;
+    content: React.ReactNode;
+    defaultOpen?: boolean;
+  }>;
+}> = ({ sections }) => {
+  const [openSections, setOpenSections] = useState<Set<number>>(
+    new Set(
+      sections
+        .map((_, index) => (sections[index].defaultOpen ? index : -1))
+        .filter((i) => i >= 0)
+    )
+  );
+
+  const toggleSection = (index: number) => {
+    const newOpenSections = new Set(openSections);
+    if (newOpenSections.has(index)) {
+      newOpenSections.delete(index);
+    } else {
+      newOpenSections.add(index);
+    }
+    setOpenSections(newOpenSections);
+  };
+
+  return (
+    <div className="space-y-3 sm:space-y-4">
+      {sections.map((section, index) => (
+        <GlassCard key={index}>
+          <button
+            onClick={() => toggleSection(index)}
+            className="cursor-pointer w-full p-3 sm:p-4 flex items-center justify-between text-left"
+          >
+            <span className="font-semibold text-slate-100 text-sm sm:text-base">
+              {section.title}
+            </span>
+            {openSections.has(index) ? (
+              <ChevronUp size={18} className="text-slate-300" />
+            ) : (
+              <ChevronDown size={18} className="text-slate-300" />
+            )}
+          </button>
+          {openSections.has(index) && (
+            <div className="p-3 sm:p-4 pt-0 border-t border-white/10">
+              {section.content}
+            </div>
+          )}
+        </GlassCard>
+      ))}
+    </div>
+  );
+};
+
+export default function ProjectDashboard() {
+  const [showLanding, setShowLanding] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "milestones" | "analytics"
+  >("overview");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(
+    null
+  );
+  const [newMilestone, setNewMilestone] = useState<Partial<Milestone>>({
+    tags: [],
+    githubIssues: [],
+    category: "default",
+  });
+  const [shareableUrl, setShareableUrl] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (isEditing) {
+      // Store original values
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalWidth = document.body.style.width;
+      
+      // Prevent scrolling
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+      
+      // Cleanup function
+      return () => {
+        document.body.classList.remove("modal-open");
+        document.body.style.overflow = originalOverflow || "";
+        document.body.style.position = originalPosition || "";
+        document.body.style.width = originalWidth || "";
+      };
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (!showLanding) {
+      const defaultProject: Project = {
+        id: "1",
+        name: "Digital Innovation Platform",
+        description:
+          "Next-generation platform development with AI-powered features and cloud-native architecture",
+        milestones: [
+          {
+            id: "1",
+            title: "Platform Architecture Design",
+            description:
+              "Design scalable microservices architecture with cloud-native patterns",
+            dueDate: "2025-07-15",
+            assignee: "Sarah Chen",
+            progress: 85,
+            risk: "low",
+            tags: ["architecture", "design"],
+            githubIssues: [],
+            category: "design",
+          },
+          {
+            id: "2",
+            title: "Core API Development",
+            description:
+              "Build RESTful APIs with GraphQL integration and real-time capabilities",
+            dueDate: "2025-08-01",
+            assignee: "Michael Rodriguez",
+            progress: 60,
+            risk: "medium",
+            tags: ["backend", "api"],
+            githubIssues: [],
+            category: "development",
+          },
+          {
+            id: "3",
+            title: "AI Model Integration",
+            description:
+              "Integrate machine learning models for intelligent automation features",
+            dueDate: "2025-09-15",
+            assignee: "Alex Thompson",
+            progress: 25,
+            risk: "high",
+            tags: ["ai", "ml"],
+            githubIssues: [],
+            category: "development",
+          },
+          {
+            id: "4",
+            title: "Security & Compliance",
+            description:
+              "Implement enterprise security measures and regulatory compliance",
+            dueDate: "2025-09-30",
+            assignee: "Jennifer Liu",
+            progress: 10,
+            risk: "critical",
+            tags: ["security", "compliance"],
+            githubIssues: [],
+            category: "security",
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+      };
+      setProjects([defaultProject]);
+      setCurrentProject(defaultProject);
+    }
+  }, [showLanding]);
+
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  const updateMilestoneProgress = (milestoneId: string, progress: number) => {
+    if (!currentProject) return;
+    const limitedProgress = Math.min(Math.max(progress, 0), 100);
+    const updatedMilestones = currentProject.milestones.map((milestone) =>
+      milestone.id === milestoneId
+        ? { ...milestone, progress: limitedProgress }
+        : milestone
+    );
+    const updatedProject = {
+      ...currentProject,
+      milestones: updatedMilestones,
+      lastModified: new Date().toISOString(),
+    };
+    setCurrentProject(updatedProject);
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+  };
+
+  const increaseProgress = (milestoneId: string) => {
+    if (!currentProject) return;
+    const milestone = currentProject.milestones.find(m => m.id === milestoneId);
+    if (!milestone) return;
+    const newProgress = Math.min(milestone.progress + 10, 100);
+    updateMilestoneProgress(milestoneId, newProgress);
+  };
+
+  const decreaseProgress = (milestoneId: string) => {
+    if (!currentProject) return;
+    const milestone = currentProject.milestones.find(m => m.id === milestoneId);
+    if (!milestone) return;
+    const newProgress = Math.max(milestone.progress - 10, 0);
+    updateMilestoneProgress(milestoneId, newProgress);
+  };
+
+  const editMilestone = (milestone: Milestone) => {
+    setEditingMilestone(milestone);
+    setNewMilestone(milestone);
+    setIsEditing(true);
+  };
+
+  const deleteMilestone = (milestoneId: string) => {
+    if (!currentProject) return;
+    const updatedMilestones = currentProject.milestones.filter(
+      (m) => m.id !== milestoneId
+    );
+    const updatedProject = {
+      ...currentProject,
+      milestones: updatedMilestones,
+      lastModified: new Date().toISOString(),
+    };
+    setCurrentProject(updatedProject);
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+  };
+
+  const saveMilestone = () => {
+    if (!currentProject || !newMilestone.title || !newMilestone.dueDate) return;
+    const limitedProgress = Math.min(
+      Math.max(newMilestone.progress || 0, 0),
+      100
+    );
+    const milestoneToSave: Milestone = {
+      id: editingMilestone?.id || generateId(),
+      title: newMilestone.title,
+      description: newMilestone.description || "",
+      dueDate: newMilestone.dueDate || "",
+      assignee: newMilestone.assignee || "",
+      progress: limitedProgress,
+      risk: newMilestone.risk || "low",
+      tags: newMilestone.tags || [],
+      githubIssues: newMilestone.githubIssues || [],
+      category: newMilestone.category || "default",
+    };
+
+    let updatedMilestones;
+    if (editingMilestone) {
+      updatedMilestones = currentProject.milestones.map((m) =>
+        m.id === editingMilestone.id ? milestoneToSave : m
+      );
+    } else {
+      updatedMilestones = [...currentProject.milestones, milestoneToSave];
+    }
+
+    const updatedProject = {
+      ...currentProject,
+      milestones: updatedMilestones,
+      lastModified: new Date().toISOString(),
+    };
+    setCurrentProject(updatedProject);
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+    setIsEditing(false);
+    setEditingMilestone(null);
+    setNewMilestone({ tags: [], githubIssues: [], category: "default" });
+  };
+
+  const generateShareableUrl = () => {
+    if (!currentProject) return;
+    const projectData = encodeURIComponent(JSON.stringify(currentProject));
+    const url = `${window.location.origin}${window.location.pathname}?project=${projectData}`;
+    navigator.clipboard.writeText(url);
+    setShareableUrl(url);
+    setTimeout(() => setShareableUrl(""), 4000);
+  };
+
+  const getRiskDistribution = (project: Project) => {
+    const distribution = { critical: 0, high: 0, medium: 0, low: 0 };
+    project.milestones.forEach((milestone) => distribution[milestone.risk]++);
+    return distribution;
+  };
+
+  const getOverallProgress = (project: Project) => {
+    if (project.milestones.length === 0) return 0;
+    const totalProgress = project.milestones.reduce(
+      (sum, milestone) => sum + milestone.progress,
+      0
+    );
+    return Math.round(totalProgress / project.milestones.length);
+  };
+
+  const RoadmapEditingPane = () => (
+    <div className="p-3 sm:p-6 h-full">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+          <Edit size={16} className="text-indigo-400" />
+          Roadmap Editor
+        </h3>
+        <p className="text-slate-400 text-xs sm:text-sm">
+          Manage and edit your project milestones
+        </p>
+      </div>
+
+      <div className="space-y-3 sm:space-y-4 h-[calc(100%-100px)] sm:h-[calc(100%-120px)] overflow-y-auto">
+        {currentProject?.milestones.map((milestone, index) => {
+          const riskInfo = riskConfig[milestone.risk];
+          return (
+            <GlassCard key={milestone.id} className="p-3 sm:p-4 bg-slate-700/40 border-slate-500/50">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0 pr-2 sm:pr-4">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <WeatherIcon risk={milestone.risk} size={16} />
+                    <h4 className="font-semibold text-slate-50 truncate text-sm sm:text-base">
+                      {milestone.title}
+                    </h4>
+                    <span className="text-xs px-2 py-1 rounded-full bg-slate-600/70 text-slate-200 border border-slate-500/30">
+                      #{index + 1}
+                    </span>
+                  </div>
+                  <p className="text-slate-200 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2">
+                    {milestone.description}
+                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={10} />
+                      {new Date(milestone.dueDate).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users size={10} />
+                      {milestone.assignee}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                  <button
+                    onClick={() => editMilestone(milestone)}
+                    className="cursor-pointer flex items-center justify-center p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-slate-600/60 hover:bg-slate-500/70 text-slate-200 hover:text-white transition-colors border border-slate-500/30"
+                  >
+                    <Edit3 size={12} />
+                  </button>
+                  <button
+                    onClick={() => deleteMilestone(milestone.id)}
+                    className="cursor-pointer p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-600/70 hover:bg-red-500/80 text-red-100 hover:text-white transition-colors flex items-center justify-center border border-red-500/40"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1 sm:space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-200 text-sm sm:text-base">
+                      Progress
+                    </span>
+                    <span className="font-bold text-indigo-300 text-sm sm:text-base">
+                      {milestone.progress}%
+                    </span>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => decreaseProgress(milestone.id)}
+                      disabled={milestone.progress <= 0}
+                      className="cursor-pointer px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/70 disabled:bg-slate-600/50 text-slate-200 hover:text-white disabled:text-slate-400 transition-colors border border-slate-500/40 disabled:border-slate-500/30 font-medium text-xs sm:text-sm flex items-center gap-2 disabled:cursor-not-allowed flex-1 sm:flex-initial justify-center"
+                    >
+                      <Undo size={14} />
+                      <span className="hidden sm:inline">Remove 10%</span>
+                      <span className="sm:hidden">-10%</span>
+                    </button>
+                    <button
+                      onClick={() => increaseProgress(milestone.id)}
+                      disabled={milestone.progress >= 100}
+                      className="cursor-pointer px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-indigo-600/70 hover:bg-indigo-500/80 disabled:bg-slate-600/50 text-slate-100 hover:text-white disabled:text-slate-400 transition-colors border border-indigo-500/40 disabled:border-slate-500/30 font-medium text-xs sm:text-sm flex items-center gap-2 disabled:cursor-not-allowed flex-1 sm:flex-initial justify-center"
+                    >
+                      <Plus size={14} />
+                      <span className="hidden sm:inline">Add 10%</span>
+                      <span className="sm:hidden">+10%</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-600/50 rounded-full h-2 border border-slate-500/30">
+                  <div
+                    className="bg-gradient-to-r from-indigo-400 to-purple-500 h-2 rounded-full transition-all duration-300 shadow-sm"
+                    style={{ width: `${milestone.progress}%` }}
+                  />
+                </div>
+              </div>
+            </GlassCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const RoadmapPreviewPane = () => (
+    <div className="p-3 sm:p-6 h-full">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+          <Calendar size={16} className="text-purple-400" />
+          Timeline Preview
+        </h3>
+        <p className="text-slate-400 text-xs sm:text-sm">
+          Visual timeline of your project milestones
+        </p>
+      </div>
+
+      <div className="relative h-[calc(100%-100px)] sm:h-[calc(100%-120px)] overflow-y-auto">
+        <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-600 opacity-60" />
+
+        {currentProject?.milestones
+          .sort(
+            (a, b) =>
+              new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+          )
+          .map((milestone, index) => {
+            const riskInfo = riskConfig[milestone.risk];
+            return (
+              <div
+                key={milestone.id}
+                className="relative pl-8 sm:pl-12 pb-4 sm:pb-6 last:pb-0"
+              >
+                <div className="absolute left-2.5 sm:left-4 top-2 sm:top-3 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 border-2 border-slate-800 z-10" />
+
+                <GlassCard className="p-3 sm:p-4 bg-slate-700/40 border-slate-500/50">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <WeatherIcon risk={milestone.risk} size={14} />
+                    <h4 className="font-semibold text-slate-50 text-xs sm:text-sm">
+                      {milestone.title}
+                    </h4>
+                    <span className="text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full bg-slate-600/70 text-slate-200 border border-slate-500/30">
+                      {index + 1}
+                    </span>
+                  </div>
+
+                  <p className="text-slate-200 text-xs mb-2 sm:mb-3 line-clamp-2">
+                    {milestone.description}
+                  </p>
+
+                  <div className="flex justify-between items-center text-xs text-slate-300 mb-2">
+                    <span className="truncate pr-2">{milestone.assignee}</span>
+                    <span className="flex-shrink-0">
+                      {new Date(milestone.dueDate).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-slate-600/50 rounded-full h-1 sm:h-1.5 border border-slate-500/30">
+                    <div
+                      className="bg-gradient-to-r from-indigo-400 to-purple-500 h-1 sm:h-1.5 rounded-full transition-all duration-300 shadow-sm"
+                      style={{ width: `${milestone.progress}%` }}
+                    />
+                  </div>
+                </GlassCard>
+              </div>
+            );
+          })}
+      </div>
+    </div>
+  );
+
+  // Show landing page first
+  if (showLanding) {
+    return <LandingPage onEnterDashboard={() => setShowLanding(false)} />;
+  }
+
+  if (!currentProject) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin text-indigo-400 mb-4">
+            <Settings size={isMobile ? 40 : 48} />
+          </div>
+          <p className="text-slate-300 font-medium text-sm sm:text-base">
+            Loading Dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 font-['Roboto',sans-serif]">
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap");
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        /* Hide scrollbars for all elements except body */
+        *:not(body) {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        /* Hide scrollbars for webkit browsers (Chrome, Safari, Edge) */
+        *:not(body)::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+          background: transparent;
+        }
+        
+        *:not(body)::-webkit-scrollbar-track {
+          display: none;
+        }
+        
+        *:not(body)::-webkit-scrollbar-thumb {
+          display: none;
+        }
+        
+        /* Modal scroll prevention */
+        body.modal-open {
+          overflow: hidden !important;
+          position: fixed !important;
+          width: 100% !important;
+          height: 100vh !important;
+        }
+        
+        /* Specific targets for common scroll containers */
+        div[class*="overflow-"]:not(.modal-backdrop),
+        div[class*="h-["]:not(.modal-backdrop),
+        .space-y-3,
+        .space-y-4 {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        
+        div[class*="overflow-"]:not(.modal-backdrop)::-webkit-scrollbar,
+        div[class*="h-["]:not(.modal-backdrop)::-webkit-scrollbar,
+        .space-y-3::-webkit-scrollbar,
+        .space-y-4::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+
+      <div className="max-w-7xl mx-auto p-3 sm:p-6">
+        {/* Header */}
+        <GlassCard className="p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <BarChart3 size={isMobile ? 20 : 24} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-slate-100 mb-1 truncate">
+                  {currentProject.name}
+                </h1>
+                <p className="text-slate-300 text-sm sm:text-base line-clamp-2">
+                  {currentProject.description}
+                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-xs text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock size={10} />
+                    Updated{" "}
+                    {new Date(currentProject.lastModified).toLocaleDateString()}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users size={10} />
+                    {
+                      new Set(currentProject.milestones.map((m) => m.assignee))
+                        .size
+                    }{" "}
+                    members
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:flex sm:gap-3">
+              <GlassButton
+                variant="secondary"
+                onClick={() => setShowLanding(true)}
+                className="flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <ArrowLeft size={14} />
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Home</span>
+              </GlassButton>
+              <GlassButton
+                variant="secondary"
+                onClick={generateShareableUrl}
+                className="flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <Share2 size={14} />
+                Share
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                onClick={() => setIsEditing(true)}
+                className="flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <Plus size={14} />
+                <span className="hidden sm:inline">Add Milestone</span>
+                <span className="sm:hidden">Add</span>
+              </GlassButton>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Navigation */}
+        <GlassCard className="p-2 mb-6 sm:mb-8">
+          <div className="grid grid-cols-3 gap-1 sm:gap-2">
+            {[
+              { key: "overview", label: "Overview", icon: TrendingUp },
+              { key: "milestones", label: "Milestones", icon: Target },
+              { key: "analytics", label: "Analytics", icon: BarChart3 },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key as any)}
+                className={`cursor-pointer py-2 sm:py-3 px-2 sm:px-4 rounded-lg sm:rounded-xl font-medium transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-base ${
+                  activeTab === key
+                    ? "bg-gradient-to-r from-indigo-500/80 to-purple-600/80 text-white"
+                    : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                <Icon size={14} />
+                <span className="sm:hidden text-xs">
+                  {label === "Milestones"
+                    ? "Tasks"
+                    : label === "Analytics"
+                    ? "Stats"
+                    : label}
+                </span>
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+
+        {/* Tab Content */}
+        {activeTab === "overview" && (
+          <div className="space-y-6 sm:space-y-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              {[
+                {
+                  icon: Target,
+                  label: "Milestones",
+                  value: currentProject.milestones.length,
+                  color: "indigo",
+                },
+                {
+                  icon: TrendingUp,
+                  label: "Progress",
+                  value: `${getOverallProgress(currentProject)}%`,
+                  color: "purple",
+                },
+                {
+                  icon: Users,
+                  label: "Team",
+                  value: new Set(
+                    currentProject.milestones.map((m) => m.assignee)
+                  ).size,
+                  color: "cyan",
+                },
+                {
+                  icon: AlertTriangle,
+                  label: "At Risk",
+                  value:
+                    getRiskDistribution(currentProject).high +
+                    getRiskDistribution(currentProject).critical,
+                  color: "orange",
+                },
+              ].map(({ icon: Icon, label, value, color }, i) => (
+                <GlassCard key={i} className="p-4 sm:p-6 text-center">
+                  <Icon
+                    size={isMobile ? 20 : 24}
+                    className={`text-${color}-400 mx-auto mb-2 sm:mb-3`}
+                  />
+                  <div className="text-xl sm:text-2xl font-bold text-slate-100 mb-1">
+                    {value}
+                  </div>
+                  <div className="text-slate-400 text-xs sm:text-sm">
+                    {label}
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+
+            {/* Recent Milestones */}
+            <GlassCard className="p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                <Activity size={16} className="text-indigo-400" />
+                Recent Milestones
+              </h3>
+              <div className="space-y-3 sm:space-y-4">
+                {currentProject.milestones
+                  .slice(0, 3)
+                  .map((milestone, index) => (
+                    <div
+                      key={milestone.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-white/5 border border-white/10"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <WeatherIcon risk={milestone.risk} size={18} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-slate-100 mb-1 truncate text-sm sm:text-base">
+                            {milestone.title}
+                          </div>
+                          <div className="text-slate-400 text-xs sm:text-sm">
+                            {milestone.assignee} • Due{" "}
+                            {new Date(milestone.dueDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-base sm:text-lg font-bold text-indigo-400 bg-indigo-500/20 px-3 py-1 rounded-lg text-center">
+                        {milestone.progress}%
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </GlassCard>
+
+            {/* Interactive Roadmap */}
+            <GlassCard className="overflow-hidden">
+              <div className="p-4 sm:p-6 border-b border-white/10">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2 sm:gap-3">
+                  <Zap size={16} className="text-purple-400" />
+                  Interactive Roadmap
+                </h3>
+              </div>
+              {isMobile ? (
+                <div className="p-3 sm:p-4">
+                  <MobileAccordion
+                    sections={[
+                      {
+                        title: "Editor",
+                        content: <RoadmapEditingPane />,
+                        defaultOpen: true,
+                      },
+                      {
+                        title: "Timeline",
+                        content: <RoadmapPreviewPane />,
+                        defaultOpen: false,
+                      },
+                    ]}
+                  />
+                </div>
+              ) : (
+                <div className="h-[500px] sm:h-[600px]">
+                  <ResizablePanes
+                    leftPane={<RoadmapEditingPane />}
+                    rightPane={<RoadmapPreviewPane />}
+                  />
+                </div>
+              )}
+            </GlassCard>
+          </div>
+        )}
+
+        {activeTab === "milestones" && (
+          <div className="space-y-4 sm:space-y-6">
+            {currentProject.milestones.map((milestone, index) => {
+              const riskInfo = riskConfig[milestone.risk];
+              return (
+                <GlassCard key={milestone.id} className="p-4 sm:p-6 bg-slate-700/40 border-slate-500/50">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                            <WeatherIcon risk={milestone.risk} size={18} />
+                            <h4 className="text-lg sm:text-xl font-bold text-slate-50 truncate">
+                              {milestone.title}
+                            </h4>
+                          </div>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${riskInfo.bg} ${riskInfo.color} w-fit border border-slate-500/30`}
+                          >
+                            {riskInfo.label}
+                          </span>
+                        </div>
+                        <p className="text-slate-200 mb-4 text-sm sm:text-base">
+                          {milestone.description}
+                        </p>
+                      </div>
+                      <div className="flex sm:flex-col gap-2">
+                        <button
+                          onClick={() => editMilestone(milestone)}
+                          className="cursor-pointer flex items-center justify-center flex-1 sm:flex-none p-2 sm:p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/70 text-slate-200 hover:text-white transition-colors border border-slate-500/30"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => deleteMilestone(milestone.id)}
+                          className="cursor-pointer flex items-center justify-center flex-1 sm:flex-none p-2 sm:p-2 rounded-lg bg-red-600/70 hover:bg-red-500/80 text-red-100 hover:text-white transition-colors border border-red-500/40"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-200 text-sm sm:text-base">
+                            Progress
+                          </span>
+                          <span className="font-bold text-indigo-300 text-sm sm:text-base">
+                            {milestone.progress}%
+                          </span>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => decreaseProgress(milestone.id)}
+                            disabled={milestone.progress <= 0}
+                            className="cursor-pointer px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/70 disabled:bg-slate-600/50 text-slate-200 hover:text-white disabled:text-slate-400 transition-colors border border-slate-500/40 disabled:border-slate-500/30 font-medium text-xs sm:text-sm flex items-center gap-2 disabled:cursor-not-allowed flex-1 sm:flex-initial justify-center"
+                          >
+                            <Undo size={14} />
+                            <span className="hidden sm:inline">Remove 10%</span>
+                            <span className="sm:hidden">-10%</span>
+                          </button>
+                          <button
+                            onClick={() => increaseProgress(milestone.id)}
+                            disabled={milestone.progress >= 100}
+                            className="cursor-pointer px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-indigo-600/70 hover:bg-indigo-500/80 disabled:bg-slate-600/50 text-slate-100 hover:text-white disabled:text-slate-400 transition-colors border border-indigo-500/40 disabled:border-slate-500/30 font-medium text-xs sm:text-sm flex items-center gap-2 disabled:cursor-not-allowed flex-1 sm:flex-initial justify-center"
+                          >
+                            <Plus size={14} />
+                            <span className="hidden sm:inline">Add 10%</span>
+                            <span className="sm:hidden">+10%</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-600/50 rounded-full h-2 border border-slate-500/30">
+                        <div
+                          className="bg-gradient-to-r from-indigo-400 to-purple-500 h-2 rounded-full transition-all duration-300 shadow-sm"
+                          style={{ width: `${milestone.progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-slate-600/30 border border-slate-500/40">
+                      <div>
+                        <div className="text-slate-300 text-xs sm:text-sm mb-1">
+                          Due Date
+                        </div>
+                        <div className="text-slate-100 font-medium text-sm sm:text-base">
+                          {new Date(milestone.dueDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-300 text-xs sm:text-sm mb-1">
+                          Assignee
+                        </div>
+                        <div className="text-slate-100 font-medium text-sm sm:text-base truncate">
+                          {milestone.assignee}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-300 text-xs sm:text-sm mb-1">
+                          Risk Level
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <WeatherIcon risk={milestone.risk} size={14} />
+                          <span
+                            className={`text-xs sm:text-sm ${riskInfo.color}`}
+                          >
+                            {riskInfo.label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        )}
+
+        {activeTab === "analytics" && (
+          <div className="space-y-6 sm:space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+              {/* Progress Chart */}
+              <GlassCard className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                  <BarChart3 size={16} className="text-indigo-400" />
+                  Progress Overview
+                </h3>
+                <div className="space-y-3 sm:space-y-4">
+                  {currentProject.milestones.map((milestone, index) => (
+                    <div key={milestone.id}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-slate-300 text-xs sm:text-sm truncate pr-2">
+                          {milestone.title}
+                        </span>
+                        <span className="text-indigo-400 font-semibold text-xs sm:text-sm">
+                          {milestone.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-1.5 sm:h-2">
+                        <div
+                          className="bg-gradient-to-r from-indigo-500 to-purple-600 h-1.5 sm:h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${milestone.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+
+              {/* Risk Analysis */}
+              <GlassCard className="p-4 sm:p-6">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                  <PieChart size={16} className="text-purple-400" />
+                  Risk Analysis
+                </h3>
+                <div className="space-y-3 sm:space-y-4">
+                  {Object.entries(riskConfig).map(([level, config]) => {
+                    const count =
+                      getRiskDistribution(currentProject)[
+                        level as keyof ReturnType<typeof getRiskDistribution>
+                      ];
+                    return (
+                      <div
+                        key={level}
+                        className="flex items-center justify-between p-3 rounded-lg sm:rounded-xl bg-white/5"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <span className="text-base sm:text-lg">
+                            {config.icon}
+                          </span>
+                          <span className="text-slate-300 capitalize text-sm sm:text-base">
+                            {config.label}
+                          </span>
+                        </div>
+                        <span className="font-bold text-slate-100 text-sm sm:text-base">
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            </div>
+
+            {/* Team Performance */}
+            <GlassCard className="p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-100 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+                <Users size={16} className="text-cyan-400" />
+                Team Performance
+              </h3>
+              <div className="space-y-3 sm:space-y-4">
+                {Array.from(
+                  new Set(currentProject.milestones.map((m) => m.assignee))
+                ).map((assignee) => {
+                  const assigneeMilestones = currentProject.milestones.filter(
+                    (m) => m.assignee === assignee
+                  );
+                  const avgProgress =
+                    assigneeMilestones.reduce((sum, m) => sum + m.progress, 0) /
+                    assigneeMilestones.length;
+
+                  return (
+                    <div
+                      key={assignee}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-slate-600/30 border border-slate-500/40"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {assignee
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-slate-100 text-sm sm:text-base truncate">
+                            {assignee}
+                          </div>
+                          <div className="text-slate-300 text-xs sm:text-sm">
+                            {assigneeMilestones.length} milestones
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div className="bg-slate-600/50 rounded-full h-2 sm:h-2 flex-1 sm:w-32 border border-slate-500/30">
+                          <div
+                            className="bg-gradient-to-r from-indigo-400 to-purple-500 h-2 sm:h-2 rounded-full transition-all duration-300 shadow-sm"
+                            style={{ width: `${avgProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-indigo-300 font-semibold text-sm sm:text-base flex-shrink-0">
+                          {Math.round(avgProgress)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </GlassCard>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      {isEditing && (
+        <div className="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <GlassCard className="w-full max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-100">
+                  {editingMilestone ? "Edit Milestone" : "Create Milestone"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditingMilestone(null);
+                    setNewMilestone({
+                      tags: [],
+                      githubIssues: [],
+                      category: "default",
+                    });
+                  }}
+                  className="cursor-pointer p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={newMilestone.title || ""}
+                  placeholder="Milestone title"
+                  onChange={(e) =>
+                    setNewMilestone((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Description
+                </label>
+                <textarea
+                  value={newMilestone.description || ""}
+                  placeholder="Milestone description"
+                  onChange={(e) =>
+                    setNewMilestone((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 h-20 sm:h-24 bg-white/10 border border-white/20 rounded-lg text-slate-100 placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-slate-300">
+                    Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newMilestone.dueDate || ""}
+                    onChange={(e) =>
+                      setNewMilestone((prev) => ({
+                        ...prev,
+                        dueDate: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-slate-300">
+                    Risk Level
+                  </label>
+                  <select
+                    value={newMilestone.risk || "low"}
+                    onChange={(e) =>
+                      setNewMilestone((prev) => ({
+                        ...prev,
+                        risk: e.target.value as any,
+                      }))
+                    }
+                    className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                  >
+                    <option value="low">☀️ Clear Weather</option>
+                    <option value="medium">⛅ Partly Cloudy</option>
+                    <option value="high">🌧️ Stormy</option>
+                    <option value="critical">⛈️ Severe Storm</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Assignee
+                </label>
+                <input
+                  type="text"
+                  value={newMilestone.assignee || ""}
+                  placeholder="Team member name"
+                  onChange={(e) =>
+                    setNewMilestone((prev) => ({
+                      ...prev,
+                      assignee: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Progress (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newMilestone.progress || 0}
+                  onChange={(e) =>
+                    setNewMilestone((prev) => ({
+                      ...prev,
+                      progress: Math.min(
+                        100,
+                        Math.max(0, parseInt(e.target.value) || 0)
+                      ),
+                    }))
+                  }
+                  className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <GlassButton
+                  variant="secondary"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditingMilestone(null);
+                    setNewMilestone({
+                      tags: [],
+                      githubIssues: [],
+                      category: "default",
+                    });
+                  }}
+                  className="w-full py-3 text-sm sm:text-base"
+                >
+                  Cancel
+                </GlassButton>
+                <GlassButton
+                  variant="primary"
+                  onClick={saveMilestone}
+                  disabled={!newMilestone.title || !newMilestone.dueDate}
+                  className="w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                >
+                  {editingMilestone ? "Update" : "Create"}
+                </GlassButton>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* Share Notification */}
+      {shareableUrl && (
+        <div className="fixed bottom-3 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-sm z-50">
+          <GlassCard className="p-3 sm:p-4">
+            <div className="flex gap-3">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                <Share2 size={14} className="text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-slate-100 mb-1 text-sm sm:text-base">
+                  URL Copied!
+                </h4>
+                <p className="text-slate-300 text-xs sm:text-sm mb-2">
+                  Share link is ready
+                </p>
+                <button
+                  onClick={() => setShareableUrl("")}
+                  className="cursor-pointer text-indigo-400 text-xs sm:text-sm hover:text-indigo-300"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+    </div>
+  );
+}
