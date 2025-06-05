@@ -1,1593 +1,2067 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, {
+  ReactNode,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
-  Coffee,
-  Truck,
-  Shield,
-  Star,
-  Check,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  AreaChart,
+  Legend,
+  Area,
+  Bar,
+  BarChart,
+  Cell,
+} from "recharts";
+import {
+  AudioWaveform,
+  Clock,
+  Satellite,
+  AlertTriangle,
+  TrendingUp,
+  Globe,
+  Download,
+  Info,
   Menu,
   X,
-  ArrowRight,
-  Award,
-  Globe,
-  Heart,
-  Clock,
-  Leaf,
+  ExternalLink,
+  Bell,
+  Shield,
+  Zap,
+  Radio,
+  Sun,
+  Moon,
+  ChevronRight,
+  Database,
   Users,
-  ChevronDown,
   Mail,
-  Phone,
-  MapPin,
-  Facebook,
+  Github,
   Twitter,
-  Instagram,
   Linkedin,
+  Activity,
+  BarChart3,
+  Settings,
+  Wifi,
+  WifiOff,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
-const CoffeeSubscriptionWebsite = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState("premium");
-  const [email, setEmail] = useState("");
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [subscriptionStep, setSubscriptionStep] = useState(1);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{
-    [key: string]: string;
-  }>({});
-  const [subscriptionData, setSubscriptionData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    nameOnCard: "",
-  });
+type ColorType =
+  | "default"
+  | "accent"
+  | "danger"
+  | "warning"
+  | "active"
+  | "success"
+  | "info";
+type ColorValue = {
+  hex: string;
+  twBg: string;
+  twBgHover: string;
+  twText: string;
+  twBorder: string;
+};
 
-  const plans = [
-    {
-      id: "basic",
-      name: "Essential",
-      price: 24,
-      originalPrice: 32,
-      bags: 1,
-      features: [
-        "Premium single-origin beans",
-        "Free shipping",
-        "Cancel anytime",
-        "Monthly delivery",
-      ],
-      popular: false,
-    },
-    {
-      id: "premium",
-      name: "Connoisseur",
-      price: 42,
-      originalPrice: 56,
-      bags: 2,
-      features: [
-        "2 premium coffee varieties",
-        "Tasting notes included",
-        "Free shipping",
-        "Priority support",
-        "Monthly delivery",
-        "Exclusive blends",
-      ],
-      popular: true,
-    },
-    {
-      id: "family",
-      name: "Family Reserve",
-      price: 68,
-      originalPrice: 84,
-      bags: 4,
-      features: [
-        "4 premium coffee varieties",
-        "Family-sized portions",
-        "Tasting notes & brewing guide",
-        "Free express shipping",
-        "24/7 premium support",
-        "Monthly delivery",
-        "Exclusive access to limited editions",
-      ],
-      popular: false,
-    },
-  ];
+const palette: Record<ColorType, ColorValue> = {
+  default: {
+    hex: "#ffffff",
+    twBg: "bg-white/10",
+    twBgHover: "hover:bg-white/20",
+    twText: "text-white",
+    twBorder: "border-white/20",
+  },
+  accent: {
+    hex: "#00d4ff",
+    twBg: "bg-cyan-400/20",
+    twBgHover: "hover:bg-cyan-400/30",
+    twText: "text-cyan-400",
+    twBorder: "border-cyan-400/30",
+  },
+  danger: {
+    hex: "#ff4757",
+    twBg: "bg-red-500/20",
+    twBgHover: "hover:bg-red-500/30",
+    twText: "text-red-400",
+    twBorder: "border-red-500/30",
+  },
+  warning: {
+    hex: "#ffa502",
+    twBg: "bg-orange-400/20",
+    twBgHover: "hover:bg-orange-400/30",
+    twText: "text-orange-400",
+    twBorder: "border-orange-400/30",
+  },
+  active: {
+    hex: "#ff6b6b",
+    twBg: "bg-rose-500/20",
+    twBgHover: "hover:bg-rose-500/30",
+    twText: "text-rose-400",
+    twBorder: "border-rose-500/30",
+  },
+  success: {
+    hex: "#2ed573",
+    twBg: "bg-green-500/20",
+    twBgHover: "hover:bg-green-500/30",
+    twText: "text-green-400",
+    twBorder: "border-green-500/30",
+  },
+  info: {
+    hex: "#5352ed",
+    twBg: "bg-indigo-500/20",
+    twBgHover: "hover:bg-indigo-500/30",
+    twText: "text-indigo-400",
+    twBorder: "border-indigo-500/30",
+  },
+};
 
-  const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "Marketing Director",
-      company: "TechFlow Inc.",
-      content:
-        "The quality is exceptional. Every morning starts with the perfect cup. The variety keeps me excited for each delivery.",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/women/65.jpg",
-    },
-    {
-      name: "Michael Rodriguez",
-      role: "Creative Director",
-      company: "Design Studio Pro",
-      content:
-        "I've tried many coffee subscriptions, but this one stands out. The curation is impeccable and the taste is consistently amazing.",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/men/45.jpg",
-    },
-    {
-      name: "Emily Watson",
-      role: "Startup Founder",
-      company: "InnovateLab",
-      content:
-        "The convenience and quality have transformed our office coffee culture. Our team looks forward to trying new blends every month.",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/women/30.jpg",
-    },
-  ];
+type Region = "Global" | "Asia" | "Europe" | "Americas" | "Oceania" | "Africa";
+type FlareIntensity = "xClass" | "mClass" | "cClass";
+type SolarWind = "speed" | "density";
+type SatelliteStatus = "operational" | "degraded" | "offline";
+type ToastType = "info" | "success" | "warning" | "error";
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+interface FlareData {
+  time: string;
+  xClass: number;
+  mClass: number;
+  cClass: number;
+  timestamp?: Date;
+}
 
-  // Prevent background scrolling when modal is open
-  useEffect(() => {
-    if (showSubscriptionModal) {
-      // Prevent scrolling on body
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${window.scrollY}px`;
-      document.body.style.width = '100%';
-    } else {
-      // Restore scrolling
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
+interface SolarWindData {
+  time: string;
+  speed: number;
+  density: number;
+  timestamp?: Date;
+}
+
+interface KPData {
+  time: string;
+  kpIndex: number;
+  aurora: number;
+  timestamp?: Date;
+}
+
+interface SatelliteData {
+  id: string;
+  name: string;
+  status: SatelliteStatus;
+  lastUpdate: Date;
+  dataQuality: number;
+}
+
+interface SpaceWeatherAlert {
+  id: string;
+  type: "geomagnetic" | "solar" | "radiation";
+  severity: "minor" | "moderate" | "strong" | "severe";
+  title: string;
+  description: string;
+  timestamp: Date;
+  isActive: boolean;
+}
+
+interface Toast {
+  id: string;
+  type: ToastType;
+  title: string;
+  message: string;
+  duration?: number;
+}
+
+const allRegions: Region[] = [
+  "Global",
+  "Asia",
+  "Europe",
+  
+  
+  
+];
+
+const flareIntensityLabel: Record<FlareIntensity, string> = {
+  xClass: "X-Class",
+  mClass: "M-Class",
+  cClass: "C-Class",
+};
+
+const solarWindLabel: Record<SolarWind, string> = {
+  density: "Density",
+  speed: "Speed",
+};
+
+const generateFlareData = (time: string, maxRatio = 1): FlareData => ({
+  time,
+  xClass: Math.floor(Math.random() * 3 * maxRatio),
+  mClass: Math.floor(Math.random() * 10 * maxRatio),
+  cClass: Math.floor(Math.random() * 20 * maxRatio),
+  timestamp: new Date(),
+});
+
+const generateSolarWindData = (time: string, maxRatio = 0): SolarWindData => ({
+  time,
+  speed: (Math.random() * 700 + 300) * (maxRatio ? 1 + maxRatio / 10 : 1),
+  density: Math.random() * 15 + 1 + (maxRatio ? maxRatio * 3 : 0),
+  timestamp: new Date(),
+});
+
+const generateKpData = (time: string): KPData => ({
+  time,
+  kpIndex: Math.random() * 8 + 1,
+  aurora: Math.random() * 100,
+  timestamp: new Date(),
+});
+
+const mockSatellites: SatelliteData[] = [
+  {
+    id: "ACE",
+    name: "Advanced Composition Explorer",
+    status: "operational",
+    lastUpdate: new Date(),
+    dataQuality: 98,
+  },
+  {
+    id: "WIND",
+    name: "Wind Spacecraft",
+    status: "operational",
+    lastUpdate: new Date(),
+    dataQuality: 95,
+  },
+  {
+    id: "SOHO",
+    name: "Solar and Heliospheric Observatory",
+    status: "degraded",
+    lastUpdate: new Date(),
+    dataQuality: 87,
+  },
+  {
+    id: "DSCOVR",
+    name: "Deep Space Climate Observatory",
+    status: "operational",
+    lastUpdate: new Date(),
+    dataQuality: 92,
+  },
+];
+
+const alertTemplates = [
+  {
+    type: "geomagnetic" as const,
+    severity: "moderate" as const,
+    title: "Geomagnetic Storm Watch",
+    description: "Moderate geomagnetic storming possible due to CME arrival",
+  },
+  {
+    type: "solar" as const,
+    severity: "minor" as const,
+    title: "Solar Flare Activity",
+    description: "Increased C-class flare activity observed",
+  },
+  {
+    type: "radiation" as const,
+    severity: "strong" as const,
+    title: "Radiation Storm Warning",
+    description: "High-energy proton event in progress",
+  },
+  {
+    type: "geomagnetic" as const,
+    severity: "severe" as const,
+    title: "Severe Geomagnetic Storm",
+    description: "G4 conditions observed - infrastructure impacts possible",
+  },
+  {
+    type: "solar" as const,
+    severity: "moderate" as const,
+    title: "M-Class Solar Flare",
+    description: "M5.2 solar flare detected - radio blackout possible",
+  },
+];
+
+
+const flareDataByRegion: Record<Region, FlareData[]> = allRegions.reduce(
+  (acc, region) => {
+    acc[region] = ["24H", "20H", "16H", "12H", "8H", "4H"].map((time) =>
+      generateFlareData(time)
+    );
+    return acc;
+  },
+  {} as Record<Region, FlareData[]>
+);
+
+const solarWindDataByRegion: Record<Region, SolarWindData[]> =
+  allRegions.reduce((acc, region) => {
+    acc[region] = ["24H", "20H", "16H", "12H", "8H", "4H"].map((time) =>
+      generateSolarWindData(time)
+    );
+    return acc;
+  }, {} as Record<Region, SolarWindData[]>);
+
+const kpDataByRegion: Record<Region, KPData[]> = allRegions.reduce(
+  (acc, region) => {
+    acc[region] = ["-6D", "-5D", "-4D", "-3D", "-2D", "-1D"].map((time) =>
+      generateKpData(time)
+    );
+    return acc;
+  },
+  {} as Record<Region, KPData[]>
+);
+
+const styles = `
+  @import url('https:
+
+  .font-exo-2 {
+  font-family: 'Exo 2', 'Rajdhani', 'Inter', sans-serif;
+}
+
+ .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-cyan-500\/50::-webkit-scrollbar-thumb {
+    background-color: rgba(6, 182, 212, 0.5);
+    border-radius: 6px;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(6, 182, 212, 0.5);
+    border-radius: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  
+  .fade-in-down {
+    animation: fadeInDown 0.8s ease-out forwards;
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.5s ease-out forwards;
+    transform: translateX(100%);
+  }
+  
+  .slide-out-right {
+    animation: slideOutRight 0.5s ease-out forwards;
+    transform: translateX(0);
+  }
+  
+  .slide-in-up {
+    animation: slideInUp 0.3s ease-out forwards;
+    transform: translateY(100%);
+  }
+  
+  .slide-out-down {
+    animation: slideOutDown 0.3s ease-out forwards;
+    transform: translateY(0);
+  }
+  
+  .glow-pulse {
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+  
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    background-size: 200% 100%;
+  }
+  
+  .bounce-in {
+    animation: bounceIn 0.6s ease-out forwards;
+    transform: scale(0);
+  }
+  
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-
-    // Cleanup function to reset overflow when component unmounts
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [showSubscriptionModal]);
-
-  const handleSubscribe = () => {
-    if (email) {
-      setIsSubscribed(true);
-      setTimeout(() => setIsSubscribed(false), 3000);
-      setEmail("");
+  }
+  
+  @keyframes fadeInDown {
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-  };
-
-  const handlePlanSelect = (planId: string) => {
-    setSelectedPlan(planId);
-    setShowSubscriptionModal(true);
-    setSubscriptionStep(1);
-    setValidationErrors({});
-  };
-
-  const validateStep = (step: number) => {
-    const errors: { [key: string]: string } = {};
-
-    if (step === 1) {
-      if (!subscriptionData.firstName.trim())
-        errors.firstName = "Please enter your first name";
-      if (!subscriptionData.lastName.trim())
-        errors.lastName = "Please enter your last name";
-      if (!subscriptionData.email.trim()) 
-        errors.email = "Please enter your email address";
-      else if (!/\S+@\S+\.\S+/.test(subscriptionData.email))
-        errors.email = "Please enter a valid email address";
-      if (!subscriptionData.phone.trim())
-        errors.phone = "Please enter your phone number";
-      else if (!/^\+?[\d\s\-\(\)]{10,}$/.test(subscriptionData.phone))
-        errors.phone = "Please enter a valid phone number (at least 10 digits)";
+  }
+  
+  @keyframes slideInRight {
+    to {
+      transform: translateX(0);
     }
-
-    if (step === 2) {
-      if (!subscriptionData.address.trim())
-        errors.address = "Please enter your street address";
-      if (!subscriptionData.city.trim()) 
-        errors.city = "Please enter your city";
-      if (!subscriptionData.state.trim()) 
-        errors.state = "Please enter your state";
-      if (!subscriptionData.zipCode.trim())
-        errors.zipCode = "Please enter your ZIP code";
-      else if (!/^\d{5}(-\d{4})?$/.test(subscriptionData.zipCode))
-        errors.zipCode = "Please enter a valid 5 digit ZIP code";
+  }
+  
+  @keyframes slideOutRight {
+    to {
+      transform: translateX(100%);
     }
-
-    if (step === 3) {
-      if (!subscriptionData.nameOnCard.trim())
-        errors.nameOnCard = "Please enter name on card";
-      if (!subscriptionData.cardNumber.trim())
-        errors.cardNumber = "Please enter your card number";
-      else if (
-        !/^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/.test(
-          subscriptionData.cardNumber.replace(/\s/g, "")
-        )
-      )
-        errors.cardNumber = "Please enter a valid 16-digit card number";
-      if (!subscriptionData.expiryDate.trim())
-        errors.expiryDate = "Please enter expiry date";
-      else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(subscriptionData.expiryDate))
-        errors.expiryDate = "Please enter valid date (MM/YY)";
-      if (!subscriptionData.cvv.trim()) 
-        errors.cvv = "Please enter CVV";
-      else if (!/^\d{3,4}$/.test(subscriptionData.cvv))
-        errors.cvv = "Please enter a valid CVV (3 or 4 digits)";
+  }
+  
+  @keyframes slideInUp {
+    to {
+      transform: translateY(0);
     }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubscriptionSubmit = async () => {
-    if (!validateStep(subscriptionStep)) return;
-
-    if (subscriptionStep < 3) {
-      setSubscriptionStep(subscriptionStep + 1);
-    } else {
-      setIsProcessing(true);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setSubscriptionStep(4); // Success step
-      setIsProcessing(false);
+  }
+  
+  @keyframes slideOutDown {
+    to {
+      transform: translateY(100%);
     }
-  };
-
-  const resetSubscriptionModal = () => {
-    setShowSubscriptionModal(false);
-    setSubscriptionStep(1);
-    setValidationErrors({});
-    setIsProcessing(false);
-    setSubscriptionData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      cardNumber: "",
-      expiryDate: "",
-      cvv: "",
-      nameOnCard: "",
-    });
-  };
-
-  const updateSubscriptionData = (field: string, value: string) => {
-    setSubscriptionData((prev) => ({ ...prev, [field]: value }));
-
-    // Clear validation error for this field if the value becomes valid
-    if (validationErrors[field]) {
-      const newErrors = { ...validationErrors };
-
-      // Check if the new value is valid and clear error if so
-      let isValid = false;
-      switch (field) {
-        case "firstName":
-        case "lastName":
-        case "address":
-        case "city":
-        case "state":
-        case "nameOnCard":
-          isValid = value.trim().length > 0;
-          break;
-        case "email":
-          isValid = value.trim().length > 0 && /\S+@\S+\.\S+/.test(value);
-          break;
-        case "phone":
-          isValid =
-            value.trim().length > 0 && /^\+?[\d\s\-\(\)]{10,}$/.test(value);
-          break;
-        case "zipCode":
-          isValid = value.trim().length > 0 && /^\d{5}(-\d{4})?$/.test(value);
-          break;
-        case "cardNumber":
-          isValid =
-            value.trim().length > 0 &&
-            /^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/.test(value.replace(/\s/g, ""));
-          break;
-        case "expiryDate":
-          isValid =
-            value.trim().length > 0 && /^(0[1-9]|1[0-2])\/\d{2}$/.test(value);
-          break;
-        case "cvv":
-          isValid = value.trim().length > 0 && /^\d{3,4}$/.test(value);
-          break;
-      }
-
-      if (isValid) {
-        delete newErrors[field];
-        setValidationErrors(newErrors);
-      }
+  }
+  
+  @keyframes glowPulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
     }
-  };
+    50% {
+      box-shadow: 0 0 40px rgba(0, 212, 255, 0.6);
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  
+  @keyframes bounceIn {
+    0% {
+      transform: scale(0);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  .stagger-6 { animation-delay: 0.6s; }
+  
+  body.no-scroll {
+    overflow: hidden;
+  }
+`;
 
-  const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
-    setIsMenuOpen(false);
+const spaceFont = {
+  className: "font-['Orbitron',_monospace]",
+};
+const contentFont = {
+  className: "font-['Space_Grotesk',_sans-serif]",
+};
+
+function ToastContainer({
+  toasts,
+  removeToast,
+}: {
+  toasts: Toast[];
+  removeToast: (id: string) => void;
+}) {
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`
+            slide-in-up max-w-sm p-4 rounded-lg shadow-lg backdrop-blur-xl border
+            ${
+              toast.type === "success"
+                ? "bg-green-500/20 border-green-500/30 text-green-400"
+                : toast.type === "error"
+                ? "bg-red-500/20 border-red-500/30 text-red-400"
+                : toast.type === "warning"
+                ? "bg-orange-500/20 border-orange-500/30 text-orange-400"
+                : "bg-blue-500/20 border-blue-500/30 text-blue-400"
+            }
+          `}
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              {toast.type === "success" && <CheckCircle className="h-5 w-5" />}
+              {toast.type === "error" && <XCircle className="h-5 w-5" />}
+              {toast.type === "warning" && (
+                <AlertTriangle className="h-5 w-5" />
+              )}
+              {toast.type === "info" && <Info className="h-5 w-5" />}
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">{toast.title}</p>
+              <p className="text-xs opacity-80">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="flex-shrink-0 hover:opacity-70 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Card({
+  children,
+  className = "",
+  Wrapper = "div",
+  onClick,
+  isGlowing = false,
+  animationClass = "fade-in-up",
+  isClickable = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  Wrapper?: "div" | "button";
+  onClick?: () => void;
+  isGlowing?: boolean;
+  animationClass?: string;
+  isClickable?: boolean;
+}) {
+  const Component = Wrapper === "div" ? "div" : "button";
+
+  return (
+    <Component
+      onClick={onClick}
+      className={`
+        ${className} ${animationClass}
+        backdrop-blur-xl bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent 
+        border border-white/10 shadow-2xl rounded-xl
+        ${isGlowing ? "glow-pulse border-cyan-500/30" : ""}
+        hover:border-white/20 transition-all duration-300
+        hover:transform hover:scale-[1.02]
+        ${onClick || isClickable ? "cursor-pointer" : ""}
+      `}
+    >
+      {children}
+    </Component>
+  );
+}
+
+function LoadingSpinner({ size = "w-6 h-6" }: { size?: string }) {
+  return (
+    <div
+      className={`${size} border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto`}
+    />
+  );
+}
+
+function StatusIndicator({
+  status,
+  label,
+  size = "w-3 h-3",
+}: {
+  status: "online" | "warning" | "error";
+  label?: string;
+  size?: string;
+}) {
+  const colors = {
+    online: "bg-green-400 shadow-green-400/50",
+    warning: "bg-orange-400 shadow-orange-400/50",
+    error: "bg-red-400 shadow-red-400/50",
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 font-[Roboto]">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-amber-100 z-50 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="bg-gradient-to-r from-amber-600 to-orange-600 p-2 rounded-xl">
-                <Coffee className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-800">BrewCraft</span>
-            </div>
+    <div className="flex items-center gap-2">
+      <div
+        className={`${size} ${colors[status]} rounded-full animate-pulse shadow-lg`}
+      />
+      {label && (
+        <span className="text-xs uppercase tracking-wider">{label}</span>
+      )}
+    </div>
+  );
+}
 
-            <div className="hidden md:flex items-center space-x-8">
-              <button
-                onClick={() => scrollToSection("home")}
-                className="text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Home
-              </button>
-              <button
-                onClick={() => scrollToSection("features")}
-                className="text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Features
-              </button>
-              <button
-                onClick={() => scrollToSection("plans")}
-                className="text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Plans
-              </button>
-              <button
-                onClick={() => scrollToSection("testimonials")}
-                className="text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Reviews
-              </button>
-              <button
-                onClick={() => scrollToSection("contact")}
-                className="text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Contact
-              </button>
-              <button
-                onClick={() => scrollToSection("plans")}
-                className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-2 rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200 cursor-pointer"
-              >
-                Get Started
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
-          </div>
+function AlertBadge({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-40 cursor-pointer bounce-in"
+      onClick={onClick}
+    >
+      <div className="relative">
+        <div className="w-14 h-14 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200 glow-pulse shadow-cyan-500/25">
+          <Bell className="h-6 w-6 text-white" />
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200 animate-in slide-in-from-top duration-200">
-            <div className="px-4 py-3 space-y-3">
-              <button
-                onClick={() => scrollToSection("home")}
-                className="block w-full text-left py-2 text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Home
-              </button>
-              <button
-                onClick={() => scrollToSection("features")}
-                className="block w-full text-left py-2 text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Features
-              </button>
-              <button
-                onClick={() => scrollToSection("plans")}
-                className="block w-full text-left py-2 text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Plans
-              </button>
-              <button
-                onClick={() => scrollToSection("testimonials")}
-                className="block w-full text-left py-2 text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Reviews
-              </button>
-              <button
-                onClick={() => scrollToSection("contact")}
-                className="block w-full text-left py-2 text-gray-700 hover:text-amber-600 transition-colors cursor-pointer"
-              >
-                Contact
-              </button>
-              <button
-                onClick={() => scrollToSection("plans")}
-                className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-3 rounded-full hover:shadow-lg transition-all duration-200 cursor-pointer"
-              >
-                Get Started
-              </button>
-            </div>
+        {count > 0 && (
+          <div className="absolute -top-2 -right-2 w-6 h-6 bg-cyan-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-slate-800">
+            {count > 99 ? "99+" : count}
           </div>
         )}
-      </nav>
+      </div>
+    </div>
+  );
+}
 
-      {/* Hero Section */}
-      <section id="home" className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8 animate-in slide-in-from-left duration-700">
-              <div className="space-y-4">
-                <div className="inline-flex items-center space-x-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-medium">
-                  <Award className="h-4 w-4" />
-                  <span>Award-winning coffee experiences</span>
-                </div>
-                <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                  Premium Coffee
-                  <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                    {" "}
-                    Delivered
-                  </span>
-                </h1>
-                <p className="text-xl text-gray-600 leading-relaxed">
-                  Experience the world's finest coffee beans, carefully curated
-                  and delivered fresh to your door every month. From
-                  single-origin to artisan blends, discover your perfect cup.
-                </p>
-              </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => scrollToSection("plans")}
-                  className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <span>Start Your Journey</span>
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-                <button className="border border-gray-300 text-gray-700 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 cursor-pointer">
-                  Learn More
-                </button>
-              </div>
+function Header({
+  onMenuToggle,
+  onAboutToggle,
+  showToast,
+}: {
+  onMenuToggle: () => void;
+  onAboutToggle: () => void;
+  showToast: (toast: Omit<Toast, "id">) => void;
+}) {
+  const [time, setTime] = useState(new Date());
 
-              <div className="flex items-center space-x-8 pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">50K+</div>
-                  <div className="text-sm text-gray-600">Happy Subscribers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">4.9★</div>
-                  <div className="text-sm text-gray-600">Customer Rating</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">100+</div>
-                  <div className="text-sm text-gray-600">Coffee Varieties</div>
-                </div>
-              </div>
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <header className="relative z-50 mb-8">
+      <Card className="p-6" animationClass="fade-in-down">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative float">
+              <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur animate-pulse" />
+              <AudioWaveform className="relative h-8 w-8 text-cyan-400" />
             </div>
-
-            <div className="relative animate-in slide-in-from-right duration-700 delay-200">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=600&h=600&fit=crop&crop=center"
-                  alt="Premium Coffee Setup"
-                  className="rounded-3xl shadow-2xl w-full"
-                />
-                <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <Truck className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        Free Delivery
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Direct to your door
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute -top-6 -right-6 bg-white p-6 rounded-2xl shadow-xl">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-amber-100 p-2 rounded-full">
-                      <Coffee className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        Fresh Roasted
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Within 48 hours
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h1
+                className={`text-2xl font-bold text-cyan-400 tracking-wider ${spaceFont.className}`}
+              >
+                NEBULA<span className="text-white">PULSE</span>
+              </h1>
+              <p className="text-xs text-gray-400 uppercase tracking-widest">
+                Advanced Space Weather Monitoring
+              </p>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4 mb-16 animate-in fade-in duration-700">
-            <h2 className="text-4xl font-bold text-gray-900">
-              Why Choose BrewCraft?
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We're not just another coffee subscription. We're your gateway to
-              extraordinary coffee experiences from around the world.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Globe,
-                title: "Global Sourcing",
-                description:
-                  "Direct relationships with farmers across 20+ countries ensure ethical sourcing and exceptional quality.",
-              },
-              {
-                icon: Heart,
-                title: "Expert Curation",
-                description:
-                  "Our master roasters personally select each bean, ensuring only the finest coffees reach your cup.",
-              },
-              {
-                icon: Clock,
-                title: "Fresh Roasted",
-                description:
-                  "Beans are roasted to order and shipped within 48 hours for peak freshness and flavor.",
-              },
-              {
-                icon: Leaf,
-                title: "Sustainable Practice",
-                description:
-                  "100% sustainable sourcing with carbon-neutral shipping and eco-friendly packaging.",
-              },
-              {
-                icon: Users,
-                title: "Community Driven",
-                description:
-                  "Join thousands of coffee lovers sharing experiences, recipes, and discoveries.",
-              },
-              {
-                icon: Shield,
-                title: "Quality Guarantee",
-                description:
-                  "Not satisfied? We'll refund or replace your order with no questions asked.",
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-2xl border border-gray-100 hover:shadow-xl hover:border-amber-200 transition-all duration-300 group animate-in fade-in-up duration-700"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="bg-gradient-to-r from-amber-600 to-orange-600 w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-200">
-                  <feature.icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 bg-gradient-to-br from-amber-50 to-orange-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4 mb-16 animate-in fade-in duration-700">
-            <h2 className="text-4xl font-bold text-gray-900">How It Works</h2>
-            <p className="text-xl text-gray-600">
-              Simple steps to coffee perfection
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Choose Your Plan",
-                description:
-                  "Select from our carefully crafted subscription plans designed to match your coffee preferences and consumption.",
-                icon: Coffee,
-              },
-              {
-                step: "02",
-                title: "We Curate & Roast",
-                description:
-                  "Our experts select premium beans from our global network and roast them to perfection just for you.",
-                icon: Award,
-              },
-              {
-                step: "03",
-                title: "Delivered Fresh",
-                description:
-                  "Receive your freshly roasted coffee with detailed tasting notes and brewing recommendations.",
-                icon: Truck,
-              },
-            ].map((step, index) => (
-              <div
-                key={index}
-                className="text-center space-y-6 animate-in fade-in-up duration-700"
-                style={{ animationDelay: `${index * 200}ms` }}
-              >
-                <div className="relative">
-                  <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-lg border-4 border-amber-100">
-                    <step.icon className="h-8 w-8 text-amber-600" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-sm font-bold w-8 h-8 rounded-full flex items-center justify-center">
-                    {step.step}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {step.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Plans */}
-      <section id="plans" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4 mb-16 animate-in fade-in duration-700">
-            <h2 className="text-4xl font-bold text-gray-900">
-              Choose Your Perfect Plan
-            </h2>
-            <p className="text-xl text-gray-600">
-              Flexible subscriptions designed for every coffee lover
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {plans.map((plan, index) => (
-              <div
-                key={plan.id}
-                className={`relative bg-white rounded-3xl border-2 p-8 transition-all duration-300 hover:shadow-2xl animate-in fade-in-up duration-700 flex flex-col h-full ${
-                  plan.popular
-                    ? "border-amber-400 shadow-xl scale-105 bg-gradient-to-br from-amber-50 to-orange-50"
-                    : "border-gray-200 hover:border-amber-200"
-                }`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-2 rounded-full text-sm font-semibold">
-                      Most Popular
-                    </div>
-                  </div>
-                )}
-
-                <div className="text-center space-y-6 flex-grow flex flex-col">
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {plan.name}
-                    </h3>
-                    <p className="text-gray-600 mt-2">
-                      {plan.bags} premium coffee bag{plan.bags > 1 ? "s" : ""}{" "}
-                      monthly
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-center space-x-2">
-                      <span className="text-4xl font-bold text-gray-900">
-                        ${plan.price}
-                      </span>
-                      <span className="text-lg text-gray-500 line-through">
-                        ${plan.originalPrice}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">per month</p>
-                  </div>
-
-                  <ul className="space-y-3 text-left flex-grow">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center space-x-3">
-                        <div className="bg-green-100 rounded-full p-1">
-                          <Check className="h-4 w-4 text-green-600" />
-                        </div>
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    onClick={() => handlePlanSelect(plan.id)}
-                    className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 mt-auto cursor-pointer ${
-                      plan.popular
-                        ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:shadow-lg transform hover:scale-105"
-                        : "border-2 border-gray-300 text-gray-700 hover:border-amber-400 hover:text-amber-600"
-                    }`}
-                  >
-                    Subscribe Now
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-gray-600 mb-6">
-              All plans include free shipping • Cancel anytime • No commitments
-            </p>
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => scrollToSection("contact")}
-              className="inline-flex items-center space-x-2 text-amber-600 hover:text-amber-700 font-semibold transition-colors cursor-pointer"
+              onClick={onAboutToggle}
+              className="text-sm hover:text-cyan-400 transition-colors duration-200 cursor-pointer"
             >
-              <span>Need a custom plan?</span>
-              <ArrowRight className="h-4 w-4" />
+              <Info />
             </button>
+            <div className="hidden md:block text-right">
+              <div className="text-sm font-mono">
+                {time.toISOString().split("T")[0]}{" "}
+                {time.toTimeString().split(" ")[0]} UTC
+              </div>
+              <StatusIndicator status="online" label="Live Data" />
+            </div>
           </div>
         </div>
-      </section>
+      </Card>
+    </header>
+  );
+}
 
-      {/* Testimonials */}
-      <section
-        id="testimonials"
-        className="py-20 bg-gradient-to-br from-gray-50 to-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4 mb-16 animate-in fade-in duration-700">
-            <h2 className="text-4xl font-bold text-gray-900">
-              What Our Customers Say
-            </h2>
-            <p className="text-xl text-gray-600">
-              Join thousands of satisfied coffee lovers
-            </p>
+
+function SideDrawer({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string | ReactNode;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("no-scroll");
+    } else {
+      document.body.classList.remove("no-scroll");
+    }
+
+    return () => {
+      document.body.classList.remove("no-scroll");
+    };
+  }, [isOpen]);
+
+  return (
+    <>
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300"
+            onClick={onClose}
+          />
+          <div
+            className={`
+              fixed right-0 top-0 h-full w-full max-w-md 
+              bg-slate-900/95 backdrop-blur-xl border-l border-white/10 z-50 
+              overflow-y-auto transition-transform duration-500 ease-out
+              ${isOpen ? "slide-in-right" : "slide-out-right"}
+            `}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2
+                  className={`text-xl font-bold text-cyan-400 ${spaceFont.className}`}
+                >
+                  {title}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {children}
+            </div>
           </div>
+        </>
+      )}
+    </>
+  );
+}
 
-          <div className="relative max-w-4xl mx-auto">
-            <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 animate-in fade-in duration-700">
-              <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
-                <img
-                  src={testimonials[currentTestimonial].image}
-                  alt={testimonials[currentTestimonial].name}
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-                <div className="flex-1 text-center md:text-left">
-                  <div className="flex justify-center md:justify-start mb-4">
-                    {[...Array(testimonials[currentTestimonial].rating)].map(
-                      (_, i) => (
-                        <Star
-                          key={i}
-                          className="h-5 w-5 text-amber-400 fill-current"
-                        />
-                      )
-                    )}
-                  </div>
-                  <p className="text-lg text-gray-700 italic mb-4">
-                    "{testimonials[currentTestimonial].content}"
-                  </p>
-                  <div>
-                    <div className="font-semibold text-gray-900">
-                      {testimonials[currentTestimonial].name}
-                    </div>
-                    <div className="text-gray-600">
-                      {testimonials[currentTestimonial].role} at{" "}
-                      {testimonials[currentTestimonial].company}
-                    </div>
-                  </div>
-                </div>
+
+const CustomTooltip = React.memo(({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="backdrop-blur-xl bg-slate-900/90 border border-white/20 rounded-lg p-4 shadow-2xl">
+        <p className="font-medium mb-2 text-cyan-400">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex justify-between gap-4">
+            <span>{entry.name}:</span>
+            <span style={{ color: entry.color }} className="font-bold">
+              {typeof entry.value === "number"
+                ? entry.value.toFixed(1)
+                : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+});
+
+
+const FlareChart = React.memo(
+  ({ data, filter }: { data: FlareData[]; filter: FlareIntensity | null }) => (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart
+        data={data}
+        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+      >
+        <defs>
+          <linearGradient id="xClassGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="5%"
+              stopColor={palette.danger.hex}
+              stopOpacity={0.8}
+            />
+            <stop
+              offset="95%"
+              stopColor={palette.danger.hex}
+              stopOpacity={0.1}
+            />
+          </linearGradient>
+          <linearGradient id="mClassGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="5%"
+              stopColor={palette.warning.hex}
+              stopOpacity={0.8}
+            />
+            <stop
+              offset="95%"
+              stopColor={palette.warning.hex}
+              stopOpacity={0.1}
+            />
+          </linearGradient>
+          <linearGradient id="cClassGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="5%"
+              stopColor={palette.accent.hex}
+              stopOpacity={0.8}
+            />
+            <stop
+              offset="95%"
+              stopColor={palette.accent.hex}
+              stopOpacity={0.1}
+            />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+        <XAxis dataKey="time" stroke="#fff" fontSize={12} />
+        <YAxis stroke="#fff" fontSize={12} />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
+        {(!filter || filter === "xClass") && (
+          <Area
+            type="monotone"
+            dataKey="xClass"
+            name="X-Class"
+            stroke={palette.danger.hex}
+            fill="url(#xClassGradient)"
+            strokeWidth={2}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          />
+        )}
+        {(!filter || filter === "mClass") && (
+          <Area
+            type="monotone"
+            dataKey="mClass"
+            name="M-Class"
+            stroke={palette.warning.hex}
+            fill="url(#mClassGradient)"
+            strokeWidth={2}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          />
+        )}
+        {(!filter || filter === "cClass") && (
+          <Area
+            type="monotone"
+            dataKey="cClass"
+            name="C-Class"
+            stroke={palette.accent.hex}
+            fill="url(#cClassGradient)"
+            strokeWidth={2}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          />
+        )}
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+);
+
+
+const SolarWindChart = React.memo(
+  ({ data, filter }: { data: SolarWindData[]; filter: SolarWind | null }) => (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart
+        data={data}
+        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+        <XAxis dataKey="time" stroke="#fff" fontSize={12} />
+        <YAxis yAxisId="left" stroke="#fff" fontSize={12} />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          stroke="#fff"
+          fontSize={12}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
+        {(!filter || filter === "speed") && (
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="speed"
+            name="Speed (km/s)"
+            stroke={palette.accent.hex}
+            strokeWidth={3}
+            dot={{ fill: palette.accent.hex, strokeWidth: 2, r: 4 }}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          />
+        )}
+        {(!filter || filter === "density") && (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="density"
+            name="Density (p/cm³)"
+            stroke={palette.warning.hex}
+            strokeWidth={3}
+            dot={{ fill: palette.warning.hex, strokeWidth: 2, r: 4 }}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          />
+        )}
+      </LineChart>
+    </ResponsiveContainer>
+  )
+);
+
+
+const AuroraChart = React.memo(({ data }: { data: KPData[] }) => {
+  const currentKp = data[data.length - 1]?.kpIndex || 0;
+  const getKpLevel = (value: number) => {
+    if (value < 4) return { level: "Quiet", color: palette.success };
+    if (value < 5) return { level: "Unsettled", color: palette.warning };
+    if (value < 6) return { level: "Active", color: palette.danger };
+    return { level: "Storm", color: palette.active };
+  };
+
+  const kpLevel = getKpLevel(currentKp);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-4 text-center">
+          <div className={`text-2xl font-bold ${kpLevel.color.twText}`}>
+            {currentKp.toFixed(1)}
+          </div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">
+            Kp Index
+          </div>
+        </Card>
+        <Card className="p-4 text-center">
+          <div className={`text-2xl font-bold ${kpLevel.color.twText}`}>
+            {kpLevel.level}
+          </div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">
+            Activity Level
+          </div>
+        </Card>
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <XAxis dataKey="time" stroke="#fff" fontSize={10} />
+          <YAxis stroke="#fff" fontSize={10} />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar
+            dataKey="kpIndex"
+            fill={palette.accent.hex}
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-out"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={getKpLevel(entry.kpIndex).color.hex}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+});
+
+export default function NebulaPulse() {
+  const [flareFilter, setFlareFilter] = useState<FlareIntensity | null>(null);
+  const [solarWindFilter, setSolarWindFilter] = useState<SolarWind | null>(
+    null
+  );
+  const [region, setRegion] = useState<Region>("Global");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isDataDrawerOpen, setIsDataDrawerOpen] = useState(false);
+  const [isAlertsDrawerOpen, setIsAlertsDrawerOpen] = useState(false);
+  const [selectedDataType, setSelectedDataType] = useState<string>("");
+  const [isAlertDetailOpen, setIsAlertDetailOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<SpaceWeatherAlert | null>(
+    null
+  );
+  const [detailOpenedFrom, setDetailOpenedFrom] = useState<"main" | "alerts">(
+    "main"
+  );
+
+  const [flareData, setFlareData] = useState<FlareData[]>(() => [
+    ...flareDataByRegion["Global"],
+    generateFlareData("Now", 2),
+  ]);
+  const [solarWindData, setSolarWindData] = useState<SolarWindData[]>(() => [
+    ...solarWindDataByRegion["Global"],
+    generateSolarWindData("Now", 2),
+  ]);
+  const [kpData, setKpData] = useState<KPData[]>(() => [
+    ...kpDataByRegion["Global"],
+    generateKpData("Today"),
+  ]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [alerts, setAlerts] = useState<SpaceWeatherAlert[]>([]);
+
+  const showToast = useCallback((toast: Omit<Toast, "id">) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const newToast: Toast = { ...toast, id };
+    setToasts((prev) => [...prev, newToast]);
+
+    const duration = toast.duration || 5000;
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, duration);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  useEffect(() => {
+    const generateAlert = () => {
+      const template =
+        alertTemplates[Math.floor(Math.random() * alertTemplates.length)];
+      const alert: SpaceWeatherAlert = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...template,
+        timestamp: new Date(),
+        isActive: true,
+      };
+      setAlerts((prev) => [alert, ...prev.slice(0, 9)]);
+    };
+
+    setAlerts([
+      {
+        id: "1",
+        type: "geomagnetic",
+        severity: "moderate",
+        title: "Geomagnetic Storm Watch",
+        description:
+          "Moderate geomagnetic storming possible due to CME arrival",
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      {
+        id: "2",
+        type: "solar",
+        severity: "minor",
+        title: "Solar Flare Activity",
+        description: "Increased C-class flare activity observed",
+        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    ]);
+
+    const alertInterval = setInterval(generateAlert, 10000);
+
+    return () => clearInterval(alertInterval);
+  }, []);
+
+  const updateFlareData = useCallback((newRegion: Region) => {
+    setFlareData([
+      ...flareDataByRegion[newRegion],
+      generateFlareData("Now", 2),
+    ]);
+  }, []);
+
+  const updateSolarWindData = useCallback((newRegion: Region) => {
+    setSolarWindData([
+      ...solarWindDataByRegion[newRegion],
+      generateSolarWindData("Now", 2),
+    ]);
+  }, []);
+
+  const updateKpData = useCallback((newRegion: Region) => {
+    setKpData([...kpDataByRegion[newRegion], generateKpData("Today")]);
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      updateFlareData(region);
+      updateSolarWindData(region);
+      updateKpData(region);
+      setIsLoading(false);
+    }, 1000);
+
+    const interval = setInterval(() => {
+      updateFlareData(region);
+      updateSolarWindData(region);
+      updateKpData(region);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [region, updateFlareData, updateSolarWindData, updateKpData]);
+
+  const flareFilterOptions = useMemo(
+    () => [
+      { value: null, label: "All Classes" },
+      { value: "xClass" as FlareIntensity, label: "X-Class" },
+      { value: "mClass" as FlareIntensity, label: "M-Class" },
+      { value: "cClass" as FlareIntensity, label: "C-Class" },
+    ],
+    []
+  );
+
+  const solarWindFilterOptions = useMemo(
+    () => [
+      { value: null, label: "Both" },
+      { value: "speed" as SolarWind, label: "Speed" },
+      { value: "density" as SolarWind, label: "Density" },
+    ],
+    []
+  );
+
+  const memoizedFlareData = useMemo(() => flareData, [flareData]);
+  const memoizedSolarWindData = useMemo(() => solarWindData, [solarWindData]);
+  const memoizedKpData = useMemo(() => kpData, [kpData]);
+
+  const activeAlertsCount = alerts.filter((alert) => alert.isActive).length;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-800 flex items-center justify-center">
+        <style>{styles}</style>
+        <div className="text-center space-y-4">
+          <LoadingSpinner size="w-12 h-12" />
+          <p className={`text-cyan-400 ${spaceFont.className} shimmer`}>
+            Initializing Space Weather Systems...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main
+      className={`${contentFont.className} min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-800 text-white relative overflow-x-hidden`}
+    >
+      <style>{styles}</style>
+
+      {/* space star background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-slate-900/40 to-slate-900" />
+        <div className="absolute inset-0">
+          {[...Array(50)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white/30 rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <Header
+          onMenuToggle={() => setIsMenuOpen(true)}
+          onAboutToggle={() => setIsAboutOpen(true)}
+          showToast={showToast}
+        />
+
+        {/* Alert Banner */}
+        <div className="mb-8">
+          <Card
+            className="p-4 border-orange-500/30 bg-orange-500/10 stagger-1"
+            animationClass="fade-in-up"
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-400 animate-pulse" />
+              <div>
+                <p className="font-medium text-orange-400">
+                  Geomagnetic Storm Watch
+                </p>
+                <p className="text-sm text-gray-300">
+                  Moderate geomagnetic storming possible due to CME arrival -
+                  Aurora visibility enhanced
+                </p>
+              </div>
+              <div className="ml-auto">
+                <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs">
+                  ACTIVE
+                </span>
               </div>
             </div>
+          </Card>
+        </div>
 
-            <div className="flex justify-center mt-8 space-x-2">
-              {testimonials.map((_, index) => (
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card
+            className="p-4 text-center stagger-1"
+            animationClass="fade-in-up"
+            isClickable
+          >
+            <Satellite className="h-6 w-6 text-cyan-400 mx-auto mb-2 float" />
+            <div className="text-lg font-bold">4</div>
+            <div className="text-xs text-gray-400">Active Satellites</div>
+            <StatusIndicator status="online" />
+          </Card>
+          <Card
+            className="p-4 text-center stagger-2"
+            animationClass="fade-in-up"
+            isClickable
+          >
+            <Activity className="h-6 w-6 text-green-400 mx-auto mb-2 float" />
+            <div className="text-lg font-bold">98%</div>
+            <div className="text-xs text-gray-400">Data Quality</div>
+            <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
+              <div
+                className="bg-green-400 h-1 rounded-full transition-all duration-1000"
+                style={{ width: "98%" }}
+              ></div>
+            </div>
+          </Card>
+          <Card
+            className="p-4 text-center stagger-3"
+            animationClass="fade-in-up"
+            isClickable
+          >
+            <Bell className="h-6 w-6 text-orange-400 mx-auto mb-2 float" />
+            <div className="text-lg font-bold">{activeAlertsCount}</div>
+            <div className="text-xs text-gray-400">Active Alerts</div>
+            <StatusIndicator status="warning" />
+          </Card>
+          <Card
+            className="p-4 text-center stagger-4"
+            animationClass="fade-in-up"
+            isClickable
+          >
+            <Globe className="h-6 w-6 text-blue-400 mx-auto mb-2 float" />
+            <div className="text-lg font-bold">{region}</div>
+            <div className="text-xs text-gray-400">Current Region</div>
+          </Card>
+        </div>
+
+        {/* Region Selector */}
+
+        <div className="mb-8">
+          <Card className="p-2 stagger-1" animationClass="fade-in-up">
+            <div className="grid grid-cols-3 gap-1">
+              {allRegions.map((r, index) => (
                 <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-200 cursor-pointer ${
-                    index === currentTestimonial
-                      ? "bg-amber-600 scale-125"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
-                />
+                  key={r}
+                  onClick={() => setRegion(r)}
+                  className={`
+            py-3 px-2 text-sm rounded-lg transition-all duration-300 cursor-pointer
+            hover:transform hover:scale-105 relative
+            ${
+              region === r
+                ? "bg-gradient-to-r from-cyan-500/40 to-blue-500/40 text-white border-2 border-cyan-400/60 shadow-lg shadow-cyan-500/25"
+                : "hover:bg-white/10 text-gray-300 border border-transparent"
+            }
+            fade-in-up stagger-${index + 1}
+          `}
+                >
+                  {region === r && (
+                    <div className="absolute inset-0 bg-cyan-400/10 rounded-lg animate-pulse" />
+                  )}
+                  <span className="relative z-10 font-medium">{r}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Charts Grid */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+          {/* Solar Flare Chart */}
+          <Card
+            className="lg:col-span-2 p-6 stagger-2"
+            animationClass="fade-in-up"
+          >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div className="flex items-center gap-3">
+                <Sun className="h-6 w-6 text-orange-400 animate-pulse" />
+                <h3 className={`text-xl font-bold ${spaceFont.className}`}>
+                  Solar Flare Activity
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedDataType("Solar Flare Metadata");
+                    setIsDataDrawerOpen(true);
+                  }}
+                  className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"
+                >
+                  <Info className="h-4 w-4 text-gray-400" />
+                </button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {flareFilterOptions.map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => setFlareFilter(option.value)}
+                    className={`
+                      px-3 py-1 text-xs rounded-lg transition-all duration-200 cursor-pointer
+                      hover:transform hover:scale-105
+                      ${
+                        flareFilter === option.value
+                          ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                          : "bg-white/10 hover:bg-white/20 text-gray-300"
+                      }
+                    `}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="h-80">
+              <FlareChart data={memoizedFlareData} filter={flareFilter} />
+            </div>
+          </Card>
+
+          {/* Aurora Forecast */}
+          <Card className="p-6 stagger-3" animationClass="fade-in-up">
+            <div className="flex items-center gap-3 mb-6">
+              <Activity className="h-6 w-6 text-green-400 animate-pulse" />
+              <h3 className={`text-xl font-bold ${spaceFont.className}`}>
+                Aurora Forecast
+              </h3>
+              <button
+                onClick={() => {
+                  setSelectedDataType("Aurora Forecast Data");
+                  setIsDataDrawerOpen(true);
+                }}
+                className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"
+              >
+                <Info className="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
+            <AuroraChart data={memoizedKpData} />
+          </Card>
+        </div>
+
+        {/* Solar Wind Chart */}
+        <Card
+          className="px-4 py-6 md:px-6 mb-8 stagger-4"
+          animationClass="fade-in-up"
+        >
+          {" "}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <Radio className="h-6 w-6 text-blue-400 animate-pulse" />
+              <h3 className={`text-xl font-bold ${spaceFont.className}`}>
+                Solar Wind Parameters
+              </h3>
+              <button
+                onClick={() => {
+                  setSelectedDataType("Solar Wind Metadata");
+                  setIsDataDrawerOpen(true);
+                }}
+                className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"
+              >
+                <Info className="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {solarWindFilterOptions.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={() => setSolarWindFilter(option.value)}
+                  className={`
+            px-3 py-1 text-xs rounded-lg transition-all duration-200 cursor-pointer
+            hover:transform hover:scale-105
+            ${
+              solarWindFilter === option.value
+                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                : "bg-white/10 hover:bg-white/20 text-gray-300"
+            }
+          `}
+                >
+                  {option.label}
+                </button>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+          <div className="h-80">
+            <SolarWindChart
+              data={memoizedSolarWindData}
+              filter={solarWindFilter}
+            />
+          </div>
+        </Card>
 
-      {/* Newsletter Signup */}
-      <section className="py-20 bg-gradient-to-r from-amber-600 to-orange-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center animate-in fade-in duration-700">
-          <div className="space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-white">
-              Stay Updated with Coffee Trends
-            </h2>
-            <p className="text-xl text-amber-100">
-              Get weekly insights, brewing tips, and exclusive offers delivered
-              to your inbox
-            </p>
-
-            <div className="max-w-lg mx-auto">
-              <form
-                className="flex flex-col sm:flex-row gap-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSubscribe();
-                }}
+        {/* Space Weather News Feed */}
+        <Card className="p-6 mb-8 stagger-6" animationClass="fade-in-up">
+          <div className="flex items-center gap-3 mb-6">
+            <AlertCircle className="h-6 w-6 text-yellow-400 animate-pulse" />
+            <h3 className={`text-xl font-bold ${spaceFont.className}`}>
+              Latest Space Weather Alerts
+            </h3>
+            <div className="ml-auto hidden md:block">
+              <button
+                onClick={() => setIsAlertsDrawerOpen(true)}
+                className="flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs cursor-pointer hover:bg-yellow-500/30 transition-colors"
               >
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  required
-                  className="flex-1 px-6 py-4 rounded-full text-white placeholder-gray-200 focus:outline-none focus:ring-4 focus:ring-white/20"
-                />
-                <button
-                  type="submit"
-                  className="bg-white text-amber-600 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <span>Subscribe</span>
-                  <Mail className="h-5 w-5" />
-                </button>
-              </form>
+                <Bell className="h-3 w-3" />
+                View All ({alerts.length})
+              </button>
             </div>
+          </div>
 
-            {isSubscribed && (
-              <div className="animate-in fade-in duration-300">
-                <p className="text-white font-semibold">
-                  Thank you for subscribing! Check your email for confirmation.
-                </p>
+          {/* Scrollable container for all alerts */}
+          <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent space-y-4 pr-2">
+            {alerts.map((alert, index) => (
+              <div
+                key={alert.id}
+                onClick={() => {
+                  setSelectedAlert(alert);
+                  setDetailOpenedFrom("main");
+                  setIsAlertDetailOpen(true);
+                }}
+                className={`
+          p-4 rounded-lg border-l-4 bg-white/5 fade-in-up stagger-${index + 1} 
+          cursor-pointer hover:bg-white/10 hover:scale-[1.003] transition-all duration-200
+          ${
+            alert.severity === "severe"
+              ? "border-l-red-500"
+              : alert.severity === "strong"
+              ? "border-l-orange-500"
+              : alert.severity === "moderate"
+              ? "border-l-yellow-500"
+              : "border-l-blue-500"
+          }
+        `}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs uppercase tracking-wider font-medium ${
+                          alert.severity === "severe"
+                            ? "bg-red-500/20 text-red-400"
+                            : alert.severity === "strong"
+                            ? "bg-orange-500/20 text-orange-400"
+                            : alert.severity === "moderate"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-blue-500/20 text-blue-400"
+                        }`}
+                      >
+                        {alert.severity}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          alert.type === "geomagnetic"
+                            ? "bg-purple-500/20 text-purple-400"
+                            : alert.type === "solar"
+                            ? "bg-orange-500/20 text-orange-400"
+                            : "bg-red-500/20 text-red-400"
+                        }`}
+                      >
+                        {alert.type}
+                      </span>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        {alert.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <h4 className={`font-medium mb-1 ${contentFont.className}`}>
+                      {alert.title}
+                    </h4>
+                    <p
+                      className={`text-sm text-gray-400 line-clamp-2 ${contentFont.className}`}
+                    >
+                      {alert.description}
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p
+                        className={`text-xs text-gray-500 ${contentFont.className}`}
+                      >
+                        {alert.timestamp.toLocaleDateString()}
+                      </p>
+                      <span className="text-xs text-cyan-400 opacity-60">
+                        Click for details →
+                      </span>
+                    </div>
+                  </div>
+                  {alert.isActive && (
+                    <div className="flex flex-col items-center ml-4">
+                      <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
+                      <span className="text-xs text-green-400 mt-1">LIVE</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {alerts.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No alerts available</p>
               </div>
             )}
           </div>
-        </div>
-      </section>
+        </Card>
 
-      {/* Footer */}
-      <footer id="contact" className="bg-gray-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-center space-x-2">
-                <div className="bg-gradient-to-r from-amber-600 to-orange-600 p-2 rounded-xl">
-                  <Coffee className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-xl font-bold">BrewCraft</span>
-              </div>
-              <p className="text-gray-400 leading-relaxed">
-                Bringing you the world's finest coffee experiences, one cup at a
-                time. Premium quality, sustainable sourcing, exceptional
-                service.
-              </p>
-              <div className="flex space-x-4">
-                <button onClick={() => window.location.href = "#"} className="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors group cursor-pointer">
-                  <span className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors font-bold text-lg flex items-center justify-center">F</span>
-                </button>
-                <button onClick={() => window.location.href = "#"} className="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors group cursor-pointer">
-                  <span className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors font-bold text-lg flex items-center justify-center">T</span>
-                </button>
-                <button onClick={() => window.location.href = "#"} className="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors group cursor-pointer">
-                  <span className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors font-bold text-lg flex items-center justify-center">I</span>
-                </button>
-                <button onClick={() => window.location.href = "#"} className="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors group cursor-pointer">
-                  <span className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors font-bold text-lg flex items-center justify-center">L</span>
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-6">Products</h3>
-              <ul className="space-y-3 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Coffee Subscriptions
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Single Origin
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Signature Blends
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Gift Cards
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Brewing Equipment
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-6">Company</h3>
-              <ul className="space-y-3 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Our Story
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Sustainability
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                    Press
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-6">Contact</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-amber-400" />
-                  <span className="text-gray-400">hello@brewcraft.com</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-amber-400" />
-                  <span className="text-gray-400">+1 (555) 123-BREW</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-amber-400" />
-                  <span className="text-gray-400">San Francisco, CA</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-12 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <p className="text-gray-400 text-sm">
-                © 2025 BrewCraft. All rights reserved.
-              </p>
-              <div className="flex space-x-6 text-sm text-gray-400">
-                <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                  Privacy Policy
-                </a>
-                <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                  Terms of Service
-                </a>
-                <a href="#" className="hover:text-white transition-colors cursor-pointer">
-                  Cookie Policy
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* Subscription Modal */}
-      {showSubscriptionModal && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
-          onTouchMove={(e) => e.preventDefault()}
-          onWheel={(e) => e.preventDefault()}
-          style={{ touchAction: 'none' }}
-        >
-          <div 
-            className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300"
-            onTouchMove={(e) => e.stopPropagation()}
-            onWheel={(e) => e.stopPropagation()}
-            style={{ touchAction: 'auto' }}
-          >
-            <div className="p-8">
-              {/* Header */}
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Complete Your Subscription
-                  </h2>
-                  <p className="text-gray-600 mt-1">
-                    {plans.find((p) => p.id === selectedPlan)?.name} Plan - $
-                    {plans.find((p) => p.id === selectedPlan)?.price}/month
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowSubscriptionModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+        {/* Footer */}
+        <footer className="border-t border-white/10 pt-8">
+          <Card className="p-6 stagger-1" animationClass="fade-in-up">
+            <div className="grid md:grid-cols-4 gap-6">
+              <div className="space-y-3">
+                <h4
+                  className={`font-bold text-cyan-400 mb-3 ${spaceFont.className}`}
                 >
-                  <X className="h-6 w-6 text-gray-500" />
-                </button>
+                  NebulaPulse
+                </h4>
+                <p className="text-sm text-gray-400">
+                  Advanced space weather monitoring for a connected world.
+                  Protecting Earth from cosmic phenomena.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-green-400">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  All systems operational
+                </div>
               </div>
-
-              {/* Progress Steps */}
-              <div className="flex items-center justify-center mb-8">
-                {[1, 2, 3, 4].map((step) => (
-                  <div key={step} className="flex items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200 ${
-                        step <= subscriptionStep
-                          ? "bg-amber-600 text-white"
-                          : "bg-gray-200 text-gray-600"
-                      }`}
+              <div>
+                <h5 className="font-medium mb-3">Data Sources</h5>
+                <ul className="text-sm text-gray-400 space-y-1">
+                  <li className="flex items-center gap-2">
+                    <Satellite className="h-3 w-3" />
+                    NOAA SWPC
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Satellite className="h-3 w-3" />
+                    ESA Space Weather
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Satellite className="h-3 w-3" />
+                    NASA SDO
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Satellite className="h-3 w-3" />
+                    ACE Spacecraft
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h5 className="font-medium mb-3">Resources</h5>
+                <ul className="text-sm text-gray-400 space-y-1">
+                  <li>
+                    <a
+                      href="#"
+                      className="hover:text-cyan-400 transition-colors flex items-center gap-1 cursor-pointer"
                     >
-                      {step < subscriptionStep ? (
-                        <Check className="h-4 w-4" />
-                      ) : step === subscriptionStep && step === 4 ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        step
-                      )}
+                      API Documentation <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#"
+                      className="hover:text-cyan-400 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      Research Papers <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#"
+                      className="hover:text-cyan-400 transition-colors cursor-pointer"
+                    >
+                      Educational Content
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#"
+                      className="hover:text-cyan-400 transition-colors cursor-pointer"
+                    >
+                      24/7 Support
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h5 className="font-medium mb-3">Connect</h5>
+                <div className="flex gap-3 mb-4">
+                  <a
+                    href="#"
+                    className="w-10 h-10 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-400 cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-cyan-400/10"
+                  >
+                    <span className="text-sm font-bold">T</span>
+                  </a>
+                  <a
+                    href="#"
+                    className="w-10 h-10 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-400 cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-cyan-400/10"
+                  >
+                    <span className="text-sm font-bold">G</span>
+                  </a>
+                  <a
+                    href="#"
+                    className="w-10 h-10 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-400 cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-cyan-400/10"
+                  >
+                    <span className="text-sm font-bold">L</span>
+                  </a>
+                  <a
+                    href="#"
+                    className="w-10 h-10 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-400 cursor-pointer transition-all duration-300 hover:scale-110 hover:bg-cyan-400/10"
+                  >
+                    <span className="text-sm font-bold">M</span>
+                  </a>
+                </div>
+                <p className="text-xs text-gray-500">
+                  NebulaPulse Systems Inc.
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                  Built with ❤️ for space weather enthusiasts
+                </p>
+              </div>
+            </div>
+          </Card>
+        </footer>
+      </div>
+
+      {/* Alert Badge */}
+      <AlertBadge
+        count={activeAlertsCount}
+        onClick={() => setIsAlertsDrawerOpen(true)}
+      />
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Side Drawers */}
+      <SideDrawer
+        isOpen={isDataDrawerOpen}
+        onClose={() => setIsDataDrawerOpen(false)}
+        title={selectedDataType}
+      >
+        <div className="space-y-4">
+          <Card className="p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Data Quality Metrics
+            </h4>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span>Accuracy:</span>
+                <span className="text-green-400 font-bold">98.7%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Update Frequency:</span>
+                <span className="text-cyan-400">10 seconds</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Source Satellites:</span>
+                <span className="text-blue-400">4 active</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Latency:</span>
+                <span className="text-yellow-400">~2.3s</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Technical Specifications
+            </h4>
+            <div className="text-sm space-y-2 text-gray-400">
+              <div className="flex items-center gap-2">
+                <Shield className="h-3 w-3 text-green-400" />
+                Real-time data processing
+              </div>
+              <div className="flex items-center gap-2">
+                <Zap className="h-3 w-3 text-yellow-400" />
+                ML anomaly detection
+              </div>
+              <div className="flex items-center gap-2">
+                <Satellite className="h-3 w-3 text-blue-400" />
+                Multi-satellite data fusion
+              </div>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-3 w-3 text-purple-400" />
+                Advanced analytics engine
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Data Usage Statistics
+            </h4>
+            <div className="text-sm space-y-2 text-gray-400">
+              <p>• Used by 12,000+ researchers globally</p>
+              <p>• 99.9% uptime in the last 12 months</p>
+              <p>• Processing 2.5M data points daily</p>
+              <p>• Trusted by NASA and ESA missions</p>
+            </div>
+          </Card>
+        </div>
+      </SideDrawer>
+
+      <SideDrawer
+        isOpen={isAlertsDrawerOpen}
+        onClose={() => setIsAlertsDrawerOpen(false)}
+        title="Space Weather Alerts"
+      >
+        <div className="space-y-4">
+          {alerts.map((alert) => (
+            <Card
+              key={alert.id}
+              className="p-4 cursor-pointer hover:bg-white/5 hover:scale-[1.02] transition-all duration-200"
+              onClick={() => {
+                setSelectedAlert(alert);
+                setIsAlertDetailOpen(true);
+                setIsAlertsDrawerOpen(false);
+                setDetailOpenedFrom("alerts");
+              }}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs uppercase tracking-wider font-medium ${
+                      alert.severity === "severe"
+                        ? "bg-red-500/20 text-red-400"
+                        : alert.severity === "strong"
+                        ? "bg-orange-500/20 text-orange-400"
+                        : alert.severity === "moderate"
+                        ? "bg-yellow-500/20 text-yellow-400"
+                        : "bg-blue-500/20 text-blue-400"
+                    }`}
+                  >
+                    {alert.severity}
+                  </span>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      alert.type === "geomagnetic"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : alert.type === "solar"
+                        ? "bg-orange-500/20 text-orange-400"
+                        : "bg-red-500/20 text-red-400"
+                    }`}
+                  >
+                    {alert.type}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  {alert.isActive && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                      <span className="text-xs text-green-400 font-medium">
+                        LIVE
+                      </span>
                     </div>
-                    {step < 4 && (
-                      <div
-                        className={`w-12 h-1 mx-2 transition-all duration-200 ${
-                          step < subscriptionStep
-                            ? "bg-amber-600"
-                            : "bg-gray-200"
-                        }`}
-                      />
-                    )}
-                  </div>
-                ))}
+                  )}
+                  <span className="text-xs text-cyan-400 opacity-60">
+                    Click for details
+                  </span>
+                </div>
               </div>
 
-              {/* Step Content */}
-              {subscriptionStep === 1 && (
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Personal Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.firstName}
-                        onChange={(e) =>
-                          updateSubscriptionData("firstName", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.firstName
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="Enter your first name"
-                      />
-                      {validationErrors.firstName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.firstName}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.lastName}
-                        onChange={(e) =>
-                          updateSubscriptionData("lastName", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.lastName
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="Enter your last name"
-                      />
-                      {validationErrors.lastName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.lastName}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={subscriptionData.email}
-                      onChange={(e) =>
-                        updateSubscriptionData("email", e.target.value)
-                      }
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                        validationErrors.email
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-amber-500"
-                      }`}
-                      placeholder="Enter your email address"
-                    />
-                    {validationErrors.email && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {validationErrors.email}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={subscriptionData.phone}
-                      onChange={(e) =>
-                        updateSubscriptionData("phone", e.target.value)
-                      }
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                        validationErrors.phone
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-amber-500"
-                      }`}
-                      placeholder="Enter your phone number"
-                    />
-                    {validationErrors.phone && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {validationErrors.phone}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+              <h4 className={`font-medium mb-1 ${contentFont.className}`}>
+                {alert.title}
+              </h4>
+              <p
+                className={`text-sm text-gray-400 mb-2 line-clamp-2 ${contentFont.className}`}
+              >
+                {alert.description}
+              </p>
 
-              {subscriptionStep === 4 && (
-                <div className="text-center space-y-6 py-8">
-                  <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Check className="h-10 w-10 text-green-600" />
-                  </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      Welcome to BrewCraft!
-                    </h3>
-                    <p className="text-lg text-gray-600">
-                      Your {plans.find((p) => p.id === selectedPlan)?.name}{" "}
-                      subscription is confirmed!
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between">
+                <p className={`text-xs text-gray-500 ${contentFont.className}`}>
+                  {alert.timestamp.toLocaleString()}
+                </p>
+                <ChevronRight className="h-4 w-4 text-gray-500 group-hover:text-cyan-400 transition-colors" />
+              </div>
+            </Card>
+          ))}
 
-                  <div className="bg-amber-50 rounded-xl p-6 text-left space-y-4">
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      What happens next?
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="bg-amber-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
-                          1
-                        </div>
-                        <p className="text-gray-700">
-                          You'll receive a confirmation email within the next
-                          few minutes
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="bg-amber-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
-                          2
-                        </div>
-                        <p className="text-gray-700">
-                          Your first coffee shipment will arrive within 3-5
-                          business days
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="bg-amber-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
-                          3
-                        </div>
-                        <p className="text-gray-700">
-                          Future deliveries will arrive on the same date each
-                          month
-                        </p>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <div className="bg-amber-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
-                          4
-                        </div>
-                        <p className="text-gray-700">
-                          You can manage your subscription anytime in your
-                          account dashboard
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      Your Subscription Details
-                    </h4>
-                    <div className="space-y-2 text-left">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Plan:</span>
-                        <span className="text-gray-900 font-medium">
-                          {plans.find((p) => p.id === selectedPlan)?.name}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Monthly Cost:</span>
-                        <span className="text-gray-900 font-medium">
-                          ${plans.find((p) => p.id === selectedPlan)?.price}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Next Billing:</span>
-                        <span className="text-gray-900 font-medium">
-                          {new Date(
-                            Date.now() + 30 * 24 * 60 * 60 * 1000
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Delivery Address:</span>
-                        <span className="text-gray-900 font-medium">
-                          {subscriptionData.city}, {subscriptionData.state}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {subscriptionStep === 2 && (
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Shipping Address
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Street Address
-                    </label>
-                    <input
-                      type="text"
-                      value={subscriptionData.address}
-                      onChange={(e) =>
-                        updateSubscriptionData("address", e.target.value)
-                      }
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                        validationErrors.address
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-amber-500"
-                      }`}
-                      placeholder="Enter your street address"
-                    />
-                    {validationErrors.address && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {validationErrors.address}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.city}
-                        onChange={(e) =>
-                          updateSubscriptionData("city", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.city
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="City"
-                      />
-                      {validationErrors.city && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.city}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.state}
-                        onChange={(e) =>
-                          updateSubscriptionData("state", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.state
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="State"
-                      />
-                      {validationErrors.state && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.state}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ZIP Code
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.zipCode}
-                        onChange={(e) =>
-                          updateSubscriptionData("zipCode", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.zipCode
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="ZIP"
-                      />
-                      {validationErrors.zipCode && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.zipCode}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {subscriptionStep === 3 && (
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Payment Information
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name on Card
-                    </label>
-                    <input
-                      type="text"
-                      value={subscriptionData.nameOnCard}
-                      onChange={(e) =>
-                        updateSubscriptionData("nameOnCard", e.target.value)
-                      }
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                        validationErrors.nameOnCard
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-amber-500"
-                      }`}
-                      placeholder="Enter name as it appears on card"
-                    />
-                    {validationErrors.nameOnCard && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {validationErrors.nameOnCard}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={subscriptionData.cardNumber}
-                      onChange={(e) =>
-                        updateSubscriptionData("cardNumber", e.target.value)
-                      }
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                        validationErrors.cardNumber
-                          ? "border-red-500 focus:border-red-500"
-                          : "border-gray-300 focus:border-amber-500"
-                      }`}
-                      placeholder="1234 5678 9012 3456"
-                    />
-                    {validationErrors.cardNumber && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {validationErrors.cardNumber}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.expiryDate}
-                        onChange={(e) =>
-                          updateSubscriptionData("expiryDate", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.expiryDate
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="MM/YY"
-                      />
-                      {validationErrors.expiryDate && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.expiryDate}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CVV
-                      </label>
-                      <input
-                        type="text"
-                        value={subscriptionData.cvv}
-                        onChange={(e) =>
-                          updateSubscriptionData("cvv", e.target.value)
-                        }
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-500 transition-colors ${
-                          validationErrors.cvv
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-gray-300 focus:border-amber-500"
-                        }`}
-                        placeholder="123"
-                      />
-                      {validationErrors.cvv && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {validationErrors.cvv}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Order Summary */}
-                  <div className="bg-gray-50 rounded-xl p-6 mt-6">
-                    <h4 className="font-semibold text-gray-900 mb-4">
-                      Order Summary
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">
-                          {plans.find((p) => p.id === selectedPlan)?.name} Plan
-                        </span>
-                        <span className="text-gray-900">
-                          ${plans.find((p) => p.id === selectedPlan)?.price}
-                          /month
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Shipping</span>
-                        <span className="text-green-600">Free</span>
-                      </div>
-                      <div className="border-t border-gray-200 pt-2 mt-2">
-                        <div className="flex justify-between font-semibold text-lg">
-                          <span>Total</span>
-                          <span>
-                            ${plans.find((p) => p.id === selectedPlan)?.price}
-                            /month
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              {subscriptionStep < 4 && (
-                <div className="flex flex-col sm:flex-row gap-4 sm:justify-between mt-8">
-                  <button
-                    onClick={() =>
-                      subscriptionStep > 1
-                        ? setSubscriptionStep(subscriptionStep - 1)
-                        : setShowSubscriptionModal(false)
-                    }
-                    className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer order-2 sm:order-1"
-                    disabled={isProcessing}
-                  >
-                    {subscriptionStep > 1 ? "Previous" : "Cancel"}
-                  </button>
-                  <button
-                    onClick={handleSubscriptionSubmit}
-                    disabled={isProcessing}
-                    className={`w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer order-1 sm:order-2 ${
-                      isProcessing
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-amber-600 to-orange-600 hover:shadow-lg transform hover:scale-105"
-                    } text-white`}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>
-                          {subscriptionStep === 3
-                            ? "Complete"
-                            : "Continue"}
-                        </span>
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {subscriptionStep === 4 && (
-                <div className="flex justify-center mt-8">
-                  <button
-                    onClick={resetSubscriptionModal}
-                    className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 cursor-pointer"
-                  >
-                    Start Your Coffee Journey
-                  </button>
-                </div>
-              )}
+          {alerts.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p className={contentFont.className}>No alerts available</p>
+              <p className="text-xs mt-1">New alerts will appear here</p>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </SideDrawer>
 
-      <style jsx>{`
-        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
-      `}</style>
-    </div>
+      <SideDrawer
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+        title="About NebulaPulse"
+      >
+        <div className="space-y-6">
+          <Card className="p-4">
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Satellite className="h-4 w-4" />
+              Our Mission
+            </h4>
+            <p className="text-sm text-gray-400">
+              NebulaPulse provides cutting-edge real-time space weather
+              monitoring to protect our technological infrastructure and enable
+              safer space operations for humanity's expansion into the cosmos.
+            </p>
+          </Card>
+
+          <Card className="p-4">
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Core Features
+            </h4>
+            <ul className="text-sm text-gray-400 space-y-2">
+              <li className="flex items-center gap-2">
+                <Sun className="h-3 w-3 text-orange-400" />
+                Real-time solar flare tracking
+              </li>
+              <li className="flex items-center gap-2">
+                <Radio className="h-3 w-3 text-blue-400" />
+                Geomagnetic activity monitoring
+              </li>
+              <li className="flex items-center gap-2">
+                <Globe className="h-3 w-3 text-green-400" />
+                Global aurora forecast predictions
+              </li>
+              <li className="flex items-center gap-2">
+                <Satellite className="h-3 w-3 text-cyan-400" />
+                Satellite network health status
+              </li>
+              <li className="flex items-center gap-2">
+                <BarChart3 className="h-3 w-3 text-purple-400" />
+                Multi-region data analysis
+              </li>
+            </ul>
+          </Card>
+
+          <Card className="p-4">
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Our Team
+            </h4>
+            <p className="text-sm text-gray-400">
+              Built by a dedicated team of space weather researchers, software
+              engineers, and data scientists committed to advancing our
+              understanding of solar-terrestrial interactions and their impact
+              on modern technology.
+            </p>
+          </Card>
+
+          <Card className="p-4">
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Impact & Recognition
+            </h4>
+            <div className="text-sm text-gray-400 space-y-1">
+              <p>• Trusted by NASA, ESA, and NOAA</p>
+              <p>• Used in 50+ countries worldwide</p>
+              <p>• Featured in Nature Astronomy</p>
+              <p>• 99.9% system reliability</p>
+            </div>
+          </Card>
+        </div>
+      </SideDrawer>
+
+      <SideDrawer
+        isOpen={isAlertDetailOpen}
+        onClose={() => {
+          setIsAlertDetailOpen(false);
+          setSelectedAlert(null);
+          setDetailOpenedFrom("main");
+        }}
+        title={
+          <div className="flex items-center gap-3">
+            {detailOpenedFrom === "alerts" && (
+              <button
+                onClick={() => {
+                  setIsAlertDetailOpen(false);
+                  setSelectedAlert(null);
+                  setIsAlertsDrawerOpen(true);
+                  setDetailOpenedFrom("main");
+                }}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer group"
+                title="Back to alerts"
+              >
+                <ChevronRight className="h-5 w-5 rotate-180 text-gray-400 group-hover:text-cyan-400 transition-colors" />
+              </button>
+            )}
+            <span>Alert Details</span>
+          </div>
+        }
+      >
+        {selectedAlert && (
+          <div className="space-y-6">
+            <Card className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm uppercase tracking-wider font-bold ${
+                    selectedAlert.severity === "severe"
+                      ? "bg-red-500/20 text-red-400"
+                      : selectedAlert.severity === "strong"
+                      ? "bg-orange-500/20 text-orange-400"
+                      : selectedAlert.severity === "moderate"
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}
+                >
+                  {selectedAlert.severity} Alert
+                </span>
+                {selectedAlert.isActive && (
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-xs text-green-400 font-medium">
+                      ACTIVE
+                    </span>
+                  </div>
+                )}
+              </div>
+              <h3 className={`text-lg font-bold mb-2 ${spaceFont.className}`}>
+                {selectedAlert.title}
+              </h3>
+              <p className={`text-sm text-gray-400 ${contentFont.className}`}>
+                {selectedAlert.description}
+              </p>
+            </Card>
+
+            <Card className="p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Alert Information
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span>Type:</span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      selectedAlert.type === "geomagnetic"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : selectedAlert.type === "solar"
+                        ? "bg-orange-500/20 text-orange-400"
+                        : "bg-red-500/20 text-red-400"
+                    }`}
+                  >
+                    {selectedAlert.type}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity Level:</span>
+                  <span className="text-cyan-400 font-bold capitalize">
+                    {selectedAlert.severity}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Alert ID:</span>
+                  <span
+                    className={`text-gray-300 font-mono ${contentFont.className}`}
+                  >
+                    #{selectedAlert.id}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Issued:</span>
+                  <span className={`text-gray-300 ${contentFont.className}`}>
+                    {selectedAlert.timestamp.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Status:</span>
+                  <span
+                    className={
+                      selectedAlert.isActive
+                        ? "text-green-400"
+                        : "text-gray-400"
+                    }
+                  >
+                    {selectedAlert.isActive ? "Active" : "Resolved"}
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Potential Impacts
+              </h4>
+              <div className="text-sm space-y-2 text-gray-400">
+                {selectedAlert.type === "geomagnetic" && (
+                  <>
+                    <p>• Enhanced aurora activity at high latitudes</p>
+                    <p>• Possible disruption to GPS navigation</p>
+                    <p>• Potential power grid fluctuations</p>
+                    <p>• Satellite operations may be affected</p>
+                  </>
+                )}
+                {selectedAlert.type === "solar" && (
+                  <>
+                    <p>• Radio communication disruptions</p>
+                    <p>• Increased radiation exposure for aviation</p>
+                    <p>• Satellite electronics at risk</p>
+                    <p>• Possible HF radio blackouts</p>
+                  </>
+                )}
+                {selectedAlert.type === "radiation" && (
+                  <>
+                    <p>• High-energy particle bombardment</p>
+                    <p>• Elevated radiation levels for spacecraft</p>
+                    <p>• Risk to astronaut safety</p>
+                    <p>• Potential satellite system degradation</p>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Recommended Actions
+              </h4>
+              <div className="text-sm space-y-2 text-gray-400">
+                <p>• Monitor space weather conditions closely</p>
+                <p>• Implement protective protocols for sensitive equipment</p>
+                <p>• Consider postponing critical satellite operations</p>
+                <p>• Update flight crews on radiation exposure risks</p>
+              </div>
+            </Card>
+          </div>
+        )}
+      </SideDrawer>
+    </main>
   );
-};
-
-export default CoffeeSubscriptionWebsite;
-// Zod Schema
-export const Schema = {
-    "commentary": "",
-    "template": "nextjs-developer",
-    "title": "",
-    "description": "",
-    "additional_dependencies": [
-        "lucide-react"
-    ],
-    "has_additional_dependencies": true,
-    "install_dependencies_command": "npm install lucide-react",
-    "port": 3000,
-    "file_path": "pages/index.tsx",
-    "code": "<see code above>"
 }
