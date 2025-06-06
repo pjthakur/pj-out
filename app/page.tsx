@@ -1,1271 +1,1621 @@
 "use client";
 
-import type React from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Quote,
+  Plus,
+  Shuffle,
+  Heart,
+  Star,
+  Trash2,
+  Edit3,
+  Menu,
+  X,
+  ChevronRight,
+  Sparkles,
+  Search,
+  Filter,
+  Download,
+  TrendingUp,
+  BarChart3,
+  Target,
+  Award,
+  BookOpen,
+  Copy,
+  Moon,
+  Sun,
+  ChevronDown,
+  Eye,
+  Check,
+} from "lucide-react";
 
-import { useState, useEffect, useRef } from "react";
-import { Pacifico, Quicksand } from "next/font/google";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, X, Star, Sun, Moon, Menu, ArrowUp } from "lucide-react";
-
-const pacifico = Pacifico({
-  weight: "400",
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-pacifico",
-});
-
-const quicksand = Quicksand({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-quicksand",
-});
-
-const theme = {
-  light: {
-    background: "#FFF6F9",
-    text: "#5A3D5C",
-    primary: "#FF66B3",
-    secondary: "#8A4FFF",
-    accent: "#FFD166",
-    cardBg: "#FFFFFF",
-    navBg: "rgba(255, 246, 249, 0.85)",
-  },
-  dark: {
-    background: "#1A1A2E",
-    text: "#E5E5E5",
-    primary: "#FF6B9D",
-    secondary: "#A855F7",
-    accent: "#FFA726",
-    cardBg: "#2D2D44",
-    navBg: "rgba(26, 26, 46, 0.9)",
-  },
-};
-
-type Product = {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  image: string;
+interface QuoteData {
+  id: string;
+  text: string;
+  author: string;
   category: string;
-  featured: boolean;
-  rating: number;
-  reviews: number;
-};
+  isFavorite: boolean;
+  isFeatured: boolean;
+  dateAdded: string;
+  views: number;
+  tags: string[];
+}
 
-type CartItem = {
-  product: Product;
-  quantity: number;
-};
+interface Analytics {
+  totalQuotes: number;
+  favoriteQuotes: number;
+  featuredQuotes: number;
+  categories: number;
+  totalViews: number;
+  mostViewedQuote: QuoteData | null;
+  recentlyAdded: number;
+}
 
-type Review = {
-  id: number;
-  name: string;
-  avatar: string;
-  rating: number;
-  comment: string;
-  date: string;
-};
+interface Toast {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
+}
 
-const products: Product[] = [
-  {
-    id: 1,
-    name: "Rainbow Swirl Lollipop",
-    price: 2.99,
-    description:
-      "A colorful spiral lollipop with fruity flavors that will take your taste buds on a magical journey! Each swirl represents a different fruit flavor that blends perfectly as you enjoy this sweet treat.",
-    image:
-      "https://images.pexels.com/photos/90919/pexels-photo-90919.png?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    category: "lollipops",
-    featured: true,
-    rating: 4.8,
-    reviews: 124,
-  },
-  {
-    id: 2,
-    name: "Gummy Bear Assortment",
-    price: 4.99,
-    description:
-      "A delightful mix of gummy bears in various flavors and colors. These soft, chewy treats are perfect for sharing or enjoying all by yourself!",
-    image:
-      "https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?q=80&w=500&auto=format&fit=crop",
-    category: "gummies",
-    featured: true,
-    rating: 4.9,
-    reviews: 89,
-  },
-  {
-    id: 3,
-    name: "Chocolate Truffle Box",
-    price: 12.99,
-    description:
-      "Luxurious chocolate truffles with a smooth, creamy center. Each bite melts in your mouth for an unforgettable chocolate experience.",
-    image:
-      "https://images.pexels.com/photos/10390457/pexels-photo-10390457.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    category: "chocolate",
-    featured: true,
-    rating: 5.0,
-    reviews: 76,
-  },
-  {
-    id: 4,
-    name: "Cotton Candy Clouds",
-    price: 3.49,
-    description:
-      "Fluffy, melt-in-your-mouth cotton candy in pastel colors. Tastes like a sweet dream and looks like a magical cloud!",
-    image:
-      "https://images.pexels.com/photos/10477112/pexels-photo-10477112.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    category: "cotton candy",
-    featured: false,
-    rating: 4.7,
-    reviews: 52,
-  },
-  {
-    id: 5,
-    name: "Sour Candy Strips",
-    price: 1.99,
-    description:
-      "Tangy, chewy candy strips that pack a punch of flavor. Perfect for kids who love that sour kick!",
-    image:
-      "https://images.pexels.com/photos/7110203/pexels-photo-7110203.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    category: "sour",
-    featured: false,
-    rating: 4.6,
-    reviews: 118,
-  },
-  {
-    id: 6,
-    name: "Caramel Popcorn Bucket",
-    price: 5.99,
-    description:
-      "Sweet caramel-coated popcorn that's crunchy, sticky, and utterly delicious. A perfect treat for movie nights!",
-    image:
-      "https://images.pexels.com/photos/7676079/pexels-photo-7676079.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    category: "popcorn",
-    featured: true,
-    rating: 4.8,
-    reviews: 64,
-  },
-];
+const InspirationalQuoteWebsite: React.FC = () => {
+  const [quotes, setQuotes] = useState<QuoteData[]>([
+    {
+      id: "1",
+      text: "The only way to do great work is to love what you do.",
+      author: "Steve Jobs",
+      category: "Success",
+      isFavorite: false,
+      isFeatured: true,
+      dateAdded: "2025-01-15",
+      views: 245,
+      tags: ["work", "passion", "success"],
+    },
+    {
+      id: "2",
+      text: "Innovation distinguishes between a leader and a follower.",
+      author: "Steve Jobs",
+      category: "Innovation",
+      isFavorite: true,
+      isFeatured: false,
+      dateAdded: "2025-01-20",
+      views: 189,
+      tags: ["innovation", "leadership", "business"],
+    },
+    {
+      id: "3",
+      text: "The future belongs to those who believe in the beauty of their dreams.",
+      author: "Eleanor Roosevelt",
+      category: "Dreams",
+      isFavorite: false,
+      isFeatured: false,
+      dateAdded: "2025-01-25",
+      views: 156,
+      tags: ["dreams", "future", "belief"],
+    },
+    {
+      id: "4",
+      text: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+      author: "Winston Churchill",
+      category: "Motivation",
+      isFavorite: true,
+      isFeatured: false,
+      dateAdded: "2025-01-28",
+      views: 298,
+      tags: ["success", "failure", "courage", "persistence"],
+    },
+  ]);
 
-const reviews: Review[] = [
-  {
-    id: 1,
-    name: "Emma S.",
-    avatar:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=100&auto=format&fit=crop",
-    rating: 5,
-    comment:
-      "My kids absolutely love the Rainbow Swirl Lollipops! They're now a birthday party staple in our house.",
-    date: "October 12, 2023",
-  },
-  {
-    id: 2,
-    name: "Michael T.",
-    avatar:
-      "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=100&auto=format&fit=crop",
-    rating: 4,
-    comment:
-      "The Gummy Bear Assortment has the perfect balance of flavors. My only complaint is that they disappear too quickly!",
-    date: "September 3, 2023",
-  },
-  {
-    id: 3,
-    name: "Sophia L.",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=100&auto=format&fit=crop",
-    rating: 5,
-    comment:
-      "The Chocolate Truffle Box made the perfect gift. The presentation was beautiful and the chocolates were divine!",
-    date: "November 15, 2023",
-  },
-];
+  const [currentQuote, setCurrentQuote] = useState<QuoteData>(quotes[0]);
+  const [isAddingQuote, setIsAddingQuote] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("dateAdded");
+  const [filterBy, setFilterBy] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
 
-export default function CandyKingdom() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [newQuote, setNewQuote] = useState({
+    text: "",
+    author: "",
+    category: "",
+    tags: [] as string[],
+    tagInput: "",
+  });
+  const [editingQuote, setEditingQuote] = useState<QuoteData | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<QuoteData | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const currentTheme = isDarkMode ? theme.dark : theme.light;
+  const categories = [
+    "Success",
+    "Innovation",
+    "Dreams",
+    "Leadership",
+    "Motivation",
+    "Life",
+    "Wisdom",
+    "Business",
+    "Creativity",
+    "Growth",
+  ];
 
-  const heroRef = useRef<HTMLDivElement>(null);
-  const productsRef = useRef<HTMLDivElement>(null);
-  const whyUsRef = useRef<HTMLDivElement>(null);
-  const reviewsRef = useRef<HTMLDivElement>(null);
+  // Toast functions
+  const addToast = (
+    message: string,
+    type: "success" | "error" | "info" = "success"
+  ) => {
+    const id = Date.now().toString();
+    const newToast: Toast = { id, message, type };
+    setToasts((prev) => [...prev, newToast]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  // Analytics computation
+  const analytics: Analytics = useMemo(() => {
+    const totalQuotes = quotes.length;
+    const favoriteQuotes = quotes.filter((q) => q.isFavorite).length;
+    const featuredQuotes = quotes.filter((q) => q.isFeatured).length;
+    const categoriesCount = new Set(quotes.map((q) => q.category)).size;
+    const totalViews = quotes.reduce((sum, q) => sum + q.views, 0);
+    const mostViewedQuote = quotes.reduce(
+      (max, q) => (q.views > (max?.views || 0) ? q : max),
+      null as QuoteData | null
+    );
+    const recentlyAdded = quotes.filter((q) => {
+      const addedDate = new Date(q.dateAdded);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return addedDate > weekAgo;
+    }).length;
+
+    return {
+      totalQuotes,
+      favoriteQuotes,
+      featuredQuotes,
+      categories: categoriesCount,
+      totalViews,
+      mostViewedQuote,
+      recentlyAdded,
     };
+  }, [quotes]);
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    if (selectedProduct || isCartOpen || isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [selectedProduct, isCartOpen, isMenuOpen]);
-
-  const addToCart = (product: Product, quantity = 1) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find(
-        (item) => item.product.id === product.id
-      );
-
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
+  // Filtered and sorted quotes
+  const filteredQuotes = useMemo(() => {
+    let filtered = quotes.filter((quote) => {
+      const matchesSearch =
+        quote.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.tags.some((tag) =>
+          tag.toLowerCase().includes(searchTerm.toLowerCase())
         );
-      } else {
-        return [...prevCart, { product, quantity }];
+
+      const matchesCategory =
+        selectedCategory === "All" || quote.category === selectedCategory;
+
+      const matchesFilter =
+        filterBy === "all" ||
+        (filterBy === "favorites" && quote.isFavorite) ||
+        (filterBy === "featured" && quote.isFeatured);
+
+      return matchesSearch && matchesCategory && matchesFilter;
+    });
+
+    // Sort quotes
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "views":
+          return b.views - a.views;
+        case "author":
+          return a.author.localeCompare(b.author);
+        case "category":
+          return a.category.localeCompare(b.category);
+        case "dateAdded":
+        default:
+          return (
+            new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+          );
       }
     });
 
-    showToast(`Added ${quantity} ${product.name} to cart!`);
+    return filtered;
+  }, [quotes, searchTerm, selectedCategory, sortBy, filterBy]);
+
+  // Get featured quotes
+  const featuredQuotes = quotes.filter((q) => q.isFeatured);
+
+  // Prevent body scrolling when modals are open
+  useEffect(() => {
+    if (isAddingQuote || editingQuote || selectedQuote || isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAddingQuote, editingQuote, selectedQuote, isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (quotes.length > 0) {
+      const nonFeaturedQuotes = quotes.filter((q) => !q.isFeatured);
+      const quotesToChooseFrom = nonFeaturedQuotes.length > 0 ? nonFeaturedQuotes : quotes;
+      setCurrentQuote(quotesToChooseFrom[Math.floor(Math.random() * quotesToChooseFrom.length)]);
+    }
+  }, []); // <-- empty dependency: only on initial mount
+
+  const getRandomQuote = () => {
+    if (quotes.length > 0) {
+      const nonFeaturedQuotes = quotes.filter((q) => !q.isFeatured);
+      const quotesToChooseFrom = nonFeaturedQuotes.length > 0 ? nonFeaturedQuotes : quotes;
+      
+      // Make sure we get a different quote than the current one
+      let randomQuote;
+      let attempts = 0;
+      do {
+        const randomIndex = Math.floor(Math.random() * quotesToChooseFrom.length);
+        randomQuote = quotesToChooseFrom[randomIndex];
+        attempts++;
+      } while (
+        randomQuote.id === currentQuote.id &&
+        quotesToChooseFrom.length > 1 &&
+        attempts < 10
+      );
+
+      setCurrentQuote(randomQuote);
+      incrementViews(randomQuote.id);
+      addToast("New quote loaded!", "info");
+    }
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart((prevCart) =>
-      prevCart.filter((item) => item.product.id !== productId)
+  const incrementViews = (id: string) => {
+    setQuotes(
+      quotes.map((q) => (q.id === id ? { ...q, views: q.views + 1 } : q))
     );
-    showToast("Item removed from cart");
   };
 
-  const updateQuantity = (productId: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
+  const addQuote = () => {
+    if (newQuote.text && newQuote.author) {
+      const quote: QuoteData = {
+        id: Date.now().toString(),
+        text: newQuote.text,
+        author: newQuote.author,
+        category: newQuote.category || "General",
+        isFavorite: false,
+        isFeatured: false,
+        dateAdded: new Date().toISOString().split("T")[0],
+        views: 0,
+        tags: newQuote.tags,
+      };
+      setQuotes([...quotes, quote]);
+      setNewQuote({
+        text: "",
+        author: "",
+        category: "",
+        tags: [],
+        tagInput: "",
+      });
+      setIsAddingQuote(false);
+      addToast("Quote added successfully!", "success");
+    }
+  };
 
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
+  const deleteQuote = (id: string) => {
+    const quoteToDelete = quotes.find((q) => q.id === id);
+    const updatedQuotes = quotes.filter((q) => q.id !== id);
+    setQuotes(updatedQuotes);
+    if (currentQuote.id === id && updatedQuotes.length > 0) {
+      setCurrentQuote(updatedQuotes[0]);
+    }
+    addToast(`Quote by ${quoteToDelete?.author} deleted`, "info");
+  };
+
+  const toggleFavorite = (id: string) => {
+    const quote = quotes.find((q) => q.id === id);
+    const newFavoriteStatus = !quote?.isFavorite;
+
+    setQuotes(
+      quotes.map((q) =>
+        q.id === id ? { ...q, isFavorite: newFavoriteStatus } : q
       )
     );
-  };
 
-  const getTotalItems = () => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
-  };
+    // Update currentQuote if it's the one being toggled
+    if (currentQuote.id === id) {
+      setCurrentQuote({ ...currentQuote, isFavorite: newFavoriteStatus });
+    }
 
-  const getTotalPrice = () => {
-    return cart.reduce(
-      (total, item) => total + item.product.price * item.quantity,
-      0
+    // Update selectedQuote if it's the one being toggled
+    if (selectedQuote && selectedQuote.id === id) {
+      setSelectedQuote({ ...selectedQuote, isFavorite: newFavoriteStatus });
+    }
+
+    addToast(
+      newFavoriteStatus ? "Added to favorites!" : "Removed from favorites",
+      newFavoriteStatus ? "success" : "info"
     );
   };
 
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000);
+  const toggleFeatured = (id: string) => {
+    const quote = quotes.find((q) => q.id === id);
+    const newFeaturedStatus = !quote?.isFeatured;
+
+    setQuotes(
+      quotes.map((q) =>
+        q.id === id ? { ...q, isFeatured: newFeaturedStatus } : q
+      )
+    );
+
+    addToast(
+      newFeaturedStatus ? "Quote featured!" : "Removed from featured",
+      newFeaturedStatus ? "success" : "info"
+    );
   };
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    setIsMenuOpen(false);
-    ref.current?.scrollIntoView({ behavior: "smooth" });
+  const setAsFeatured = (id: string) => {
+    // Remove featured status from all quotes, then set this one as featured
+    setQuotes(
+      quotes.map((q) => ({
+        ...q,
+        isFeatured: q.id === id,
+      }))
+    );
+
+    // Set as current quote without incrementing views
+    const quote = quotes.find((q) => q.id === id);
+    if (quote) {
+      setCurrentQuote({ ...quote, isFeatured: true });
+      addToast("Quote set as featured!", "success");
+    }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const updateQuote = (updatedQuote: QuoteData) => {
+    setQuotes(quotes.map((q) => (q.id === updatedQuote.id ? updatedQuote : q)));
+    setEditingQuote(null);
+    addToast("Quote updated successfully!", "success");
   };
+
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    setIsMobileMenuOpen(false);
+  };
+
+  const exportQuotes = () => {
+    const dataStr = JSON.stringify(quotes, null, 2);
+    const dataUri =
+      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+    const exportFileDefaultName = "quotes.json";
+    const linkElement = document.createElement("a");
+    linkElement.setAttribute("href", dataUri);
+    linkElement.setAttribute("download", exportFileDefaultName);
+    linkElement.click();
+    addToast("Quotes exported successfully!", "success");
+  };
+
+  const copyQuote = async (quote: QuoteData) => {
+    const text = `"${quote.text}" - ${quote.author}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast("Quote copied to clipboard!", "success");
+    } catch (err) {
+      addToast("Failed to copy quote", "error");
+    }
+  };
+
+  const addTag = () => {
+    if (newQuote.tagInput && !newQuote.tags.includes(newQuote.tagInput)) {
+      setNewQuote({
+        ...newQuote,
+        tags: [...newQuote.tags, newQuote.tagInput],
+        tagInput: "",
+      });
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setNewQuote({
+      ...newQuote,
+      tags: newQuote.tags.filter((tag) => tag !== tagToRemove),
+    });
+  };
+
+  const themeClasses = isDarkMode
+    ? "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"
+    : "bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50";
+
+  const cardClasses = isDarkMode
+    ? "bg-white/10 backdrop-blur-lg border-white/20"
+    : "bg-white/90 backdrop-blur-lg border-gray-200";
+
+  const textClasses = isDarkMode ? "text-white" : "text-gray-900";
+  const mutedTextClasses = isDarkMode ? "text-white/70" : "text-gray-600";
 
   return (
-    <div
-      className={`${pacifico.variable} ${quicksand.variable}`}
-      style={{
-        backgroundColor: currentTheme.background,
-        color: currentTheme.text,
-      }}
-    >
-      <nav
-        className="fixed w-full z-50 py-4 px-6 flex justify-between items-center"
-        style={{
-          backgroundColor: currentTheme.navBg,
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <div className="flex items-center">
-          <h1
-            className="text-2xl md:text-3xl font-bold"
-            style={{
-              fontFamily: "var(--font-pacifico)",
-              color: currentTheme.primary,
-            }}
-          >
-            Candy Kingdom
-          </h1>
-        </div>
+    <div className={`min-h-screen ${themeClasses} font-[Roboto]`}>
+      {/* Navigation */}
+      <nav className={`fixed top-0 w-full ${cardClasses} border-b z-50`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo Section */}
+            <div className="flex items-center space-x-3 flex-shrink-0">
+              <div className="p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <span className={`text-xl font-bold ${textClasses}`}>
+                  QuoteVault Pro
+                </span>
+                <div className="text-xs text-purple-500 font-medium">
+                  Enterprise Edition
+                </div>
+              </div>
+            </div>
 
-        <div className="hidden md:flex items-center space-x-8">
-          <button
-            onClick={() => scrollToSection(heroRef)}
-            className="font-medium hover:text-opacity-80 transition-colors cursor-pointer"
-            style={{ fontFamily: "var(--font-quicksand)" }}
-          >
-            Home
-          </button>
-          <button
-            onClick={() => scrollToSection(productsRef)}
-            className="font-medium hover:text-opacity-80 transition-colors cursor-pointer"
-            style={{ fontFamily: "var(--font-quicksand)" }}
-          >
-            Products
-          </button>
-          <button
-            onClick={() => scrollToSection(whyUsRef)}
-            className="font-medium hover:text-opacity-80 transition-colors cursor-pointer"
-            style={{ fontFamily: "var(--font-quicksand)" }}
-          >
-            Why Us
-          </button>
-          <button
-            onClick={() => scrollToSection(reviewsRef)}
-            className="font-medium hover:text-opacity-80 transition-colors cursor-pointer"
-            style={{ fontFamily: "var(--font-quicksand)" }}
-          >
-            Reviews
-          </button>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 rounded-full hover:bg-opacity-10 transition-colors cursor-pointer"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative p-2 rounded-full hover:bg-opacity-10 transition-colors cursor-pointer"
-            aria-label="Open cart"
-          >
-            <ShoppingCart size={20} />
-            {getTotalItems() > 0 && (
-              <span
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center text-white"
-                style={{ backgroundColor: currentTheme.primary }}
+            {/* Center Navigation Links */}
+            <div className="hidden md:flex items-center space-x-8 flex-1 justify-center">
+              <button
+                onClick={() => scrollToSection("dashboard")}
+                className={`cursor-pointer px-6 py-2 rounded-lg transition-all duration-200 font-medium ${
+                  activeSection === "dashboard"
+                    ? "bg-purple-600 text-white shadow-lg"
+                    : `${mutedTextClasses} hover:${textClasses}`
+                }`}
               >
-                {getTotalItems()}
-              </span>
-            )}
-          </button>
+                Home
+              </button>
+              <button
+                onClick={() => scrollToSection("quotes")}
+                className={`cursor-pointer px-6 py-2 rounded-lg transition-all duration-200 font-medium ${
+                  activeSection === "quotes"
+                    ? "bg-purple-600 text-white shadow-lg"
+                    : `${mutedTextClasses} hover:${textClasses}`
+                }`}
+              >
+                Browse
+              </button>
+            </div>
 
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-full hover:bg-opacity-10 transition-colors cursor-pointer"
-            aria-label="Toggle menu"
-          >
-            <Menu size={20} />
-          </button>
+            {/* Right Action Buttons */}
+            <div className="hidden md:flex items-center space-x-3 flex-shrink-0">
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`cursor-pointer p-2.5 rounded-lg ${mutedTextClasses} hover:${textClasses} transition-colors`}
+              >
+                {isDarkMode ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                onClick={() => setIsAddingQuote(true)}
+                className="cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Quote</span>
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`cursor-pointer md:hidden p-2 ${textClasses}`}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
-      </nav>
 
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-16 left-0 right-0 z-40 p-4 flex flex-col space-y-4"
-            style={{
-              backgroundColor: currentTheme.navBg,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <button
-              onClick={() => scrollToSection(heroRef)}
-              className="py-2 font-medium text-left cursor-pointer"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Home
-            </button>
-            <button
-              onClick={() => scrollToSection(productsRef)}
-              className="py-2 font-medium text-left cursor-pointer"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Products
-            </button>
-            <button
-              onClick={() => scrollToSection(whyUsRef)}
-              className="py-2 font-medium text-left cursor-pointer"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Why Us
-            </button>
-            <button
-              onClick={() => scrollToSection(reviewsRef)}
-              className="py-2 font-medium text-left cursor-pointer"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Reviews
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="pt-16">
-        <section
-          ref={heroRef}
-          className="min-h-[90vh] flex flex-col items-center justify-center px-6 py-20 relative overflow-hidden"
-        >
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-pink-200 to-purple-200 opacity-50"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-[800px] h-[800px] rounded-full bg-gradient-to-r from-pink-300/20 to-purple-300/20 blur-3xl"></div>
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className={`md:hidden ${cardClasses} border-t border-white/20`}>
+            <div className="px-4 py-3 space-y-2">
+              {["dashboard", "quotes"].map(
+                (section) => (
+                  <button
+                    key={section}
+                    onClick={() => scrollToSection(section)}
+                    className={`cursor-pointer block w-full text-left px-3 py-2 rounded-lg transition-colors capitalize ${
+                      activeSection === section
+                        ? "bg-purple-600 text-white"
+                        : `${mutedTextClasses} hover:${textClasses}`
+                    }`}
+                  >
+                    {section === "dashboard" ? "Home" : "Browse"}
+                  </button>
+                )
+              )}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className={`cursor-pointer p-2 rounded-lg ${mutedTextClasses} hover:${textClasses} transition-colors`}
+                >
+                  {isDarkMode ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsAddingQuote(true)}
+                  className="cursor-pointer bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Quote</span>
+                </button>
+              </div>
             </div>
           </div>
+        )}
+      </nav>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-3xl"
-          >
-            <h1
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6"
-              style={{
-                fontFamily: "var(--font-pacifico)",
-                color: currentTheme.primary,
-              }}
-            >
-              Sweet Treats for Everyone
-            </h1>
-            <p
-              className="text-lg md:text-xl mb-8"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Discover a magical world of delicious candies that will bring joy
-              to children and adults alike. From colorful lollipops to gourmet
-              chocolates, we have treats for every sweet tooth!
-            </p>
-            <button
-              onClick={() => scrollToSection(productsRef)}
-              className="px-8 py-3 rounded-full text-white font-medium text-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-              style={{
-                backgroundColor: currentTheme.primary,
-                fontFamily: "var(--font-quicksand)",
-                boxShadow: "0 10px 25px rgba(255, 102, 179, 0.5)",
-              }}
-            >
-              Explore Our Candies
-            </button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 1 }}
-            className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-pink-100/50 to-transparent -z-10"
-          ></motion.div>
-        </section>
-
-        <section ref={productsRef} className="py-20 px-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12">
-              <h2
-                className="text-3xl md:text-4xl font-bold mb-4"
-                style={{
-                  fontFamily: "var(--font-pacifico)",
-                  color: currentTheme.primary,
-                }}
+      {/* Dashboard Section */}
+      {activeSection === "dashboard" && (
+        <section className="min-h-screen pt-16 px-4 sm:px-6 lg:px-8 flex flex-col">
+          <div className="max-w-7xl mx-auto flex-1 flex flex-col">
+            {/* Hero Section */}
+            <div className="text-center flex-1 flex flex-col justify-center py-20 sm:py-40">
+              <h1
+                className={`text-5xl md:text-7xl lg:text-8xl font-bold ${textClasses} mb-8 animate-fade-in`}
               >
-                Our Sweet Collection
-              </h2>
+                Inspiration
+                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  {" "}
+                  Unleashed
+                </span>
+              </h1>
               <p
-                className="text-lg max-w-2xl mx-auto"
-                style={{ fontFamily: "var(--font-quicksand)" }}
+                className={`text-xl lg:text-2xl ${mutedTextClasses} mb-12 max-w-4xl mx-auto leading-relaxed`}
               >
-                Browse through our delicious selection of handcrafted candies
-                made with the finest ingredients and lots of love!
+                Transform your mindset with our enterprise-grade quote
+                management platform. Curate, organize, and access powerful
+                insights that drive success.
               </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
+                <button
+                  onClick={() => scrollToSection("quotes")}
+                  className={`cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-2xl text-white`}
+                >
+                  Explore Library
+                  <ChevronRight className="inline-block ml-2 h-6 w-6" />
+                </button>
+                <button
+                  onClick={() => setIsAddingQuote(true)}
+                  className={`${cardClasses} cursor-pointer  border px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 transform hover:scale-105 ${textClasses}`}
+                >
+                  Add Quote
+                  <Plus className="inline-block ml-2 h-6 w-6" />
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.5 }}
-                  className="rounded-2xl overflow-hidden cursor-pointer group"
-                  style={{
-                    backgroundColor: currentTheme.cardBg,
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
-                  }}
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  <div className="h-64 overflow-hidden relative">
-                    <img
-                      src={product.image || "/placeholder.svg"}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    {product.featured && (
-                      <div
-                        className="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-medium text-white"
-                        style={{ backgroundColor: currentTheme.secondary }}
-                      >
-                        Featured
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              <div
+                className={`${cardClasses} rounded-2xl p-6 border transition-all duration-300 hover:scale-105`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${mutedTextClasses}`}>
+                      Total Quotes
+                    </p>
+                    <p className={`text-3xl font-bold ${textClasses}`}>
+                      {analytics.totalQuotes}
+                    </p>
+                  </div>
+                  <BookOpen className="h-12 w-12 text-purple-500" />
+                </div>
+                <div className="mt-4">
+                  <span className="text-purple-500 text-sm font-medium">
+                    +{analytics.recentlyAdded} this week
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`${cardClasses} rounded-2xl p-6 border transition-all duration-300 hover:scale-105`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${mutedTextClasses}`}>
+                      Total Views
+                    </p>
+                    <p className={`text-3xl font-bold ${textClasses}`}>
+                      {analytics.totalViews.toLocaleString()}
+                    </p>
+                  </div>
+                  <Eye className="h-12 w-12 text-pink-500" />
+                </div>
+                <div className="mt-4">
+                  <span className="text-pink-500 text-sm font-medium">
+                    Engagement metrics
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`${cardClasses} rounded-2xl p-6 border transition-all duration-300 hover:scale-105`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${mutedTextClasses}`}>
+                      Favorites
+                    </p>
+                    <p className={`text-3xl font-bold ${textClasses}`}>
+                      {analytics.favoriteQuotes}
+                    </p>
+                  </div>
+                  <Heart className="h-12 w-12 text-purple-400" />
+                </div>
+                <div className="mt-4">
+                  <span className="text-purple-400 text-sm font-medium">
+                    Your top picks
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`${cardClasses} rounded-2xl p-6 border transition-all duration-300 hover:scale-105`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${mutedTextClasses}`}>
+                      Categories
+                    </p>
+                    <p className={`text-3xl font-bold ${textClasses}`}>
+                      {analytics.categories}
+                    </p>
+                  </div>
+                  <Target className="h-12 w-12 text-pink-400" />
+                </div>
+                <div className="mt-4">
+                  <span className="text-pink-400 text-sm font-medium">
+                    Well organized
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Featured Quote Display */}
+            <div className="max-w-5xl mx-auto pb-16">
+              <div
+                className={`${cardClasses} rounded-3xl p-8 md:p-12 border shadow-2xl transform hover:scale-102 transition-all duration-500 h-[600px] flex flex-col`}
+              >
+                <div className="text-center mb-6">
+                  <div className="flex items-center justify-center space-x-2 mb-4">
+                    <Star className="h-6 w-6 text-yellow-500 fill-current" />
+                    <span className={`text-lg font-semibold ${textClasses}`}>
+                      Quote of the Day
+                    </span>
+                    <Star className="h-6 w-6 text-yellow-500 fill-current" />
+                  </div>
+                </div>
+
+                <div className="flex-1 flex flex-col justify-center min-h-0">
+                  <Quote className="h-16 w-16 text-purple-400 mb-8 mx-auto opacity-30" />
+                  <div className="flex-1 flex flex-col justify-center">
+                    <blockquote
+                      className={`text-2xl md:text-4xl font-light ${textClasses} text-center mb-4 leading-relaxed ${
+                        currentQuote.text.length > 120 ? 'cursor-pointer hover:text-purple-300 transition-colors' : ''
+                      }`}
+                      onClick={() => currentQuote.text.length > 120 && setSelectedQuote(currentQuote)}
+                    >
+                      "{currentQuote.text.length > 120 ? currentQuote.text.substring(0, 120) + '...' : currentQuote.text}"
+                    </blockquote>
+                    {currentQuote.text.length > 120 && (
+                      <div className="text-center mb-4">
+                        <button
+                          onClick={() => setSelectedQuote(currentQuote)}
+                          className="text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors underline"
+                        >
+                          Click to read full quote
+                        </button>
                       </div>
                     )}
                   </div>
+                </div>
 
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3
-                        className="text-xl font-bold"
-                        style={{ fontFamily: "var(--font-quicksand)" }}
-                      >
-                        {product.name}
-                      </h3>
-                      <span
-                        className="text-xl font-bold"
-                        style={{ color: currentTheme.primary }}
-                      >
-                        ${product.price.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center mb-4">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={16}
-                            className={
-                              i < Math.floor(product.rating)
-                                ? "fill-current"
-                                : ""
-                            }
-                            style={{ color: currentTheme.accent }}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm ml-2">({product.reviews})</span>
-                    </div>
-
-                    <p
-                      className="text-sm mb-6 line-clamp-2"
-                      style={{ fontFamily: "var(--font-quicksand)" }}
+                <div className="text-center mb-8">
+                  <p className="text-purple-400 text-xl font-medium mb-2">
+                    — {currentQuote.author}
+                  </p>
+                  <div className="flex items-center justify-center space-x-4">
+                    <span className="bg-purple-500/20 text-purple-400 px-4 py-2 rounded-full text-sm font-medium">
+                      {currentQuote.category}
+                    </span>
+                    <span
+                      className={`${mutedTextClasses} text-sm flex items-center`}
                     >
-                      {product.description}
-                    </p>
+                      <Eye className="h-4 w-4 mr-1" />
+                      {currentQuote.views} views
+                    </span>
+                  </div>
+                </div>
 
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={getRandomQuote}
+                    className={`${cardClasses} cursor-pointer  border px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-105 ${textClasses}`}
+                  >
+                    <Shuffle className="h-5 w-5" />
+                    <span>New Quote</span>
+                  </button>
+                  <button
+                    onClick={() => copyQuote(currentQuote)}
+                    className={`${cardClasses} cursor-pointer border px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-105 ${textClasses}`}
+                  >
+                    <Copy className="h-5 w-5" />
+                    <span>Copy</span>
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(currentQuote.id)}
+                    className={`${cardClasses} cursor-pointer  border px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-105 ${textClasses}`}
+                  >
+                    <Heart
+                      className={`h-5 w-5  ${
+                        currentQuote.isFavorite
+                          ? "fill-current text-red-500"
+                          : ""
+                      }`}
+                    />
+                    <span>
+                      {currentQuote.isFavorite ? "Favorited" : "Favorite"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Browse Quotes Section */}
+      {activeSection === "quotes" && (
+        <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+              <div>
+                <h2 className={`text-4xl font-bold ${textClasses} mb-2`}>
+                  Quote Library
+                </h2>
+                <p className={`${mutedTextClasses}`}>
+                  Discover and manage your inspirational content
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3 mt-4 lg:mt-0">
+                <button
+                  onClick={exportQuotes}
+                  className={`cursor-pointer ${cardClasses} border px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 ${textClasses}`}
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Search and Filters */}
+            <div className={`${cardClasses} rounded-2xl p-6 border mb-8`}>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+                <div className="lg:col-span-2">
+                  <div className="relative">
+                    <Search
+                      className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${mutedTextClasses}`}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search quotes, authors, or tags..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
+                        isDarkMode
+                          ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                      } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                    />
+                  </div>
+                </div>
+
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className={`px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                >
+                  <option value="All">All Categories</option>
+                  {categories.map((cat) => (
+                    <option
+                      key={cat}
+                      value={cat}
+                      className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                    >
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className={`px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                >
+                  <option
+                    value="dateAdded"
+                    className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                  >
+                    Newest First
+                  </option>
+                  <option
+                    value="views"
+                    className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                  >
+                    Most Viewed
+                  </option>
+                  <option
+                    value="author"
+                    className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                  >
+                    By Author
+                  </option>
+                  <option
+                    value="category"
+                    className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                  >
+                    By Category
+                  </option>
+                </select>
+              </div>
+
+              <div className="pt-4 border-t border-white/20">
+                <div className="md:hidden grid grid-cols-2 gap-2 mb-2">
+                  {["all", "favorites"].map((filter) => (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addToCart(product);
-                      }}
-                      className="w-full py-2 rounded-full text-white font-medium transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                      style={{
-                        backgroundColor: currentTheme.primary,
-                        fontFamily: "var(--font-quicksand)",
-                      }}
+                      key={filter}
+                      onClick={() => setFilterBy(filter)}
+                      className={`cursor-pointer px-4 py-2 rounded-lg transition-all duration-200 capitalize ${
+                        filterBy === filter
+                          ? "bg-purple-600 text-white"
+                          : `${cardClasses} border ${textClasses}`
+                      }`}
                     >
-                      Add to Cart
+                      {filter === "all" ? "All Quotes" : filter}
+                    </button>
+                  ))}
+                </div>
+                <div className="md:hidden w-full">
+                  <button
+                    onClick={() => setFilterBy("featured")}
+                    className={`cursor-pointer w-full px-4 py-2 rounded-lg transition-all duration-200 capitalize ${
+                      filterBy === "featured"
+                        ? "bg-purple-600 text-white"
+                        : `${cardClasses} border ${textClasses}`
+                    }`}
+                  >
+                    Featured
+                  </button>
+                </div>
+                
+                {/* Desktop layout */}
+                <div className="hidden md:flex gap-3 justify-center">
+                  {["all", "favorites", "featured"].map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setFilterBy(filter)}
+                      className={`cursor-pointer px-6 py-2 rounded-lg transition-all duration-200 capitalize min-w-[120px] ${
+                        filterBy === filter
+                          ? "bg-purple-600 text-white"
+                          : `${cardClasses} border ${textClasses}`
+                      }`}
+                    >
+                      {filter === "all" ? "All Quotes" : filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Results Info */}
+            <div className="flex justify-between items-center mb-6">
+              <p className={`${mutedTextClasses}`}>
+                Showing {filteredQuotes.length} of {quotes.length} quotes
+              </p>
+            </div>
+
+            {/* Quotes Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredQuotes.map((quote) => (
+                <div
+                  key={quote.id}
+                  className={`${cardClasses} rounded-2xl p-6 border hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl h-80 flex flex-col`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-xs font-medium">
+                        {quote.category}
+                      </span>
+                      {quote.isFeatured && (
+                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => toggleFavorite(quote.id)}
+                        className={`cursor-pointer transition-colors ${
+                          quote.isFavorite
+                            ? "text-red-500"
+                            : `${mutedTextClasses} hover:text-red-500`
+                        }`}
+                      >
+                        <Heart
+                          className={`h-4 w-4 ${
+                            quote.isFavorite
+                              ? "fill-current"
+                              : ""
+                          }`}
+                        />
+                      </button>
+                      <button
+                        onClick={() => copyQuote(quote)}
+                        className={`cursor-pointer ${mutedTextClasses} hover:${textClasses} transition-colors`}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col">
+                    <blockquote
+                      className={`${textClasses} mb-4 leading-relaxed text-sm cursor-pointer hover:text-purple-300 transition-colors flex-1`}
+                      onClick={() => setSelectedQuote(quote)}
+                    >
+                      "{quote.text.length > 120 ? quote.text.substring(0, 120) + '...' : quote.text}"
+                    </blockquote>
+
+                    <div className="mb-4">
+                      <p className="text-purple-400 text-sm font-medium">
+                        — {quote.author}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span
+                          className={`${mutedTextClasses} text-xs flex items-center`}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          {quote.views} views
+                        </span>
+                        <span className={`${mutedTextClasses} text-xs`}>
+                          {new Date(quote.dateAdded).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="mb-4 min-h-[24px]">
+                      {quote.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {quote.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className={`bg-gray-500/20 ${isDarkMode ? 'text-gray-100' : 'text-gray-600'} px-2 py-1 rounded text-xs`}
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                          {quote.tags.length > 3 && (
+                            <span className="bg-gray-500/10 text-gray-500 px-2 py-1 rounded text-xs">
+                              +{quote.tags.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2 mt-auto">
+                    <button
+                      onClick={() => {
+                        setCurrentQuote(quote);
+                        incrementViews(quote.id);
+                        addToast("Set as Quote of the Day!", "success");
+                        scrollToSection("dashboard");
+                      }}
+                      className="cursor-pointer flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-2 rounded-lg transition-colors text-sm font-semibold shadow-md hover:shadow-lg"
+                    >
+                      Set as Quote of Day
+                    </button>
+                    <button
+                      onClick={() => setEditingQuote(quote)}
+                      className={`cursor-pointer px-3 py-2 rounded-lg transition-colors ${mutedTextClasses} hover:${textClasses}`}
+                    >
+                      <Edit3 className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteQuote(quote.id)}
+                      className={`cursor-pointer px-3 py-2 rounded-lg transition-colors ${mutedTextClasses} hover:text-red-500`}
+                    >
+                      <Trash2 className="h-5 w-5" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
+
+            {filteredQuotes.length === 0 && (
+              <div className="text-center py-12">
+                <BookOpen
+                  className={`h-16 w-16 ${mutedTextClasses} mx-auto mb-4`}
+                />
+                <h3 className={`text-xl font-semibold ${textClasses} mb-2`}>
+                  No quotes found
+                </h3>
+                <p className={`${mutedTextClasses} mb-6`}>
+                  Try adjusting your search criteria or add some new quotes.
+                </p>
+                <button
+                  onClick={() => setIsAddingQuote(true)}
+                  className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  Add Your First Quote
+                </button>
+              </div>
+            )}
           </div>
         </section>
+      )}
 
-        <section
-          ref={whyUsRef}
-          className="py-20 px-6"
-          style={{
-            backgroundColor: isDarkMode
-              ? "rgba(255, 102, 179, 0.05)"
-              : "rgba(255, 102, 179, 0.1)",
-          }}
-        >
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2
-                className="text-3xl md:text-4xl font-bold mb-4"
-                style={{
-                  fontFamily: "var(--font-pacifico)",
-                  color: currentTheme.primary,
-                }}
-              >
-                Why Choose Candy Kingdom?
-              </h2>
-              <p
-                className="text-lg max-w-2xl mx-auto"
-                style={{ fontFamily: "var(--font-quicksand)" }}
-              >
-                We're not just selling candy - we're creating magical
-                experiences that bring joy to children and adults alike!
-              </p>
-            </div>
+      {/* Add Quote Modal */}
+      {isAddingQuote && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div
+            className={`${cardClasses} rounded-3xl p-8 w-full max-w-lg border shadow-2xl`}
+          >
+            <h3 className={`text-2xl font-bold ${textClasses} mb-6`}>
+              Add New Quote
+            </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {[
-                {
-                  title: "Premium Quality",
-                  description:
-                    "We use only the finest ingredients to create our delicious treats, ensuring every bite is perfect.",
-                  icon: "🍬",
-                },
-                {
-                  title: "Handcrafted",
-                  description:
-                    "Each candy is made with love and attention to detail by our skilled candy artisans.",
-                  icon: "👩‍🍳",
-                },
-                {
-                  title: "Kid-Friendly",
-                  description:
-                    "Our candies are designed to delight children with vibrant colors and amazing flavors.",
-                  icon: "👧",
-                },
-                {
-                  title: "Fast Delivery",
-                  description:
-                    "We ship your sweet treats quickly so you can enjoy them as soon as possible.",
-                  icon: "🚚",
-                },
-              ].map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="rounded-2xl p-6 text-center"
-                  style={{
-                    backgroundColor: currentTheme.cardBg,
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
-                  }}
+            <div className="space-y-6">
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
                 >
-                  <div
-                    className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-2xl"
-                    style={{ backgroundColor: `${currentTheme.primary}20` }}
-                  >
-                    {item.icon}
-                  </div>
-                  <h3
-                    className="text-xl font-bold mb-3"
-                    style={{ fontFamily: "var(--font-quicksand)" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p
-                    className="text-sm"
-                    style={{ fontFamily: "var(--font-quicksand)" }}
-                  >
-                    {item.description}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+                  Quote Text *
+                </label>
+                <textarea
+                  value={newQuote.text}
+                  onChange={(e) =>
+                    setNewQuote({ ...newQuote, text: e.target.value })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border resize-none ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  rows={4}
+                  placeholder="Enter the inspirational quote..."
+                />
+              </div>
 
-        <section ref={reviewsRef} className="py-20 px-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2
-                className="text-3xl md:text-4xl font-bold mb-4"
-                style={{
-                  fontFamily: "var(--font-pacifico)",
-                  color: currentTheme.primary,
-                }}
-              >
-                Sweet Words from Happy Customers
-              </h2>
-              <p
-                className="text-lg max-w-2xl mx-auto"
-                style={{ fontFamily: "var(--font-quicksand)" }}
-              >
-                Don't just take our word for it - see what our customers have to
-                say about their Candy Kingdom experience!
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {reviews.map((review, index) => (
-                <motion.div
-                  key={review.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="rounded-2xl p-6"
-                  style={{
-                    backgroundColor: currentTheme.cardBg,
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
-                  }}
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
                 >
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
-                      <img
-                        src={review.avatar || "/placeholder.svg"}
-                        alt={review.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h4
-                        className="font-bold"
-                        style={{ fontFamily: "var(--font-quicksand)" }}
+                  Author *
+                </label>
+                <input
+                  type="text"
+                  value={newQuote.author}
+                  onChange={(e) =>
+                    setNewQuote({ ...newQuote, author: e.target.value })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  placeholder="Quote author"
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
+                >
+                  Category
+                </label>
+                <select
+                  value={newQuote.category}
+                  onChange={(e) =>
+                    setNewQuote({ ...newQuote, category: e.target.value })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat) => (
+                    <option
+                      key={cat}
+                      value={cat}
+                      className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                    >
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
+                >
+                  Tags
+                </label>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={newQuote.tagInput}
+                    onChange={(e) =>
+                      setNewQuote({ ...newQuote, tagInput: e.target.value })
+                    }
+                    onKeyPress={(e) => e.key === "Enter" && addTag()}
+                    className={`flex-1 px-4 py-2 rounded-lg border ${
+                      isDarkMode
+                        ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                    placeholder="Add a tag..."
+                  />
+                  <button
+                    onClick={addTag}
+                    className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {newQuote.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {newQuote.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm flex items-center space-x-2"
                       >
-                        {review.name}
-                      </h4>
-                      <p className="text-sm opacity-70">{review.date}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        size={16}
-                        className={i < review.rating ? "fill-current" : ""}
-                        style={{ color: currentTheme.accent }}
-                      />
+                        <span>#{tag}</span>
+                        <button
+                          onClick={() => removeTag(tag)}
+                          className="cursor-pointer text-purple-300 hover:text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
                     ))}
                   </div>
+                )}
+              </div>
+            </div>
 
-                  <p
-                    className="text-sm"
-                    style={{ fontFamily: "var(--font-quicksand)" }}
-                  >
-                    "{review.comment}"
-                  </p>
-                </motion.div>
-              ))}
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => setIsAddingQuote(false)}
+                className={`cursor-pointer flex-1 py-3 rounded-lg transition-colors ${cardClasses} border ${textClasses}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addQuote}
+                disabled={!newQuote.text || !newQuote.author}
+                className="cursor-pointer flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg transition-colors font-medium"
+              >
+                Add Quote
+              </button>
             </div>
           </div>
-        </section>
+        </div>
+      )}
 
-        <section className="py-20 px-6">
+      {/* Edit Quote Modal */}
+      {editingQuote && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div
-            className="max-w-4xl mx-auto rounded-3xl p-8 md:p-12"
-            style={{
-              background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-            }}
+            className={`${cardClasses} rounded-3xl p-8 w-full max-w-lg border shadow-2xl`}
           >
-            <div className="text-center text-white mb-8">
-              <h2
-                className="text-3xl md:text-4xl font-bold mb-4"
-                style={{ fontFamily: "var(--font-pacifico)" }}
+            <h3 className={`text-2xl font-bold ${textClasses} mb-6`}>
+              Edit Quote
+            </h3>
+
+            <div className="space-y-6">
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
+                >
+                  Quote Text
+                </label>
+                <textarea
+                  value={editingQuote.text}
+                  onChange={(e) =>
+                    setEditingQuote({ ...editingQuote, text: e.target.value })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border resize-none ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
+                >
+                  Author
+                </label>
+                <input
+                  type="text"
+                  value={editingQuote.author}
+                  onChange={(e) =>
+                    setEditingQuote({ ...editingQuote, author: e.target.value })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white placeholder-white/50"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block ${textClasses} text-sm font-medium mb-2`}
+                >
+                  Category
+                </label>
+                <select
+                  value={editingQuote.category}
+                  onChange={(e) =>
+                    setEditingQuote({
+                      ...editingQuote,
+                      category: e.target.value,
+                    })
+                  }
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                >
+                  {categories.map((cat) => (
+                    <option
+                      key={cat}
+                      value={cat}
+                      className={isDarkMode ? "bg-gray-800" : "bg-white"}
+                    >
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => setEditingQuote(null)}
+                className={`cursor-pointer flex-1 py-3 rounded-lg transition-colors ${cardClasses} border ${textClasses}`}
               >
-                Join Our Sweet Community
-              </h2>
-              <p
-                className="text-lg max-w-2xl mx-auto"
-                style={{ fontFamily: "var(--font-quicksand)" }}
+                Cancel
+              </button>
+              <button
+                onClick={() => updateQuote(editingQuote)}
+                className="cursor-pointer flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-lg transition-colors font-medium"
               >
-                Subscribe to our newsletter for exclusive offers, new candy
-                announcements, and sweet surprises!
+                Update Quote
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quote Detail Modal */}
+      {selectedQuote && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div
+            className={`${cardClasses} rounded-3xl p-8 w-full max-w-2xl border shadow-2xl max-h-[80vh] overflow-y-auto`}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center space-x-2">
+                <span className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm font-medium">
+                  {selectedQuote.category}
+                </span>
+                {selectedQuote.isFeatured && (
+                  <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedQuote(null)}
+                className={`cursor-pointer ${mutedTextClasses} hover:${textClasses} transition-colors`}
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <Quote className="h-16 w-16 text-purple-400 mb-8 mx-auto opacity-30" />
+
+            <blockquote
+              className={`text-xl md:text-2xl ${textClasses} mb-8 leading-relaxed font-light text-center`}
+            >
+              "{selectedQuote.text}"
+            </blockquote>
+
+            <div className="text-center mb-8">
+              <p className="text-purple-400 text-lg font-medium mb-4">
+                — {selectedQuote.author}
+              </p>
+              <div className="flex items-center justify-center space-x-4 mb-4">
+                <span
+                  className={`${mutedTextClasses} text-sm flex items-center`}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  {selectedQuote.views} views
+                </span>
+                <span className={`${mutedTextClasses} text-sm`}>
+                  {new Date(selectedQuote.dateAdded).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Tags */}
+              {selectedQuote.tags.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {selectedQuote.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-gray-500/20 text-gray-400 px-3 py-1 rounded-lg text-sm"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setCurrentQuote(selectedQuote);
+                  incrementViews(selectedQuote.id);
+                  setSelectedQuote(null);
+                  addToast("Set as Quote of the Day!", "success");
+                }}
+                className="cursor-pointer flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl transition-all duration-200 font-medium"
+              >
+                Set as Quote of Day
+              </button>
+              <button
+                onClick={() => {
+                  copyQuote(selectedQuote);
+                  setSelectedQuote(null);
+                }}
+                className={`cursor-pointer px-6 py-3 rounded-xl transition-colors ${cardClasses} border ${textClasses} flex items-center justify-center space-x-2`}
+              >
+                <Copy className="h-4 w-4" />
+                <span>Copy</span>
+              </button>
+              <button
+                onClick={() => toggleFavorite(selectedQuote.id)}
+                className={`cursor-pointer px-6 py-3 rounded-xl transition-colors ${cardClasses} border ${textClasses} flex items-center justify-center space-x-2`}
+              >
+                <Heart
+                  className={`h-4 w-4 ${
+                    selectedQuote.isFavorite ? "fill-current text-red-500" : ""
+                  }`}
+                />
+                <span>
+                  {selectedQuote.isFavorite ? "Unfavorite" : "Favorite"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className={`${cardClasses} border-t mt-16`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="md:col-span-2">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <span className={`text-xl font-bold ${textClasses}`}>
+                    QuoteVault Pro
+                  </span>
+                  <div className="text-xs text-purple-500 font-medium">
+                    Enterprise Edition
+                  </div>
+                </div>
+              </div>
+              <p className={`${mutedTextClasses} mb-6 max-w-md`}>
+                The most advanced inspirational quote management platform. Built
+                for professionals who understand the power of words.
               </p>
             </div>
 
-            <form
-              className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto"
-              onSubmit={(e) => {
-                e.preventDefault();
-                showToast("Thanks for subscribing!");
-                (e.target as HTMLFormElement).reset();
-              }}
-            >
-              <input
-                type="email"
-                placeholder="Your email address"
-                required
-                className="flex-grow px-6 py-3 rounded-full text-gray-800 outline-none bg-"
-                style={{
-                  fontFamily: "var(--font-quicksand)",
-                  backgroundColor: currentTheme.background,
-                  color: currentTheme.text,
-                }}
-              />
-              <button
-                type="submit"
-                className="px-8 py-3 rounded-full font-medium text-white transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                style={{
-                  backgroundColor: currentTheme.accent,
-                  color: "#5A3D5C",
-                  fontFamily: "var(--font-quicksand)",
-                }}
-              >
-                Subscribe
-              </button>
-            </form>
-          </div>
-        </section>
-      </main>
+            <div>
+              <h4 className={`${textClasses} font-semibold mb-4`}>Features</h4>
+              <ul className={`${mutedTextClasses} space-y-2 text-sm`}>
+                <li>Advanced Search & Filtering</li>
+                <li>Quote Analytics Dashboard</li>
+                <li>Featured Collections</li>
+                <li>Export & Import Tools</li>
+                <li>Dark/Light Mode</li>
+              </ul>
+            </div>
 
-      <footer
-        className="py-12 px-6"
-        style={{
-          backgroundColor: isDarkMode
-            ? "rgba(0, 0, 0, 0.2)"
-            : "rgba(0, 0, 0, 0.05)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col items-center text-center">
-            <h3
-              className="text-2xl font-bold mb-4"
-              style={{
-                fontFamily: "var(--font-pacifico)",
-                color: currentTheme.primary,
-              }}
-            >
-              Candy Kingdom
-            </h3>
-            <p
-              className="text-sm mb-6 max-w-md"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              Bringing sweetness and joy to children and adults since 2010. Our
-              mission is to create magical candy experiences that bring smiles
-              to faces everywhere.
-            </p>
-            <p
-              className="text-sm opacity-70"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              © 2023 Candy Kingdom. All rights reserved.
+            <div>
+              <h4 className={`${textClasses} font-semibold mb-4`}>
+                Your Collection
+              </h4>
+              <div className={`${mutedTextClasses} space-y-2 text-sm`}>
+                <div className="flex justify-between">
+                  <span>Total Quotes:</span>
+                  <span className={`font-medium ${textClasses}`}>
+                    {analytics.totalQuotes}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Categories:</span>
+                  <span className={`font-medium ${textClasses}`}>
+                    {analytics.categories}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Favorites:</span>
+                  <span className={`font-medium ${textClasses}`}>
+                    {analytics.favoriteQuotes}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Featured:</span>
+                  <span className={`font-medium ${textClasses}`}>
+                    {analytics.featuredQuotes}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Views:</span>
+                  <span className={`font-medium ${textClasses}`}>
+                    {analytics.totalViews.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`border-t ${
+              isDarkMode ? "border-white/20" : "border-gray-200"
+            } mt-8 pt-8 text-center`}
+          >
+            <p className={`${mutedTextClasses} text-sm`}>
+              © 2025 QuoteVault Pro. Empowering minds through curated wisdom.
+              <span className={`${textClasses} font-medium ml-2`}>
+                Built for Excellence.
+              </span>
             </p>
           </div>
         </div>
       </footer>
 
-      <AnimatePresence>
-        {selectedProduct && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
-            style={{ 
-              backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.75)" : "rgba(0, 0, 0, 0.4)",
-              backdropFilter: "blur(12px)" 
-            }}
-            onClick={() => setSelectedProduct(null)}
+      {/* Toast Notifications */}
+      <div className="fixed top-20 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center space-x-3 px-4 py-3 rounded-lg shadow-lg backdrop-blur-lg border animate-slide-in ${
+              toast.type === "success"
+                ? "bg-green-500/20 border-green-500/30 text-green-100"
+                : toast.type === "error"
+                ? "bg-red-500/20 border-red-500/30 text-red-100"
+                : "bg-blue-500/20 border-blue-500/30 text-blue-100"
+            }`}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border-4 border-white/20 shadow-2xl"
-              style={{ 
-                backgroundColor: currentTheme.cardBg,
-                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-              }}
-              onClick={(e) => e.stopPropagation()}
+            <div
+              className={`p-1 rounded-full ${
+                toast.type === "success"
+                  ? "bg-green-500"
+                  : toast.type === "error"
+                  ? "bg-red-500"
+                  : "bg-blue-500"
+              }`}
             >
-              <button
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl border-2 border-white/20"
-                onClick={() => setSelectedProduct(null)}
-                aria-label="Close modal"
-              >
-                <X size={20} className="sm:w-6 sm:h-6" />
-              </button>
-
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="h-48 sm:h-64 md:h-auto relative">
-                  <img
-                    src={selectedProduct.image || "/placeholder.svg"}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="p-4 sm:p-6 md:p-8">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 sm:mb-2 pr-0 sm:pr-8">
-                    <h3
-                      className="text-xl sm:text-2xl font-bold flex-grow pr-0 sm:pr-4 mb-2 sm:mb-0"
-                      style={{ fontFamily: "var(--font-quicksand)" }}
-                    >
-                      {selectedProduct.name}
-                    </h3>
-                    <span
-                      className="text-xl sm:text-2xl font-bold flex-shrink-0"
-                      style={{ color: currentTheme.primary }}
-                    >
-                      ${selectedProduct.price.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center mb-4">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={14}
-                          className={`sm:w-4 sm:h-4 ${
-                            i < Math.floor(selectedProduct.rating)
-                              ? "fill-current"
-                              : ""
-                          }`}
-                          style={{ color: currentTheme.accent }}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-xs sm:text-sm ml-2">
-                      ({selectedProduct.reviews} reviews)
-                    </span>
-                  </div>
-
-                  <p
-                    className="text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed"
-                    style={{ fontFamily: "var(--font-quicksand)" }}
-                  >
-                    {selectedProduct.description}
-                  </p>
-
-                  <div className="mb-4 sm:mb-6">
-                    <h4
-                      className="font-bold mb-2 text-sm sm:text-base"
-                      style={{ fontFamily: "var(--font-quicksand)" }}
-                    >
-                      Category
-                    </h4>
-                    <div
-                      className="inline-block px-3 py-1 rounded-full text-xs sm:text-sm"
-                      style={{
-                        backgroundColor: `${currentTheme.primary}20`,
-                        color: currentTheme.primary,
-                      }}
-                    >
-                      {selectedProduct.category}
-                    </div>
-                  </div>
-
-                  <div className="mb-4 sm:mb-6">
-                    <h4
-                      className="font-bold mb-2 text-sm sm:text-base"
-                      style={{ fontFamily: "var(--font-quicksand)" }}
-                    >
-                      Quantity
-                    </h4>
-                    <div className="flex items-center">
-                      <button
-                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer text-sm sm:text-base"
-                        style={{
-                          backgroundColor: `${currentTheme.primary}20`,
-                          color: currentTheme.primary,
-                        }}
-                        onClick={() => {
-                          const input = document.getElementById(
-                            "quantity"
-                          ) as HTMLInputElement;
-                          const currentValue = Number.parseInt(input.value);
-                          if (currentValue > 1) {
-                            input.value = (currentValue - 1).toString();
-                          }
-                        }}
-                      >
-                        -
-                      </button>
-                      <input
-                        id="quantity"
-                        min="1"
-                        max="10"
-                        defaultValue="1"
-                        readOnly
-                        className="w-12 sm:w-14 mx-2 sm:mx-3 text-center bg-transparent text-sm sm:text-base py-1 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-default"
-                        style={{ fontFamily: "var(--font-quicksand)" }}
-                      />
-                      <button
-                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer text-sm sm:text-base"
-                        style={{
-                          backgroundColor: `${currentTheme.primary}20`,
-                          color: currentTheme.primary,
-                        }}
-                        onClick={() => {
-                          const input = document.getElementById(
-                            "quantity"
-                          ) as HTMLInputElement;
-                          const currentValue = Number.parseInt(input.value);
-                          if (currentValue < 10) {
-                            input.value = (currentValue + 1).toString();
-                          }
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 sm:gap-4">
-                    <button
-                      onClick={() => {
-                        const input = document.getElementById(
-                          "quantity"
-                        ) as HTMLInputElement;
-                        const quantity = Number.parseInt(input.value);
-                        addToCart(selectedProduct, quantity);
-                        setSelectedProduct(null);
-                      }}
-                      className="flex-grow py-3 sm:py-4 rounded-full text-white font-medium text-sm sm:text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                      style={{
-                        backgroundColor: currentTheme.primary,
-                        fontFamily: "var(--font-quicksand)",
-                      }}
-                    >
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isCartOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex justify-end"
-            style={{ backdropFilter: "blur(8px)" }}
-            onClick={() => setIsCartOpen(false)}
-          >
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween" }}
-              className="w-full max-w-md h-full overflow-auto"
-              style={{ backgroundColor: currentTheme.cardBg }}
-              onClick={(e) => e.stopPropagation()}
+              <Check className="h-3 w-3 text-white" />
+            </div>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="cursor-pointer text-white/60 hover:text-white transition-colors"
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3
-                    className="text-2xl font-bold"
-                    style={{
-                      fontFamily: "var(--font-pacifico)",
-                      color: currentTheme.primary,
-                    }}
-                  >
-                    Your Cart
-                  </h3>
-                  <button
-                    className="p-2 rounded-full hover:bg-opacity-10 transition-colors cursor-pointer"
-                    onClick={() => setIsCartOpen(false)}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
 
-                {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart
-                      size={48}
-                      className="mx-auto mb-4 opacity-30"
-                    />
-                    <p
-                      className="text-lg font-medium mb-6"
-                      style={{ fontFamily: "var(--font-quicksand)" }}
-                    >
-                      Your cart is empty
-                    </p>
-                    <button
-                      onClick={() => {
-                        setIsCartOpen(false);
-                        scrollToSection(productsRef);
-                      }}
-                      className="px-6 py-2 rounded-full text-white font-medium transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                      style={{
-                        backgroundColor: currentTheme.primary,
-                        fontFamily: "var(--font-quicksand)",
-                      }}
-                    >
-                      Browse Products
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-4 mb-6">
-                      {cart.map((item) => (
-                        <div
-                          key={item.product.id}
-                          className="flex items-center gap-4 p-3 rounded-lg"
-                          style={{
-                            backgroundColor: `${currentTheme.primary}10`,
-                          }}
-                        >
-                          <div className="w-16 h-16 rounded-lg overflow-hidden relative flex-shrink-0">
-                            <img
-                              src={item.product.image || "/placeholder.svg"}
-                              alt={item.product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
 
-                          <div className="flex-grow">
-                            <h4
-                              className="font-medium"
-                              style={{ fontFamily: "var(--font-quicksand)" }}
-                            >
-                              {item.product.name}
-                            </h4>
-                            <div className="flex items-center justify-between mt-1">
-                              <div className="flex items-center">
-                                <button
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs cursor-pointer"
-                                  style={{
-                                    backgroundColor: `${currentTheme.primary}20`,
-                                    color: currentTheme.primary,
-                                  }}
-                                  onClick={() =>
-                                    updateQuantity(
-                                      item.product.id,
-                                      item.quantity - 1
-                                    )
-                                  }
-                                >
-                                  -
-                                </button>
-                                <span className="w-8 text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs cursor-pointer"
-                                  style={{
-                                    backgroundColor: `${currentTheme.primary}20`,
-                                    color: currentTheme.primary,
-                                  }}
-                                  onClick={() =>
-                                    updateQuantity(
-                                      item.product.id,
-                                      item.quantity + 1
-                                    )
-                                  }
-                                >
-                                  +
-                                </button>
-                              </div>
-                              <span
-                                className="font-medium"
-                                style={{ color: currentTheme.primary }}
-                              >
-                                $
-                                {(item.product.price * item.quantity).toFixed(
-                                  2
-                                )}
-                              </span>
-                            </div>
-                          </div>
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
 
-                          <button
-                            className="p-2 rounded-full hover:bg-opacity-10 transition-colors cursor-pointer"
-                            onClick={() => removeFromCart(item.product.id)}
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+        /* Hide scrollbars */
+        * {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
 
-                    <div
-                      className="p-4 rounded-lg mb-6"
-                      style={{ backgroundColor: `${currentTheme.primary}10` }}
-                    >
-                      <div className="flex justify-between mb-2">
-                        <span>Subtotal</span>
-                        <span>${getTotalPrice().toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span>Shipping</span>
-                        <span>$5.00</span>
-                      </div>
-                      <div className="flex justify-between font-bold">
-                        <span>Total</span>
-                        <span>${(getTotalPrice() + 5).toFixed(2)}</span>
-                      </div>
-                    </div>
+        *::-webkit-scrollbar {
+          display: none; /* Safari and Chrome */
+        }
 
-                    <button
-                      onClick={() => {
-                        setCart([]);
-                        setIsCartOpen(false);
-                        showToast("Order placed successfully!");
-                      }}
-                      className="w-full py-3 rounded-full text-white font-medium transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                      style={{
-                        backgroundColor: currentTheme.primary,
-                        fontFamily: "var(--font-quicksand)",
-                      }}
-                    >
-                      Checkout
-                    </button>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        html, body {
+          overflow-x: hidden;
+        }
 
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full z-50 max-w-xs sm:max-w-md"
-            style={{
-              backgroundColor: currentTheme.primary,
-              color: "white",
-              boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
-            }}
-          >
-            <p 
-              className="whitespace-nowrap text-center text-sm sm:text-base"
-              style={{ fontFamily: "var(--font-quicksand)" }}
-            >
-              {toastMessage}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed bottom-6 right-6 w-12 h-12 rounded-full flex items-center justify-center z-40 cursor-pointer"
-            style={{
-              backgroundColor: currentTheme.primary,
-              color: "white",
-              boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
-            }}
-            onClick={scrollToTop}
-            aria-label="Scroll to top"
-          >
-            <ArrowUp size={20} />
-          </motion.button>
-        )}
-      </AnimatePresence>
+        /* Ensure smooth scrolling */
+        * {
+          scroll-behavior: smooth;
+        }
+      `}</style>
     </div>
   );
+};
+
+export default InspirationalQuoteWebsite;
+
+// Zod Schema
+export const Schema = {
+    "commentary": "Building an inspirational quote website that allows users to add their own quotes, which are then displayed randomly.",
+    "template": "nextjs-developer",
+    "title": "Quote Website",
+    "description": "A website that displays inspirational quotes randomly, allowing users to add their own quotes.",
+    "additional_dependencies": ["lucide-react"],
+    "has_additional_dependencies": true,
+    "install_dependencies_command": "npm i lucide-react",
+    "port": 3000,
+    "file_path": "pages/index.tsx",
+    "code": "<see code above>"
 }
