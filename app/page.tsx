@@ -1,1763 +1,2025 @@
 "use client"
 
-import type React from "react"
+import { useState, useEffect, createContext } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 
-import { useState, useEffect, useRef } from "react"
-import {
-ShoppingCart, X, Plus, Minus, ChevronRight, Menu, Search, CheckCircle, Heart, ChevronLeft, Leaf, Recycle, TreePine, } from "lucide-react"
-import Link from "next/link"
+// Theme context
+const ThemeContext = createContext<{
+  theme: "light" | "dark"
+  toggleTheme: () => void
+}>({
+  theme: "light",
+  toggleTheme: () => {},
+})
 
-// Types
-interface Product {
-  id: number
-  name: string
-  category: string
-  price: number
-  image: string
-  description: string
-  featured?: boolean
-}
-
-interface CartItem extends Product {
-  quantity: number
-}
-
-interface Toast {
+// Block type definition
+interface BlockShape {
   id: string
-  title: string
-  description: string
-  type: "success" | "error" | "info"
+  shape: boolean[][]
+  color: string
 }
 
-// Custom Toast component
-const ToastContainer = ({
-  toasts,
-  removeToast,
-}: {
-  toasts: Toast[]
-  removeToast: (id: string) => void
-}) => {
-  return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md z-50 flex flex-col gap-2">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`p-3 sm:p-4 rounded-lg shadow-lg flex items-start gap-3 w-full transform transition-all duration-300 animate-slide-up border ${
-            toast.type === "success"
-              ? "bg-emerald-800 text-white border-emerald-700"
-              : toast.type === "error"
-                ? "bg-red-700 text-white border-red-600"
-                : "bg-emerald-800 text-white border-emerald-700"
-          }`}
-        >
-          {toast.type === "success" && <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 mt-0.5 text-emerald-200" />}
-          <div className="flex-1">
-            <h4 className="font-semibold !text-white text-sm sm:text-base">{toast.title}</h4>
-            <p className="text-xs sm:text-sm text-emerald-100">{toast.description}</p>
-          </div>
-          <button onClick={() => removeToast(toast.id)} className="text-white hover:text-emerald-200 transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
-    </div>
+// Game board cell type
+type Cell = string | null
+
+// Define block shapes
+const BLOCK_SHAPES: Omit<BlockShape, "id" | "color">[] = [
+  // Single block
+  { shape: [[true]] },
+  // Line shapes
+  { shape: [[true, true]] },
+  { shape: [[true, true, true]] },
+  { shape: [[true], [true]] },
+  { shape: [[true], [true], [true]] },
+  // L shapes
+  {
+    shape: [
+      [true, false],
+      [true, true],
+    ],
+  },
+  {
+    shape: [
+      [false, true],
+      [true, true],
+    ],
+  },
+  {
+    shape: [
+      [true, true],
+      [true, false],
+    ],
+  },
+  {
+    shape: [
+      [true, true],
+      [false, true],
+    ],
+  },
+  // T shape
+  {
+    shape: [
+      [true, true, true],
+      [false, true, false],
+    ],
+  },
+  {
+    shape: [
+      [false, true, false],
+      [true, true, true],
+    ],
+  },
+  // Square shape
+  {
+    shape: [
+      [true, true],
+      [true, true],
+    ],
+  },
+  // Z shapes
+  {
+    shape: [
+      [true, true, false],
+      [false, true, true],
+    ],
+  },
+  {
+    shape: [
+      [false, true, true],
+      [true, true, false],
+    ],
+  },
+]
+
+// Game utility functions
+function canPlaceBlock(board: Cell[][], block: BlockShape, startRow: number, startCol: number): boolean {
+  const rows = board.length
+  const cols = board[0].length
+
+  if (startRow + block.shape.length > rows || startCol + block.shape[0].length > cols) {
+    return false
+  }
+
+  for (let r = 0; r < block.shape.length; r++) {
+    for (let c = 0; c < block.shape[0].length; c++) {
+      if (block.shape[r][c] && board[startRow + r][startCol + c] !== null) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
+function checkForCompleteLines(board: Cell[][]) {
+  const rows = board.length
+  const cols = board[0].length
+  const newBoard = [...board.map((row) => [...row])]
+  let linesCleared = 0
+
+  for (let i = 0; i < rows; i++) {
+    let isComplete = true
+
+    for (let j = 0; j < cols; j++) {
+      if (newBoard[i][j] === null) {
+        isComplete = false
+        break
+      }
+    }
+
+    if (isComplete) {
+      for (let j = 0; j < cols; j++) {
+        newBoard[i][j] = null
+      }
+      linesCleared++
+    }
+  }
+
+  return { clearedBoard: newBoard, linesCleared }
+}
+
+export default function BlockBlastGame() {
+  // Theme state
+  const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [showInstructions, setShowInstructions] = useState(true)
+
+  // Game state
+  const BOARD_SIZE = 8
+  const POINTS_PER_LINE = 100
+  const BLOCKS_PER_LEVEL = 10
+
+  const [gameBoard, setGameBoard] = useState<Cell[][]>(
+    Array(BOARD_SIZE)
+      .fill(null)
+      .map(() => Array(BOARD_SIZE).fill(null)),
   )
-}
+  const [score, setScore] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [placedBlocks, setPlacedBlocks] = useState(0)
+  const [availableBlocks, setAvailableBlocks] = useState<BlockShape[]>([])
+  const [selectedBlock, setSelectedBlock] = useState<BlockShape | null>(null)
+  const [isGameOver, setIsGameOver] = useState(false)
+  const [displayScore, setDisplayScore] = useState(0)
+  const [hoverPosition, setHoverPosition] = useState<{ row: number; col: number } | null>(null)
 
-// Custom hook for toast
-const useToast = () => {
-  const [toasts, setToasts] = useState<Toast[]>([])
+  // Drag and drop state
+  const [draggedBlock, setDraggedBlock] = useState<BlockShape | null>(null)
+  const [dragOverPosition, setDragOverPosition] = useState<{ row: number; col: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  
+  // Touch/Mobile drag state
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [touchDragElement, setTouchDragElement] = useState<HTMLElement | null>(null)
 
-  const addToast = (toast: Omit<Toast, "id">) => {
-    const id = Math.random().toString(36).substring(2, 9)
-    setToasts((prev) => [...prev, { ...toast, id }])
+  // Sound and effects state
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [particles, setParticles] = useState<Array<{
+    id: string
+    x: number
+    y: number
+    color: string
+    velocity: { x: number; y: number }
+    life: number
+  }>>([])
+  
+  // High scores and achievements
+  const [highScore, setHighScore] = useState(0)
+  const [achievements, setAchievements] = useState<Set<string>>(new Set())
+  const [showAchievement, setShowAchievement] = useState<{
+    title: string
+    description: string
+    icon: string
+  } | null>(null)
+  const [combo, setCombo] = useState(0)
+  const [maxCombo, setMaxCombo] = useState(0)
 
-    // Auto remove after 5 seconds
+  // Game state tracking
+  const [gameStarted, setGameStarted] = useState(false)
+
+  // Helper function for block colors
+  const getBlockColorClass = (color: string) => {
+    const colorClasses = {
+      blue: 'bg-blue-500 shadow-blue-500/30',
+      green: 'bg-emerald-500 shadow-emerald-500/30', 
+      purple: 'bg-purple-500 shadow-purple-500/30',
+      orange: 'bg-orange-500 shadow-orange-500/30',
+      red: 'bg-red-500 shadow-red-500/30'
+    }
+    return colorClasses[color as keyof typeof colorClasses] || 'bg-blue-500'
+  }
+
+  // Helper function for block shadow colors
+  const getBlockShadowColor = (color: string) => {
+    const shadowColors = {
+      blue: 'rgba(59, 130, 246, 0.3)',
+      green: 'rgba(16, 185, 129, 0.3)', 
+      purple: 'rgba(139, 92, 246, 0.3)',
+      orange: 'rgba(245, 158, 11, 0.3)',
+      red: 'rgba(239, 68, 68, 0.3)'
+    }
+    return shadowColors[color as keyof typeof shadowColors] || 'rgba(59, 130, 246, 0.3)'
+  }
+
+  // Theme toggle function
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"))
+  }
+
+  // Sound effects functions
+  const playSound = (frequency: number, duration: number, type: 'sine' | 'square' | 'triangle' = 'sine') => {
+    if (!soundEnabled) return
+    
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime)
+      oscillator.type = type
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration)
+      
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + duration)
+    } catch (error) {
+      console.log('Audio not supported')
+    }
+  }
+
+  const sounds = {
+    place: () => playSound(440, 0.1, 'triangle'),
+    lineClear: () => playSound(880, 0.3, 'sine'),
+    levelUp: () => {
+      playSound(523, 0.2, 'sine')
+      setTimeout(() => playSound(659, 0.2, 'sine'), 100)
+      setTimeout(() => playSound(784, 0.3, 'sine'), 200)
+    },
+    gameOver: () => playSound(220, 0.5, 'square'),
+    achievement: () => {
+      playSound(659, 0.15, 'sine')
+      setTimeout(() => playSound(784, 0.15, 'sine'), 150)
+      setTimeout(() => playSound(1047, 0.2, 'sine'), 300)
+    }
+  }
+
+  // Particle effects
+  const createParticles = (centerX: number, centerY: number, color: string, count: number = 8) => {
+    const newParticles = Array.from({ length: count }, (_, i) => ({
+      id: `particle-${Date.now()}-${i}`,
+      x: centerX,
+      y: centerY,
+      color,
+      velocity: {
+        x: (Math.random() - 0.5) * 10,
+        y: (Math.random() - 0.5) * 10 - 2
+      },
+      life: 1.0
+    }))
+    
+    setParticles(prev => [...prev, ...newParticles])
+    
+    // Remove particles after animation
     setTimeout(() => {
-      removeToast(id)
-    }, 5000)
+      setParticles(prev => prev.filter(p => !newParticles.some(np => np.id === p.id)))
+    }, 1000)
   }
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  // Achievement system
+  const achievementsList = {
+    'first-block': { title: 'First Steps', description: 'Place your first block', icon: '🎯' },
+    'line-clearer': { title: 'Line Clearer', description: 'Clear your first line', icon: '✨' },
+    'combo-starter': { title: 'Combo Starter', description: 'Clear 2 lines in one move', icon: '🔥' },
+    'combo-master': { title: 'Combo Master', description: 'Clear 3 or more lines in one move', icon: '💫' },
+    'century-club': { title: 'Century Club', description: 'Score 100 points', icon: '💯' },
+    'thousand-points': { title: 'Four Digits', description: 'Score 1000 points', icon: '🚀' },
+    'level-up': { title: 'Level Up', description: 'Reach level 2', icon: '📈' },
+    'perfectionist': { title: 'Perfectionist', description: 'Place 10 blocks in a row without wasting space', icon: '🎨' },
+    'speed-demon': { title: 'Speed Demon', description: 'Place 5 blocks in 10 seconds', icon: '⚡' }
   }
 
-  return { toasts, addToast, removeToast }
-}
+  const checkAchievements = (newScore: number, linesCleared: number, newLevel: number) => {
+    const newAchievements = new Set(achievements)
+    let achievementUnlocked = false
 
-// Product Modal component
-const ProductModal = ({
-  product,
-  isOpen,
-  onClose,
-  onAddToCart,
-  onToggleWishlist,
-  isInWishlist,
-  recentlyAdded,
-}: {
-  product: Product | null
-  isOpen: boolean
-  onClose: () => void
-  onAddToCart: (product: Product) => void
-  onToggleWishlist: (product: Product) => void
-  isInWishlist: (productId: number) => boolean
-  recentlyAdded: Set<number>
-}) => {
-  if (!product || !isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="relative">
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 sm:p-3 shadow-lg hover:bg-white transition-colors text-stone-700 hover:text-stone-900"
-          >
-            <X className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-          
-          {/* Product Image */}
-          <div className="h-48 sm:h-64 lg:h-64 overflow-hidden bg-gradient-to-br from-emerald-50 to-stone-100">
-            <img
-              src={product.image || "/placeholder.svg"}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-
-        {/* Content - Scrollable */}
-        <div className="overflow-y-auto max-h-[calc(95vh-12rem)] sm:max-h-[calc(90vh-16rem)] lg:max-h-[calc(90vh-16rem)]">
-          <div className="p-4 sm:p-6 lg:p-8">
-            {/* Product Header */}
-            <div className="mb-6 lg:mb-8">
-              <div className="lg:flex lg:items-start lg:justify-between lg:gap-8">
-                <div className="flex-1">
-                  <div className="mb-3">
-                    <span className="inline-block px-3 py-1 text-xs font-medium uppercase tracking-wider bg-emerald-100 text-emerald-700 rounded-full">
-                      {product.category}
-                    </span>
-                  </div>
-                  
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 mb-3 sm:mb-4 leading-tight">
-                    {product.name}
-                  </h1>
-                  
-                  <div className="prose prose-stone max-w-none mb-6">
-                    <p className="text-stone-600 text-base sm:text-lg leading-relaxed">
-                      {product.description}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Desktop Price Card */}
-                <div className="hidden lg:block lg:w-80 lg:ml-8">
-                  <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-200 sticky top-0">
-                    <div className="text-center mb-6">
-                      <div className="text-4xl font-bold text-emerald-700 mb-2">
-                        ${product.price.toFixed(2)}
-                      </div>
-                      <p className="text-emerald-600 text-sm font-medium">Free carbon-neutral shipping</p>
-                    </div>
-
-                    <div className="space-y-4">
-                      <button
-                        onClick={() => onAddToCart(product)}
-                        className={`w-full py-4 rounded-xl font-semibold transition-all shadow-lg ${
-                          recentlyAdded.has(product.id)
-                            ? "bg-green-600 text-white"
-                            : "bg-emerald-700 text-white hover:bg-emerald-800 hover:shadow-xl transform hover:scale-[1.02]"
-                        }`}
-                      >
-                        {recentlyAdded.has(product.id) ? (
-                          <span className="flex items-center justify-center">
-                            <CheckCircle className="h-5 w-5 mr-2" />
-                            Added to Cart!
-                          </span>
-                        ) : (
-                          <span className="flex items-center justify-center">
-                            <ShoppingCart className="h-5 w-5 mr-2" />
-                            Add to Cart
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => onToggleWishlist(product)}
-                        className={`w-full py-4 rounded-xl font-semibold transition-all shadow-lg border-2 ${
-                          isInWishlist(product.id)
-                            ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                            : "bg-white border-emerald-200 text-stone-700 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                        }`}
-                      >
-                        <span className="flex items-center justify-center">
-                          <Heart 
-                            className={`h-5 w-5 mr-2 ${
-                              isInWishlist(product.id) ? "fill-red-500 text-red-500" : ""
-                            }`} 
-                          />
-                          {isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Price and Buttons */}
-              <div className="lg:hidden">
-                <div className="text-3xl sm:text-4xl font-bold text-emerald-700 mb-6">
-                  ${product.price.toFixed(2)}
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <button
-                    onClick={() => onAddToCart(product)}
-                    className={`w-full py-3 sm:py-4 rounded-xl font-semibold transition-all shadow-lg ${
-                      recentlyAdded.has(product.id)
-                        ? "bg-green-600 text-white"
-                        : "bg-emerald-700 text-white hover:bg-emerald-800"
-                    }`}
-                  >
-                    {recentlyAdded.has(product.id) ? (
-                      <span className="flex items-center justify-center">
-                        <CheckCircle className="h-5 w-5 mr-2" />
-                        Added to Cart!
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center">
-                        <ShoppingCart className="h-5 w-5 mr-2" />
-                        Add to Cart
-                      </span>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => onToggleWishlist(product)}
-                    className={`w-full py-3 sm:py-4 rounded-xl font-semibold transition-all shadow-lg border-2 ${
-                      isInWishlist(product.id)
-                        ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                        : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                    }`}
-                  >
-                    <span className="flex items-center justify-center">
-                      <Heart 
-                        className={`h-5 w-5 mr-2 ${
-                          isInWishlist(product.id) ? "fill-red-500 text-red-500" : ""
-                        }`} 
-                      />
-                      {isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Eco Features */}
-              <div className="bg-emerald-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-emerald-100">
-                <h3 className="text-base sm:text-lg font-semibold text-emerald-800 mb-4 flex items-center">
-                  <Leaf className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                  Eco-Friendly Features
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center text-emerald-700">
-                    <CheckCircle className="h-4 w-4 mr-3 flex-shrink-0" />
-                    <span className="text-sm">Sustainable Materials</span>
-                  </div>
-                  <div className="flex items-center text-emerald-700">
-                    <CheckCircle className="h-4 w-4 mr-3 flex-shrink-0" />
-                    <span className="text-sm">Carbon Neutral Shipping</span>
-                  </div>
-                  <div className="flex items-center text-emerald-700">
-                    <CheckCircle className="h-4 w-4 mr-3 flex-shrink-0" />
-                    <span className="text-sm">Plastic-Free Packaging</span>
-                  </div>
-                  <div className="flex items-center text-emerald-700">
-                    <CheckCircle className="h-4 w-4 mr-3 flex-shrink-0" />
-                    <span className="text-sm">Ethically Sourced</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Shipping Info */}
-              <div className="bg-stone-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-stone-200">
-                <h3 className="text-base sm:text-lg font-semibold text-stone-800 mb-4">
-                  Shipping & Returns
-                </h3>
-                <div className="space-y-3 text-stone-600">
-                  <div className="flex items-start">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-sm">Free carbon-neutral shipping on all orders</span>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-sm">30-day satisfaction guarantee</span>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-sm">Plastic-free, recyclable packaging</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Trust Badges */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
-              <h4 className="text-lg font-semibold text-stone-800 mb-6 text-center">Why Choose Eco Products?</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Recycle className="h-8 w-8 text-emerald-600" />
-                  </div>
-                  <div className="text-sm font-semibold text-stone-800 mb-2">Eco-Friendly</div>
-                  <div className="text-xs text-stone-600">Made with sustainable materials that protect our planet</div>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="h-8 w-8 text-emerald-600" />
-                  </div>
-                  <div className="text-sm font-semibold text-stone-800 mb-2">Quality Certified</div>
-                  <div className="text-xs text-stone-600">Rigorously tested and certified for quality assurance</div>
-                </div>
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <TreePine className="h-8 w-8 text-emerald-600" />
-                  </div>
-                  <div className="text-sm font-semibold text-stone-800 mb-2">Tree Planted</div>
-                  <div className="text-xs text-stone-600">One tree planted with every purchase you make</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function EcoStore() {
-  // Toast
-  const { toasts, addToast, removeToast } = useToast()
-
-  // State
-  const [products, setProducts] = useState<Product[]>([])
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [wishlist, setWishlist] = useState<Product[]>([])
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false)
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [activeCategory, setActiveCategory] = useState<string>("all")
-  const [scrollY, setScrollY] = useState(0)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [email, setEmail] = useState("")
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    email: "",
-    message: "",
-  })
-  const [isSubscribed, setIsSubscribed] = useState(false)
-  const [isMessageSent, setIsMessageSent] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Product[]>([])
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
-
-  // Track recently added items for button feedback
-  const [recentlyAdded, setRecentlyAdded] = useState<Set<number>>(new Set())
-
-  // Refs for scrolling
-  const heroRef = useRef<HTMLDivElement>(null)
-  const featuredRef = useRef<HTMLElement>(null)
-  const productsRef = useRef<HTMLElement>(null)
-  const aboutRef = useRef<HTMLElement>(null)
-  const contactRef = useRef<HTMLElement>(null)
-
-  // Ensure light mode only
-  useEffect(() => {
-    // Remove dark mode class if it exists
-    document.documentElement.classList.remove("dark")
-  }, [])
-
-  // Prevent body scroll when modals are open
-  useEffect(() => {
-    if (isCartOpen || isWishlistOpen || mobileMenuOpen || isProductModalOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
+    // Check various achievements
+    if (placedBlocks === 1 && !achievements.has('first-block')) {
+      newAchievements.add('first-block')
+      achievementUnlocked = true
+      showAchievementPopup('first-block')
     }
 
-    // Cleanup function to restore scroll when component unmounts
+    if (linesCleared >= 1 && !achievements.has('line-clearer')) {
+      newAchievements.add('line-clearer')
+      achievementUnlocked = true
+      showAchievementPopup('line-clearer')
+    }
+
+    if (linesCleared >= 2 && !achievements.has('combo-starter')) {
+      newAchievements.add('combo-starter')
+      achievementUnlocked = true
+      showAchievementPopup('combo-starter')
+    }
+
+    if (linesCleared >= 3 && !achievements.has('combo-master')) {
+      newAchievements.add('combo-master')
+      achievementUnlocked = true
+      showAchievementPopup('combo-master')
+    }
+
+    if (newScore >= 100 && !achievements.has('century-club')) {
+      newAchievements.add('century-club')
+      achievementUnlocked = true
+      showAchievementPopup('century-club')
+    }
+
+    if (newScore >= 1000 && !achievements.has('thousand-points')) {
+      newAchievements.add('thousand-points')
+      achievementUnlocked = true
+      showAchievementPopup('thousand-points')
+    }
+
+    if (newLevel >= 2 && !achievements.has('level-up')) {
+      newAchievements.add('level-up')
+      achievementUnlocked = true
+      showAchievementPopup('level-up')
+    }
+
+    if (achievementUnlocked) {
+      setAchievements(newAchievements)
+      sounds.achievement()
+      localStorage.setItem('achievements', JSON.stringify([...newAchievements]))
+    }
+  }
+
+  const showAchievementPopup = (achievementId: string) => {
+    const achievement = achievementsList[achievementId as keyof typeof achievementsList]
+    setShowAchievement(achievement)
+    setTimeout(() => setShowAchievement(null), 3000)
+  }
+
+  // Initialize game
+  useEffect(() => {
+    generateNewBlocks()
+    setGameStarted(true) // Game is started as soon as blocks are available
+
+    // Comprehensive viewport and scaling fixes - self-contained
+    const ensureProperViewport = () => {
+      // Remove any existing viewport meta tags
+      const existingViewports = document.querySelectorAll('meta[name="viewport"]')
+      existingViewports.forEach(meta => meta.remove())
+      
+      // Add our specific viewport meta tag
+      const viewportMeta = document.createElement('meta')
+      viewportMeta.name = 'viewport'
+      viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no'
+      document.head.appendChild(viewportMeta)
+      
+      // Add additional mobile web app meta tags
+      const webAppMeta = document.createElement('meta')
+      webAppMeta.name = 'apple-mobile-web-app-capable'
+      webAppMeta.content = 'yes'
+      document.head.appendChild(webAppMeta)
+      
+      const statusBarMeta = document.createElement('meta')
+      statusBarMeta.name = 'apple-mobile-web-app-status-bar-style'
+      statusBarMeta.content = 'default'
+      document.head.appendChild(statusBarMeta)
+      
+      const formatMeta = document.createElement('meta')
+      formatMeta.name = 'format-detection'
+      formatMeta.content = 'telephone=no'
+      document.head.appendChild(formatMeta)
+      
+      // Force zoom reset and additional hosted environment fixes
+      setTimeout(() => {
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', () => {
+            document.documentElement.style.zoom = '1'
+            document.body.style.zoom = '1'
+          })
+        }
+        
+        // Additional fixes for hosted environments
+        document.documentElement.style.transform = 'scale(1)'
+        document.body.style.transform = 'scale(1)'
+        document.documentElement.style.width = '100%'
+        document.body.style.width = '100%'
+        
+        // Force render logo text
+        const logoText = document.querySelector('.logo-text') as HTMLElement
+        if (logoText) {
+          logoText.style.display = 'block'
+          logoText.style.visibility = 'visible'
+          logoText.style.opacity = '1'
+        }
+      }, 100)
+    }
+    
+    ensureProperViewport()
+
+    // Load saved data
+    const savedHighScore = localStorage.getItem('highScore')
+    if (savedHighScore) {
+      setHighScore(parseInt(savedHighScore))
+    }
+    
+    const savedAchievements = localStorage.getItem('achievements')
+    if (savedAchievements) {
+      setAchievements(new Set(JSON.parse(savedAchievements)))
+    }
+    
+    const savedSoundSetting = localStorage.getItem('soundEnabled')
+    if (savedSoundSetting !== null) {
+      setSoundEnabled(JSON.parse(savedSoundSetting))
+    }
+    
+    // Enhanced global styles with better zoom control
+    const style = document.createElement("style")
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+      
+      /* Force load fonts immediately */
+      @font-face {
+        font-family: 'Press Start 2P';
+        src: url('https://fonts.gstatic.com/s/pressstart2p/v14/e3t4euO8T-267oIAQAu6jDQyK3nVivM.woff2') format('woff2');
+        font-display: block;
+      }
+      
+      :root {
+        --primary: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%);
+        --primary-solid: #3B82F6;
+        --primary-dark: #1E40AF;
+        --primary-light: #DBEAFE;
+        --accent: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+        --accent-solid: #8B5CF6;
+        --success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        --success-solid: #10B981;
+        --warning: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        --warning-solid: #F59E0B;
+        --error: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+        --error-solid: #EF4444;
+        
+        /* Fonts */
+        --font-game: 'Press Start 2P', 'Courier New', monospace;
+        --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        
+        /* Light theme - High contrast */
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F8FAFC;
+        --bg-tertiary: #F1F5F9;
+        --bg-card: #FFFFFF;
+        --bg-elevated: #FFFFFF;
+        --text-primary: #0F172A;
+        --text-secondary: #334155;
+        --text-muted: #64748B;
+        --text-inverse: #FFFFFF;
+        --border: #E2E8F0;
+        --border-light: #F1F5F9;
+        --border-dark: #CBD5E1;
+        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        --glow: 0 0 0 3px rgb(59 130 246 / 0.1);
+        --surface-1: #FFFFFF;
+        --surface-2: #F8FAFC;
+        --surface-3: #F1F5F9;
+      }
+      
+      [data-theme="dark"] {
+        --bg-primary: #0D1117;
+        --bg-secondary: #161B22;
+        --bg-tertiary: #21262D;
+        --bg-card: #161B22;
+        --bg-elevated: #21262D;
+        --text-primary: #F0F6FC;
+        --text-secondary: #C9D1D9;
+        --text-muted: #8B949E;
+        --text-inverse: #0D1117;
+        --border: #30363D;
+        --border-light: #21262D;
+        --border-dark: #161B22;
+        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+        --glow: 0 0 0 3px rgb(59 130 246 / 0.3);
+        --surface-1: #161B22;
+        --surface-2: #21262D;
+        --surface-3: #30363D;
+        
+        /* Enhanced dark mode colors */
+        --primary-solid: #58A6FF;
+        --primary-dark: #388BFD;
+        --primary-light: rgba(88, 166, 255, 0.15);
+        --accent-solid: #A5A3FF;
+        --success-solid: #56D364;
+        --warning-solid: #E3B341;
+        --error-solid: #F85149;
+      }
+      
+      /* Global zoom and viewport fixes */
+      html {
+        font-size: 16px !important;
+        -webkit-text-size-adjust: 100% !important;
+        -ms-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+        zoom: 1 !important;
+        transform: scale(1) !important;
+      }
+      
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-touch-callout: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        touch-action: manipulation !important;
+      }
+      
+      body {
+        zoom: 1 !important;
+        transform: scale(1) !important;
+        min-zoom: 1 !important;
+        max-zoom: 1 !important;
+      }
+      
+      /* Custom animations */
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.05); opacity: 1; }
+      }
+      
+      @keyframes dragPulse {
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.05); opacity: 1; }
+      }
+      
+      @keyframes comboPulse {
+        0% { transform: scale(0.8); opacity: 0; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      
+      @keyframes achievementSlide {
+        0% { transform: translateX(100%); opacity: 0; }
+        15% { transform: translateX(0); opacity: 1; }
+        85% { transform: translateX(0); opacity: 1; }
+        100% { transform: translateX(100%); opacity: 0; }
+      }
+      
+      @keyframes achievementBounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+      }
+      
+      /* Custom utilities */
+      .pulse-animation { animation: pulse 1s infinite; }
+      .drag-pulse-animation { animation: dragPulse 1s infinite; }
+      .combo-pulse-animation { animation: comboPulse 0.6s ease-out; }
+      .achievement-slide-animation { animation: achievementSlide 3s ease-out; }
+      .achievement-bounce-animation { animation: achievementBounce 0.6s ease-out; }
+    `
+    document.head.appendChild(style)
+
     return () => {
-      document.body.style.overflow = 'unset'
+      if (style && style.parentNode) {
+      document.head.removeChild(style)
+      }
     }
-  }, [isCartOpen, isWishlistOpen, mobileMenuOpen, isProductModalOpen])
-
-  // Scroll to section function
-  const scrollToSection = (elementRef: React.RefObject<HTMLElement | null>) => {
-    if (elementRef.current) {
-      window.scrollTo({
-        top: elementRef.current.offsetTop - 80, // Adjust for header height
-        behavior: "smooth",
-      })
-      setMobileMenuOpen(false)
-    }
-  }
-
-  // Load products
-  useEffect(() => {
-    // data 
-    const mockProducts: Product[] = [
-      {
-        id: 1,
-        name: "Bamboo Fiber Dinnerware Set",
-        category: "kitchenware",
-        price: 89.99,
-        image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?q=80&w=2940&auto=format&fit=crop",
-        description:
-          "Complete 16-piece dinnerware set made from sustainable bamboo fiber. Dishwasher safe, lightweight, and naturally antibacterial.",
-        featured: true,
-      },
-      {
-        id: 2,
-        name: "Organic Cotton Reusable Bags",
-        category: "bags",
-        price: 24.99,
-        image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=2787&auto=format&fit=crop",
-        description:
-          "Set of 5 organic cotton mesh bags perfect for grocery shopping. Machine washable and comes in various sizes.",
-        featured: true,
-      },
-      {
-        id: 3,
-        name: "Solar-Powered LED Lantern",
-        category: "lighting",
-        price: 45.99,
-        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2940&auto=format&fit=crop",
-        description:
-          "Portable solar lantern with USB charging port. Perfect for camping, emergencies, or outdoor gatherings. 12-hour battery life.",
-        featured: true,
-      },
-      {
-        id: 4,
-        name: "Stainless Steel Water Bottle",
-        category: "drinkware",
-        price: 32.99,
-        image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?q=80&w=2787&auto=format&fit=crop",
-        description:
-          "Double-walled insulated water bottle that keeps drinks cold for 24 hours or hot for 12 hours. BPA-free and leak-proof.",
-      },
-     
-      {
-        id: 6,
-        name: "Recycled Plastic Outdoor Rug",
-        category: "home",
-        price: 78.99,
-        image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?q=80&w=2858&auto=format&fit=crop",
-        description:
-          "Weather-resistant outdoor rug made from 100% recycled plastic bottles. Easy to clean and fade-resistant.",
-      },
-      {
-        id: 7,
-        name: "Compost Bin with Charcoal Filter",
-        category: "gardening",
-        price: 56.99,
-        image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?q=80&w=2940&auto=format&fit=crop",
-        description:
-          "Countertop compost bin with activated charcoal filter to eliminate odors. Includes compostable bags.",
-      },
-      {
-        id: 8,
-        name: "Hemp Fiber Yoga Mat",
-        category: "fitness",
-        price: 67.99,
-        image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=2820&auto=format&fit=crop",
-        description:
-          "Non-slip yoga mat made from natural hemp fiber. Biodegradable, antimicrobial, and provides excellent grip.",
-      },
-      {
-        id: 9,
-        name: "Seed Paper Notebook Set",
-        category: "stationery",
-        price: 29.99,
-        image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=2874&auto=format&fit=crop",
-        description:
-          "Set of 3 notebooks made from seed paper. When you're done writing, plant the pages to grow wildflowers.",
-      },
-      {
-        id: 10,
-        name: "Wooden Phone Stand",
-        category: "accessories",
-        price: 19.99,
-        image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2940&auto=format&fit=crop",
-        description:
-          "Handcrafted phone stand made from sustainably sourced bamboo. Compatible with all phone sizes and tablets.",
-      },
-    ]
-
-    setProducts(mockProducts)
-    setSearchResults(mockProducts)
   }, [])
 
-  // Search functionality
+  // Update theme
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setSearchResults(products)
-      return
-    }
+    document.documentElement.setAttribute("data-theme", theme)
+    localStorage.setItem("theme", theme)
+  }, [theme])
 
-    const query = searchQuery.toLowerCase()
-    const filtered = products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query),
-    )
-
-    setSearchResults(filtered)
-
-    // If we're searching and have results, scroll to products section
-    if (filtered.length > 0 && query.length > 2) {
-      scrollToSection(productsRef)
-      setActiveCategory("all")
-    }
-  }, [searchQuery, products])
-
-  // Parallax effect
+  // Check for level up
   useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY)
+    if (placedBlocks >= level * BLOCKS_PER_LEVEL) {
+      setLevel((prev) => prev + 1)
+      generateNewBlocks(true)
+    }
+  }, [placedBlocks, level])
+
+  // Check for game over
+  useEffect(() => {
+    if (availableBlocks.length > 0 && !canPlaceAnyBlock()) {
+      setIsGameOver(true)
+      sounds.gameOver()
+    }
+  }, [gameBoard, availableBlocks])
+
+  // Add keyboard listener for rotation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "r" || e.key === "R") && selectedBlock) {
+        rotateSelectedBlock()
+      }
     }
 
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedBlock])
 
-  // Featured products carousel
+  // Animate score
   useEffect(() => {
     const interval = setInterval(() => {
-      const featuredCount = products.filter((p) => p.featured).length
-      if (featuredCount > 0 && !isAnimating) {
-        changeSlide((currentSlide + 1) % featuredCount)
+      if (displayScore < score) {
+        setDisplayScore((prev) => Math.min(prev + Math.ceil((score - prev) / 10), score))
       }
-    }, 5000)
+    }, 50)
+
     return () => clearInterval(interval)
-  }, [products, currentSlide, isAnimating])
+  }, [score, displayScore])
 
-  // Change slide with animation
-  const changeSlide = (newSlide: number) => {
-    if (isAnimating) return
-
-    setIsAnimating(true)
-    setCurrentSlide(newSlide)
-
-    // Reset animation state after transition completes
-    setTimeout(() => {
-      setIsAnimating(false)
-    }, 600)
-  }
-
-  // Cart functions
-  const addToCart = (product: Product) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id)
-
-      if (existingItem) {
-        return prevCart.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }]
-      }
-    })
-
-    // Add to recently added items
-    setRecentlyAdded((prev) => new Set(prev).add(product.id))
-
-    // Remove from recently added after 2 seconds
-    setTimeout(() => {
-      setRecentlyAdded((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(product.id)
-        return newSet
-      })
-    }, 2000)
-  }
-
-  const removeFromCart = (productId: number) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId))
-  }
-
-  const updateQuantity = (productId: number, newQuantity: number) => {
-    if (newQuantity < 1) return
-
-    setCart((prevCart) => prevCart.map((item) => (item.id === productId ? { ...item, quantity: newQuantity } : item)))
-  }
-
-  // Wishlist functions
-  const toggleWishlist = (product: Product) => {
-    const isInWishlist = wishlist.some((item) => item.id === product.id)
-
-    if (isInWishlist) {
-      setWishlist((prev) => prev.filter((item) => item.id !== product.id))
+  // Prevent background scrolling when modals are open
+  useEffect(() => {
+    if (showInstructions || isGameOver) {
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
     } else {
-      setWishlist((prev) => [...prev, product])
+      document.body.style.overflow = 'unset'
+      document.documentElement.style.overflow = 'unset'
     }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset'
+      document.documentElement.style.overflow = 'unset'
+    }
+  }, [showInstructions, isGameOver])
+
+  // Update high score when score changes
+  useEffect(() => {
+    if (score > highScore) {
+      setHighScore(score)
+      localStorage.setItem('highScore', score.toString())
+    }
+  }, [score, highScore])
+
+  // Game functions
+  const startNewGame = () => {
+    setGameBoard(
+      Array(BOARD_SIZE)
+        .fill(null)
+        .map(() => Array(BOARD_SIZE).fill(null)),
+    )
+    setScore(0)
+    setDisplayScore(0)
+    setLevel(1)
+    setPlacedBlocks(0)
+    setSelectedBlock(null)
+    setIsGameOver(false)
+    setGameStarted(false)
+    generateNewBlocks()
   }
 
-  const isInWishlist = (productId: number) => {
-    return wishlist.some((item) => item.id === productId)
+  const generateNewBlocks = (isLevelUp = false) => {
+    const count = 3
+    const newBlocks: BlockShape[] = []
+
+    for (let i = 0; i < count; i++) {
+      const randomIndex = Math.floor(Math.random() * BLOCK_SHAPES.length)
+      const block = JSON.parse(JSON.stringify(BLOCK_SHAPES[randomIndex])) as Omit<BlockShape, "id" | "color">
+
+      const colors = ["blue", "green", "purple", "orange", "red"]
+      const randomColor = colors[Math.floor(Math.random() * colors.length)]
+
+      const newBlock: BlockShape = {
+        ...block,
+        color: randomColor,
+        id: `block-${Date.now()}-${i}`,
+      }
+
+      newBlocks.push(newBlock)
+    }
+
+    setAvailableBlocks(newBlocks)
   }
 
-  const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
+  const handleBlockSelect = (block: BlockShape) => {
+    setSelectedBlock(block)
+  }
 
-  const cartItemCount = cart.reduce((count, item) => count + item.quantity, 0)
+  const handleCellClick = (row: number, col: number) => {
+    if (!selectedBlock) return
 
-  // Filter products by category
-  const filteredProducts =
-    activeCategory === "all" ? searchResults : searchResults.filter((product) => product.category === activeCategory)
+    if (canPlaceBlock(gameBoard, selectedBlock, row, col)) {
+      const newBoard = [...gameBoard.map((row) => [...row])]
 
-  // Get unique categories
-  const categories = ["all", ...new Set(products.map((product) => product.category))]
-
-  // Featured products
-  const featuredProducts = products.filter((product) => product.featured)
-
-  // Handle newsletter subscription
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (email) {
-      setIsSubscribed(true)
-      addToast({
-        title: "Subscribed!",
-        description: "You've been successfully subscribed to our eco-newsletter.",
-        type: "success",
+      selectedBlock.shape.forEach((blockRow, rowOffset) => {
+        blockRow.forEach((cell, colOffset) => {
+          if (cell) {
+            newBoard[row + rowOffset][col + colOffset] = selectedBlock.color
+          }
+        })
       })
-      setEmail("")
+
+      setGameBoard(newBoard)
+      setAvailableBlocks((prev) => prev.filter((block) => block.id !== selectedBlock.id))
+      setPlacedBlocks((prev) => prev + 1)
+      setSelectedBlock(null)
+
+      const { clearedBoard, linesCleared } = checkForCompleteLines(newBoard)
+
+      if (linesCleared > 0) {
+        const pointsEarned = linesCleared * POINTS_PER_LINE * level
+        setScore((prev) => prev + pointsEarned)
+        setGameBoard(clearedBoard)
+        checkAchievements(score, linesCleared, level)
+        sounds.lineClear()
+      }
+
+      if (availableBlocks.length <= 1) {
+        generateNewBlocks()
+        sounds.levelUp()
+      }
     }
   }
 
-  // Handle contact form submission
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (contactForm.name && contactForm.email && contactForm.message) {
-      setIsMessageSent(true)
-      addToast({
-        title: "Message sent!",
-        description: "Thank you for your message. We'll get back to you soon.",
-        type: "success",
+  const canPlaceAnyBlock = () => {
+    for (const block of availableBlocks) {
+      for (let row = 0; row <= BOARD_SIZE - block.shape.length; row++) {
+        for (let col = 0; col <= BOARD_SIZE - block.shape[0].length; col++) {
+          if (canPlaceBlock(gameBoard, block, row, col)) {
+            return true
+          }
+        }
+      }
+    }
+    return false
+  }
+
+  const rotateSelectedBlock = () => {
+    if (!selectedBlock) return
+
+    const rotatedBlock = JSON.parse(JSON.stringify(selectedBlock)) as BlockShape
+    const rows = rotatedBlock.shape.length
+    const cols = rotatedBlock.shape[0].length
+    const newShape: boolean[][] = Array(cols)
+      .fill(null)
+      .map(() => Array(rows).fill(false))
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        newShape[c][rows - 1 - r] = rotatedBlock.shape[r][c]
+      }
+    }
+
+    rotatedBlock.shape = newShape
+    setSelectedBlock(rotatedBlock)
+  }
+
+  const handleCellHover = (row: number, col: number) => {
+    setHoverPosition({ row, col })
+  }
+
+  const handleCellLeave = () => {
+    setHoverPosition(null)
+  }
+
+  const getAffectedCells = (row: number, col: number) => {
+    if (!selectedBlock) return []
+
+    const affectedCells: { row: number; col: number; valid: boolean }[] = []
+    const isValidPlacement = canPlaceBlock(gameBoard, selectedBlock, row, col)
+
+    for (let r = 0; r < selectedBlock.shape.length; r++) {
+      for (let c = 0; c < selectedBlock.shape[0].length; c++) {
+        if (selectedBlock.shape[r][c]) {
+          const cellRow = row + r
+          const cellCol = col + c
+          const isInBounds = cellRow >= 0 && cellRow < gameBoard.length && cellCol >= 0 && cellCol < gameBoard[0].length
+
+          if (isInBounds) {
+            const isCellValid = gameBoard[cellRow][cellCol] === null
+            affectedCells.push({
+              row: cellRow,
+              col: cellCol,
+              valid: isCellValid && isValidPlacement,
+            })
+          }
+        }
+      }
+    }
+
+    return affectedCells
+  }
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, block: BlockShape) => {
+    setDraggedBlock(block)
+    setIsDragging(true)
+    setSelectedBlock(block)
+    
+    // Create a custom drag image
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    if (ctx) {
+      const blockSize = 20
+      const cols = block.shape[0].length
+      const rows = block.shape.length
+      
+      canvas.width = cols * blockSize
+      canvas.height = rows * blockSize
+      
+      // Draw the block shape
+      block.shape.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          if (cell) {
+            const colors = {
+              blue: '#3B82F6',
+              green: '#10B981',
+              purple: '#8B5CF6',
+              orange: '#F59E0B',
+              red: '#EF4444'
+            }
+            
+            ctx.fillStyle = colors[block.color as keyof typeof colors] || '#3B82F6'
+            ctx.fillRect(colIndex * blockSize, rowIndex * blockSize, blockSize - 1, blockSize - 1)
+          }
+        })
       })
-      setContactForm({ name: "", email: "", message: "" })
-      setTimeout(() => setIsMessageSent(false), 3000)
+      
+      e.dataTransfer.setDragImage(canvas, canvas.width / 2, canvas.height / 2)
+    }
+    
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    setDraggedBlock(null)
+    setIsDragging(false)
+    setDragOverPosition(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, row: number, col: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    
+    if (draggedBlock && canPlaceBlock(gameBoard, draggedBlock, row, col)) {
+      setDragOverPosition({ row, col })
+    } else {
+      setDragOverPosition(null)
     }
   }
 
-  // Handle checkout
-  const handleCheckout = () => {
-    setIsCartOpen(false)
-    addToast({
-      title: "Order placed!",
-      description: "Thank you for choosing sustainable products. Your order has been placed successfully.",
-      type: "success",
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    setDragOverPosition(null)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, row: number, col: number) => {
+    e.preventDefault()
+    
+    if (!draggedBlock) return
+    
+    if (canPlaceBlock(gameBoard, draggedBlock, row, col)) {
+      placeBlock(draggedBlock, row, col)
+    }
+    
+    setDragOverPosition(null)
+  }
+
+  // Touch handlers for mobile drag and drop - improved to prevent blinking
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>, block: BlockShape) => {
+    const touch = e.touches[0]
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY })
+    setDraggedBlock(block)
+    setSelectedBlock(block)
+    setTouchDragElement(e.currentTarget as HTMLElement)
+    
+    // Prevent default to avoid interference with other touch events
+    e.preventDefault()
+  }
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!draggedBlock || !touchStartPos || !touchDragElement) return
+    
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - touchStartPos.x
+    const deltaY = touch.clientY - touchStartPos.y
+    
+    // Only start dragging after significant movement to prevent accidental drags
+    if (Math.abs(deltaX) > 15 || Math.abs(deltaY) > 15) {
+      setIsDragging(true)
+      
+      // Find the element under the touch point
+      const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY)
+      const cellElement = elementBelow?.closest('.cell') as HTMLElement
+      
+      if (cellElement) {
+        const row = parseInt(cellElement.dataset.row || '0')
+        const col = parseInt(cellElement.dataset.col || '0')
+        
+        if (canPlaceBlock(gameBoard, draggedBlock, row, col)) {
+          setDragOverPosition({ row, col })
+        } else {
+          setDragOverPosition(null)
+        }
+      } else {
+        setDragOverPosition(null)
+      }
+    }
+    
+    e.preventDefault()
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!draggedBlock) {
+      return
+    }
+    
+    // If we were dragging, try to place the block
+    if (isDragging) {
+      const touch = e.changedTouches[0]
+      const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY)
+      const cellElement = elementBelow?.closest('.cell') as HTMLElement
+      
+      if (cellElement) {
+        const row = parseInt(cellElement.dataset.row || '0')
+        const col = parseInt(cellElement.dataset.col || '0')
+        
+        if (canPlaceBlock(gameBoard, draggedBlock, row, col)) {
+          placeBlock(draggedBlock, row, col)
+        }
+      }
+    }
+    
+    // Reset all touch and drag state
+    setDraggedBlock(null)
+    setIsDragging(false)
+    setDragOverPosition(null)
+    setTouchStartPos(null)
+    setTouchDragElement(null)
+  }
+
+  // Unified block placement function
+  const placeBlock = (block: BlockShape, row: number, col: number) => {
+    const newBoard = [...gameBoard.map((row) => [...row])]
+
+    block.shape.forEach((blockRow, rowOffset) => {
+      blockRow.forEach((cell, colOffset) => {
+        if (cell) {
+          newBoard[row + rowOffset][col + colOffset] = block.color
+        }
+      })
     })
-    setCart([])
+
+    setGameBoard(newBoard)
+    setAvailableBlocks((prev) => prev.filter((b) => b.id !== block.id))
+    setPlacedBlocks((prev) => prev + 1)
+    setSelectedBlock(null)
+
+    // Play placement sound
+    sounds.place()
+
+    const { clearedBoard, linesCleared } = checkForCompleteLines(newBoard)
+
+    if (linesCleared > 0) {
+      const pointsEarned = linesCleared * POINTS_PER_LINE * level
+      setScore((prev) => {
+        const newScore = prev + pointsEarned
+        checkAchievements(newScore, linesCleared, level)
+        return newScore
+      })
+      setGameBoard(clearedBoard)
+      setCombo(linesCleared)
+      setMaxCombo(prev => Math.max(prev, linesCleared))
+      
+      // Create particle effects for line clearing
+      const boardElement = document.querySelector('.board')
+      if (boardElement) {
+        const rect = boardElement.getBoundingClientRect()
+        const centerX = rect.left + rect.width / 2
+        const centerY = rect.top + rect.height / 2
+        createParticles(centerX, centerY, block.color, linesCleared * 4)
+      }
+      
+      sounds.lineClear()
+    } else {
+      setCombo(0)
+    }
+
+    if (availableBlocks.length <= 1) {
+      generateNewBlocks()
+    }
   }
 
-  // Open product modal
-  const openProductModal = (product: Product) => {
-    setSelectedProduct(product)
-    setIsProductModalOpen(true)
-  }
+  // Enhanced getAffectedCells for drag preview
+  const getDragAffectedCells = (row: number, col: number) => {
+    if (!draggedBlock) return []
 
-  // Close product modal
-  const closeProductModal = () => {
-    setIsProductModalOpen(false)
-    setSelectedProduct(null)
-  }
+    const affectedCells: { row: number; col: number; valid: boolean }[] = []
+    const isValidPlacement = canPlaceBlock(gameBoard, draggedBlock, row, col)
 
-  // Handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Search is already handled by the useEffect
+    for (let r = 0; r < draggedBlock.shape.length; r++) {
+      for (let c = 0; c < draggedBlock.shape[0].length; c++) {
+        if (draggedBlock.shape[r][c]) {
+          const cellRow = row + r
+          const cellCol = col + c
+          const isInBounds = cellRow >= 0 && cellRow < gameBoard.length && cellCol >= 0 && cellCol < gameBoard[0].length
+
+          if (isInBounds) {
+            const isCellValid = gameBoard[cellRow][cellCol] === null
+            affectedCells.push({
+              row: cellRow,
+              col: cellCol,
+              valid: isCellValid && isValidPlacement,
+            })
+          }
+        }
+      }
+    }
+
+    return affectedCells
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
-      {/* Custom CSS for fonts and animations */}
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap');
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <div className="min-h-screen flex flex-col font-body antialiased"
+           style={{ 
+             background: 'var(--bg-secondary)', 
+             color: 'var(--text-primary)',
+             zoom: 1,
+             transform: 'scale(1)',
+             minWidth: '100vw',
+             minHeight: '100vh'
+           }}>
+        
+        {/* Background gradient overlay */}
+        <div className="fixed inset-0 pointer-events-none -z-10"
+             style={{
+               background: `
+                 radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                 radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+                 radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.03) 0%, transparent 50%)
+               `
+             }} />
 
-        body {
-          font-family: 'Inter', sans-serif;
-          color: #1c1917;
-        }
-        
-        h1, h2, h3, h4, h5, h6 {
-          font-family: 'Merriweather', serif;
-          color: #0f172a;
-        }
-        
-        /* Carousel animation */
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        
-        .carousel-item {
-          opacity: 0;
-          position: absolute;
-          transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
-          width: 100%;
-        }
-        
-        .carousel-item.active {
-          opacity: 1;
-          position: relative;
-          animation: fadeIn 0.6s ease-in-out;
-        }
-
-        /* Parallax effect */
-        .parallax {
-          background-attachment: fixed;
-          background-position: center;
-          background-repeat: no-repeat;
-          background-size: cover;
-        }
-        
-        /* Add cursor styles */
-        button, 
-        a,
-        [role="button"],
-        .cursor-pointer,
-        input[type="submit"],
-        input[type="button"] {
-          cursor: pointer;
-        }
-
-        /* New hero animations */
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
-        
-        @keyframes float-delayed {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-3deg); }
-        }
-        
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-25px) rotate(8deg); }
-        }
-        
-        @keyframes float-reverse {
-          0%, 100% { transform: translateY(-10px) rotate(0deg); }
-          50% { transform: translateY(10px) rotate(-5deg); }
-        }
-        
-        @keyframes scale-in {
-          0% { transform: scaleX(0); }
-          100% { transform: scaleX(1); }
-        }
-        
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        
-        .animate-float-delayed {
-          animation: float-delayed 8s ease-in-out infinite 2s;
-        }
-        
-        .animate-float-slow {
-          animation: float-slow 10s ease-in-out infinite 1s;
-        }
-        
-        .animate-float-reverse {
-          animation: float-reverse 7s ease-in-out infinite 3s;
-        }
-        
-        .animate-scale-in {
-          animation: scale-in 2s ease-out 1s forwards;
-        }
-
-        
-      `}</style>
-
-      {/* Navigation */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-stone-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Left side - Logo */}
-            <div className="flex items-center min-w-0 flex-1">
-              <button
-                className="md:hidden mr-4 text-emerald-700 cursor-pointer"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-              <Link href="/" className="flex items-center space-x-2">
-                <Leaf className="h-8 w-8 text-emerald-600" />
-                <span className="text-2xl font-bold text-emerald-800">EcoVibe</span>
-              </Link>
-            </div>
-
-            {/* Center - Navigation */}
-            <div className="hidden md:flex items-center justify-center space-x-8 flex-1">
-              <button
-                onClick={() => scrollToSection(featuredRef)}
-                className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-stone-50"
-              >
-                Featured
-              </button>
-              <button
-                onClick={() => scrollToSection(productsRef)}
-                className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-stone-50"
-              >
-                Products
-              </button>
-              <button
-                onClick={() => scrollToSection(aboutRef)}
-                className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-stone-50"
-              >
-                About
-              </button>
-              <button
-                onClick={() => scrollToSection(contactRef)}
-                className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium px-3 py-2 rounded-lg hover:bg-stone-50"
-              >
-                Contact
-              </button>
-            </div>
-
-            {/* Right side - Search and Actions */}
-            <div className="flex items-center justify-end space-x-2 min-w-0 flex-1">
-              <form onSubmit={handleSearch} className="hidden lg:flex relative">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-48 border border-stone-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-stone-700 text-sm"
-                />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
-              </form>
-
-              <button className="relative text-stone-700 cursor-pointer p-2 hover:bg-stone-100 rounded-full transition-colors" onClick={() => setIsWishlistOpen(true)}>
-                <Heart className={`h-5 w-5 ${wishlist.length > 0 ? "fill-red-500 text-red-500" : ""}`} />
-                {wishlist.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-xs">
-                    {wishlist.length}
-                  </span>
-                )}
-              </button>
-
-              <button className="relative text-stone-700 cursor-pointer p-2 hover:bg-stone-100 rounded-full transition-colors" onClick={() => setIsCartOpen(true)}>
-                <ShoppingCart className="h-5 w-5" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-xs">
-                    {cartItemCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden mt-4 py-4 border-t border-stone-200">
-              <div className="flex flex-col space-y-4">
-                <button
-                  onClick={() => scrollToSection(featuredRef)}
-                  className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium text-left px-2 py-1 rounded hover:bg-stone-50"
-                >
-                  Featured
-                </button>
-                <button
-                  onClick={() => scrollToSection(productsRef)}
-                  className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium text-left px-2 py-1 rounded hover:bg-stone-50"
-                >
-                  Products
-                </button>
-                <button
-                  onClick={() => scrollToSection(aboutRef)}
-                  className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium text-left px-2 py-1 rounded hover:bg-stone-50"
-                >
-                  About
-                </button>
-                <button
-                  onClick={() => scrollToSection(contactRef)}
-                  className="text-stone-700 hover:text-emerald-700 transition-colors cursor-pointer font-medium text-left px-2 py-1 rounded hover:bg-stone-50"
-                >
-                  Contact
-                </button>
-                <form onSubmit={handleSearch} className="relative mt-2">
-                  <input
-                    type="text"
-                    placeholder="Search eco products..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-stone-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                  />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-stone-400" />
-                </form>
+        {/* Header */}
+        <header className="sticky top-0 z-50 border-b backdrop-blur-xl"
+                style={{ 
+                  background: 'var(--bg-card)', 
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow)'
+                }}>
+          <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3 cursor-pointer">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-2xl font-black relative overflow-hidden cursor-pointer shadow-md"
+                   style={{ background: 'var(--primary)' }}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                🎯
               </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Hero section*/}
-      {!searchQuery && (
-        <div
-          ref={heroRef}
-          className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-stone-50 via-emerald-50 to-stone-100 pt-20"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url(https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2940&auto=format&fit=crop)`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundAttachment: "fixed",
-          }}
-        >
-          {/* Animated floating elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none"></div>
-
-          <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-6xl mx-auto">
-              {/* Main content centered */}
-              <div className="text-center mb-16">
-                
-
-                <h1 className="text-5xl md:text-7xl font-bold mb-8 text-stone-900 leading-tight">
-                  <span className="block">Transform Your</span>
-                  <span className="block text-emerald-700 relative">
-                    Lifestyle
-                    <div className="absolute -bottom-2 left-0 right-0 h-1 bg-emerald-300 rounded-full transform scale-x-0 animate-scale-in"></div>
-                  </span>
-                </h1>
-
-                <p className="text-xl text-stone-600 mb-12 leading-relaxed max-w-3xl mx-auto">
-                  Discover thoughtfully curated eco-friendly products that help you live sustainably without compromising
-                  on quality or style. Join thousands making a positive environmental impact.
-                </p>
-
-                {/* Action buttons*/}
-                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-                  <button
-                    onClick={() => scrollToSection(productsRef)}
-                    className="group bg-emerald-700 text-white px-10 py-4 rounded-full font-semibold hover:bg-emerald-800 transition-all duration-300 cursor-pointer shadow-xl hover:shadow-2xl transform hover:scale-105 flex items-center space-x-2"
-                  >
-                    <span>Explore Products</span>
-                    <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <button
-                    onClick={() => scrollToSection(featuredRef)}
-                    className="group bg-white/90 backdrop-blur-sm text-emerald-700 px-10 py-4 rounded-full font-semibold border-2 border-emerald-200 hover:bg-emerald-50 transition-all duration-300 cursor-pointer shadow-xl hover:shadow-2xl transform hover:scale-105"
-                  >
-                    Featured Collection
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Featured products */}
-      {!searchQuery && (
-        <section ref={featuredRef} id="featured" className="py-20 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <div className="flex items-center justify-center space-x-2 mb-4">
-                <Leaf className="h-6 w-6 text-emerald-600" />
-                <span className="text-emerald-700 font-medium">Featured Collection</span>
-              </div>
-              <h2 className="text-4xl font-bold mb-4 text-stone-900">Eco Essentials</h2>
-              <div className="w-24 h-1 bg-emerald-600 mx-auto mb-6"></div>
-              <p className="text-stone-600 max-w-2xl mx-auto">
-                Handpicked sustainable products that make a difference. Each item is carefully selected for its
-                environmental impact and quality.
-              </p>
+              <span className="text-3xl font-black tracking-tight text-blue-500 block visible opacity-100 whitespace-nowrap"
+                    style={{ 
+                      fontFamily: 'var(--font-game)', 
+                      color: 'var(--primary-solid)',
+                      textShadow: '2px 2px 0px rgba(0,0,0,0.1)'
+                    }}>
+                Block Placer
+              </span>
             </div>
 
-            {/* Full-width carousel */}
-            <div className="relative max-w-6xl mx-auto">
-              {/* Carousel items */}
-              <div className="relative min-h-[400px] sm:min-h-[450px] md:min-h-[500px]">
-                {featuredProducts.map((product, index) => (
-                  <div key={product.id} className={`carousel-item ${currentSlide === index ? "active" : ""}`}>
-                    <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden border border-stone-100 cursor-pointer" onClick={() => openProductModal(product)}>
-                      <div className="flex flex-col md:flex-row">
-                        <div className="w-full md:w-1/2">
-                          <div className="h-48 sm:h-56 md:h-96 overflow-hidden">
-                            <img
-                              src={product.image || "/placeholder.svg"}
-                              alt={product.name}
-                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
-                            />
-                          </div>
-                        </div>
-                        <div className="w-full md:w-1/2 p-4 sm:p-6 md:p-8 flex flex-col justify-between">
-                          <div>
-                            <div className="mb-2 sm:mb-3 text-emerald-600 text-xs sm:text-sm uppercase tracking-wider font-medium">
-                              {product.category}
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-2 sm:mb-3 leading-tight">{product.name}</h3>
-                            <p className="text-stone-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base line-clamp-3">{product.description}</p>
-                            <div className="text-2xl sm:text-3xl font-bold text-emerald-700 mb-4 sm:mb-6">${product.price.toFixed(2)}</div>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                addToCart(product)
-                              }}
-                              className={`flex-1 py-3 sm:py-3 rounded-lg font-medium transition-all cursor-pointer shadow-lg text-sm sm:text-base ${
-                                recentlyAdded.has(product.id)
-                                  ? "bg-green-600 text-white"
-                                  : "bg-emerald-700 text-white hover:bg-emerald-800"
-                              }`}
-                            >
-                              {recentlyAdded.has(product.id) ? (
-                                <span className="flex items-center justify-center">
-                                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                                  Added to Cart!
-                                </span>
-                              ) : (
-                                "Add to Cart"
-                              )}
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleWishlist(product)
-                              }}
-                              className={`w-full sm:w-auto px-4 sm:px-3 py-3 sm:py-3 rounded-lg cursor-pointer shadow-lg flex items-center justify-center sm:block text-sm sm:text-base ${
-                                isInWishlist(product.id)
-                                  ? "bg-red-100 text-red-500"
-                                  : "bg-stone-100 text-stone-500 hover:bg-red-100 hover:text-red-500"
-                              } transition-colors`}
-                            >
-                              <Heart className={`h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-0 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
-                              <span className="sm:hidden">{isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Carousel indicators */}
-              <div className="flex justify-center mt-6 sm:mt-8 space-x-2">
-                {featuredProducts.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => changeSlide(index)}
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors cursor-pointer ${
-                      currentSlide === index ? "bg-emerald-700" : "bg-stone-300"
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                    disabled={isAnimating}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Products section */}
-      <section ref={productsRef} id="products" className="py-20 bg-stone-50 leaf-pattern">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Recycle className="h-6 w-6 text-emerald-600" />
-              <span className="text-emerald-700 font-medium">Sustainable Products</span>
-            </div>
-            <h2 className="text-4xl font-bold mb-4 text-stone-900">Our Eco Collection</h2>
-            <div className="w-24 h-1 bg-emerald-600 mx-auto mb-6"></div>
-            <p className="text-stone-600 max-w-2xl mx-auto">
-              Browse our complete range of environmentally conscious products designed for modern sustainable living.
-            </p>
-          </div>
-
-          {/* Categories */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-6 py-3 rounded-full capitalize transition-all duration-300 cursor-pointer font-medium ${
-                  activeCategory === category
-                    ? "bg-emerald-700 text-white shadow-lg"
-                    : "bg-white text-stone-700 hover:bg-emerald-50 hover:text-emerald-700 shadow-md"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          {/* Search results info */}
-          {searchQuery && (
-            <div className="text-center mb-8">
-              <p className="text-stone-600">
-                {filteredProducts.length === 0
-                  ? `No results found for "${searchQuery}"`
-                  : `Showing ${filteredProducts.length} results for "${searchQuery}"`}
-              </p>
-            </div>
-          )}
-
-          {/* Products grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-stone-100 cursor-pointer"
-                  onClick={() => openProductModal(product)}
-                >
-                  <div className="relative h-64 overflow-hidden">
-                    <img
-                      src={product.image || "/placeholder.svg"}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="absolute top-3 right-3 z-10">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleWishlist(product)
-                        }}
-                        className={`p-2 rounded-full ${
-                          isInWishlist(product.id)
-                            ? "bg-red-100 text-red-500"
-                            : "bg-white/80 text-stone-500 hover:bg-red-100 hover:text-red-500"
-                        } transition-colors shadow-lg`}
-                      >
-                        <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? "fill-red-500" : ""}`} />
-                      </button>
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 text-stone-800 font-medium text-sm shadow-lg">
-                        Click to view details
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="mb-2 text-emerald-600 text-xs uppercase tracking-wider font-medium">
-                      {product.category}
-                    </div>
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-semibold text-stone-900 leading-tight">{product.name}</h3>
-                      <span className="text-xl font-bold text-emerald-700">${product.price.toFixed(2)}</span>
-                    </div>
-                    <p className="text-stone-600 text-sm mb-4 line-clamp-2 leading-relaxed">{product.description}</p>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          addToCart(product)
-                        }}
-                        className={`flex-1 py-3 rounded-lg font-medium transition-all cursor-pointer shadow-lg ${
-                          recentlyAdded.has(product.id)
-                            ? "bg-green-600 text-white"
-                            : "bg-emerald-700 text-white hover:bg-emerald-800"
-                        }`}
-                      >
-                        {recentlyAdded.has(product.id) ? (
-                          <span className="flex items-center justify-center">
-                            <CheckCircle className="h-5 w-5 mr-2" />
-                            Added to Cart!
-                          </span>
-                        ) : (
-                          "Add to Cart"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-stone-500 text-lg">No products found. Try a different search or category.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* About section */}
-      <section ref={aboutRef} id="about" className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <div className="flex items-center justify-center space-x-2 mb-4">
-                <TreePine className="h-6 w-6 text-emerald-600" />
-                <span className="text-emerald-700 font-medium">Our Mission</span>
-              </div>
-              <h2 className="text-4xl font-bold mb-6 text-stone-900">Sustainable Future Starts Here</h2>
-              <div className="w-24 h-1 bg-emerald-600 mx-auto mb-8"></div>
-              <p className="text-lg mb-10 leading-relaxed text-stone-600">
-                At EcoVibe, we believe that small changes can make a big difference. Founded in 2020, we've been
-                committed to providing high-quality, sustainable products that help reduce environmental impact without
-                compromising on style or functionality. Every product in our collection is carefully vetted for its
-                eco-credentials and ethical sourcing.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div className="bg-emerald-50 rounded-2xl p-8 border border-emerald-100">
-                <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Recycle className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-3xl font-bold mb-3 text-emerald-700">500K+</div>
-                <div className="text-stone-600 font-medium">Plastic Items Replaced</div>
-              </div>
-              <div className="bg-emerald-50 rounded-2xl p-8 border border-emerald-100">
-                <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <TreePine className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-3xl font-bold mb-3 text-emerald-700">10K+</div>
-                <div className="text-stone-600 font-medium">Trees Planted</div>
-              </div>
-              <div className="bg-emerald-50 rounded-2xl p-8 border border-emerald-100">
-                <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Leaf className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-3xl font-bold mb-3 text-emerald-700">100%</div>
-                <div className="text-stone-600 font-medium">Carbon Neutral Shipping</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact section */}
-      <section ref={contactRef} id="contact" className="py-20 bg-stone-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Leaf className="h-6 w-6 text-emerald-600" />
-              <span className="text-emerald-700 font-medium">Get in Touch</span>
-            </div>
-            <h2 className="text-4xl font-bold mb-4 text-stone-900">Contact Us</h2>
-            <div className="w-24 h-1 bg-emerald-600 mx-auto mb-6"></div>
-            <p className="text-stone-600 max-w-2xl mx-auto">
-              Have questions about our sustainable products or need help choosing the right eco-friendly alternatives?
-              We're here to help.
-            </p>
-          </div>
-          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="bg-white p-8 rounded-2xl shadow-lg border border-stone-100">
-              <h3 className="text-2xl font-semibold mb-6 text-stone-900">Let's Talk Sustainability</h3>
-              <p className="text-stone-600 mb-8">
-                Whether you're looking for specific eco-friendly products or want to learn more about sustainable
-                living, our team is here to guide you on your green journey.
-              </p>
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mr-4 flex-shrink-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-emerald-700"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-lg mb-1 text-stone-900">Address</h4>
-                    <p className="text-stone-600">123 Green Street, Eco City, EC 12345</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mr-4 flex-shrink-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-emerald-700"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-lg mb-1 text-stone-900">Phone</h4>
-                    <p className="text-stone-600">+1 (555) ECO-VIBE</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mr-4 flex-shrink-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-emerald-700"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-lg mb-1 text-stone-900">Email</h4>
-                    <p className="text-stone-600">hello@ecovibe.example</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-2xl shadow-lg border border-stone-100">
-              <h3 className="text-2xl font-semibold mb-6 text-stone-900">Send a Message</h3>
-              <form className="space-y-6" onSubmit={handleContactSubmit}>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-stone-700 mb-2">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={4}
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    className="w-full px-4 py-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
-                    required
-                  ></textarea>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-emerald-700 text-white py-3 rounded-lg font-medium hover:bg-emerald-800 transition-all cursor-pointer shadow-lg"
-                >
-                  {isMessageSent ? (
-                    <>
-                      <CheckCircle className="mr-2 h-5 w-5 inline" /> Message Sent!
-                    </>
-                  ) : (
-                    "Send Message"
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter section */}
-      <section className="py-16 bg-emerald-700">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Leaf className="h-6 w-6 text-emerald-200" />
-              <span className="text-emerald-200 font-medium">Stay Updated</span>
-            </div>
-            <h2 className="text-3xl font-bold mb-4 !text-white">Join Our Green Community</h2>
-            <p className="text-emerald-100 mb-8">
-              Subscribe to our newsletter for eco-tips, sustainable product updates, and exclusive green living content.
-            </p>
-            <form className="flex flex-col sm:flex-row gap-4 justify-center" onSubmit={handleSubscribe}>
-              <input
-                type="email"
-                placeholder="Your email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="px-6 py-3 rounded-lg border-0 focus:ring-2 focus:ring-emerald-300 focus:outline-none flex-grow max-w-md bg-white text-stone-700 shadow-lg"
-                required
-              />
-              <button
-                type="submit"
-                className="bg-white text-emerald-700 px-8 py-3 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer whitespace-nowrap font-medium shadow-lg"
-              >
-                {isSubscribed ? (
-                  <>
-                    <CheckCircle className="mr-2 h-5 w-5 inline" /> Subscribed!
-                  </>
-                ) : (
-                  "Subscribe"
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-stone-900 text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div>
-              <div className="flex items-center space-x-2 mb-6">
-                <Leaf className="h-8 w-8 text-emerald-400" />
-                <h3 className="text-2xl font-bold !text-white">EcoVibe</h3>
-              </div>
-              <p className="text-stone-300 mb-6">
-                Your trusted partner in sustainable living. We curate eco-friendly products that help you reduce your
-                environmental footprint while maintaining a modern lifestyle.
-              </p>
-              <div className="flex space-x-4">
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center hover:bg-emerald-700 transition-colors"
-                >
-                  <span className="text-white font-bold text-lg">F</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center hover:bg-emerald-700 transition-colors"
-                >
-                  <span className="text-white font-bold text-lg">I</span>
-                </a>
-                <a
-                  href="#"
-                  className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center hover:bg-emerald-700 transition-colors"
-                >
-                  <span className="text-white font-bold text-lg">T</span>
-                </a>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-6 !text-white">Quick Links</h4>
-              <ul className="space-y-3">
-                <li>
-                  <button
-                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    className="text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(featuredRef)}
-                    className="text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Featured Products
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(productsRef)}
-                    className="text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Products
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(aboutRef)}
-                    className="text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    About
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(contactRef)}
-                    className="text-stone-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Contact
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-6 !text-white">Categories</h4>
-              <ul className="space-y-3">
-                {categories.slice(1, 7).map((category) => (
-                  <li key={category}>
-                    <button
-                      onClick={() => {
-                        scrollToSection(productsRef)
-                        setActiveCategory(category)
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 relative overflow-hidden uppercase tracking-wider"
+                      style={{ 
+                        fontFamily: 'var(--font-game)',
+                        background: 'var(--surface-1)', 
+                        color: 'var(--text-primary)',
+                        borderColor: 'var(--border)',
+                        boxShadow: 'var(--shadow)'
                       }}
-                      className="text-stone-300 hover:text-white transition-colors capitalize cursor-pointer"
-                    >
-                      {category}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-6 !text-white">Sustainability</h4>
-              <ul className="space-y-3">
-                <li className="text-stone-300">Carbon Neutral Shipping</li>
-                <li className="text-stone-300">Plastic-Free Packaging</li>
-                <li className="text-stone-300">Tree Planting Program</li>
-                <li className="mt-6">
-                  <a href="#" className="text-stone-300 hover:text-white transition-colors">
-                    Sustainability Report
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-stone-300 hover:text-white transition-colors">
-                    Eco Certifications
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-stone-300 hover:text-white transition-colors">
-                    Green Initiatives
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-stone-800 mt-12 pt-8 text-center text-stone-400">
-            <p>
-              &copy; {new Date().getFullYear()} EcoVibe. All rights reserved. | Making the world greener, one product at
-              a time.
-            </p>
-          </div>
-        </div>
-      </footer>
+                      onClick={() => setShowInstructions(true)}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span className="hidden md:block">How to Play</span>
+              </button>
 
-      {/* Shopping Cart Sidebar */}
-      <div
-        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity ${isCartOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-      >
-        <div
-          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <div className="flex items-center justify-between p-6 border-b border-stone-200">
-            <h2 className="text-xl font-semibold text-stone-900">Your Cart ({cartItemCount})</h2>
-            <button
-              onClick={() => setIsCartOpen(false)}
-              className="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-700 cursor-pointer"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          <div className="p-6 overflow-y-auto max-h-[calc(100vh-250px)]">
-            {cart.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-24 h-24 mx-auto mb-6 bg-stone-100 rounded-full flex items-center justify-center">
-                  <ShoppingCart className="h-12 w-12 text-stone-400" />
-                </div>
-                <p className="text-stone-500 mb-6">Your cart is empty</p>
-                <button
-                  onClick={() => {
-                    setIsCartOpen(false)
-                    scrollToSection(productsRef)
-                  }}
-                  className="bg-emerald-700 text-white px-6 py-3 rounded-lg hover:bg-emerald-800 transition-colors cursor-pointer shadow-lg"
-                >
-                  Browse Eco Products
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex border-b border-stone-200 pb-6">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0 shadow-md">
-                      <img
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <div className="flex justify-between">
-                        <h3 className="font-medium text-stone-900">{item.name}</h3>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-stone-400 hover:text-red-500 cursor-pointer"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      </div>
-                      <p className="text-stone-600 text-sm">${item.price.toFixed(2)}</p>
-                      <div className="flex items-center mt-3">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-1 rounded-md border border-stone-300 hover:bg-stone-100 text-stone-700 cursor-pointer"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="mx-3 w-8 text-center text-stone-900">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-1 rounded-md border border-stone-300 hover:bg-stone-100 text-stone-700 cursor-pointer"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                        <span className="ml-auto font-medium text-stone-900">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {cart.length > 0 && (
-            <div className="border-t border-stone-200 p-6 bg-stone-50 absolute bottom-0 left-0 right-0">
-              <div className="flex justify-between mb-4">
-                <span className="font-medium text-stone-900">Subtotal</span>
-                <span className="font-bold text-stone-900">${cartTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between mb-4">
-                <span className="font-medium text-stone-900">Shipping</span>
-                <span className="font-medium text-emerald-700">Carbon Neutral - Free</span>
-              </div>
-              <div className="flex justify-between mb-6">
-                <span className="text-lg font-bold text-stone-900">Total</span>
-                <span className="text-lg font-bold text-stone-900">${cartTotal.toFixed(2)}</span>
-              </div>
               <button
-                onClick={handleCheckout}
-                className="w-full bg-emerald-700 text-white py-3 rounded-lg font-semibold hover:bg-emerald-800 transition-all cursor-pointer shadow-lg"
+                className="w-12 h-12 flex items-center justify-center rounded-xl border transition-all duration-300 relative overflow-hidden"
+                style={{ 
+                  background: 'var(--surface-1)', 
+                  color: 'var(--text-primary)',
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow)'
+                }}
+                onClick={() => {
+                  setSoundEnabled(!soundEnabled)
+                  localStorage.setItem('soundEnabled', JSON.stringify(!soundEnabled))
+                }}
+                aria-label={`${soundEnabled ? 'Disable' : 'Enable'} sound effects`}
               >
-                Checkout <ChevronRight className="ml-2 h-5 w-5 inline" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                {soundEnabled ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+                  </svg>
+                )}
+              </button>
+
+              <button
+                className="w-12 h-12 flex items-center justify-center rounded-xl border transition-all duration-300 relative overflow-hidden"
+                style={{ 
+                  background: 'var(--surface-1)', 
+                  color: 'var(--text-primary)',
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow)'
+                }}
+                onClick={toggleTheme}
+                aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                {theme === "light" ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                  </svg>
+                )}
               </button>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Wishlist Sidebar */}
-      <div
-        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity ${isWishlistOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-      >
-        <div
-          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform ${isWishlistOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <div className="flex items-center justify-between p-6 border-b border-stone-200">
-            <h2 className="text-xl font-semibold text-stone-900">Your Wishlist ({wishlist.length})</h2>
-            <button
-              onClick={() => setIsWishlistOpen(false)}
-              className="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-700 cursor-pointer"
-            >
-              <X className="h-6 w-6" />
-            </button>
           </div>
+        </header>
 
-          <div className="p-6 overflow-y-auto max-h-[calc(100vh-180px)]">
-            {wishlist.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-24 h-24 mx-auto mb-6 bg-stone-100 rounded-full flex items-center justify-center">
-                  <Heart className="h-12 w-12 text-stone-400" />
+        {/* Main Game Area */}
+        <main className="flex-1 p-4 flex justify-center items-center w-screen max-w-full mx-auto relative"
+              style={{ minHeight: 'calc(100vh - 80px)' }}>
+          <div className="w-full min-w-80 rounded-3xl border overflow-hidden backdrop-blur-2xl relative mx-auto"
+               style={{ 
+                 maxWidth: 'min(90vw, 600px)',
+                 background: 'var(--bg-card)',
+                 borderColor: 'var(--border)',
+                 boxShadow: 'var(--shadow-xl)',
+                 transform: 'scale(1)',
+                 zoom: 1
+               }}>
+            
+            {/* Top border gradient */}
+            <div className="absolute top-0 left-0 right-0 h-px"
+                 style={{ background: 'linear-gradient(90deg, transparent, var(--border-light), transparent)' }} />
+
+            {/* Game Header with Stats */}
+            <div className="p-5 border-b flex justify-between items-center gap-4 flex-wrap md:flex-nowrap"
+                 style={{ 
+                   background: 'var(--surface-2)',
+                   borderColor: 'var(--border)'
+                 }}>
+              <div className="flex gap-8 items-center w-full md:w-auto">
+                <div className="flex flex-col items-center gap-1 relative cursor-pointer flex-1 md:flex-none">
+                  <span className="text-xs font-semibold uppercase tracking-wider"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--text-muted)',
+                          letterSpacing: '0.1em'
+                        }}>
+                    SCORE
+                  </span>
+                  <span className="text-2xl font-black relative"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--primary-solid)',
+                          textShadow: '1px 1px 0px rgba(0,0,0,0.1)'
+                        }}>
+                    {displayScore.toLocaleString()}
+                    <div className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-6 h-0.5 rounded-sm"
+                         style={{ background: 'var(--primary-solid)' }} />
+                  </span>
                 </div>
-                <p className="text-stone-500 mb-6">Your wishlist is empty</p>
-                <button
-                  onClick={() => {
-                    setIsWishlistOpen(false)
-                    scrollToSection(productsRef)
-                  }}
-                  className="bg-emerald-700 text-white px-6 py-3 rounded-lg hover:bg-emerald-800 transition-colors cursor-pointer shadow-lg"
-                >
-                  Explore Eco Products
-                </button>
+                <div className="flex flex-col items-center gap-1 relative cursor-pointer flex-1 md:flex-none">
+                  <span className="text-xs font-semibold uppercase tracking-wider"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--text-muted)',
+                          letterSpacing: '0.1em'
+                        }}>
+                    LEVEL
+                  </span>
+                  <motion.span 
+                    key={level} 
+                    initial={{ scale: 1.2 }} 
+                    animate={{ scale: 1 }} 
+                    className="text-2xl font-black"
+                    style={{ 
+                      fontFamily: 'var(--font-game)', 
+                      color: 'var(--primary-solid)',
+                      textShadow: '1px 1px 0px rgba(0,0,0,0.1)'
+                    }}>
+                    {level}
+                  </motion.span>
+                  <div className="w-15 h-1 rounded-sm mt-1 overflow-hidden"
+                       style={{ background: 'var(--border)' }}>
+                    <motion.div
+                      className="h-full rounded-sm"
+                      style={{ background: 'var(--primary-solid)' }}
+                      initial={{ width: 0 }}
+                      animate={{ 
+                        width: `${Math.min(100, (placedBlocks % BLOCKS_PER_LEVEL) / BLOCKS_PER_LEVEL * 100)}%` 
+                      }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-1 relative cursor-pointer flex-1 md:flex-none">
+                  <span className="text-xs font-semibold uppercase tracking-wider"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--text-muted)',
+                          letterSpacing: '0.1em'
+                        }}>
+                    HIGH SCORE
+                  </span>
+                  <span className="text-2xl font-black relative"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--primary-solid)',
+                          textShadow: '1px 1px 0px rgba(0,0,0,0.1)'
+                        }}>
+                    {highScore.toLocaleString()}
+                    <div className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-6 h-0.5 rounded-sm"
+                         style={{ background: 'var(--primary-solid)' }} />
+                  </span>
+                </div>
+                {combo > 0 && (
+                  <motion.div 
+                    className="rounded-xl px-4 py-2 combo-pulse-animation flex flex-col items-center gap-1 flex-1 md:flex-none"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%)',
+                      boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)'
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-wider"
+                          style={{ 
+                            fontFamily: 'var(--font-game)', 
+                            color: 'white',
+                            letterSpacing: '0.1em'
+                          }}>
+                      COMBO
+                    </span>
+                    <span className="text-2xl font-black text-white"
+                          style={{ 
+                            fontFamily: 'var(--font-game)',
+                            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
+                          }}>
+                      {combo}x
+                    </span>
+                  </motion.div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-6">
-                {wishlist.map((item) => (
-                  <div key={item.id} className="flex border-b border-stone-200 pb-6">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-cover bg-center flex-shrink-0 shadow-md">
-                      <img
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <div className="flex justify-between">
-                        <h3 className="font-medium text-stone-900">{item.name}</h3>
-                        <button
-                          onClick={() => toggleWishlist(item)}
-                          className="text-red-500 hover:text-red-600 cursor-pointer"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      </div>
-                      <p className="text-stone-600 text-sm">${item.price.toFixed(2)}</p>
-                      <div className="flex items-center mt-3">
-                        <button
-                          onClick={() => {
-                            addToCart(item)
-                            toggleWishlist(item)
+
+              <button 
+                onClick={startNewGame} 
+                className="px-5 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 relative overflow-hidden uppercase tracking-wider"
+                style={{ 
+                  fontFamily: 'var(--font-game)',
+                  background: 'var(--primary-solid)',
+                  color: 'var(--text-inverse)',
+                  borderColor: 'transparent',
+                  boxShadow: 'var(--shadow-md)'
+                }}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                {gameStarted ? "New Game" : "Restart"}
+              </button>
+            </div>
+
+            {/* Game Content */}
+            <div className="p-5 flex flex-col gap-5">
+              {/* Game Board */}
+              <div className="flex justify-center relative w-full max-w-full overflow-visible">
+                {/* Board background */}
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 rounded-2xl opacity-50 -z-10"
+                     style={{ 
+                       width: 'calc(100% + 16px)',
+                       height: 'calc(100% + 16px)',
+                       background: 'var(--surface-2)'
+                     }} />
+                
+                <div className="grid grid-cols-8 gap-0.5 p-1 rounded-xl w-fit max-w-full mx-auto"
+                     style={{ 
+                       background: 'var(--border)',
+                       boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                     }}>
+                  {gameBoard.map((row, rowIndex) =>
+                    row.map((cell, colIndex) => {
+                      let previewInfo = { isPreview: false, isValid: false, color: "" }
+
+                      if (selectedBlock && hoverPosition) {
+                        const affectedCells = getAffectedCells(hoverPosition.row, hoverPosition.col)
+                        const matchingCell = affectedCells.find((c) => c.row === rowIndex && c.col === colIndex)
+
+                        if (matchingCell) {
+                          previewInfo = {
+                            isPreview: true,
+                            isValid: matchingCell.valid,
+                            color: selectedBlock.color,
+                          }
+                        }
+                      }
+
+                      // Drag preview
+                      let dragPreviewInfo = { isDragPreview: false, isValid: false }
+                      if (draggedBlock && dragOverPosition) {
+                        const dragAffectedCells = getDragAffectedCells(dragOverPosition.row, dragOverPosition.col)
+                        const matchingDragCell = dragAffectedCells.find((c) => c.row === rowIndex && c.col === colIndex)
+
+                        if (matchingDragCell) {
+                          dragPreviewInfo = {
+                            isDragPreview: true,
+                            isValid: matchingDragCell.valid,
+                          }
+                        }
+                      }
+
+                      return (
+                        <motion.div
+                          key={`${rowIndex}-${colIndex}`}
+                          className={`w-9 h-9 md:w-10 md:h-10 rounded-md relative cursor-pointer transition-all duration-200 border ${
+                            cell ? getBlockColorClass(cell) : ''
+                          } ${isDragging ? 'relative' : ''}`}
+                          style={{ 
+                            background: cell ? undefined : 'var(--bg-card)',
+                            borderColor: cell ? 'transparent' : 'var(--border-light)',
+                            boxShadow: cell ? undefined : 'var(--shadow)'
                           }}
-                          className="bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-800 transition-colors cursor-pointer shadow-lg"
+                          data-row={rowIndex}
+                          data-col={colIndex}
+                          onClick={() => handleCellClick(rowIndex, colIndex)}
+                          onMouseEnter={() => handleCellHover(rowIndex, colIndex)}
+                          onMouseLeave={handleCellLeave}
+                          onDragOver={(e) => handleDragOver(e, rowIndex, colIndex)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, rowIndex, colIndex)}
                         >
-                          Add to Cart
-                        </button>
+                          {!cell && (
+                            <div className="absolute inset-0 rounded-md opacity-0 transition-opacity duration-200 hover:opacity-100"
+                                 style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, transparent 100%)' }} />
+                          )}
+                          
+                          {/* Drag target indicator */}
+                          {isDragging && (
+                            <div className="absolute inset-0 rounded-md border-2 border-dashed opacity-0 transition-opacity duration-200 hover:opacity-50"
+                                 style={{ borderColor: 'var(--border-dark)' }} />
+                          )}
+                          
+                          {previewInfo.isPreview && (
+                            <div
+                              className={`absolute inset-0 rounded-md opacity-80 pulse-animation ${
+                                previewInfo.isValid ? 'valid-preview' : 'invalid-preview'
+                              }`}
+                              style={{
+                                background: previewInfo.isValid ? 'var(--success-solid)' : 'var(--error-solid)',
+                                boxShadow: previewInfo.isValid 
+                                  ? '0 0 12px rgba(16, 185, 129, 0.4)' 
+                                  : '0 0 12px rgba(239, 68, 68, 0.4)'
+                              }}
+                            />
+                          )}
+                          
+                          {dragPreviewInfo.isDragPreview && (
+                            <div
+                              className={`absolute inset-0 rounded-md opacity-90 drag-pulse-animation z-10 ${
+                                dragPreviewInfo.isValid ? 'drag-valid-preview' : 'drag-invalid-preview'
+                              }`}
+                              style={{
+                                background: dragPreviewInfo.isValid ? 'var(--success-solid)' : 'var(--error-solid)',
+                                boxShadow: dragPreviewInfo.isValid 
+                                  ? '0 0 12px rgba(16, 185, 129, 0.4)' 
+                                  : '0 0 12px rgba(239, 68, 68, 0.4)'
+                              }}
+                            />
+                          )}
+                        </motion.div>
+                      )
+                    }),
+                  )}
+                </div>
+              </div>
+
+              {/* Block Selector */}
+              <div className="rounded-2xl p-5 border relative overflow-hidden"
+                   style={{ 
+                     background: 'var(--surface-2)',
+                     borderColor: 'var(--border)'
+                   }}>
+                {/* Background gradient */}
+                <div className="absolute inset-0 pointer-events-none"
+                     style={{
+                       background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.02) 0%, rgba(139, 92, 246, 0.02) 100%)'
+                     }} />
+                
+                <div className="flex justify-between items-center mb-4 relative z-10">
+                  <h3 className="text-lg font-bold"
+                      style={{ 
+                        fontFamily: 'var(--font-game)', 
+                        color: 'var(--text-primary)',
+                        textShadow: '1px 1px 0px rgba(0,0,0,0.1)'
+                      }}>
+                    AVAILABLE BLOCKS
+                  </h3>
+                  {selectedBlock && (
+                    <button 
+                      onClick={rotateSelectedBlock} 
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-all duration-300 relative overflow-hidden"
+                      style={{ 
+                        background: 'var(--surface-1)', 
+                        color: 'var(--text-primary)',
+                        borderColor: 'var(--border)',
+                        boxShadow: 'var(--shadow)'
+                      }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                        <path d="M3.51 15a9 9 0 0 0 14.85 3.36L23 14"></path>
+                      </svg>
+                      Rotate (R)
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex justify-center gap-4 flex-wrap relative z-10">
+                  {availableBlocks.map((block) => (
+                    <motion.div
+                      key={block.id}
+                      className={`border-2 rounded-xl p-4 cursor-pointer transition-all duration-300 min-w-18 flex justify-center items-center relative overflow-hidden ${
+                        selectedBlock?.id === block.id ? 'selected-block' : ''
+                      } ${isDragging && draggedBlock?.id === block.id ? 'opacity-60 scale-95' : ''}`}
+                      style={{ 
+                        background: selectedBlock?.id === block.id ? 'var(--primary-light)' : 'var(--bg-card)',
+                        borderColor: selectedBlock?.id === block.id ? 'var(--primary-solid)' : 'var(--border)',
+                        boxShadow: selectedBlock?.id === block.id ? 'var(--shadow-lg), var(--glow)' : 'var(--shadow)'
+                      }}
+                      draggable={true}
+                      onClick={() => handleBlockSelect(block)}
+                      onDragStart={(e) => handleDragStart(e as any, block)}
+                      onDragEnd={(e) => handleDragEnd(e as any)}
+                      onTouchStart={(e) => handleTouchStart(e, block)}
+                      onTouchMove={(e) => handleTouchMove(e)}
+                      onTouchEnd={(e) => handleTouchEnd(e)}
+                    >
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 opacity-0 transition-opacity duration-300 hover:opacity-100"
+                           style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, transparent 100%)' }} />
+                      
+                      <div
+                        className="grid gap-1"
+                        style={{
+                          gridTemplateColumns: `repeat(${block.shape[0].length}, 1fr)`,
+                          gridTemplateRows: `repeat(${block.shape.length}, 1fr)`,
+                        }}
+                      >
+                        {block.shape.map((row, rowIndex) =>
+                          row.map((cell, colIndex) => (
+                            <div
+                              key={`${rowIndex}-${colIndex}`}
+                              className={`w-3.5 h-3.5 rounded-sm relative ${
+                                cell ? getBlockColorClass(block.color) : 'bg-transparent'
+                              }`}
+                              style={cell ? {
+                                boxShadow: `0 3px 6px ${getBlockShadowColor(block.color)}`
+                              } : {}}
+                            >
+                              {cell && (
+                                <div className="absolute inset-0 rounded-sm"
+                                     style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.2) 0%, transparent 100%)' }} />
+                              )}
+                            </div>
+                          )),
+                        )}
                       </div>
+                    </motion.div>
+                  ))}
+
+                  {availableBlocks.length === 0 && (
+                    <div className="text-center py-8 px-4 text-sm font-medium uppercase tracking-wider"
+                         style={{ 
+                           color: 'var(--text-muted)',
+                           fontFamily: 'var(--font-game)',
+                           letterSpacing: '0.05em'
+                         }}>
+                      No blocks available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* Instructions Modal */}
+        <AnimatePresence>
+          {showInstructions && (
+            <motion.div
+              className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm cursor-pointer"
+              style={{ 
+                overscrollBehavior: 'none',
+                touchAction: 'none'
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInstructions(false)}
+            >
+              <motion.div
+                className="rounded-3xl border max-w-lg w-full overflow-hidden relative cursor-default max-h-[calc(100vh-1rem)] md:max-h-[calc(100vh-2rem)]"
+                style={{ 
+                  background: 'var(--bg-card)',
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow-xl)'
+                }}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Top border gradient */}
+                <div className="absolute top-0 left-0 right-0 h-px"
+                     style={{ background: 'linear-gradient(90deg, transparent, var(--border-light), transparent)' }} />
+
+                <div className="p-8 border-b"
+                     style={{ 
+                       background: 'var(--surface-2)',
+                       borderColor: 'var(--border)'
+                     }}>
+                  <h2 className="text-2xl font-black mb-2"
+                      style={{ 
+                        fontFamily: 'var(--font-game)', 
+                        color: 'var(--primary-solid)',
+                        textShadow: '2px 2px 0px rgba(0,0,0,0.1)'
+                      }}>
+                    How to Play
+                  </h2>
+                  <p className="text-base font-medium"
+                     style={{ 
+                       color: 'var(--text-secondary)',
+                       fontFamily: 'var(--font-body)'
+                     }}>
+                    Master the art of strategic block placement
+                  </p>
+                </div>
+
+                <div className="p-8 max-h-[calc(100vh-200px)] md:max-h-[calc(100vh-160px)] overflow-y-auto">
+                  <ol className="list-none flex flex-col gap-6">
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        1
+                      </span>
+                      <span>Select a block from the available blocks below the game board</span>
+                    </li>
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        2
+                      </span>
+                      <span>Click on the game board to place the selected block, or drag and drop blocks directly onto the board</span>
+                    </li>
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        3
+                      </span>
+                      <span>
+                        Rotate blocks using the Rotate button or press the{' '}
+                        <span className="px-3 py-1.5 rounded-lg text-sm border font-semibold uppercase"
+                              style={{ 
+                                background: 'var(--surface-3)',
+                                borderColor: 'var(--border)',
+                                fontFamily: 'var(--font-game)',
+                                color: 'var(--primary-solid)'
+                              }}>
+                          R
+                        </span>{' '}
+                        key
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        4
+                      </span>
+                      <span>Fill complete horizontal lines to clear them and earn points</span>
+                    </li>
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        5
+                      </span>
+                      <span>Get new blocks after placing all available ones</span>
+                    </li>
+                    <li className="flex items-start gap-4 text-base leading-relaxed"
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)'
+                        }}>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 cursor-pointer"
+                            style={{ 
+                              background: 'var(--primary-solid)',
+                              color: 'var(--text-inverse)',
+                              fontFamily: 'var(--font-game)',
+                              boxShadow: 'var(--shadow)'
+                            }}>
+                        6
+                      </span>
+                      <span>Game ends when no more blocks can be placed</span>
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="p-8 border-t flex justify-end gap-4"
+                     style={{ 
+                       borderColor: 'var(--border)',
+                       background: 'var(--surface-2)'
+                     }}>
+                  <button 
+                    onClick={() => setShowInstructions(false)} 
+                    className="px-5 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 relative overflow-hidden uppercase tracking-wider"
+                    style={{ 
+                      fontFamily: 'var(--font-game)',
+                      background: 'var(--primary-solid)',
+                      color: 'var(--text-inverse)',
+                      borderColor: 'transparent',
+                      boxShadow: 'var(--shadow-md)'
+                    }}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                    Got it!
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Game Over Modal */}
+        <AnimatePresence>
+          {isGameOver && (
+            <motion.div
+              className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="rounded-3xl border max-w-lg w-full overflow-hidden relative max-h-[calc(100vh-1rem)]"
+                style={{ 
+                  background: 'var(--bg-card)',
+                  borderColor: 'var(--border)',
+                  boxShadow: 'var(--shadow-xl)'
+                }}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+              >
+                {/* Top border gradient */}
+                <div className="absolute top-0 left-0 right-0 h-px"
+                     style={{ background: 'linear-gradient(90deg, transparent, var(--border-light), transparent)' }} />
+
+                <div className="p-8 border-b"
+                     style={{ 
+                       background: 'var(--surface-2)',
+                       borderColor: 'var(--border)'
+                     }}>
+                  <h2 className="text-2xl font-black mb-2"
+                      style={{ 
+                        fontFamily: 'var(--font-game)', 
+                        color: 'var(--primary-solid)',
+                        textShadow: '2px 2px 0px rgba(0,0,0,0.1)'
+                      }}>
+                    Game Over!
+                  </h2>
+                  <p className="text-base font-medium"
+                     style={{ 
+                       color: 'var(--text-secondary)',
+                       fontFamily: 'var(--font-body)'
+                     }}>
+                    Great job! Here are your final results
+                  </p>
+                </div>
+
+                <div className="p-8 max-h-[calc(100vh-240px)] overflow-y-auto">
+                  <div className="rounded-2xl p-8 mt-4 flex flex-col gap-4 border"
+                       style={{ 
+                         background: 'var(--surface-2)',
+                         borderColor: 'var(--border)'
+                       }}>
+                    <div className="flex justify-between items-center text-base">
+                      <span className="font-medium text-sm uppercase tracking-wider"
+                            style={{ 
+                              color: 'var(--text-secondary)',
+                              fontFamily: 'var(--font-game)',
+                              letterSpacing: '0.05em'
+                            }}>
+                        FINAL SCORE
+                      </span>
+                      <span className="font-bold text-xl"
+                            style={{ 
+                              fontFamily: 'var(--font-game)', 
+                              color: 'var(--primary-solid)'
+                            }}>
+                        {score.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-base">
+                      <span className="font-medium text-sm uppercase tracking-wider"
+                            style={{ 
+                              color: 'var(--text-secondary)',
+                              fontFamily: 'var(--font-game)',
+                              letterSpacing: '0.05em'
+                            }}>
+                        LEVEL REACHED
+                      </span>
+                      <span className="font-bold text-xl"
+                            style={{ 
+                              fontFamily: 'var(--font-game)', 
+                              color: 'var(--primary-solid)'
+                            }}>
+                        {level}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-base">
+                      <span className="font-medium text-sm uppercase tracking-wider"
+                            style={{ 
+                              color: 'var(--text-secondary)',
+                              fontFamily: 'var(--font-game)',
+                              letterSpacing: '0.05em'
+                            }}>
+                        BLOCKS PLACED
+                      </span>
+                      <span className="font-bold text-xl"
+                            style={{ 
+                              fontFamily: 'var(--font-game)', 
+                              color: 'var(--primary-solid)'
+                            }}>
+                        {placedBlocks}
+                      </span>
                     </div>
                   </div>
-                ))}
+
+                  {/* Statistics Panel */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-bold mb-4"
+                        style={{ 
+                          fontFamily: 'var(--font-game)', 
+                          color: 'var(--text-primary)'
+                        }}>
+                      GAME STATISTICS
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="font-medium text-xs uppercase tracking-wider mb-1"
+                             style={{ 
+                               color: 'var(--text-secondary)',
+                               fontFamily: 'var(--font-game)'
+                             }}>
+                          HIGH SCORE
+                        </div>
+                        <div className="font-bold text-lg"
+                             style={{ 
+                               fontFamily: 'var(--font-game)', 
+                               color: 'var(--primary-solid)'
+                             }}>
+                          {highScore.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-xs uppercase tracking-wider mb-1"
+                             style={{ 
+                               color: 'var(--text-secondary)',
+                               fontFamily: 'var(--font-game)'
+                             }}>
+                          Max Combo
+                        </div>
+                        <div className="font-bold text-lg"
+                             style={{ 
+                               fontFamily: 'var(--font-game)', 
+                               color: 'var(--primary-solid)'
+                             }}>
+                          {maxCombo}x
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-xs uppercase tracking-wider mb-1"
+                             style={{ 
+                               color: 'var(--text-secondary)',
+                               fontFamily: 'var(--font-game)'
+                             }}>
+                          Achievements
+                        </div>
+                        <div className="font-bold text-lg"
+                             style={{ 
+                               fontFamily: 'var(--font-game)', 
+                               color: 'var(--primary-solid)'
+                             }}>
+                          {achievements.size}/{Object.keys(achievementsList).length}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {achievements.size > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm mb-2"
+                            style={{ 
+                              color: 'var(--text-secondary)'
+                            }}>
+                          Unlocked Achievements
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[...achievements].map((achievementId) => {
+                            const achievement = achievementsList[achievementId as keyof typeof achievementsList]
+                            return (
+                              <div
+                                key={achievementId}
+                                className="flex items-center gap-2 px-2 py-2 rounded-lg text-xs"
+                                style={{
+                                  background: 'var(--surface-3)'
+                                }}
+                              >
+                                <span>{achievement.icon}</span>
+                                <span>{achievement.title}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-8 border-t flex justify-end gap-4"
+                     style={{ 
+                       borderColor: 'var(--border)',
+                       background: 'var(--surface-2)'
+                     }}>
+                  <button
+                    onClick={() => {
+                      startNewGame()
+                      setIsGameOver(false)
+                    }}
+                    className="px-5 py-3 rounded-xl text-sm font-semibold border transition-all duration-300 relative overflow-hidden uppercase tracking-wider"
+                    style={{ 
+                      fontFamily: 'var(--font-game)',
+                      background: 'var(--primary-solid)',
+                      color: 'var(--text-inverse)',
+                      borderColor: 'transparent',
+                      boxShadow: 'var(--shadow-md)'
+                    }}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-500" />
+                    Play Again
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Achievement Popup */}
+        <AnimatePresence>
+          {showAchievement && (
+            <motion.div
+              className="fixed top-24 right-5 border-2 rounded-2xl p-6 max-w-sm z-[200] achievement-slide-animation"
+              style={{ 
+                background: 'var(--bg-card)',
+                borderColor: 'var(--primary-solid)',
+                boxShadow: 'var(--shadow-xl), 0 0 20px var(--primary-solid)'
+              }}
+              initial={{ x: 350, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 350, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl achievement-bounce-animation">{showAchievement.icon}</span>
+                <div>
+                  <h3 className="text-lg font-bold mb-0"
+                      style={{ 
+                        fontFamily: 'var(--font-game)', 
+                        color: 'var(--primary-solid)',
+                        textShadow: '1px 1px 0px rgba(0,0,0,0.1)'
+                      }}>
+                    {showAchievement.title}
+                  </h3>
+                  <p className="text-sm leading-snug mb-0"
+                     style={{ 
+                       color: 'var(--text-secondary)',
+                       fontFamily: 'var(--font-body)',
+                       lineHeight: 1.4
+                     }}>
+                    {showAchievement.description}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Particle Effects */}
+        <div className="particles-container">
+          <AnimatePresence>
+            {particles.map((particle) => (
+              <motion.div
+                key={particle.id}
+                className="particle"
+                style={{
+                  left: particle.x,
+                  top: particle.y,
+                  backgroundColor: particle.color,
+                }}
+                initial={{
+                  opacity: 1,
+                  scale: 1,
+                  x: 0,
+                  y: 0,
+                }}
+                animate={{
+                  opacity: 0,
+                  scale: 0.5,
+                  x: particle.velocity.x * 100,
+                  y: particle.velocity.y * 100,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+              />
+            ))}
+          </AnimatePresence>
         </div>
       </div>
-
-      {/* Toast Container */}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-      {/* Product Modal */}
-      <ProductModal
-        product={selectedProduct}
-        isOpen={isProductModalOpen}
-        onClose={closeProductModal}
-        onAddToCart={addToCart}
-        onToggleWishlist={toggleWishlist}
-        isInWishlist={isInWishlist}
-        recentlyAdded={recentlyAdded}
-      />
-    </div>
+    </ThemeContext.Provider>
   )
 }
