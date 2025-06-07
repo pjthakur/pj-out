@@ -1,2586 +1,2398 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import {
-  Shuffle,
-  RotateCcw,
-  Trophy,
-  Clock,
-  Medal,
-  Share2,
-  Volume2,
-  VolumeX,
-  Moon,
-  Sun,
-  Settings,
-  HelpCircle,
-  BrainCircuit,
-  Zap,
-  Star,
-  BarChart,
-  AlertTriangle,
-  Gift,
-  Lock,
-  Brain,
-  Award,
-  Menu,
-  X,
-  ChevronRight,
-  CheckCircle,
-  Users,
-} from "lucide-react";
+Heart, MessageCircle, Users, MapPin, Calendar, Search, Bell, User, Plus, Share2, X, Send, ChevronDown, Check, Menu, Home, Briefcase, Sidebar,
+} from "lucide-react"
 
-// Define card interface
-interface Card {
-  id: number;
-  emoji: string;
-  isFlipped: boolean;
-  isMatched: boolean;
+interface AppUser {
+  id: string
+  name: string
+  avatar: string
+  verified: boolean
 }
 
-// Define achievement interface
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  unlocked: boolean;
+interface Comment {
+  id: string
+  user: AppUser
+  content: string
+  likes: number
+  isLiked: boolean
+  replies: Comment[]
+  timestamp: string
 }
 
-// Define theme interface
-interface Theme {
-  id: string;
-  name: string;
-  gradient: string;
-  text: string;
-  cardBack: string;
-  cardFront: string;
-  accent: string;
-  locked?: boolean;
+interface TravelPost {
+  id: string
+  user: AppUser
+  destination: string
+  state: string
+  description: string
+  image: string
+  departureDate: string
+  duration: string
+  budget: string
+  maxTravelers: number
+  currentTravelers: number
+  tags: string[]
+  likes: number
+  comments: Comment[]
+  isLiked: boolean
+  postedAt: string
+  hasJoined: boolean
 }
 
-// Define Category interface for card sets
-interface Category {
-  id: string;
-  name: string;
-  emojis: {
-    easy: string[];
-    medium: string[];
-    hard: string[];
-  };
-  locked?: boolean;
+interface Notification {
+  id: string
+  type: "join" | "like" | "comment"
+  message: string
+  timestamp: string
+  read: boolean
+  postId: string
 }
 
-// Define Toast interface
-interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  duration?: number;
+const currentUser: AppUser = {
+  id: "current-user",
+  name: "Priya Sharma",
+  avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
+  verified: true,
 }
 
-interface GameProps {
-  setShowGame: React.Dispatch<React.SetStateAction<boolean>>;
-}
+const mockUsers: AppUser[] = [
+  {
+    id: "1",
+    name: "Arjun Patel",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+    verified: true,
+  },
+  {
+    id: "2",
+    name: "Kavya Reddy",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
+    verified: false,
+  },
+  {
+    id: "3",
+    name: "Rohit Singh",
+    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+    verified: true,
+  },
+  {
+    id: "4",
+    name: "Ananya Gupta",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+    verified: false,
+  },
+]
 
-// Main component
-const Game: React.FC<GameProps> = ({ setShowGame }) => {
-  // Game state
-  const [cards, setCards] = useState<Card[]>([]);
-  const [menuOpen, setMenuOpen] = useState(false);
+const initialPosts: TravelPost[] = [
+  {
+    id: "1",
+    user: mockUsers[0],
+    destination: "Goa",
+    state: "Goa",
+    description:
+      "Planning an amazing beach vacation in Goa! Looking for fellow travelers to explore the beautiful beaches, try water sports, and experience the vibrant nightlife. We'll visit Baga Beach, Anjuna, and take a sunset cruise.",
+    image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop",
+    departureDate: "2024-03-15",
+    duration: "5 days",
+    budget: "₹15,000 - ₹25,000",
+    maxTravelers: 4,
+    currentTravelers: 2,
+    tags: ["Beach", "Nightlife", "Water Sports", "Cruise"],
+    likes: 127,
+    comments: [],
+    isLiked: false,
+    postedAt: "2 hours ago",
+    hasJoined: false,
+  },
+  {
+    id: "2",
+    user: mockUsers[1],
+    destination: "Manali",
+    state: "Himachal Pradesh",
+    description:
+      "Adventure seekers wanted for an epic Himalayan expedition! Planning to trek through beautiful valleys, visit ancient temples, and experience the snow-capped mountains. Perfect for nature lovers and photography enthusiasts.",
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+    departureDate: "2024-04-10",
+    duration: "8 days",
+    budget: "₹20,000 - ₹35,000",
+    maxTravelers: 6,
+    currentTravelers: 3,
+    tags: ["Mountains", "Trekking", "Photography", "Adventure"],
+    likes: 89,
+    comments: [],
+    isLiked: true,
+    postedAt: "5 hours ago",
+    hasJoined: false,
+  },
+  {
+    id: "3",
+    user: mockUsers[2],
+    destination: "Rajasthan",
+    state: "Rajasthan",
+    description:
+      "Royal heritage tour through the land of kings! Exploring magnificent palaces, riding camels in the Thar Desert, and experiencing the rich culture of Jaipur, Udaipur, and Jodhpur. A journey through India's royal history.",
+    image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&h=600&fit=crop",
+    departureDate: "2024-05-05",
+    duration: "12 days",
+    budget: "₹30,000 - ₹50,000",
+    maxTravelers: 8,
+    currentTravelers: 4,
+    tags: ["Heritage", "Culture", "Desert", "Palaces"],
+    likes: 203,
+    comments: [],
+    isLiked: false,
+    postedAt: "1 day ago",
+    hasJoined: false,
+  },
+  {
+    id: "4",
+    user: mockUsers[3],
+    destination: "Kerala",
+    state: "Kerala",
+    description:
+      "Backwater bliss and spice plantation tour! Seeking travel companions for a peaceful journey through Kerala's serene backwaters, lush tea gardens, and spice plantations. Includes houseboat stays and Ayurvedic treatments.",
+    image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
+    departureDate: "2024-06-20",
+    duration: "10 days",
+    budget: "₹25,000 - ₹40,000",
+    maxTravelers: 5,
+    currentTravelers: 2,
+    tags: ["Backwaters", "Nature", "Ayurveda", "Houseboat"],
+    likes: 156,
+    comments: [],
+    isLiked: true,
+    postedAt: "3 days ago",
+    hasJoined: false,
+  },
+  {
+    id: "5",
+    user: mockUsers[1],
+    destination: "Leh Ladakh",
+    state: "Jammu & Kashmir",
+    description:
+      "Ultimate high-altitude adventure in the Land of High Passes! Experience breathtaking landscapes, Buddhist monasteries, and the thrill of riding through the world's highest motorable roads. Perfect for adventure enthusiasts!",
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+    departureDate: "2024-07-15",
+    duration: "14 days",
+    budget: "₹40,000 - ₹60,000",
+    maxTravelers: 6,
+    currentTravelers: 4,
+    tags: ["Mountains", "Adventure", "Biking", "Photography"],
+    likes: 298,
+    comments: [],
+    isLiked: true,
+    postedAt: "1 week ago",
+    hasJoined: false,
+  },
+  {
+    id: "6",
+    user: mockUsers[2],
+    destination: "Andaman",
+    state: "Andaman",
+    description:
+      "Pristine beaches and crystal clear waters await! Explore untouched coral reefs, indulge in water sports, and witness stunning sunsets. A perfect tropical getaway for beach lovers and diving enthusiasts.",
+    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop",
+    departureDate: "2024-08-10",
+    duration: "7 days",
+    budget: "₹35,000 - ₹50,000",
+    maxTravelers: 8,
+    currentTravelers: 6,
+    tags: ["Beach", "Diving", "Island", "Adventure"],
+    likes: 167,
+    comments: [],
+    isLiked: false,
+    postedAt: "4 days ago",
+    hasJoined: false,
+  },
+]
 
-  const [moves, setMoves] = useState<number>(0);
-  const [firstCard, setFirstCard] = useState<Card | null>(null);
-  const [secondCard, setSecondCard] = useState<Card | null>(null);
-  const [isChecking, setIsChecking] = useState<boolean>(false);
-  const [gameWon, setGameWon] = useState<boolean>(false);
-  const [timer, setTimer] = useState<number>(0);
-  const [gameStarted, setGameStarted] = useState<boolean>(false);
-  const [gamePaused, setGamePaused] = useState<boolean>(false);
-  const [showTutorial, setShowTutorial] = useState<boolean>(false);
-  const [isFirstVisit, setIsFirstVisit] = useState<boolean>(true);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showStats, setShowStats] = useState<boolean>(false);
-  const [showAchievements, setShowAchievements] = useState<boolean>(false);
-  const [hintsRemaining, setHintsRemaining] = useState<number>(3);
-  const [hintUsed, setHintUsed] = useState<boolean>(false);
-  const [animationSpeed, setAnimationSpeed] = useState<number>(500); // milliseconds
-  const [challengeMode, setChallengeMode] = useState<boolean>(false);
-  const [timeLimit, setTimeLimit] = useState<number>(120); // 2 minutes default
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
-    "medium"
-  );
-  const [selectedTheme, setSelectedTheme] = useState<string>("default");
-  const [selectedCategory, setSelectedCategory] = useState<string>("animals");
-  const [totalGamesPlayed, setTotalGamesPlayed] = useState<number>(0);
-  const [totalMatches, setTotalMatches] = useState<number>(0);
-  
-  // Toast notifications state
-  const [toasts, setToasts] = useState<Toast[]>([]);
+export default function TravelSocialPlatform() {
+  const [posts, setPosts] = useState<TravelPost[]>(initialPosts)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [showCreateTrip, setShowCreateTrip] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [expandedComments, setExpandedComments] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filteredPosts, setFilteredPosts] = useState<TravelPost[]>(initialPosts)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const [currentView, setCurrentView] = useState<"feed" | "mytrips">("feed")
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedFilter, setSelectedFilter] = useState<string>("all")
+  const [showStats, setShowStats] = useState(false)
+  const [randomStats, setRandomStats] = useState({
+    monthlyTrips: 35,
+    activeUsers: 75,
+    tipNumber: 42,
+    userTripCounts: [5, 7, 3] // for suggested users
+  })
+  const [subscribeEmail, setSubscribeEmail] = useState("")
 
-  // Toast management functions
-  const showToast = (message: string, type: Toast['type'] = 'info', duration: number = 3000) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast: Toast = { id, message, type, duration };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    // Auto remove toast after duration
-    setTimeout(() => {
-      removeToast(id);
-    }, duration);
-  };
+  // Refs for click outside detection
+  const notificationRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const mobileSidebarRef = useRef<HTMLDivElement>(null)
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
-  
-  // Helper function to create the default achievements array
-  const createDefaultAchievements = (): Achievement[] => [
-    {
-      id: "first_win",
-      name: "First Victory",
-      description: "Complete your first memory match game",
-      icon: <Trophy size={24} className="text-yellow-500" />,
-      unlocked: false,
-    },
-    {
-      id: "speed_demon",
-      name: "Speed Demon",
-      description: "Complete a game in under 60 seconds",
-      icon: <Zap size={24} className="text-blue-500" />,
-      unlocked: false,
-    },
-    {
-      id: "perfect_memory",
-      name: "Perfect Memory",
-      description: "Complete a game with minimal moves (pairs × 1.5 or less)",
-      icon: <BrainCircuit size={24} className="text-purple-500" />,
-      unlocked: false,
-    },
-    {
-      id: "master_matcher",
-      name: "Master Matcher",
-      description: "Win 5 games in total",
-      icon: <Star size={24} className="text-amber-500" />,
-      unlocked: false,
-    },
-    {
-      id: "challenge_accepted",
-      name: "Challenge Accepted",
-      description: "Win a game in challenge mode",
-      icon: <AlertTriangle size={24} className="text-red-500" />,
-      unlocked: false,
-    },
-  ];
-  
-  const [achievements, setAchievements] = useState<Achievement[]>(createDefaultAchievements());
+  // New trip form state
+  const [newTrip, setNewTrip] = useState({
+    destination: "",
+    state: "",
+    description: "",
+    image: null as File | null,
+    departureDate: "",
+    duration: "",
+    budget: "",
+    maxTravelers: 1,
+    tags: [] as string[],
+  })
 
-  // Available themes
-  const themes: Theme[] = [
-    {
-      id: "default",
-      name: "Corporate Blue",
-      gradient: "from-blue-50 to-indigo-100",
-      text: "text-slate-800",
-      cardBack: "bg-white border-indigo-100",
-      cardFront: "from-indigo-500 to-indigo-700",
-      accent: "bg-indigo-600 hover:bg-indigo-700",
-    },
-    {
-      id: "sunset",
-      name: "Sunset Orange",
-      gradient: "from-orange-50 to-amber-100",
-      text: "text-slate-800",
-      cardBack: "bg-white border-orange-100",
-      cardFront: "from-orange-500 to-red-600",
-      accent: "bg-orange-600 hover:bg-orange-700",
-    },
-    {
-      id: "forest",
-      name: "Forest Green",
-      gradient: "from-green-50 to-emerald-100",
-      text: "text-slate-800",
-      cardBack: "bg-white border-green-100",
-      cardFront: "from-green-500 to-emerald-700",
-      accent: "bg-green-600 hover:bg-green-700",
-    },
-    {
-      id: "midnight",
-      name: "Midnight Purple",
-      gradient: "from-violet-100 to-purple-200",
-      text: "text-slate-800",
-      cardBack: "bg-white border-violet-100",
-      cardFront: "from-violet-600 to-purple-800",
-      accent: "bg-violet-600 hover:bg-violet-700",
-      locked: true,
-    },
-  ];
+  // Comment state
+  const [commentText, setCommentText] = useState("")
+  const [replyText, setReplyText] = useState("")
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
 
-  // Dark mode variants for themes
-  const getDarkThemeVariant = (theme: Theme) => {
-    const darkVariants: { [key: string]: Partial<Theme> } = {
-      default: {
-        gradient: "from-slate-900 to-slate-800",
-        text: "text-white",
-        cardBack: "bg-slate-800 border-slate-600",
-        cardFront: "from-indigo-600 to-indigo-800",
-        accent: "bg-indigo-600 hover:bg-indigo-700",
-      },
-      sunset: {
-        gradient: "from-slate-900 to-slate-800",
-        text: "text-white",
-        cardBack: "bg-slate-800 border-slate-600",
-        cardFront: "from-orange-600 to-red-700",
-        accent: "bg-orange-600 hover:bg-orange-700",
-      },
-      forest: {
-        gradient: "from-slate-900 to-slate-800",
-        text: "text-white",
-        cardBack: "bg-slate-800 border-slate-600",
-        cardFront: "from-green-600 to-emerald-800",
-        accent: "bg-green-600 hover:bg-green-700",
-      },
-      midnight: {
-        gradient: "from-slate-900 to-slate-800",
-        text: "text-white",
-        cardBack: "bg-slate-800 border-slate-600",
-        cardFront: "from-violet-700 to-purple-900",
-        accent: "bg-violet-600 hover:bg-violet-700",
-      },
-    };
+  // Get user's trips
+  const userTrips = posts.filter((post) => post.user.id === currentUser.id)
 
-    return {
-      ...theme,
-      ...darkVariants[theme.id],
-    };
-  };
+  const [imagePreview, setImagePreview] = useState<string>("")
 
-  // Available categories
-  const categories: Category[] = [
-    {
-      id: "animals",
-      name: "Animals",
-      emojis: {
-        easy: ["🐶", "🐱", "🐭"], // 3 pairs = 6 cards
-        medium: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊"], // 6 pairs = 12 cards
-        hard: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼"], // 8 pairs = 16 cards
-      },
-    },
-    {
-      id: "foods",
-      name: "Foods",
-      emojis: {
-        easy: ["🍎", "🍌", "🍇"], // 3 pairs = 6 cards
-        medium: ["🍎", "🍌", "🍇", "🍓", "🍕", "🍔"], // 6 pairs = 12 cards
-        hard: ["🍎", "🍌", "🍇", "🍓", "🍕", "🍔", "🍩", "🍦"], // 8 pairs = 16 cards
-      },
-    },
-    {
-      id: "travel",
-      name: "Travel",
-      emojis: {
-        easy: ["✈️", "🚗", "🚢"], // 3 pairs = 6 cards
-        medium: ["✈️", "🚗", "🚢", "🚂", "🏖️", "🗼"], // 6 pairs = 12 cards
-        hard: ["✈️", "🚗", "🚢", "🚂", "🏖️", "🗼", "🏰", "🏝️"], // 8 pairs = 16 cards
-      },
-      locked: true,
-    },
-  ];
+  // Get popular destinations
+  const popularDestinations = Array.from(new Set(posts.map(post => post.destination)))
+    .slice(0, 6)
+    .map(dest => ({
+      name: dest,
+      count: posts.filter(post => post.destination === dest).length
+    }))
+    .sort((a, b) => b.count - a.count)
 
-  const [bestScores, setBestScores] = useState<{
-    [key: string]: { moves: number; time: number } | null;
-  }>({
-    easy: null,
-    medium: null,
-    hard: null,
-  });
+  // Get travel statistics
+  const travelStats = {
+    totalTrips: posts.length,
+    activeUsers: mockUsers.length,
+    totalTravelers: posts.reduce((sum, post) => sum + post.currentTravelers, 0),
+    upcomingTrips: posts.filter(post => new Date(post.departureDate) > new Date()).length
+  }
 
-  // Stats for current game session
-  const [currentStats, setCurrentStats] = useState({
-    matchesFound: 0,
-    hintsUsed: 0,
-    fastestMatch: 0,
-    longestMatch: 0,
-  });
-
-  // Refs for audio
-  const flipSound = useRef<HTMLAudioElement | null>(null);
-  const matchSound = useRef<HTMLAudioElement | null>(null);
-  const victorySound = useRef<HTMLAudioElement | null>(null);
-  const errorSound = useRef<HTMLAudioElement | null>(null);
-  const buttonSound = useRef<HTMLAudioElement | null>(null);
+  // Filter options
+  const filterOptions = [
+    { value: "all", label: "All Trips" },
+    { value: "Beach", label: "Beach" },
+    { value: "Mountains", label: "Mountains" },
+    { value: "Heritage", label: "Heritage" },
+    { value: "Adventure", label: "Adventure" },
+    { value: "Nature", label: "Nature" }
+  ]
 
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem("memoryMatchDarkMode");
-    if (savedDarkMode !== null) {
-      setDarkMode(savedDarkMode === "true");
-    } else {
-      localStorage.setItem("memoryMatchDarkMode", "true"); // Default to dark mode
-    }
-  }, []);
+    let filtered = posts
 
-  useEffect(() => {
-    const modalOpen =
-      showSettings ||
-      showStats ||
-      showAchievements ||
-      showTutorial ||
-      gamePaused ||
-      gameWon;
-
-    if (modalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    // Clean up on unmount
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [
-    showSettings,
-    showStats,
-    showAchievements,
-    showTutorial,
-    gamePaused,
-    gameWon,
-  ]);
-
-  // Initialize audio elements
-
-  useEffect(() => {
-    flipSound.current = new Audio(
-      "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-    );
-    matchSound.current = new Audio(
-      "https://actions.google.com/sounds/v1/cartoon/pop.ogg"
-    );
-    victorySound.current = new Audio(
-      "https://actions.google.com/sounds/v1/cartoon/drum_roll.ogg"
-    );
-    errorSound.current = new Audio(
-      "data:audio/wav;base64,UklGRl9nAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtnAAAAvgACAFsACQC+AAoASAAVAGsALgA1AEoAIQAYAAAA///7/+X/x/+0/5n/iv+G/4X/gf98/37/i/+c/6z/wP/c/wAA//8CAP//+f/3/+X/yf+r/5H/ff9m/1L/Sf9M/1n/ZP91/5D/tv/t/xAAKAA7AE0AVgBWAFIA/AAHAAcACwAQABcAIgAqADQAPQBHAFEAXABnAHQAggCVAKgAuwDNAOAA8wAGARkBLAE/AVMBZgF6AY4BoAG0AccB2wHuAQICFgEbARkBFQESAQ0BBgH9APQAMgA3ADwAQABFAEkAzQDSANcA3QDjAOgA7QDyAPgA/QADAAoAkQCWAJ0AogApACMAGwAWABEACQADAP3/+P/y/+3/6P/j/9//2v/W/9H/zf/K/8b/wf+9/7r/"
-    );
-    buttonSound.current = new Audio(
-      "https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"
-    );
-
-    // Check if it's first visit
-    const firstVisit = localStorage.getItem("memoryMatchFirstVisit");
-    if (!firstVisit) {
-      setShowTutorial(true);
-      localStorage.setItem("memoryMatchFirstVisit", "false");
-    } else {
-      setIsFirstVisit(false);
-    }
-
-    // Initialize other stats
-    const savedTotalGames = localStorage.getItem("memoryMatchTotalGames");
-    if (savedTotalGames) {
-      setTotalGamesPlayed(parseInt(savedTotalGames));
-    }
-
-    const savedTotalMatches = localStorage.getItem("memoryMatchTotalMatches");
-    if (savedTotalMatches) {
-      setTotalMatches(parseInt(savedTotalMatches));
-    }
-
-    const savedAchievements = localStorage.getItem("memoryMatchAchievements");
-    if (savedAchievements) {
-      try {
-        const savedData = JSON.parse(savedAchievements);
-        // Check if it's the old format (full achievements) or new format (just id and unlocked)
-        if (savedData.length > 0 && savedData[0].hasOwnProperty('icon')) {
-          // Old format with React elements - extract only essential data
-          const essentialData = savedData.map((a: any) => ({
-            id: a.id,
-            unlocked: a.unlocked
-          }));
-          // Rebuild achievements array with default structure and saved unlock status
-          const defaultAchievements = createDefaultAchievements();
-          const updatedAchievements = defaultAchievements.map(defaultAchievement => {
-            const savedAchievement = essentialData.find((saved: any) => saved.id === defaultAchievement.id);
-            return {
-              ...defaultAchievement,
-              unlocked: savedAchievement ? savedAchievement.unlocked : false
-            };
-          });
-          setAchievements(updatedAchievements);
-        } else {
-          // New format (just id and unlocked) - rebuild with default structure
-          const defaultAchievements = createDefaultAchievements();
-          const updatedAchievements = defaultAchievements.map(defaultAchievement => {
-            const savedAchievement = savedData.find((saved: any) => saved.id === defaultAchievement.id);
-            return {
-              ...defaultAchievement,
-              unlocked: savedAchievement ? savedAchievement.unlocked : false
-            };
-          });
-          setAchievements(updatedAchievements);
-        }
-      } catch (error) {
-        console.error("Error loading achievements:", error);
-        // Fall back to default achievements if there's an error
-        setAchievements(createDefaultAchievements());
-      }
-    }
-
-    const savedTheme = localStorage.getItem("memoryMatchTheme");
-    if (savedTheme) {
-      setSelectedTheme(savedTheme);
-    }
-
-    const savedDarkMode = localStorage.getItem("memoryMatchDarkMode");
-    if (savedDarkMode) {
-      setDarkMode(savedDarkMode === "true");
-    }
-
-    const savedSoundEnabled = localStorage.getItem("memoryMatchSound");
-    if (savedSoundEnabled) {
-      setSoundEnabled(savedSoundEnabled === "true");
-    }
-  }, []);
-
-  // Get current theme
-  const getCurrentTheme = (): Theme => {
-    return themes.find((theme) => theme.id === selectedTheme) || themes[0];
-  };
-
-  // Get current category
-  const getCurrentCategory = (): Category => {
-    return (
-      categories.find((category) => category.id === selectedCategory) ||
-      categories[0]
-    );
-  };
-
-  // Play sound if enabled
-  const playSound = (sound: HTMLAudioElement | null) => {
-    if (soundEnabled && sound) {
-      try {
-        sound.currentTime = 0;
-        sound.play().catch(() => {}); // prevent console error
-      } catch (e) {
-        // ignore autoplay errors
-      }
-    }
-  };
-
-  // Initialize or reset the game
-  const initializeGame = () => {
-    const category = getCurrentCategory();
-    const difficultyEmojis = category.emojis[difficulty];
-
-    // Create pairs of cards with emojis
-    const cardPairs = [...difficultyEmojis].flatMap((emoji) => [
-      { id: Math.random(), emoji, isFlipped: false, isMatched: false },
-      { id: Math.random(), emoji, isFlipped: false, isMatched: false },
-    ]);
-
-    // Shuffle the cards
-    const shuffledCards = cardPairs.sort(() => Math.random() - 0.5);
-
-    // Reset ALL game state variables
-    setCards(shuffledCards);
-    setMoves(0);
-    setFirstCard(null);
-    setSecondCard(null);
-    setIsChecking(false);
-    setGameWon(false);
-    setTimer(0);
-    setGameStarted(false);
-    setGamePaused(false);
-    setHintUsed(false);
-    setHintsRemaining(3);
-
-    // Reset current game stats
-    setCurrentStats({
-      matchesFound: 0,
-      hintsUsed: 0,
-      fastestMatch: 0,
-      longestMatch: 0,
-    });
-
-    // Close any open modals/overlays when starting new game
-    setShowStats(false);
-    setShowAchievements(false);
-    setShowSettings(false);
-    setShowTutorial(false);
-
-    // Play button sound
-    playSound(buttonSound.current);
-  };
-
-  // Handle card click
-  const handleCardClick = (clickedCard: Card) => {
-    // Prevent clicking if paused, already checking, or card is already flipped/matched
-    if (
-      gamePaused ||
-      isChecking ||
-      clickedCard.isFlipped ||
-      clickedCard.isMatched
-    ) {
-      return;
-    }
-
-    // Start the game on first click
-    if (!gameStarted) {
-      setGameStarted(true);
-    }
-
-    // Play flip sound
-    playSound(flipSound.current);
-
-    // Flip the card
-    setCards((prevCards) =>
-      prevCards.map((card) =>
-        card.id === clickedCard.id ? { ...card, isFlipped: true } : card
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      filtered = filtered.filter(
+        (post) =>
+          post.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
       )
-    );
-
-    // Logic for checking pairs
-    if (!firstCard) {
-      setFirstCard(clickedCard);
-    } else {
-      setMoves((prevMoves) => prevMoves + 1);
-      setSecondCard(clickedCard);
-    }
-  };
-
-  // Show hint - flip two matching cards briefly
-  const showHint = () => {
-    if (hintsRemaining > 0 && gameStarted && !gameWon && !gamePaused) {
-      setHintsRemaining((prev) => prev - 1);
-      setHintUsed(true);
-      setCurrentStats((prev) => ({
-        ...prev,
-        hintsUsed: prev.hintsUsed + 1,
-      }));
-
-      // Find unmatched pairs
-      const unmatchedCards = cards.filter((card) => !card.isMatched);
-      const unmatchedPairs: { [key: string]: Card[] } = {};
-
-      // Group by emoji
-      unmatchedCards.forEach((card) => {
-        if (!unmatchedPairs[card.emoji]) {
-          unmatchedPairs[card.emoji] = [];
-        }
-        unmatchedPairs[card.emoji].push(card);
-      });
-
-      // Find a pair that hasn't been flipped yet
-      const availablePairs = Object.values(unmatchedPairs).filter(
-        (pair) => pair.length === 2 && pair.some((card) => !card.isFlipped)
-      );
-
-      if (availablePairs.length > 0) {
-        // Select a random pair
-        const selectedPair =
-          availablePairs[Math.floor(Math.random() * availablePairs.length)];
-
-        // Flip the pair briefly
-        setCards((prevCards) =>
-          prevCards.map((card) =>
-            selectedPair.find((p) => p.id === card.id)
-              ? { ...card, isFlipped: true }
-              : card
-          )
-        );
-
-        // Flip them back after a delay
-        setTimeout(() => {
-          setCards((prevCards) =>
-            prevCards.map((card) =>
-              selectedPair.find((p) => p.id === card.id) && !card.isMatched
-                ? { ...card, isFlipped: false }
-                : card
-            )
-          );
-          setHintUsed(false);
-        }, 1000);
-
-        // Play sound
-        playSound(buttonSound.current);
-      }
-    }
-  };
-
-  // Toggle pause game
-  const togglePause = () => {
-    if (gameStarted && !gameWon) {
-      setGamePaused((prev) => !prev);
-      playSound(buttonSound.current);
-    }
-  };
-
-  // Format time
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  // Update best scores when game is won
-  const updateBestScores = () => {
-    const currentScore = { moves, time: timer };
-
-    setBestScores((prevScores) => {
-      const prevBest = prevScores[difficulty];
-
-      // Update if this is the first score or better than previous
-      if (
-        !prevBest ||
-        moves < prevBest.moves ||
-        (moves === prevBest.moves && timer < prevBest.time)
-      ) {
-        const newScores = {
-          ...prevScores,
-          [difficulty]: currentScore,
-        };
-        localStorage.setItem(
-          "memoryMatchBestScores",
-          JSON.stringify(newScores)
-        );
-        return newScores;
-      }
-
-      return prevScores;
-    });
-  };
-
-  // Update achievements
-  const updateAchievements = () => {
-    const updatedAchievements = [...achievements];
-    let achievementUnlocked = false;
-
-    // First win achievement
-    if (!achievements.find((a) => a.id === "first_win")?.unlocked) {
-      updatedAchievements.find((a) => a.id === "first_win")!.unlocked = true;
-      achievementUnlocked = true;
     }
 
-    // Speed demon achievement
-    if (
-      !achievements.find((a) => a.id === "speed_demon")?.unlocked &&
-      timer < 60
-    ) {
-      updatedAchievements.find((a) => a.id === "speed_demon")!.unlocked = true;
-      achievementUnlocked = true;
+    // Apply category filter
+    if (selectedFilter !== "all") {
+      filtered = filtered.filter(post => 
+        post.tags.some(tag => tag.toLowerCase().includes(selectedFilter.toLowerCase()))
+      )
     }
 
-    // Perfect memory achievement
-    const perfectMoveCount = Math.ceil((cards.length / 2) * 1.5);
-    if (
-      !achievements.find((a) => a.id === "perfect_memory")?.unlocked &&
-      moves <= perfectMoveCount
-    ) {
-      updatedAchievements.find((a) => a.id === "perfect_memory")!.unlocked =
-        true;
-      achievementUnlocked = true;
-    }
+    setFilteredPosts(filtered)
+  }, [searchQuery, posts, selectedFilter])
 
-    // Master matcher achievement (5 games)
-    if (
-      !achievements.find((a) => a.id === "master_matcher")?.unlocked &&
-      totalGamesPlayed + 1 >= 5
-    ) {
-      updatedAchievements.find((a) => a.id === "master_matcher")!.unlocked =
-        true;
-      achievementUnlocked = true;
-    }
-
-    // Challenge accepted achievement
-    if (
-      !achievements.find((a) => a.id === "challenge_accepted")?.unlocked &&
-      challengeMode
-    ) {
-      updatedAchievements.find((a) => a.id === "challenge_accepted")!.unlocked =
-        true;
-      achievementUnlocked = true;
-    }
-
-    if (achievementUnlocked) {
-      setAchievements(updatedAchievements);
-      
-      // Only save the essential data (id and unlocked status) to avoid circular reference errors
-      const achievementData = updatedAchievements.map(achievement => ({
-        id: achievement.id,
-        unlocked: achievement.unlocked
-      }));
-      
-      localStorage.setItem(
-        "memoryMatchAchievements",
-        JSON.stringify(achievementData)
-      );
-    }
-
-    return achievementUnlocked;
-  };
-
-  // Check if the current score is a new best score
-  const isNewBestScore = (): boolean => {
-    const prevBest = bestScores[difficulty];
-    return (
-      !prevBest ||
-      moves < prevBest.moves ||
-      (moves === prevBest.moves && timer < prevBest.time)
-    );
-  };
-
-  // Share results (simulated)
-  const shareResults = () => {
-    const shareMessage = `I completed the MemMatch game on ${difficulty} difficulty with ${moves} moves in ${formatTime(
-      timer
-    )}! Can you beat my score? #MemMatch`;
-
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "MemMatch Results",
-          text: shareMessage,
-        })
-        .then(() => {
-          showToast("Results shared successfully!", "success");
-        })
-        .catch((error) => {
-          showToast("Share Cancelled");
-        });
-    } else {
-      // Fallback for browsers that don't support sharing
-      showToast(shareMessage, "info", 5000);
-    }
-
-    playSound(buttonSound.current);
-  };
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      const newMode = !prev;
-      localStorage.setItem("memoryMatchDarkMode", newMode.toString());
-      return newMode;
-    });
-    playSound(buttonSound.current);
-  };
-
-  // Toggle sound
-  const toggleSound = () => {
-    setSoundEnabled((prev) => {
-      const newMode = !prev;
-      localStorage.setItem("memoryMatchSound", newMode.toString());
-      return newMode;
-    });
-
-    // Play test sound if enabled
-    if (!soundEnabled) {
-      playSound(buttonSound.current);
-    }
-  };
-
-  // Change theme
-  const changeTheme = (themeId: string) => {
-    // Check if theme is locked
-    const theme = themes.find((t) => t.id === themeId);
-    if (theme && theme.locked) {
-      // Show unlock message
-      showToast("This theme will be unlocked after you earn more achievements!", "warning");
-      return;
-    }
-
-    setSelectedTheme(themeId);
-    localStorage.setItem("memoryMatchTheme", themeId);
-    playSound(buttonSound.current);
-  };
-
-  // Change category
-  const changeCategory = (categoryId: string) => {
-    // Check if category is locked
-    const category = categories.find((c) => c.id === categoryId);
-    if (category && category.locked) {
-      // Show unlock message
-      showToast("This category will be unlocked after you earn more achievements!", "warning");
-      return;
-    }
-
-    setSelectedCategory(categoryId);
-    localStorage.setItem("memoryMatchCategory", categoryId);
-    initializeGame();
-  };
-
-  // Toggle challenge mode
-  const toggleChallengeMode = () => {
-    // Prevent toggling during an active game
-    if (gameStarted && !gameWon) {
-      showToast("Start a new game to change the challenge mode!", "warning");
-      return;
-    }
-    
-    setChallengeMode((prev) => !prev);
-    playSound(buttonSound.current);
-  };
-
-  // Determine number of columns based on difficulty
-  const getGridCols = () => {
-    switch (difficulty) {
-      case "easy":
-        return "grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3"; // 6 cards = 3x2 (better for mobile)
-      case "medium":
-        return "grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"; // 12 cards = 4x3 (better for mobile)
-      case "hard":
-        return "grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"; // 16 cards = 4x4
-    }
-  };
-
-  // Start timer when game starts
+  //outside 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
 
-    if (gameStarted && !gameWon && !gamePaused) {
-      interval = setInterval(() => {
-        setTimer((prevTimer) => {
-          // Check for time limit in challenge mode
-          if (challengeMode && prevTimer + 1 >= timeLimit) {
-            setGameWon(false);
-            setGameStarted(false);
-            playSound(errorSound.current);
-            showToast("Time's up! Challenge failed.", "error");
-            return prevTimer;
-          }
-          return prevTimer + 1;
-        });
-      }, 1000);
+       
+      if (target.textContent === "Mark all as read") {
+        return
+      }
+
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false)
+      }
+      if (mobileSidebarRef.current && !mobileSidebarRef.current.contains(event.target as Node)) {
+        setShowMobileSidebar(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // Prevent scroll when modal is open 
+  useEffect(() => {
+    if (showCreateTrip || showMobileSidebar) {
+      document.body.style.overflow = "hidden"
+      document.body.style.position = "fixed"
+      document.body.style.width = "100%"
+      document.body.style.height = "100%"
+      // Prevent scroll on touch devices
+      document.body.style.touchAction = "none"
+    } else {
+      document.body.style.overflow = "unset"
+      document.body.style.position = "unset"
+      document.body.style.width = "unset"
+      document.body.style.height = "unset"
+      document.body.style.touchAction = "unset"
     }
 
     return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [gameStarted, gameWon, gamePaused, challengeMode, timeLimit]);
-
-  // Check if game is won
-  useEffect(() => {
-    if (cards.length > 0 && cards.every((card) => card.isMatched)) {
-      setGameWon(true);
-      setGameStarted(false);
-
-      // Play victory sound
-      playSound(victorySound.current);
-
-      // Update game statistics
-      setTotalGamesPlayed((prev) => {
-        const newTotal = prev + 1;
-        localStorage.setItem("memoryMatchTotalGames", newTotal.toString());
-        return newTotal;
-      });
-
-      // Update match count
-      setTotalMatches((prev) => {
-        const newTotal = prev + cards.length / 2;
-        localStorage.setItem("memoryMatchTotalMatches", newTotal.toString());
-        return newTotal;
-      });
-
-      // Update best scores
-      updateBestScores();
-
-      // Update achievements
-      const achieved = updateAchievements();
-
-      // If achievement was unlocked, unlock more content
-      if (achieved) {
-        const unlockedCount = achievements.filter((a) => a.unlocked).length + 1;
-
-        // Unlock a theme if 3 achievements
-        if (unlockedCount >= 3) {
-          const lockedThemes = themes.filter((t) => t.locked);
-          if (lockedThemes.length > 0) {
-            // Simulate unlocking the first locked theme
-            showToast(`You've unlocked the ${lockedThemes[0].name} theme!`, "success");
-          }
-        }
-
-        // Unlock a category if 4 achievements
-        if (unlockedCount >= 4) {
-          const lockedCategories = categories.filter((c) => c.locked);
-          if (lockedCategories.length > 0) {
-            // Simulate unlocking the first locked category
-            showToast(`You've unlocked the ${lockedCategories[0].name} category!`, "success");
-          }
-        }
-      }
+      document.body.style.overflow = "unset"
+      document.body.style.position = "unset"
+      document.body.style.width = "unset"
+      document.body.style.height = "unset"
+      document.body.style.touchAction = "unset"
     }
-  }, [cards]);
+  }, [showCreateTrip, showMobileSidebar])
 
-  // Check for card matches
+  // Set random values after component mounts to avoid hydration mismatch
   useEffect(() => {
-    if (firstCard && secondCard) {
-      setIsChecking(true);
+    setRandomStats({
+      monthlyTrips: Math.floor(Math.random() * 50 + 20),
+      activeUsers: Math.floor(Math.random() * 100 + 50),
+      tipNumber: Math.floor(Math.random() * 100 + 1),
+      userTripCounts: [
+        Math.floor(Math.random() * 10 + 1),
+        Math.floor(Math.random() * 10 + 1),
+        Math.floor(Math.random() * 10 + 1)
+      ]
+    })
+  }, [])
 
-      const matchStartTime = Date.now();
+  const showToastMessage = (message: string) => {
+    setToastMessage(message)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
+  }
 
-      if (firstCard.emoji === secondCard.emoji) {
-        // Cards match
-        setCards((prevCards) =>
-          prevCards.map((card) =>
-            card.id === firstCard.id || card.id === secondCard.id
-              ? { ...card, isMatched: true, isFlipped: true }
-              : card
-          )
-        );
+  const addNotification = (type: "join" | "like" | "comment", message: string, postId: string) => {
+    const newNotification: Notification = {
+      id: Date.now().toString(),
+      type,
+      message,
+      timestamp: "Just now",
+      read: false,
+      postId,
+    }
+    setNotifications((prev) => [newNotification, ...prev])
+  }
 
-        // Update current stats
-        setCurrentStats((prev) => {
-          const matchTime = (Date.now() - matchStartTime) / 1000;
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setNewTrip({ ...newTrip, image: file })
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleLike = (postId: string) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          const newIsLiked = !post.isLiked
+          if (newIsLiked) {
+            addNotification("like", `You liked ${post.destination} trip`, postId)
+          }
           return {
-            ...prev,
-            matchesFound: prev.matchesFound + 1,
-            fastestMatch:
-              prev.fastestMatch === 0
-                ? matchTime
-                : Math.min(prev.fastestMatch, matchTime),
-            longestMatch: Math.max(prev.longestMatch, matchTime),
-          };
-        });
+            ...post,
+            isLiked: newIsLiked,
+            likes: newIsLiked ? post.likes + 1 : post.likes - 1,
+          }
+        }
+        return post
+      }),
+    )
+  }
 
-        // Play match sound
-        playSound(matchSound.current);
+  const handleJoin = (postId: string) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId && post.currentTravelers < post.maxTravelers && !post.hasJoined) {
+          addNotification("join", `You joined the ${post.destination} trip!`, postId)
+          showToastMessage("Successfully joined the trip!")
+          return {
+            ...post,
+            currentTravelers: post.currentTravelers + 1,
+            hasJoined: true,
+          }
+        }
+        return post
+      }),
+    )
+  }
 
-        resetSelection();
+  const handleShare = (postId: string) => {
+    const post = posts.find((p) => p.id === postId)
+    if (post) {
+      if (post.currentTravelers >= post.maxTravelers) {
+        showToastMessage(`${post.destination} trip is full!`)
       } else {
-        // Cards don't match - flip them back after a delay
-        setTimeout(() => {
-          setCards((prevCards) =>
-            prevCards.map((card) =>
-              card.id === firstCard.id || card.id === secondCard.id
-                ? { ...card, isFlipped: false }
-                : card
-            )
-          );
-
-          // Play error sound
-          playSound(errorSound.current);
-
-          resetSelection();
-        }, animationSpeed);
+        showToastMessage(`${post.destination} trip shared successfully!`)
       }
     }
-  }, [firstCard, secondCard, animationSpeed]);
+  }
 
-  // Reset card selection
-  const resetSelection = () => {
-    setFirstCard(null);
-    setSecondCard(null);
-    setIsChecking(false);
-  };
-
-  // Initialize the game on component mount or difficulty/category change
-  useEffect(() => {
-    initializeGame();
-  }, [difficulty, selectedCategory]);
-
-  // Load best scores from local storage on component mount
-  useEffect(() => {
-    const savedScores = localStorage.getItem("memoryMatchBestScores");
-    if (savedScores) {
-      setBestScores(JSON.parse(savedScores));
+  const handleCreateTrip = () => {
+    if (!newTrip.destination || !newTrip.description || !newTrip.image) {
+      showToastMessage("Please fill all required fields including uploading an image!")
+      return
     }
-  }, []);
 
-  // Get current theme
-  const theme = getCurrentTheme();
-  const currentTheme = darkMode ? getDarkThemeVariant(theme) : theme;
+    const imageUrl = imagePreview || "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=600&fit=crop"
 
-  // Determine overall background based on dark mode and theme
-  const bgClass = `bg-gradient-to-br ${currentTheme.gradient} ${currentTheme.text} transition-colors duration-300`;
+    const trip: TravelPost = {
+      id: Date.now().toString(),
+      user: currentUser,
+      destination: newTrip.destination,
+      state: newTrip.state,
+      description: newTrip.description,
+      image: imageUrl,
+      departureDate: newTrip.departureDate,
+      duration: newTrip.duration,
+      budget: newTrip.budget,
+      maxTravelers: newTrip.maxTravelers,
+      currentTravelers: 1,
+      tags: newTrip.tags,
+      likes: 0,
+      comments: [],
+      isLiked: false,
+      postedAt: "Just now",
+      hasJoined: true,
+    }
 
-  // Determine card styles based on theme
-  const cardBackClass = currentTheme.cardBack;
+    setPosts([trip, ...posts])
+    setNewTrip({
+      destination: "",
+      state: "",
+      description: "",
+      image: null,
+      departureDate: "",
+      duration: "",
+      budget: "",
+      maxTravelers: 1,
+      tags: [],
+    })
+    setImagePreview("")
+    setShowCreateTrip(false)
+    showToastMessage("Trip created successfully!")
+  }
 
-  const cardFrontClass = currentTheme.cardFront;
+  const handleComment = (postId: string) => {
+    if (!commentText.trim()) return
 
-  const accentClass = currentTheme.accent;
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      user: currentUser,
+      content: commentText,
+      likes: 0,
+      isLiked: false,
+      replies: [],
+      timestamp: "Just now",
+    }
 
-  // Header and modal backgrounds
-  const headerBgClass = darkMode ? "bg-slate-800" : "bg-white";
-  const modalBgClass = darkMode ? "bg-slate-800" : "bg-white";
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          addNotification("comment", `You commented on ${post.destination} trip`, postId)
+          return {
+            ...post,
+            comments: [...post.comments, newComment],
+          }
+        }
+        return post
+      }),
+    )
 
-  // Get unlocked achievements count
-  const unlockedAchievementsCount = achievements.filter(
-    (a) => a.unlocked
-  ).length;
+    setCommentText("")
+  }
 
-  // JSX for the MemMatch game
-  return (
-    <div
-      className={`flex flex-col min-h-screen ${bgClass}`}
-    >
-      {/* Header with company branding */}
-      <header
-        className={`${headerBgClass} shadow-md transition-colors duration-300`}
-      >
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div
-              className={`w-10 h-10 ${accentClass.split(" ")[0]} rounded-lg flex items-center justify-center mr-3`}
-            >
-              <span className="text-white text-xl font-bold">M</span>
-            </div>
-            <h1
-              className={`text-2xl font-bold ${
-                darkMode ? "text-white" : currentTheme.text.includes("indigo") ? "text-indigo-600" : currentTheme.text
-              }`}
-            >
-              MemMatch
-            </h1>
-          </div>
+  const handleReply = (postId: string, commentId: string) => {
+    if (!replyText.trim()) return
 
-          {/* Desktop Buttons */}
-          <div className="hidden md:flex space-x-2">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className={`${
-                darkMode
-                  ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-slate-100 hover:bg-slate-200"
-              } p-2 rounded-lg transition-colors duration-300 shadow-md cursor-pointer`}
-              aria-label={
-                darkMode ? "Switch to light mode" : "Switch to dark mode"
+    const newReply: Comment = {
+      id: Date.now().toString(),
+      user: currentUser,
+      content: replyText,
+      likes: 0,
+      isLiked: false,
+      replies: [],
+      timestamp: "Just now",
+    }
+
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.map((comment) => {
+              if (comment.id === commentId) {
+                return {
+                  ...comment,
+                  replies: [...comment.replies, newReply],
+                }
               }
-            >
-              {darkMode ? (
-                <Sun size={18} className="text-white" />
-              ) : (
-                <Moon size={18} className="text-slate-700" />
-              )}
-            </button>
+              return comment
+            }),
+          }
+        }
+        return post
+      }),
+    )
 
-            {/* Sound Toggle */}
-            <button
-              onClick={toggleSound}
-              className={`${
-                darkMode
-                  ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-slate-100 hover:bg-slate-200"
-              } p-2 rounded-lg transition cursor-pointer`}
-              aria-label="Toggle Sound"
-            >
-              {soundEnabled ? (
-                <Volume2
-                  size={18}
-                  className={darkMode ? "text-white" : "text-slate-700"}
-                />
-              ) : (
-                <VolumeX
-                  size={18}
-                  className={darkMode ? "text-white" : "text-slate-700"}
-                />
-              )}
-            </button>
+    setReplyText("")
+    setReplyingTo(null)
+  }
 
-            {/* Settings */}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`${
-                darkMode
-                  ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-slate-100 hover:bg-slate-200"
-              } p-2 rounded-lg transition cursor-pointer`}
-              aria-label="Settings"
-            >
-              <Settings
-                size={18}
-                className={darkMode ? "text-white" : "text-slate-700"}
-              />
-            </button>
+  const handleCommentLike = (postId: string, commentId: string, isReply = false, parentCommentId?: string) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.map((comment) => {
+              if (isReply && comment.id === parentCommentId) {
+                return {
+                  ...comment,
+                  replies: comment.replies.map((reply) => {
+                    if (reply.id === commentId) {
+                      return {
+                        ...reply,
+                        isLiked: !reply.isLiked,
+                        likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
+                      }
+                    }
+                    return reply
+                  }),
+                }
+              } else if (!isReply && comment.id === commentId) {
+                return {
+                  ...comment,
+                  isLiked: !comment.isLiked,
+                  likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
+                }
+              }
+              return comment
+            }),
+          }
+        }
+        return post
+      }),
+    )
+  }
 
-            {/* New Game */}
-            <button
-              onClick={initializeGame}
-              className={`flex items-center ${accentClass} text-white px-4 py-2 rounded-lg transition cursor-pointer`}
-            >
-              <RotateCcw size={18} className="mr-2" />
-              <span className="hidden sm:inline">{gameStarted && !gameWon ? "Restart" : "New Game"}</span>
-            </button>
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })))
+  }
 
-            {/* Exit Game */}
-            <button
-              onClick={() => {
-                initializeGame();
-                setShowGame(false);
-              }}
-              className={`flex items-center ${
-                darkMode
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-red-500 hover:bg-red-600"
-              } text-white px-4 py-2 rounded-lg transition cursor-pointer`}
-            >
-              <X size={18} className="mr-2" />
-              <span className="hidden sm:inline">Exit</span>
-            </button>
-          </div>
+  const markAsRead = (notificationId: string) => {
+    setNotifications((prev) => prev.map((notif) => 
+      notif.id === notificationId ? { ...notif, read: true } : notif
+    ))
+  }
 
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-lg cursor-pointer"
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+  const addTag = (tag: string) => {
+    if (tag && !newTrip.tags.includes(tag)) {
+      setNewTrip({ ...newTrip, tags: [...newTrip.tags, tag] })
+    }
+  }
+
+  const removeTag = (tagToRemove: string) => {
+    setNewTrip({ ...newTrip, tags: newTrip.tags.filter((tag) => tag !== tagToRemove) })
+  }
+
+  const handleMyTrips = () => {
+    setCurrentView("mytrips")
+    setShowUserMenu(false)
+    setShowMobileMenu(false)
+  }
+
+  const handleFeed = () => {
+    setCurrentView("feed")
+    setShowMobileMenu(false)
+  }
+
+  const toggleComments = (postId: string) => {
+    setExpandedComments(expandedComments === postId ? null : postId)
+  }
+
+  const handleSubscribe = () => {
+    if (!subscribeEmail.trim()) {
+      showToastMessage("Please enter a valid email address!")
+      return
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(subscribeEmail)) {
+      showToastMessage("Please enter a valid email address!")
+      return
+    }
+
+    // Show success message and clear input
+    showToastMessage("Successfully subscribed to newsletter! 🎉")
+    setSubscribeEmail("")
+  }
+
+  // Helper function to format budget with k notation
+  const formatBudget = (budget: string) => {
+    // Extract numbers from budget string like "₹15,000 - ₹25,000"
+    const numbers = budget.match(/[\d,]+/g)
+    if (!numbers) return budget
+    
+    const formatNumber = (num: string) => {
+      const cleanNum = num.replace(/,/g, '')
+      const value = parseInt(cleanNum)
+      if (value >= 1000) {
+        return `${Math.floor(value / 1000)}k`
+      }
+      return cleanNum
+    }
+    
+    if (numbers.length === 2) {
+      return `₹${formatNumber(numbers[0])} - ₹${formatNumber(numbers[1])}`
+    } else if (numbers.length === 1) {
+      return `₹${formatNumber(numbers[0])}`
+    }
+    
+    return budget
+  }
+
+  // Function to scroll to destination card
+  const scrollToDestination = (destinationName: string) => {
+    // First set the search query to filter posts
+    setSearchQuery(destinationName)
+    
+    // Close mobile sidebar if open
+    setShowMobileSidebar(false)
+    
+    // Switch to feed view if on My Trips
+    if (currentView !== "feed") {
+      setCurrentView("feed")
+    }
+    
+    // Wait a bit for the search filter to apply, then scroll
+    setTimeout(() => {
+      // Find the post with matching destination
+      const targetPost = posts.find(post => 
+        post.destination.toLowerCase() === destinationName.toLowerCase()
+      )
+      
+      if (targetPost) {
+        // Find the element with data-destination attribute
+        const element = document.querySelector(`[data-destination="${destinationName}"]`)
+        if (element) {
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          })
+          
+          // Add a highlight effect
+          element.classList.add('highlight-destination')
+          setTimeout(() => {
+            element.classList.remove('highlight-destination')
+          }, 2000)
+        }
+      }
+    }, 100)
+  }
+
+  return (
+    <div className="min-h-screen bg-[#EFE1D1] font-mulish">
+      {/* Toast Notification - Bottom Right */}
+      {showToast && (
+        <div className="fixed bottom-4 right-4 z-50 bg-[#3F2E3E] text-white px-6 py-3 rounded-lg shadow-lg animate-slide-up">
+          {toastMessage}
         </div>
+      )}
 
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div
-            className={`md:hidden ${headerBgClass} transition-all duration-300 border-t ${
-              darkMode ? "border-slate-700" : "border-gray-200"
-            }`}
-          >
-            <div className="px-4 py-4 space-y-4 max-h-[80vh] overflow-y-auto">
-              {/* Quick Actions Row */}
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={toggleDarkMode}
-                  className={`${
-                    darkMode
-                      ? "bg-slate-700 hover:bg-slate-600 text-white"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  } flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 cursor-pointer`}
-                  aria-label="Toggle Dark Mode"
-                >
-                  {darkMode ? (
-                    <Sun size={20} className="mb-1" />
-                  ) : (
-                    <Moon size={20} className="mb-1" />
-                  )}
-                  <span className="text-xs font-medium">Theme</span>
-                </button>
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-[#A78295]/20">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-[#3F2E3E] mr-8">Yatra</h1>
+            </div>
 
-                <button
-                  onClick={toggleSound}
-                  className={`${
-                    darkMode
-                      ? "bg-slate-700 hover:bg-slate-600 text-white"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  } flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 cursor-pointer`}
-                  aria-label="Toggle Sound"
-                >
-                  {soundEnabled ? (
-                    <Volume2 size={20} className="mb-1" />
-                  ) : (
-                    <VolumeX size={20} className="mb-1" />
-                  )}
-                  <span className="text-xs font-medium">Sound</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowSettings(!showSettings);
-                    setMenuOpen(false);
-                  }}
-                  className={`${
-                    darkMode
-                      ? "bg-slate-700 hover:bg-slate-600 text-white"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  } flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 cursor-pointer`}
-                  aria-label="Settings"
-                >
-                  <Settings size={20} className="mb-1" />
-                  <span className="text-xs font-medium">Settings</span>
-                </button>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4 ml-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#1f2937' }} />
+                <input
+                  type="text"
+                  placeholder="Search destinations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-64 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-[#3F2E3E] placeholder-[#A78295]"
+                />
               </div>
 
-              {/* Game Stats - Quick View */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`${
-                  darkMode ? "bg-slate-700" : "bg-slate-50"
-                } p-3 rounded-xl`}>
-                  <div className="flex items-center">
-                    <Clock size={16} className={`mr-2 ${darkMode ? "text-blue-400" : "text-indigo-600"}`} />
-                    <div>
-                      <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        {challengeMode ? "Time Left" : "Time"}
-                      </p>
-                      <p className="text-sm font-bold">
-                        {challengeMode
-                          ? formatTime(Math.max(0, timeLimit - timer))
-                          : formatTime(timer)}
-                      </p>
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all relative cursor-pointer"
+                >
+                  <Bell className="w-5 h-5" />
+                  {notifications.filter((n) => !n.read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#A78295] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {notifications.filter((n) => !n.read).length}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 animate-fade-in">
+                    <div className="p-4 border-b border-[#A78295]/20 flex justify-between items-center">
+                      <h3 className="font-semibold text-[#3F2E3E]">Notifications</h3>
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-sm text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="p-4 text-[#A78295] text-center">No notifications yet</p>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => markAsRead(notif.id)}
+                            className={`p-4 border-b border-[#A78295]/10 cursor-pointer hover:bg-[#A78295]/10 transition-colors ${!notif.read ? "bg-[#A78295]/5" : ""}`}
+                          >
+                            <p className="text-sm text-[#3F2E3E]">{notif.message}</p>
+                            <p className="text-xs text-[#A78295] mt-1">{notif.timestamp}</p>
+                            {!notif.read && (
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-[#A78295] rounded-full"></div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className={`${
-                  darkMode ? "bg-slate-700" : "bg-slate-50"
-                } p-3 rounded-xl`}>
-                  <div className="flex items-center">
-                    <Shuffle size={16} className={`mr-2 ${darkMode ? "text-blue-400" : "text-indigo-600"}`} />
-                    <div>
-                      <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Moves</p>
-                      <p className="text-sm font-bold">{moves}</p>
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-2 p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
+                >
+                  <User className="w-5 h-5" />
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 top-12 w-64 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 overflow-hidden animate-fade-in">
+                    {/* Profile Header with Gradient */}
+                    <div className="relative bg-gradient-to-br from-[#3F2E3E] via-[#5A4A5A] to-[#A78295] p-6">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
+                      <div className="relative flex items-center space-x-4">
+                        <div className="relative">
+                          <img
+                            src={currentUser.avatar || "/placeholder.svg"}
+                            alt={currentUser.name}
+                            className="w-12 h-12 rounded-full object-cover border-3 border-white/30 shadow-lg"
+                          />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-white text-lg">{currentUser.name}</h3>
+                          <p className="text-white/80 text-sm">Travel Enthusiast</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="p-3 space-y-1">
+                      <button
+                        onClick={handleMyTrips}
+                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
+                      >
+                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
+                          <Briefcase className="w-4 h-4 text-[#3F2E3E]" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">My Trips</p>
+                          <p className="text-xs text-[#A78295]">{userTrips.length} active trips</p>
+                        </div>
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentView("feed")
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
+                      >
+                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
+                          <Home className="w-4 h-4 text-[#3F2E3E]" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">Explore Feed</p>
+                          <p className="text-xs text-[#A78295]">Discover new trips</p>
+                        </div>
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </button>
+                    </div>
+
+                    {/* Stats Section */}
+                    <div className="border-t border-[#A78295]/10 p-4 bg-gradient-to-r from-[#A78295]/5 to-transparent">
+                      <div className="flex justify-between text-center">
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">{userTrips.length}</p>
+                          <p className="text-xs text-[#A78295]">Trips</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">
+                            {posts.filter(post => post.isLiked).length}
+                          </p>
+                          <p className="text-xs text-[#A78295]">Liked</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">
+                            {posts.filter(post => post.hasJoined).length}
+                          </p>
+                          <p className="text-xs text-[#A78295]">Joined</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    initializeGame();
-                    setMenuOpen(false);
-                  }}
-                  className={`flex items-center justify-center w-full ${accentClass} text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 cursor-pointer shadow-sm`}
-                >
-                  <RotateCcw size={18} className="mr-2" />
-                  <span>{gameStarted && !gameWon ? "Restart Game" : "New Game"}</span>
-                </button>
+              <button
+                onClick={() => setShowCreateTrip(true)}
+                className="px-4 py-2 bg-[#3F2E3E] text-white rounded-full hover:bg-[#331D2C] transition-all font-medium flex items-center space-x-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Trip</span>
+              </button>
+            </div>
 
-                <button
-                  onClick={() => {
-                    initializeGame();
-                    setShowGame(false);
-                  }}
-                  className={`flex items-center justify-center w-full ${
-                    darkMode
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-red-500 hover:bg-red-600"
-                  } text-white px-4 py-3 rounded-xl font-medium transition-all duration-200 cursor-pointer shadow-sm`}
-                >
-                  <X size={18} className="mr-2" />
-                  <span>Exit Game</span>
-                </button>
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center space-x-2">
+              {/* Mobile Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#1f2937' }} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-32 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-[#3F2E3E] placeholder-[#A78295] text-sm"
+                />
               </div>
 
-              {/* Additional Quick Actions */}
-              {gameStarted && !gameWon && (
-                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={() => {
-                      togglePause();
-                      setMenuOpen(false);
-                    }}
-                    className={`flex items-center justify-center w-full ${
-                      darkMode
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-200 hover:bg-slate-300"
-                    } text-current px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer`}
-                  >
-                    {gamePaused ? "Resume Game" : "Pause Game"}
-                  </button>
-                </div>
-              )}
+              {/* Mobile Sidebar Button */}
+              <button
+                onClick={() => setShowMobileSidebar(true)}
+                className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
+              >
+                <Sidebar className="w-4 h-4" />
+              </button>
 
-              {/* Hint Button for Mobile */}
-              {gameStarted && !gameWon && !gamePaused && (
-                <div className="flex items-center justify-between">
-                  <span className={`text-sm font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                    Hints Available: {hintsRemaining}
-                  </span>
-                  <button
-                    onClick={() => {
-                      showHint();
-                      setMenuOpen(false);
-                    }}
-                    disabled={hintsRemaining === 0}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                      hintsRemaining > 0
-                        ? `${darkMode ? "bg-blue-600 hover:bg-blue-700" : accentClass} text-white`
-                        : `${darkMode ? "bg-slate-700" : "bg-slate-200"} ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } cursor-not-allowed`
-                    }`}
-                  >
-                    Use Hint
-                  </button>
-                </div>
-              )}
+              {/* Mobile Notifications */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all relative cursor-pointer"
+                >
+                  <Bell className="w-4 h-4" />
+                  {notifications.filter((n) => !n.read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#A78295] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {notifications.filter((n) => !n.read).length}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="fixed left-4 right-4 top-20 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 animate-fade-in">
+                    <div className="p-4 border-b border-[#A78295]/20 flex justify-between items-center">
+                      <h3 className="font-semibold text-[#3F2E3E]">Notifications</h3>
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-sm text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="p-4 text-[#A78295] text-center">No notifications yet</p>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => markAsRead(notif.id)}
+                            className={`relative p-4 border-b border-[#A78295]/10 cursor-pointer hover:bg-[#A78295]/10 transition-colors ${!notif.read ? "bg-[#A78295]/5" : ""}`}
+                          >
+                            <p className="text-sm text-[#3F2E3E] pr-4">{notif.message}</p>
+                            <p className="text-xs text-[#A78295] mt-1">{notif.timestamp}</p>
+                            {!notif.read && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-[#A78295] rounded-full"></div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Menu */}
+              <div ref={mobileMenuRef}>
+                <button
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+
+                {showMobileMenu && (
+                  <div className="absolute right-4 top-16 w-72 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 overflow-hidden animate-fade-in">
+                    {/* Profile Header with Gradient */}
+                    <div className="relative bg-gradient-to-br from-[#3F2E3E] via-[#5A4A5A] to-[#A78295] p-6">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
+                      <div className="relative flex items-center space-x-4">
+                        <div className="relative">
+                          <img
+                            src={currentUser.avatar || "/placeholder.svg"}
+                            alt={currentUser.name}
+                            className="w-12 h-12 rounded-full object-cover border-3 border-white/30 shadow-lg"
+                          />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-white text-lg">{currentUser.name}</h3>
+                          <p className="text-white/80 text-sm">Travel Enthusiast</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="p-3 space-y-1">
+                      <button
+                        onClick={handleFeed}
+                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
+                      >
+                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
+                          <Home className="w-4 h-4 text-[#3F2E3E]" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">Explore Feed</p>
+                          <p className="text-xs text-[#A78295]">Discover new trips</p>
+                        </div>
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </button>
+
+                      <button
+                        onClick={handleMyTrips}
+                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
+                      >
+                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
+                          <Briefcase className="w-4 h-4 text-[#3F2E3E]" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">My Trips</p>
+                          <p className="text-xs text-[#A78295]">{userTrips.length} active trips</p>
+                        </div>
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowCreateTrip(true)
+                          setShowMobileMenu(false)
+                        }}
+                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
+                      >
+                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
+                          <Plus className="w-4 h-4 text-[#3F2E3E]" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-medium">Create Trip</p>
+                          <p className="text-xs text-[#A78295]">Plan your next adventure</p>
+                        </div>
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      </button>
+                    </div>
+
+                    {/* Stats Section */}
+                    <div className="border-t border-[#A78295]/10 p-4 bg-gradient-to-r from-[#A78295]/5 to-transparent">
+                      <div className="flex justify-between text-center">
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">{userTrips.length}</p>
+                          <p className="text-xs text-[#A78295]">Trips</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">
+                            {posts.filter(post => post.isLiked).length}
+                          </p>
+                          <p className="text-xs text-[#A78295]">Liked</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-[#3F2E3E]">
+                            {posts.filter(post => post.hasJoined).length}
+                          </p>
+                          <p className="text-xs text-[#A78295]">Joined</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </div>
       </header>
 
-      <main className="flex-grow container mx-auto px-4 py-4 md:py-8">
-        {/* Game statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 md:mb-8">
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } rounded-xl shadow-md p-3 md:p-4 flex items-center transition-colors duration-300`}
-          >
-            <div
-              className={`${
-                darkMode ? "bg-slate-700" : "bg-indigo-100"
-              } p-2 sm:p-3 rounded-lg mr-4`}
-            >
-              <Clock
-                size={24}
-                className={darkMode ? "text-blue-500" : "text-indigo-600"}
-              />
-            </div>
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                }`}
-              >
-                {challengeMode ? `Time Left` : `Time`}
-              </p>
-              <p className="text-xl font-bold">
-                {challengeMode
-                  ? formatTime(Math.max(0, timeLimit - timer))
-                  : formatTime(timer)}
-              </p>
-            </div>
-          </div>
-
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } rounded-xl shadow-md p-3 md:p-4 flex items-center transition-colors duration-300`}
-          >
-            <div
-              className={`${
-                darkMode ? "bg-slate-700" : "bg-indigo-100"
-              } p-2 sm:p-3 rounded-lg mr-4`}
-            >
-              <Shuffle
-                size={24}
-                className={darkMode ? "text-blue-500" : "text-indigo-600"}
-              />
-            </div>
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                }`}
-              >
-                Moves
-              </p>
-              <p className="text-xl font-bold">{moves}</p>
-            </div>
-          </div>
-
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } rounded-xl shadow-md p-3 md:p-4 flex items-center transition-colors duration-300`}
-          >
-            <div
-              className={`${
-                darkMode ? "bg-slate-700" : "bg-indigo-100"
-              } p-2 sm:p-3 rounded-lg mr-4`}
-            >
-              <BrainCircuit
-                size={24}
-                className={darkMode ? "text-blue-500" : "text-indigo-600"}
-              />
-            </div>
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                }`}
-              >
-                Hints
-              </p>
-              <div className="flex items-center">
-                <p className="text-xl font-bold mr-2">{hintsRemaining}</p>
-                <button
-                  onClick={showHint}
-                  disabled={
-                    hintsRemaining === 0 ||
-                    !gameStarted ||
-                    gameWon ||
-                    gamePaused
-                  }
-                  className={`text-xs px-2 py-1 rounded-md cursor-pointer ${
-                    hintsRemaining > 0 && gameStarted && !gameWon && !gamePaused
-                      ? `${
-                          darkMode
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : accentClass
-                        } text-white`
-                      : `${darkMode ? "bg-slate-700" : "bg-slate-200"} ${
-                          darkMode ? "text-slate-400" : "text-slate-500"
-                        } cursor-not-allowed`
-                  }`}
-                >
-                  Use
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } rounded-xl shadow-md p-3 md:p-4 flex items-center transition-colors duration-300`}
-          >
-            <div
-              className={`${
-                darkMode ? "bg-slate-700" : "bg-indigo-100"
-              } p-3 rounded-lg mr-4`}
-            >
-              <Trophy
-                size={24}
-                className={darkMode ? "text-blue-500" : "text-indigo-600"}
-              />
-            </div>
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                }`}
-              >
-                Stats
-              </p>
+      {/* Create Trip Modal */}
+      {showCreateTrip && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-[#A78295]/20 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-[#3F2E3E]">Create New Trip</h2>
               <button
-                onClick={() => setShowStats(!showStats)}
-                className={`text-xs px-2 py-1 rounded-md ${
-                  darkMode ? "bg-blue-600 hover:bg-blue-700" : accentClass
-                } text-white cursor-pointer`}
+                onClick={() => setShowCreateTrip(false)}
+                className="p-2 hover:bg-[#A78295]/10 rounded-full transition-colors cursor-pointer"
               >
-                View
+                <X className="w-5 h-5 text-[#A78295]" />
               </button>
             </div>
-          </div>
-        </div>
-
-        {/* Game controls */}
-        <div
-          className={`${
-            darkMode ? "bg-slate-800" : "bg-white"
-          } rounded-xl shadow-md p-3 md:p-4 mb-4 md:mb-8 transition-colors duration-300`}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Difficulty selector */}
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                } mb-2`}
-              >
-                Difficulty
-              </p>
-              <div className="flex space-x-2">
-                {(["easy", "medium", "hard"] as const).map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setDifficulty(level)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 cursor-pointer ${
-                      difficulty === level
-                        ? `${
-                            darkMode
-                              ? "bg-blue-600"
-                              : theme.accent.split(" ")[0]
-                          } text-white shadow-md`
-                        : `${darkMode ? "bg-slate-700" : "bg-slate-100"} ${
-                            darkMode ? "text-slate-300" : "text-slate-600"
-                          } ${
-                            darkMode
-                              ? "hover:bg-slate-600"
-                              : "hover:bg-slate-200"
-                          }`
-                    }`}
-                  >
-                    {level.charAt(0).toUpperCase() + level.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Category selector */}
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                } mb-2`}
-              >
-                Category
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => changeCategory(category.id)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center cursor-pointer ${
-                      selectedCategory === category.id
-                        ? `${
-                            darkMode
-                              ? "bg-blue-600"
-                              : theme.accent.split(" ")[0]
-                          } text-white shadow-md`
-                        : `${darkMode ? "bg-slate-700" : "bg-slate-100"} ${
-                            darkMode ? "text-slate-300" : "text-slate-600"
-                          } ${
-                            darkMode
-                              ? "hover:bg-slate-600"
-                              : "hover:bg-slate-200"
-                          }`
-                    }`}
-                  >
-                    {category.locked && <Lock size={14} className="mr-1" />}
-                    {category.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Game mode options */}
-            <div>
-              <p
-                className={`text-sm ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                } mb-2`}
-              >
-                Game Mode
-              </p>
-              <div className="flex items-center mb-2">
-                <label htmlFor="challengeMode" className={`relative inline-flex items-center ${
-                  gameStarted && !gameWon ? "cursor-not-allowed" : "cursor-pointer"
-                }`}>
-                  <input
-                    type="checkbox"
-                    id="challengeMode"
-                    checked={challengeMode}
-                    onChange={toggleChallengeMode}
-                    disabled={gameStarted && !gameWon}
-                    className="sr-only peer"
-                  />
-                  <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 peer-focus:outline-none peer-focus:ring-4 ${
-                    gameStarted && !gameWon
-                      ? darkMode 
-                        ? "bg-slate-800 opacity-50" 
-                        : "bg-slate-300 opacity-50"
-                      : darkMode 
-                        ? "peer-focus:ring-blue-800 bg-slate-700 peer-checked:bg-blue-600" 
-                        : "peer-focus:ring-blue-300 bg-slate-200 peer-checked:bg-blue-600"
-                  }`}>
-                    <div className={`absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-300 peer-checked:translate-x-full peer-checked:border-white ${
-                      challengeMode ? "translate-x-full" : ""
-                    } ${
-                      gameStarted && !gameWon ? "opacity-70" : ""
-                    }`}></div>
-                  </div>
-                  <span className={`ml-3 text-sm font-medium ${
-                    gameStarted && !gameWon 
-                      ? darkMode ? "text-slate-500" : "text-slate-400"
-                      : ""
-                  }`}>
-                    Challenge Mode (Time Limit)
-                    {gameStarted && !gameWon && (
-                      <span className={`text-xs ml-2 ${
-                        darkMode ? "text-slate-600" : "text-slate-500"
-                      }`}>
-                        - Disabled during game
-                      </span>
-                    )}
-                  </span>
-                </label>
-              </div>
-              {challengeMode && (
-                <div className="mt-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      Time Limit
-                    </span>
-                    <span className={`text-sm font-semibold px-2 py-1 rounded-md ${
-                      darkMode ? "bg-slate-700 text-blue-400" : "bg-blue-50 text-blue-600"
-                    }`}>
-                      {Math.floor(timeLimit / 60)}:{(timeLimit % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="range"
-                      min="60"
-                      max="300"
-                      step="30"
-                      value={timeLimit}
-                      onChange={(e) => setTimeLimit(parseInt(e.target.value))}
-                      disabled={gameStarted && !gameWon}
-                      className={`w-full h-2 rounded-lg appearance-none transition-all duration-200 ${
-                        gameStarted && !gameWon
-                          ? "cursor-not-allowed opacity-50"
-                          : "cursor-pointer"
-                      } ${
-                        darkMode 
-                          ? "bg-slate-700 focus:bg-slate-600" 
-                          : "bg-slate-200 focus:bg-slate-300"
-                      } slider-thumb`}
-                      style={{
-                        background: darkMode 
-                          ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((timeLimit - 60) / (300 - 60)) * 100}%, #475569 ${((timeLimit - 60) / (300 - 60)) * 100}%, #475569 100%)`
-                          : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((timeLimit - 60) / (300 - 60)) * 100}%, #e2e8f0 ${((timeLimit - 60) / (300 - 60)) * 100}%, #e2e8f0 100%)`
-                      }}
-                    />
-                    <div className="flex justify-between mt-1 text-xs opacity-70">
-                      <span>1m</span>
-                      <span>2.5m</span>
-                      <span>5m</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Best score display */}
-        {bestScores[difficulty] && (
-          <div
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } rounded-xl shadow-md p-3 sm:p-4 md:p-6 mb-4 md:mb-8 transition-colors duration-300`}
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0">
-              {/* Medal Icon and Score Info */}
-              <div className="flex items-center flex-1 min-w-0">
-                <div
-                  className={`${
-                    darkMode ? "bg-amber-800" : "bg-amber-100"
-                  } p-2 sm:p-3 rounded-lg mr-3 sm:mr-4 flex-shrink-0`}
-                >
-                  <Medal
-                    size={20}
-                    className={`sm:w-6 sm:h-6 ${darkMode ? "text-amber-400" : "text-amber-600"}`}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-xs sm:text-sm ${
-                      darkMode ? "text-slate-400" : "text-slate-500"
-                    } mb-1`}
-                  >
-                    Best Score ({difficulty})
-                  </p>
-                  <p className="text-base sm:text-lg md:text-xl font-bold leading-tight break-words">
-                    {bestScores[difficulty]?.moves} moves in{" "}
-                    {formatTime(bestScores[difficulty]?.time || 0)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Achievements Button */}
-              <div className="w-full sm:w-auto sm:ml-4 flex-shrink-0">
-                <button
-                  onClick={() => setShowAchievements(!showAchievements)}
-                  className={`w-full sm:w-auto text-xs sm:text-sm px-3 py-2 rounded-lg ${
-                    darkMode
-                      ? "bg-amber-800 hover:bg-amber-700 text-white"
-                      : "bg-amber-100 hover:bg-amber-200 text-amber-800"
-                  } flex items-center justify-center cursor-pointer transition-colors duration-200`}
-                >
-                  <Gift size={12} className="mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="truncate">
-                    Achievements ({unlockedAchievementsCount}/{achievements.length})
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Game control buttons */}
-        {gameStarted && !gameWon && (
-          <div className="flex justify-center mb-6">
-            <button
-              onClick={togglePause}
-              className={`px-4 py-2 rounded-lg text-white shadow-md transition-colors cursor-pointer ${
-                darkMode ? "bg-blue-600 hover:bg-blue-700" : accentClass
-              }`}
-            >
-              {gamePaused ? "Resume Game" : "Pause Game"}
-            </button>
-          </div>
-        )}
-
-        {/* Pause overlay */}
-        {gamePaused && (
-          <div className="fixed inset-0 bg-black/40 bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div
-              className={`${modalBgClass} rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300`}
-            >
-              <h2
-                className={`text-3xl font-bold ${
-                  darkMode ? "text-white" : "text-indigo-600"
-                } mb-6`}
-              >
-                Game Paused
-              </h2>
-              <button
-                onClick={togglePause}
-                className={`px-6 py-3 rounded-lg text-white shadow-md transition-colors ${accentClass} cursor-pointer`}
-              >
-                Resume Game
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tutorial overlay */}
-        {showTutorial && (
-          <div className="fixed inset-0 bg-black/40 bg-opacity-90 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div
-              className={`${modalBgClass} rounded-2xl shadow-2xl p-8 max-w-lg mx-4 text-center transition-colors duration-300`}
-            >
-              <h2
-                className={`text-3xl font-bold ${
-                  darkMode ? "text-white" : "text-indigo-600"
-                } mb-4`}
-              >
-                Welcome to MemMatch!
-              </h2>
-              <div className="text-left mb-6">
-                <h3 className="text-xl font-semibold mb-2">How to Play:</h3>
-                <ol className="list-decimal pl-6 space-y-2">
-                  <li>Cards are shuffled and placed face down</li>
-                  <li>Click on a card to flip it over</li>
-                  <li>Try to find matching pairs</li>
-                  <li>Remember card positions to minimize moves</li>
-                  <li>Match all pairs to win the game</li>
-                </ol>
-
-                <h3 className="text-xl font-semibold mt-4 mb-2">Features:</h3>
-                <ul className="list-disc pl-6 space-y-2">
-                  <li>Choose different difficulty levels</li>
-                  <li>Use hints when you get stuck</li>
-                  <li>Track your best scores</li>
-                  <li>Earn achievements to unlock themes</li>
-                  <li>Challenge mode with time limits</li>
-                </ul>
-              </div>
-              <button
-                onClick={() => setShowTutorial(false)}
-                className={`px-6 py-3 rounded-lg text-white shadow-md transition-colors ${accentClass} cursor-pointer`}
-              >
-                Start Playing
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Settings panel */}
-        {showSettings && (
-          <div className="fixed inset-0 bg-black/40 bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm px-4">
-            <div
-              className={`w-full max-w-lg ${modalBgClass} rounded-2xl shadow-2xl p-6 sm:p-8 transition-colors duration-300`}
-            >
-              {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2
-                  className={`text-xl sm:text-2xl font-bold ${
-                    darkMode ? "text-white" : "text-indigo-600"
-                  }`}
-                >
-                  Game Settings
-                </h2>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className={`p-2 rounded-full ${
-                    darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
-                  } cursor-pointer`}
-                  aria-label="Close Settings"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Settings Sections */}
-              <div className="space-y-6 text-sm sm:text-base">
-                {/* Theme selector */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Visual Theme</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {themes.map((theme) => (
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Destination</label>
+                  <input
+                    type="text"
+                    value={newTrip.destination}
+                    onChange={(e) => setNewTrip({ ...newTrip, destination: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                    placeholder="e.g., Goa"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">State</label>
+                  <input
+                    type="text"
+                    value={newTrip.state}
+                    onChange={(e) => setNewTrip({ ...newTrip, state: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                    placeholder="e.g., Goa"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Description</label>
+                <textarea
+                  value={newTrip.description}
+                  onChange={(e) => setNewTrip({ ...newTrip, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                  placeholder="Describe your trip plans..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">
+                  Upload Image <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#3F2E3E] file:text-white hover:file:bg-[#331D2C] file:cursor-pointer"
+                  required
+                />
+                {imagePreview && (
+                  <div className="mt-3">
+                    <img
+                      src={imagePreview || "/placeholder.svg"}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border border-[#A78295]/30"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Departure Date</label>
+                  <input
+                    type="date"
+                    value={newTrip.departureDate}
+                    onChange={(e) => setNewTrip({ ...newTrip, departureDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Duration</label>
+                  <input
+                    type="text"
+                    value={newTrip.duration}
+                    onChange={(e) => setNewTrip({ ...newTrip, duration: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                    placeholder="e.g., 5 days"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Budget</label>
+                  <input
+                    type="text"
+                    value={newTrip.budget}
+                    onChange={(e) => setNewTrip({ ...newTrip, budget: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                    placeholder="e.g., ₹15,000 - ₹25,000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Max Travelers</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={newTrip.maxTravelers}
+                    onChange={(e) => setNewTrip({ ...newTrip, maxTravelers: Number.parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Tags</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {newTrip.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm flex items-center space-x-1"
+                    >
+                      <span>{tag}</span>
                       <button
-                        key={theme.id}
-                        onClick={() => changeTheme(theme.id)}
-                        className={`p-3 rounded-xl flex items-center justify-between ${
-                          theme.id === selectedTheme
-                            ? "ring-2 ring-offset-2 ring-blue-500"
-                            : ""
-                        } ${theme.gradient} transition-all duration-300 cursor-pointer`}
+                        onClick={() => removeTag(tag)}
+                        className="text-[#A78295] hover:text-[#3F2E3E] cursor-pointer"
                       >
-                        <div className="flex items-center">
-                          <div
-                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${
-                              theme.accent.split(" ")[0]
-                            } mr-2 flex-shrink-0`}
-                          ></div>
-                          <div className="font-medium truncate">
-                            {theme.name}
-                          </div>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Add a tag..."
+                    className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        addTag((e.target as HTMLInputElement).value)
+                        ;(e.target as HTMLInputElement).value = ""
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowCreateTrip(false)}
+                  className="px-4 py-2 text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateTrip}
+                  className="px-6 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
+                >
+                  Create Trip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      {showMobileSidebar && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 lg:hidden" style={{ touchAction: 'none' }}>
+          <div className="flex h-full">
+            {/* Overlay */}
+            <div 
+              className="flex-1" 
+              onClick={() => setShowMobileSidebar(false)}
+            ></div>
+            
+            {/* Sidebar Content */}
+            <div 
+              ref={mobileSidebarRef}
+              className="w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg shadow-2xl h-full flex flex-col animate-slide-in-right"
+              style={{ touchAction: 'auto' }}
+            >
+              {/* Header - Fixed */}
+              <div className="flex-shrink-0 p-6 border-b border-[#A78295]/20 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold">Explore</h2>
+                  <button
+                    onClick={() => setShowMobileSidebar(false)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A78295]/50 scrollbar-track-transparent min-h-0">
+                <div className="p-6 space-y-6 pb-8 min-h-full">
+                {/* Trending Destinations */}
+                <div>
+                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                    <MapPin className="w-5 h-5 mr-2 text-[#A78295]" />
+                    Trending Destinations
+                  </h3>
+                  <div className="space-y-3">
+                    {popularDestinations.map((dest, index) => (
+                      <button
+                        key={dest.name}
+                        onClick={() => scrollToDestination(dest.name)}
+                        className="flex items-center justify-between w-full p-3 rounded-xl bg-white/50 hover:bg-white/70 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}></div>
+                          <span className="text-[#3F2E3E] font-medium">{dest.name}</span>
                         </div>
-                        {theme.locked && <Lock size={16} className="ml-2" />}
+                        <span className="text-[#A78295] text-sm group-hover:text-[#3F2E3E] transition-colors">{dest.count} trips</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Animation speed */}
+                {/* Community Stats */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Animation Speed
+                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                    <Users className="w-5 h-5 mr-2 text-[#A78295]" />
+                    Community Stats
                   </h3>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      Speed
-                    </span>
-                    <span className={`text-sm font-semibold px-2 py-1 rounded-md ${
-                      darkMode ? "bg-slate-700 text-blue-400" : "bg-blue-50 text-blue-600"
-                    }`}>
-                      {animationSpeed}ms
-                    </span>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#A78295] text-sm">This Month</span>
+                      <span className="text-[#3F2E3E] font-bold">+{randomStats.monthlyTrips} trips</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#A78295] text-sm">Active Now</span>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-[#3F2E3E] font-bold">{randomStats.activeUsers} users</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#A78295] text-sm">Success Rate</span>
+                      <span className="text-green-600 font-bold">94%</span>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <input
-                      type="range"
-                      min="200"
-                      max="1000"
-                      step="100"
-                      value={animationSpeed}
-                      onChange={(e) =>
-                        setAnimationSpeed(parseInt(e.target.value))
-                      }
-                      className={`w-full h-2 rounded-lg appearance-none cursor-pointer transition-all duration-200 ${
-                        darkMode 
-                          ? "bg-slate-700 focus:bg-slate-600" 
-                          : "bg-slate-200 focus:bg-slate-300"
-                      } slider-thumb`}
-                      style={{
-                        background: darkMode 
-                          ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((animationSpeed - 200) / (1000 - 200)) * 100}%, #475569 ${((animationSpeed - 200) / (1000 - 200)) * 100}%, #475569 100%)`
-                          : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((animationSpeed - 200) / (1000 - 200)) * 100}%, #e2e8f0 ${((animationSpeed - 200) / (1000 - 200)) * 100}%, #e2e8f0 100%)`
+                </div>
+
+                {/* Recent Activity */}
+                <div>
+                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                    <Bell className="w-5 h-5 mr-2 text-[#A78295]" />
+                    Recent Activity
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      { action: "joined", user: "Priya", trip: "Goa Beach", time: "2h ago" },
+                      { action: "created", user: "Rahul", trip: "Himalayan Trek", time: "4h ago" },
+                    ].map((activity, index) => (
+                      <div key={index} className="flex items-start space-x-3 p-3 rounded-xl bg-white/30 hover:bg-white/50 transition-colors">
+                        <div className="w-2 h-2 bg-[#A78295] rounded-full mt-2"></div>
+                        <div className="flex-1">
+                          <p className="text-[#3F2E3E] text-sm">
+                            <span className="font-medium">{activity.user}</span> {activity.action} <span className="font-medium">{activity.trip}</span>
+                          </p>
+                          <p className="text-[#A78295] text-xs">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Travel Tips */}
+                <div className="bg-gradient-to-br from-[#A78295]/10 to-[#3F2E3E]/10 rounded-2xl p-6 relative overflow-hidden">
+                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#A78295] to-[#3F2E3E] rounded-full flex items-center justify-center mr-3 shadow-lg">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    Travel Tip
+                  </h3>
+                  <p className="text-sm text-[#3F2E3E] leading-relaxed mb-4">
+                    "Book accommodations 2-3 weeks in advance for the best deals. Popular destinations fill up quickly during peak seasons!"
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-[#A78295] bg-[#A78295]/10 px-3 py-1 rounded-full border border-[#A78295]/20">
+                      💡 Tip #{randomStats.tipNumber} of 100
+                    </div>
+                    <div className="w-2 h-2 bg-[#A78295] rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div>
+                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4">Quick Actions</h3>
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => {
+                        setShowCreateTrip(true)
+                        setShowMobileSidebar(false)
                       }}
-                    />
-                    <div className="flex justify-between mt-1 text-xs opacity-70">
-                      <span>Fast</span>
-                      <span>Medium</span>
-                      <span>Slow</span>
-                    </div>
+                      className="w-full p-3 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-xl hover:shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Trip</span>
+                    </button>
                   </div>
                 </div>
-
-                {/* Sound and dark mode toggles */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex items-center group">
-                    <label htmlFor="soundToggle" className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        id="soundToggle"
-                        checked={soundEnabled}
-                        onChange={toggleSound}
-                        className="sr-only peer"
-                      />
-                      <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 peer-focus:outline-none peer-focus:ring-4 ${
-                        darkMode 
-                          ? "peer-focus:ring-blue-800 bg-slate-700 peer-checked:bg-blue-600" 
-                          : "peer-focus:ring-blue-300 bg-slate-200 peer-checked:bg-blue-600"
-                      }`}>
-                        <div className={`absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-300 peer-checked:translate-x-full peer-checked:border-white ${
-                          soundEnabled ? "translate-x-full" : ""
-                        }`}></div>
-                      </div>
-                      <span className="ml-3 text-sm font-medium truncate">Sound Effects</span>
-                    </label>
-                  </div>
-                  <div className="flex items-center group">
-                    <label htmlFor="darkModeToggle" className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        id="darkModeToggle"
-                        checked={darkMode}
-                        onChange={toggleDarkMode}
-                        className="sr-only peer"
-                      />
-                      <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 peer-focus:outline-none peer-focus:ring-4 ${
-                        darkMode 
-                          ? "peer-focus:ring-blue-800 bg-slate-700 peer-checked:bg-blue-600" 
-                          : "peer-focus:ring-blue-300 bg-slate-200 peer-checked:bg-blue-600"
-                      }`}>
-                        <div className={`absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-300 peer-checked:translate-x-full peer-checked:border-white ${
-                          darkMode ? "translate-x-full" : ""
-                        }`}></div>
-                      </div>
-                      <span className="ml-3 text-sm font-medium truncate">Dark Mode</span>
-                    </label>
-                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                {/* Tutorial button */}
-                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+      {/* Hero Section with Stats */}
+      <div className="bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Your Next Adventure</h1>
+            <p className="text-xl opacity-90">Connect with fellow travelers and explore the world together</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold">{travelStats.totalTrips}</div>
+              <div className="text-sm opacity-80">Total Trips</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold">{travelStats.activeUsers}</div>
+              <div className="text-sm opacity-80">Active Users</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold">{travelStats.totalTravelers}</div>
+              <div className="text-sm opacity-80">Total Travelers</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold">{travelStats.upcomingTrips}</div>
+              <div className="text-sm opacity-80">Upcoming Trips</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar */}
+          <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 h-fit">
+            {/* Trending Destinations */}
+            <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
+              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                <MapPin className="w-5 h-5 mr-2 text-[#A78295]" />
+                Trending Destinations
+              </h3>
+              <div className="space-y-3">
+                {popularDestinations.map((dest, index) => (
                   <button
-                    onClick={() => {
-                      setShowSettings(false);
-                      setShowTutorial(true);
-                    }}
-                    className="flex items-center text-blue-600 dark:text-blue-400 cursor-pointer"
+                    key={dest.name}
+                    onClick={() => scrollToDestination(dest.name)}
+                    className="flex items-center justify-between w-full p-3 rounded-xl bg-white/50 hover:bg-white/70 transition-colors cursor-pointer group"
                   >
-                    <HelpCircle size={16} className="mr-2" />
-                    <span>Show Tutorial</span>
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}></div>
+                      <span className="text-[#3F2E3E] font-medium">{dest.name}</span>
+                    </div>
+                    <span className="text-[#A78295] text-sm group-hover:text-[#3F2E3E] transition-colors">{dest.count} trips</span>
                   </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
+              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-[#A78295]" />
+                Community Stats
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A78295] text-sm">This Month</span>
+                  <span className="text-[#3F2E3E] font-bold">+{randomStats.monthlyTrips} trips</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A78295] text-sm">Active Now</span>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-[#3F2E3E] font-bold">{randomStats.activeUsers} users</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A78295] text-sm">Success Rate</span>
+                  <span className="text-green-600 font-bold">94%</span>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          </aside>
 
-        {/* Stats panel */}
-        {showStats && (
-          <div className="fixed inset-0 bg-black/40 bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-            <div
-              className={`${
-                darkMode ? "bg-slate-800" : "bg-white"
-              } rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 transition-colors duration-300 max-h-[90vh] overflow-y-auto`}
-            >
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h2
-                  className={`text-xl sm:text-2xl font-bold ${
-                    darkMode ? "text-white" : "text-indigo-600"
-                  }`}
-                >
-                  Game Statistics
-                </h2>
-                <button
-                  onClick={() => setShowStats(false)}
-                  className={`p-2 rounded-full ${
-                    darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
-                  } transition-colors duration-200 cursor-pointer`}
-                  aria-label="Close statistics"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="space-y-4 sm:space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div
-                    className={`p-3 sm:p-4 rounded-xl ${
-                      darkMode ? "bg-slate-700" : "bg-slate-100"
-                    }`}
-                  >
-                    <p
-                      className={`text-xs sm:text-sm ${
-                        darkMode ? "text-slate-400" : "text-slate-500"
-                      } mb-1`}
-                    >
-                      Games Played
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold">{totalGamesPlayed}</p>
-                  </div>
-                  <div
-                    className={`p-3 sm:p-4 rounded-xl ${
-                      darkMode ? "bg-slate-700" : "bg-slate-100"
-                    }`}
-                  >
-                    <p
-                      className={`text-xs sm:text-sm ${
-                        darkMode ? "text-slate-400" : "text-slate-500"
-                      } mb-1`}
-                    >
-                      Total Matches Found
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold">{totalMatches}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Best Scores</h3>
-                  <div
-                    className={`p-3 sm:p-4 rounded-xl ${
-                      darkMode ? "bg-slate-700" : "bg-slate-100"
-                    }`}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                      <div>
-                        <p
-                          className={`text-xs sm:text-sm ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } mb-1`}
-                        >
-                          Easy
-                        </p>
-                        <p className="text-sm sm:text-base font-semibold leading-tight">
-                          {bestScores.easy
-                            ? `${bestScores.easy.moves} moves in ${formatTime(
-                                bestScores.easy.time
-                              )}`
-                            : "-"}
-                        </p>
+          {/* Main Content Area */}
+          <div className="col-span-1 lg:col-span-6">
+            {/* Inline Filters - Only show on feed view */}
+            {currentView === "feed" && (
+              <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-4 mb-6">
+                <div className="space-y-3">
+                  {/* Filter Buttons - Horizontally Scrollable */}
+                  <div className="relative">
+                    <div className="flex items-center space-x-3 overflow-x-auto scrollbar-hide">
+                      <div className="flex space-x-2 min-w-max">
+                        {filterOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setSelectedFilter(option.value)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                              selectedFilter === option.value
+                                ? "bg-[#3F2E3E] text-white shadow-lg"
+                                : "bg-white/60 text-[#3F2E3E] hover:bg-[#A78295]/20"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <p
-                          className={`text-xs sm:text-sm ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } mb-1`}
-                        >
-                          Medium
-                        </p>
-                        <p className="text-sm sm:text-base font-semibold leading-tight">
-                          {bestScores.medium
-                            ? `${bestScores.medium.moves} moves in ${formatTime(
-                                bestScores.medium.time
-                              )}`
-                            : "-"}
-                        </p>
-                      </div>
-                      <div>
-                        <p
-                          className={`text-xs sm:text-sm ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } mb-1`}
-                        >
-                          Hard
-                        </p>
-                        <p className="text-sm sm:text-base font-semibold leading-tight">
-                          {bestScores.hard
-                            ? `${bestScores.hard.moves} moves in ${formatTime(
-                                bestScores.hard.time
-                              )}`
-                            : "-"}
-                        </p>
+                    </div>
+                    {/* Scroll fade indicator */}
+                    <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/60 to-transparent pointer-events-none"></div>
+                  </div>
+
+                  {/* Popular Destinations - Compact */}
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs font-medium text-[#A78295] flex-shrink-0">Popular:</span>
+                    <div className="flex space-x-1.5 overflow-x-auto scrollbar-hide">
+                      <div className="flex space-x-1.5 min-w-max">
+                        {popularDestinations.slice(0, 4).map((dest) => (
+                          <button
+                            key={dest.name}
+                            onClick={() => scrollToDestination(dest.name)}
+                            className="px-2 py-0.5 bg-[#A78295]/15 text-[#3F2E3E] rounded-full text-xs hover:bg-[#A78295]/25 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
+                          >
+                            {dest.name}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Current Game</h3>
-                  <div
-                    className={`p-3 sm:p-4 rounded-xl ${
-                      darkMode ? "bg-slate-700" : "bg-slate-100"
-                    }`}
+        {currentView === "mytrips" ? (
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-2xl font-bold text-[#3F2E3E]">My Trips</h1>
+              <button
+                onClick={handleFeed}
+                className="px-4 py-2 text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+              >
+                Back to Feed
+              </button>
+            </div>
+            <div className="space-y-8">
+              {userTrips.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="mb-8">
+                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-[#3F2E3E] to-[#A78295] rounded-full flex items-center justify-center mb-6 shadow-xl">
+                      <Briefcase className="w-16 h-16 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-[#3F2E3E] mb-4">Start Your Travel Journey</h3>
+                    <p className="text-[#A78295] text-lg mb-8 max-w-md mx-auto">Create your first trip and connect with fellow travelers to explore the world together.</p>
+                    <div className="space-y-4">
+                  <button
+                    onClick={() => setShowCreateTrip(true)}
+                        className="px-8 py-4 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-full hover:shadow-lg transition-all font-medium cursor-pointer transform hover:scale-105"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div>
-                        <p
-                          className={`text-xs sm:text-sm ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } mb-1`}
-                        >
-                          Matches Found
-                        </p>
-                        <p className="text-xl sm:text-2xl font-bold">
-                          {currentStats.matchesFound}
-                        </p>
-                      </div>
-                      <div>
-                        <p
-                          className={`text-xs sm:text-sm ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          } mb-1`}
-                        >
-                          Hints Used
-                        </p>
-                        <p className="text-xl sm:text-2xl font-bold">
-                          {currentStats.hintsUsed}
-                        </p>
+                        <Plus className="w-5 h-5 inline mr-2" />
+                    Create Your First Trip
+                  </button>
+                      <div className="flex justify-center space-x-8 text-sm text-[#A78295]">
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4" />
+                          <span>Connect with travelers</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="w-4 h-4" />
+                          <span>Explore destinations</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Heart className="w-4 h-4" />
+                          <span>Share experiences</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => setShowStats(false)}
-                  className={`w-full py-3 rounded-lg text-white shadow-md transition-colors ${accentClass} cursor-pointer`}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Achievements panel */}
-        {showAchievements && (
-          <div className="fixed inset-0 bg-black/40 bg-opacity-70 flex items-center justify-center z-100 backdrop-blur-sm p-4">
-            <div
-              className={`${modalBgClass} rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-sm sm:max-w-md md:max-w-lg mx-4 transition-colors duration-300 max-h-[90vh] overflow-y-auto`}
-            >
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h2
-                  className={`text-xl sm:text-2xl font-bold ${
-                    darkMode ? "text-white" : "text-indigo-600"
-                  }`}
-                >
-                  Achievements
-                </h2>
-                <button
-                  onClick={() => setShowAchievements(false)}
-                  className={`p-2 rounded-full ${
-                    darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
-                  } transition-colors duration-200 cursor-pointer`}
-                  aria-label="Close achievements"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-3 sm:space-y-4">
-                {achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-                      achievement.unlocked
-                        ? darkMode
-                          ? "bg-slate-700"
-                          : "bg-slate-100"
-                        : darkMode
-                        ? "bg-slate-900 opacity-70"
-                        : "bg-slate-200 opacity-70"
-                    }`}
+              ) : (
+                userTrips.map((post) => (
+                  <article
+                    key={post.id}
+                    data-destination={post.destination}
+                    className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden animate-fade-in group relative w-full"
                   >
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div
-                        className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${
-                          achievement.unlocked
-                            ? darkMode
-                              ? "bg-blue-900"
-                              : "bg-blue-100"
-                            : darkMode
-                            ? "bg-slate-800"
-                            : "bg-slate-300"
-                        }`}
-                      >
-                        <div className="w-5 h-5 sm:w-6 sm:h-6">
-                          {achievement.icon}
+                    {/* Status Badge */}
+                    <div className="absolute top-4 right-4 z-10">
+                      {post.currentTravelers >= post.maxTravelers ? (
+                        <span className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                          Full
+                        </span>
+                      ) : post.hasJoined ? (
+                        <span className="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                          Joined
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                          Open
+                        </span>
+                      )}
+                    </div>
+                    {/* Post Header */}
+                    <div className="p-6 pb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={post.user.avatar || "/placeholder.svg"}
+                            alt={post.user.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-white/60"
+                          />
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold text-[#3F2E3E]">{post.user.name}</h3>
+                              {post.user.verified && (
+                                <div className="w-4 h-4 bg-[#A78295] rounded-full flex items-center justify-center">
+                                  <Check className="w-2 h-2 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-[#A78295]">{post.postedAt}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleShare(post.id)}
+                          className="p-2 rounded-full hover:bg-white/40 transition-all cursor-pointer"
+                        >
+                          <Share2 className="w-5 h-5 text-[#A78295]" />
+                        </button>
+                      </div>
+
+                      {/* Destination Info */}
+                      <div className="mb-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <MapPin className="w-5 h-5 text-[#A78295]" />
+                          <h2 className="text-xl font-bold text-[#3F2E3E]">{post.destination}</h2>
+                          <span className="text-[#A78295]">, {post.state}</span>
+                        </div>
+                        <p className="text-[#3F2E3E] leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">{post.description}</p>
+                      </div>
+                    </div>
+
+                    {/* Post Image */}
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={post.image || "/placeholder.svg"}
+                        alt={post.destination}
+                        className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <p className="text-sm font-medium">Explore {post.destination}</p>
+                      </div>
+                    </div>
+
+                    {/* Trip Details */}
+                    <div className="p-6">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Calendar className="w-4 h-4 text-[#A78295]" />
+                            <span className="text-sm font-medium text-[#3F2E3E]">Departure</span>
+                          </div>
+                          <p className="text-sm text-[#3F2E3E]">
+                            {new Date(post.departureDate).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                        </div>
+                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-sm font-medium text-[#3F2E3E]">Duration</span>
+                          </div>
+                          <p className="text-sm text-[#3F2E3E]">{post.duration}</p>
+                        </div>
+                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-sm font-medium text-[#3F2E3E]">Budget</span>
+                          </div>
+                          <p className="text-sm text-[#3F2E3E]">{formatBudget(post.budget)}</p>
+                        </div>
+                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Users className="w-4 h-4 text-[#A78295]" />
+                            <span className="text-sm font-medium text-[#3F2E3E]">Travelers</span>
+                          </div>
+                          <p className="text-sm text-[#3F2E3E] mb-2">
+                            {post.currentTravelers}/{post.maxTravelers}
+                          </p>
+                          <div className="w-full bg-[#A78295]/20 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-[#3F2E3E] to-[#A78295] h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${(post.currentTravelers / post.maxTravelers) * 100}%` }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-semibold text-sm sm:text-base truncate">
-                            {achievement.name}
-                          </h3>
-                          {achievement.unlocked && (
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0 ${
-                                darkMode
-                                  ? "bg-green-900 text-green-300"
-                                  : "bg-green-100 text-green-700"
-                              }`}
-                            >
-                              Unlocked
-                            </span>
-                          )}
+
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {post.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm font-medium border border-[#A78295]/30"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                          <button
+                            onClick={() => handleLike(post.id)}
+                            className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
+                          >
+                            <Heart className={`w-5 h-5 ${post.isLiked ? "fill-red-500 text-red-500" : ""}`} />
+                            <span className="font-medium">{post.likes}</span>
+                          </button>
+                          <button
+                            onClick={() => toggleComments(post.id)}
+                            className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
+                          >
+                            <MessageCircle className="w-5 h-5" />
+                            <span className="font-medium">{post.comments.length}</span>
+                          </button>
                         </div>
-                        <p
-                          className={`text-xs sm:text-sm mt-1 leading-relaxed ${
-                            darkMode ? "text-slate-400" : "text-slate-500"
-                          }`}
-                        >
-                          {achievement.description}
-                        </p>
+
+                        <div className="px-6 py-3 rounded-full font-semibold bg-[#A78295] text-white">Your Trip</div>
+                      </div>
+
+                      {/*Comments Section */} 
+                      {expandedComments === post.id && (
+                        <div className="mt-6 border-t border-[#A78295]/20 pt-6">
+                          {/* Comment Input */}
+                          <div className="flex space-x-3 mb-6">
+                            <img
+                              src={currentUser.avatar || "/placeholder.svg"}
+                              alt={currentUser.name}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <div className="flex-1 flex space-x-2">
+                              <input
+                                type="text"
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                placeholder="Write a comment..."
+                                className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white/50"
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleComment(post.id)
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={() => handleComment(post.id)}
+                                className="px-4 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
+                              >
+                                <Send className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Comments List */}
+                          <div className="space-y-4">
+                            {post.comments.map((comment) => (
+                              <div key={comment.id} className="flex items-start space-x-3">
+                                <img
+                                  src={comment.user.avatar || "/placeholder.svg"}
+                                  alt={comment.user.name}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                                <div className="flex-1">
+                                  <div className="bg-white/70 rounded-lg p-3">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <span className="font-semibold text-[#3F2E3E] text-sm">{comment.user.name}</span>
+                                      <span className="text-xs text-[#A78295]">{comment.timestamp}</span>
+                                    </div>
+                                    <p className="text-[#3F2E3E] text-sm">{comment.content}</p>
+                                  </div>
+                                  <div className="flex items-center space-x-4 mt-2">
+                                    <button
+                                      onClick={() => handleCommentLike(post.id, comment.id)}
+                                      className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                                    >
+                                      <Heart
+                                        className={`w-3 h-3 ${comment.isLiked ? "fill-red-500 text-red-500" : ""}`}
+                                      />
+                                      <span>{comment.likes}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setReplyingTo(comment.id)}
+                                      className="text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                                    >
+                                      Reply
+                                    </button>
+                                  </div>
+
+                                  {/* Replies */}
+                                  {comment.replies.map((reply) => (
+                                    <div key={reply.id} className="ml-6 mt-3 flex items-start space-x-3">
+                                      <img
+                                        src={reply.user.avatar || "/placeholder.svg"}
+                                        alt={reply.user.name}
+                                        className="w-6 h-6 rounded-full object-cover"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="bg-white rounded-lg p-3 border border-[#A78295]/20">
+                                          <div className="flex items-center space-x-2 mb-1">
+                                            <span className="font-semibold text-[#3F2E3E] text-xs">
+                                              {reply.user.name}
+                                            </span>
+                                            <span className="text-xs text-[#A78295]">{reply.timestamp}</span>
+                                          </div>
+                                          <p className="text-[#3F2E3E] text-xs">{reply.content}</p>
+                                        </div>
+                                        <button
+                                          onClick={() => handleCommentLike(post.id, reply.id, true, comment.id)}
+                                          className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors mt-1 cursor-pointer"
+                                        >
+                                          <Heart
+                                            className={`w-3 h-3 ${reply.isLiked ? "fill-red-500 text-red-500" : ""}`}
+                                          />
+                                          <span>{reply.likes}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Reply Input */}
+                                  {replyingTo === comment.id && (
+                                    <div className="ml-6 mt-3 flex space-x-2">
+                                      <input
+                                        type="text"
+                                        value={replyText}
+                                        onChange={(e) => setReplyText(e.target.value)}
+                                        placeholder="Write a reply..."
+                                        className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-sm bg-white/50"
+                                        onKeyPress={(e) => {
+                                          if (e.key === "Enter") {
+                                            handleReply(post.id, comment.id)
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => handleReply(post.id, comment.id)}
+                                        className="px-3 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
+                                      >
+                                        <Send className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* Loading State */}
+            {isLoading && (
+          <div className="space-y-8">
+                {[...Array(3)].map((_, index) => (
+                  <div key={index} className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg overflow-hidden animate-pulse">
+                    <div className="p-6 pb-4">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-12 h-12 bg-[#A78295]/20 rounded-full"></div>
+                        <div>
+                          <div className="w-32 h-4 bg-[#A78295]/20 rounded mb-2"></div>
+                          <div className="w-20 h-3 bg-[#A78295]/20 rounded"></div>
+              </div>
+                      </div>
+                      <div className="w-48 h-6 bg-[#A78295]/20 rounded mb-2"></div>
+                      <div className="w-full h-20 bg-[#A78295]/20 rounded"></div>
+                    </div>
+                    <div className="w-full h-80 bg-[#A78295]/20"></div>
+                    <div className="p-6">
+                      <div className="grid grid-cols-4 gap-4 mb-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="bg-[#A78295]/10 rounded-2xl p-4">
+                            <div className="w-full h-4 bg-[#A78295]/20 rounded mb-2"></div>
+                            <div className="w-2/3 h-3 bg-[#A78295]/20 rounded"></div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex space-x-2 mb-4">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="w-16 h-6 bg-[#A78295]/20 rounded-full"></div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex space-x-4">
+                          <div className="w-12 h-6 bg-[#A78295]/20 rounded"></div>
+                          <div className="w-12 h-6 bg-[#A78295]/20 rounded"></div>
+                        </div>
+                        <div className="w-24 h-10 bg-[#A78295]/20 rounded-full"></div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+            )}
 
-              <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p
-                  className={`text-xs sm:text-sm ${
-                    darkMode ? "text-slate-400" : "text-slate-500"
-                  } mb-3 sm:mb-4 text-center leading-relaxed`}
-                >
-                  Unlock achievements to access more themes and categories!
-                </p>
-                <button
-                  onClick={() => setShowAchievements(false)}
-                  className={`w-full py-2.5 sm:py-3 rounded-lg text-white shadow-md transition-colors text-sm sm:text-base font-medium ${
-                    darkMode ? "bg-blue-600 hover:bg-blue-700" : accentClass
-                  } cursor-pointer`}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Win overlay */}
-        {gameWon && (
-          <div
-            className="fixed inset-0 bg-indigo-900 bg-opacity-80 flex items-center justify-center z-[60] backdrop-blur-sm"
-            style={{ animation: "fadeIn 0.5s ease-out forwards" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className={`${
-                darkMode ? "bg-slate-800" : "bg-white"
-              } rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300`}
-              style={{ animation: "scaleIn 0.5s ease-out forwards" }}
-            >
-              <div
-                className={`w-20 h-20 ${
-                  darkMode ? "bg-blue-900" : "bg-indigo-100"
-                } rounded-full flex items-center justify-center mx-auto mb-6`}
-              >
-                <Trophy
-                  size={40}
-                  className={darkMode ? "text-yellow-500" : "text-indigo-600"}
-                />
-              </div>
-              <h2
-                className={`text-3xl font-bold ${
-                  darkMode ? "text-white" : "text-indigo-600"
-                } mb-4`}
-              >
-                Congratulations!
-              </h2>
-              <p
-                className={`text-xl ${
-                  darkMode ? "text-slate-300" : "text-slate-600"
-                } mb-6`}
-              >
-                You've matched all the cards!
-              </p>
-
-              {isNewBestScore() && (
-                <div
-                  className={`${
-                    darkMode ? "bg-amber-900" : "bg-amber-50"
-                  } p-4 rounded-xl mb-6`}
-                  style={{ animation: "pulse 2s infinite" }}
-                >
-                  <p
-                    className={`${
-                      darkMode ? "text-amber-300" : "text-amber-600"
-                    } font-bold`}
-                  >
-                    New Best Score!
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div
-                  className={`${
-                    darkMode ? "bg-slate-700" : "bg-indigo-50"
-                  } p-4 rounded-xl`}
-                >
-                  <p
-                    className={`text-sm ${
-                      darkMode ? "text-slate-400" : "text-slate-500"
-                    }`}
-                  >
-                    Time
-                  </p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      darkMode ? "text-white" : "text-indigo-600"
-                    }`}
-                  >
-                    {formatTime(timer)}
-                  </p>
-                </div>
-                <div
-                  className={`${
-                    darkMode ? "bg-slate-700" : "bg-indigo-50"
-                  } p-4 rounded-xl`}
-                >
-                  <p
-                    className={`text-sm ${
-                      darkMode ? "text-slate-400" : "text-slate-500"
-                    }`}
-                  >
-                    Moves
-                  </p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      darkMode ? "text-white" : "text-indigo-600"
-                    }`}
-                  >
-                    {moves}
-                  </p>
-                </div>
-              </div>
-
-              {/* Achievement unlocked notification */}
-              {achievements.some((a) => a.unlocked) &&
-                unlockedAchievementsCount > 0 && (
-                  <div
-                    className={`${
-                      darkMode ? "bg-blue-900" : "bg-blue-50"
-                    } p-4 rounded-xl mb-6`}
-                  >
-                    <p
-                      className={`${
-                        darkMode ? "text-blue-300" : "text-blue-600"
-                      } font-semibold flex items-center justify-center`}
-                    >
-                      <Gift size={18} className="mr-2" />
-                      Achievements Unlocked! ({unlockedAchievementsCount}/
-                      {achievements.length})
-                    </p>
+            <div className="space-y-8">
+              {!isLoading && filteredPosts.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="mb-6">
+                    <div className="w-24 h-24 mx-auto bg-[#A78295]/20 rounded-full flex items-center justify-center mb-4">
+                      <MapPin className="w-12 h-12 text-[#A78295]" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-[#3F2E3E] mb-2">No trips found</h3>
+                    <p className="text-[#A78295] text-lg mb-6">Try adjusting your search or filters to find more trips</p>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowAchievements(true);
+                      onClick={() => {
+                        setSearchQuery("")
+                        setSelectedFilter("all")
                       }}
-                      className={`mt-2 text-sm px-4 py-1 rounded-lg transition-colors cursor-pointer ${
-                        darkMode
-                          ? "bg-blue-700 hover:bg-blue-600 text-white"
-                          : "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                      }`}
+                      className="px-6 py-3 bg-[#3F2E3E] text-white rounded-full hover:bg-[#331D2C] transition-colors cursor-pointer"
                     >
-                      View Achievements
+                      Clear Filters
                     </button>
                   </div>
-                )}
+                </div>
+              ) : !isLoading ? (
+              filteredPosts.map((post) => (
+                <article
+                  key={post.id}
+                  data-destination={post.destination}
+                  className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden animate-fade-in"
+                >
+                  {/* Post Header */}
+                  <div className="p-6 pb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={post.user.avatar || "/placeholder.svg"}
+                          alt={post.user.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white/60"
+                        />
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-semibold text-[#3F2E3E]">{post.user.name}</h3>
+                            {post.user.verified && (
+                              <div className="w-4 h-4 bg-[#A78295] rounded-full flex items-center justify-center">
+                                <Check className="w-2 h-2 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-[#A78295]">{post.postedAt}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleShare(post.id)}
+                        className="p-2 rounded-full hover:bg-white/40 transition-all cursor-pointer"
+                      >
+                        <Share2 className="w-5 h-5 text-[#A78295]" />
+                      </button>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    initializeGame();
-                  }}
-                  className={`${accentClass} text-white py-3 px-6 rounded-lg font-medium transition-colors duration-300 shadow-md cursor-pointer`}
-                >
-                  Play Again
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    shareResults();
-                  }}
-                  className={`${
-                    darkMode
-                      ? "bg-slate-700 border-2 border-slate-600 text-white hover:bg-slate-600"
-                      : "bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
-                  } py-3 px-6 rounded-lg font-medium transition-colors duration-300 shadow-md flex items-center justify-center cursor-pointer`}
-                >
-                  <Share2 size={18} className="mr-2" />
-                  Share
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Game board */}
-        <div className="mt-8 md:mt-20 mb-8 md:mb-12 pt-4 md:pt-12 py-4 md:py-8 max-h-[50vh] md:max-h-[40vh] flex items-center justify-center">
-          <div className={`grid ${getGridCols()} gap-2 sm:gap-2 w-full max-w-sm sm:max-w-sm md:max-w-md mx-auto`}>
-            {cards.map((card) => (
-              <div
-                key={card.id}
-                onClick={() => handleCardClick(card)}
-                className={`aspect-square transform transition-transform duration-300 ${
-                  card.isMatched
-                    ? "opacity-60 scale-100 cursor-default border-2 border-green-400 rounded-lg "
-                    : `${
-                        hintUsed ? "hover:scale-100" : "hover:scale-105"
-                      } cursor-pointer`
-                }`}
-                style={{ perspective: "1000px" }}
-              >
-                <div
-                  className={`relative w-full h-full transition-all duration-${
-                    animationSpeed / 100
-                  } ${card.isMatched ? "opacity-80" : ""}`}
-                  style={{
-                    transformStyle: "preserve-3d",
-                    transform:
-                      card.isFlipped || card.isMatched ? "rotateY(180deg)" : "",
-                  }}
-                >
-                  {/* Card back */}
-                  <div
-                    className={`absolute w-full h-full ${cardBackClass} rounded-lg shadow-sm flex items-center justify-center border ${
-                      darkMode ? "border-slate-700" : "border-indigo-100"
-                    }`}
-                    style={{ backfaceVisibility: "hidden" }}
-                  >
-                    <div
-                      className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${accentClass.split(" ")[0]} rounded-sm flex items-center justify-center`}
-                    >
-                      <span className="text-white text-xs md:text-sm font-bold">M</span>
+                    {/* Destination Info */}
+                    <div className="mb-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <MapPin className="w-5 h-5 text-[#A78295]" />
+                        <h2 className="text-xl font-bold text-[#3F2E3E]">{post.destination}</h2>
+                        <span className="text-[#A78295]">, {post.state}</span>
+                      </div>
+                      <p className="text-[#3F2E3E] leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">{post.description}</p>
                     </div>
                   </div>
 
-                  {/* Card front */}
-                  <div
-                    className={`absolute w-full h-full bg-gradient-to-br ${cardFrontClass} rounded-lg shadow-sm flex items-center justify-center`}
-                    style={{
-                      backfaceVisibility: "hidden",
-                      transform: "rotateY(180deg)",
-                    }}
-                  >
-                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl">{card.emoji}</span>
+                  {/* Post Image */}
+                  <div className="relative">
+                    <img
+                      src={post.image || "/placeholder.svg"}
+                      alt={post.destination}
+                      className="w-full h-80 object-cover"
+                    />
+                  </div>
+
+                  {/* Trip Details */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Calendar className="w-4 h-4 text-[#A78295]" />
+                          <span className="text-sm font-medium text-[#3F2E3E]">Departure</span>
+                        </div>
+                        <p className="text-sm text-[#3F2E3E]">{post.departureDate}</p>
+                      </div>
+                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="text-sm font-medium text-[#3F2E3E]">Duration</span>
+                        </div>
+                        <p className="text-sm text-[#3F2E3E]">{post.duration}</p>
+                      </div>
+                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="text-sm font-medium text-[#3F2E3E]">Budget</span>
+                        </div>
+                        <p className="text-sm text-[#3F2E3E]">{formatBudget(post.budget)}</p>
+                      </div>
+                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Users className="w-4 h-4 text-[#A78295]" />
+                          <span className="text-sm font-medium text-[#3F2E3E]">Travelers</span>
+                        </div>
+                        <p className="text-sm text-[#3F2E3E]">
+                          {post.currentTravelers}/{post.maxTravelers}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {post.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm font-medium border border-[#A78295]/30"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-6">
+                        <button
+                          onClick={() => handleLike(post.id)}
+                          className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
+                        >
+                          <Heart className={`w-5 h-5 ${post.isLiked ? "fill-red-500 text-red-500" : ""}`} />
+                          <span className="font-medium">{post.likes}</span>
+                        </button>
+                        <button
+                          onClick={() => toggleComments(post.id)}
+                          className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                          <span className="font-medium">{post.comments.length}</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleJoin(post.id)}
+                        disabled={post.currentTravelers >= post.maxTravelers || post.hasJoined}
+                        className={`px-6 py-3 rounded-full font-semibold transition-all cursor-pointer ${
+                          post.hasJoined
+                            ? "bg-[#A78295] text-white cursor-default"
+                            : post.currentTravelers >= post.maxTravelers
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                              : "bg-[#3F2E3E] text-white hover:bg-[#331D2C] shadow-lg hover:shadow-xl"
+                        }`}
+                      >
+                        {post.hasJoined
+                          ? "Joined"
+                          : post.currentTravelers >= post.maxTravelers
+                            ? "Trip Full"
+                            : "Join Trip"}
+                      </button>
+                    </div>
+
+                    {/* Comments Section */} 
+                    {expandedComments === post.id && (
+                      <div className="mt-6 border-t border-[#A78295]/20 pt-6">
+                        {/* Comment Input */}
+                        <div className="flex space-x-3 mb-6">
+                          <img
+                            src={currentUser.avatar || "/placeholder.svg"}
+                            alt={currentUser.name}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                          <div className="flex-1 flex space-x-2">
+                            <input
+                              type="text"
+                              value={commentText}
+                              onChange={(e) => setCommentText(e.target.value)}
+                              placeholder="Write a comment..."
+                              className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white/50"
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  handleComment(post.id)
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => handleComment(post.id)}
+                              className="px-4 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Comments List */}
+                        <div className="space-y-4">
+                          {post.comments.map((comment) => (
+                            <div key={comment.id} className="flex items-start space-x-3">
+                              <img
+                                src={comment.user.avatar || "/placeholder.svg"}
+                                alt={comment.user.name}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                              <div className="flex-1">
+                                <div className="bg-white/70 rounded-lg p-3">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <span className="font-semibold text-[#3F2E3E] text-sm">{comment.user.name}</span>
+                                    <span className="text-xs text-[#A78295]">{comment.timestamp}</span>
+                                  </div>
+                                  <p className="text-[#3F2E3E] text-sm">{comment.content}</p>
+                                </div>
+                                <div className="flex items-center space-x-4 mt-2">
+                                  <button
+                                    onClick={() => handleCommentLike(post.id, comment.id)}
+                                    className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                                  >
+                                    <Heart
+                                      className={`w-3 h-3 ${comment.isLiked ? "fill-red-500 text-red-500" : ""}`}
+                                    />
+                                    <span>{comment.likes}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setReplyingTo(comment.id)}
+                                    className="text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
+                                  >
+                                    Reply
+                                  </button>
+                                </div>
+
+                                {/* Replies */}
+                                {comment.replies.map((reply) => (
+                                  <div key={reply.id} className="ml-6 mt-3 flex items-start space-x-3">
+                                    <img
+                                      src={reply.user.avatar || "/placeholder.svg"}
+                                      alt={reply.user.name}
+                                      className="w-6 h-6 rounded-full object-cover"
+                                    />
+                                    <div className="flex-1">
+                                      <div className="bg-white rounded-lg p-3 border border-[#A78295]/20">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <span className="font-semibold text-[#3F2E3E] text-xs">
+                                            {reply.user.name}
+                                          </span>
+                                          <span className="text-xs text-[#A78295]">{reply.timestamp}</span>
+                                        </div>
+                                        <p className="text-[#3F2E3E] text-xs">{reply.content}</p>
+                                      </div>
+                                      <button
+                                        onClick={() => handleCommentLike(post.id, reply.id, true, comment.id)}
+                                        className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors mt-1 cursor-pointer"
+                                      >
+                                        <Heart
+                                          className={`w-3 h-3 ${reply.isLiked ? "fill-red-500 text-red-500" : ""}`}
+                                        />
+                                        <span>{reply.likes}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {/* Reply Input */}
+                                {replyingTo === comment.id && (
+                                  <div className="ml-6 mt-3 flex space-x-2">
+                                    <input
+                                      type="text"
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                      placeholder="Write a reply..."
+                                      className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-sm bg-white/50"
+                                      onKeyPress={(e) => {
+                                        if (e.key === "Enter") {
+                                          handleReply(post.id, comment.id)
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleReply(post.id, comment.id)}
+                                      className="px-3 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
+                                    >
+                                      <Send className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))
+            ) : null}
+            </div>
+          </div>
+        )}
+        </div>
+
+        {/* Right Sidebar */}
+        <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 h-fit">
+
+          {/* Recent Activity */}
+          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
+            <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+              <Bell className="w-5 h-5 mr-2 text-[#A78295]" />
+              Recent Activity
+            </h3>
+            <div className="space-y-3">
+              {[
+                { action: "joined", user: "Priya", trip: "Goa Beach", time: "2h ago" },
+                { action: "created", user: "Rahul", trip: "Himalayan Trek", time: "4h ago" },
+              ].map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3 p-3 rounded-xl bg-white/30 hover:bg-white/50 transition-colors">
+                  <div className="w-2 h-2 bg-[#A78295] rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-[#3F2E3E] text-sm">
+                      <span className="font-medium">{activity.user}</span> {activity.action} <span className="font-medium">{activity.trip}</span>
+                    </p>
+                    <p className="text-[#A78295] text-xs">{activity.time}</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
+          {/* Travel Tips */}
+          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#A78295]/10 to-[#3F2E3E]/10"></div>
+            <div className="relative">
+              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#A78295] to-[#3F2E3E] rounded-full flex items-center justify-center mr-3 shadow-lg">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                Travel Tip
+              </h3>
+              <p className="text-sm text-[#3F2E3E] leading-relaxed mb-4">
+                "Book accommodations 2-3 weeks in advance for the best deals. Popular destinations fill up quickly during peak seasons!"
+              </p>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-[#A78295] bg-[#A78295]/10 px-3 py-1 rounded-full border border-[#A78295]/20">
+                  💡 Tip #{randomStats.tipNumber} of 100
+                </div>
+                <div className="w-2 h-2 bg-[#A78295] rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
+            <h3 className="text-lg font-bold text-[#3F2E3E] mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+              <button 
+                onClick={() => setShowCreateTrip(true)}
+                className="w-full p-3 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-xl hover:shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Trip</span>
+              </button>
+            </div>
+          </div>
+        </aside>
         </div>
       </main>
 
-      {/* Toast notifications */}
-      <div className="fixed top-4 left-4 right-4 sm:top-4 sm:right-4 sm:left-auto sm:w-96 sm:max-w-96 z-[70] space-y-2 sm:space-y-3">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`w-full shadow-lg rounded-lg pointer-events-auto overflow-hidden transform transition-all duration-300 ease-in-out ${
-              darkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
-            } ${
-              toast.type === 'success' ? 'border-l-4 border-l-green-500' :
-              toast.type === 'error' ? 'border-l-4 border-l-red-500' :
-              toast.type === 'warning' ? 'border-l-4 border-l-yellow-500' :
-              'border-l-4 border-l-blue-500'
-            }`}
-            style={{
-              animation: "slideInRight 0.3s ease-out forwards"
-            }}
-          >
-            <div className="p-3 sm:p-4">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="flex-shrink-0 mt-0.5">
-                  {toast.type === 'success' && (
-                    <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
-                  )}
-                  {toast.type === 'error' && (
-                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
-                  )}
-                  {toast.type === 'warning' && (
-                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
-                  )}
-                  {toast.type === 'info' && (
-                    <BrainCircuit className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 pr-2">
-                  <p className={`text-sm sm:text-base font-medium leading-relaxed break-words ${darkMode ? "text-white" : "text-gray-900"}`}>
-                    {toast.message}
-                  </p>
-                </div>
-                <div className="flex-shrink-0">
-                  <button
-                    className={`inline-flex items-center justify-center w-8 h-8 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200 cursor-pointer ${
-                      darkMode 
-                        ? "text-slate-400 hover:text-slate-300 hover:bg-slate-700 focus:ring-slate-500" 
-                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:ring-indigo-500"
-                    }`}
-                    onClick={() => removeToast(toast.id)}
-                    aria-label="Dismiss notification"
+      {/* Footer */}
+      <footer className="bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Company Info */}
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold">Yatra</h3>
+              <p className="text-white/80 text-sm leading-relaxed">
+                Connect with fellow travelers and explore the world together. Create memories, share experiences, and discover amazing destinations.
+              </p>
+                <div className="flex space-x-3">
+                 <a href="#"
+                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
+                   title="Follow us on Twitter"
+                 >
+                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">T</span>
+                 </a>
+                 <a href="#"
+                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
+                   title="Follow us on Pinterest"
+                 >
+                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">P</span>
+                 </a>
+                 <a href="#"
+                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
+                   title="Follow us on Instagram"
+                 >
+                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">I</span>
+                 </a>
+                 <a href="#"
+                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
+                   title="Follow us on LinkedIn"
+                 >
+                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">L</span>
+                 </a>
+               </div>
+            </div>
+
+            {/* Explore */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold">Explore</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Beach Destinations</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Mountain Adventures</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Cultural Heritage</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Wildlife & Nature</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">City Breaks</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Adventure Sports</a></li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold">Support</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Help Center</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Safety Guidelines</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Community Rules</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Contact Us</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Report Issue</a></li>
+                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Feedback</a></li>
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold">Stay Updated</h4>
+              <p className="text-white/80 text-sm">Get the latest travel tips and destination updates.</p>
+              <div className="space-y-3">
+                <div className="flex">
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={subscribeEmail}
+                    onChange={(e) => setSubscribeEmail(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleSubscribe()
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 rounded-l-lg bg-white/10 border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                  />
+                  <button 
+                    onClick={handleSubscribe}
+                    className="px-4 py-2 bg-white text-[#3F2E3E] rounded-r-lg hover:bg-white/90 transition-colors font-medium cursor-pointer"
                   >
-                    <X className="h-4 w-4" />
+                    Subscribe
                   </button>
                 </div>
+                <p className="text-xs text-white/60">
+                  By subscribing, you agree to our Privacy Policy and consent to receive updates.
+                </p>
               </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Footer */}
-      <footer
-        className={`${
-          darkMode ? "bg-slate-900" : "bg-slate-800"
-        } text-white py-6 mt-8 transition-colors duration-300`}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <div className="flex items-center">
-                <div className="w-8 sm:w-10 h-8 sm:h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                  <span
-                    className={`${
-                      darkMode
-                        ? "text-blue-600"
-                        : "text-indigo-600"
-                    } text-lg sm:text-xl font-bold`}
-                  >
-                    M
-                  </span>
-                </div>
-                <h2 className="text-xl font-bold">MemMatch</h2>
+          {/* Bottom Bar */}
+          <div className="border-t border-white/20 mt-8 pt-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-sm text-white/80">
+                © 2024 Yatra. All rights reserved.
               </div>
-              <p className="text-slate-400 text-sm mt-2">
-                © 2025 MemMatch Inc. All rights reserved.
-              </p>
-            </div>
-            <div className="flex space-x-4 sm:space-x-6">
-              <a
-                href="#"
-                className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="#"
-                className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base"
-              >
-                Terms of Service
-              </a>
-              <a
-                href="#"
-                className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base"
-              >
-                Contact Us
-              </a>
+              <div className="flex flex-wrap gap-6 text-sm">
+                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Privacy Policy</a>
+                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Terms of Service</a>
+                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Cookie Policy</a>
+                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Accessibility</a>
+              </div>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* CSS for animations */}
       <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
+          @import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,200..1000;1,200..1000&display=swap');
+          
+          .font-mulish {
+            font-family: "Mulish", sans-serif;
+            font-optical-sizing: auto;
+            font-style: normal;
           }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes pulse {
-          0% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.05);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-
-        @keyframes slideInRight {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        @media (max-width: 640px) {
-          @keyframes slideInRight {
+          
+          @keyframes slide-up {
             from {
-              transform: translateY(-20px);
+              transform: translateY(100%);
               opacity: 0;
             }
             to {
@@ -2588,838 +2400,149 @@ const Game: React.FC<GameProps> = ({ setShowGame }) => {
               opacity: 1;
             }
           }
-        }
 
-        .slider-thumb::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
-          border: 2px solid white;
-        }
+          @keyframes slide-in-right {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes fade-in {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
 
-        .slider-thumb::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
-        }
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: .5;
+            }
+          }
 
-        .slider-thumb::-webkit-slider-thumb:active {
-          transform: scale(1.1);
-        }
+          @keyframes bounce-in {
+            0% {
+              transform: scale(0.3);
+              opacity: 0;
+            }
+            50% {
+              transform: scale(1.05);
+            }
+            70% {
+              transform: scale(0.9);
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          
+          .animate-slide-up {
+            animation: slide-up 0.3s ease-out;
+          }
 
-        .slider-thumb::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
-          border: 2px solid white;
-          -moz-appearance: none;
-        }
+          .animate-slide-in-right {
+            animation: slide-in-right 0.3s ease-out;
+          }
+          
+          .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+          }
 
-        .slider-thumb::-moz-range-thumb:hover {
-          transform: scale(1.2);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
-        }
+          .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
 
-        .slider-thumb:focus {
-          outline: none;
-        }
+          .animate-bounce-in {
+            animation: bounce-in 0.6s ease-out;
+          }
 
-        .slider-thumb:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-      `}</style>
+          /* Hide scrollbar but keep functionality */
+          .scrollbar-hide {
+            -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            scrollbar-width: none;  /* Firefox */
+          }
+          .scrollbar-hide::-webkit-scrollbar { 
+            display: none;  /* Safari and Chrome */
+          }
+
+          /* Custom scrollbar for mobile sidebar */
+          .scrollbar-thin {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(167, 130, 149, 0.5) transparent;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+          }
+          
+          .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          
+          .scrollbar-thin::-webkit-scrollbar-thumb {
+            background-color: rgba(167, 130, 149, 0.5);
+            border-radius: 20px;
+          }
+          
+          .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(167, 130, 149, 0.7);
+          }
+
+          /* Prevent background scroll on mobile when sidebar is open */
+          body.sidebar-open {
+            overflow: hidden !important;
+            position: fixed !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
+
+          /* Highlight effect for destination cards */
+          .highlight-destination {
+            animation: highlight-pulse 2s ease-in-out;
+            transform: scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(63, 46, 62, 0.3), 0 10px 10px -5px rgba(63, 46, 62, 0.1) !important;
+          }
+
+          @keyframes highlight-pulse {
+            0%, 100% {
+              box-shadow: 0 20px 25px -5px rgba(63, 46, 62, 0.3), 0 10px 10px -5px rgba(63, 46, 62, 0.1);
+            }
+            50% {
+              box-shadow: 0 25px 35px -5px rgba(167, 130, 149, 0.4), 0 15px 15px -5px rgba(167, 130, 149, 0.2);
+            }
+          }
+
+          /* Smooth scrolling */
+          .scrollbar-hide {
+            scroll-behavior: smooth;
+          }
+
+          .cursor-pointer {
+            cursor: pointer;
+          }
+
+          button {
+            cursor: pointer;
+          }
+
+          input[type="text"], input[type="url"], input[type="date"], input[type="number"], textarea {
+            cursor: text;
+          }
+        `}</style>
     </div>
-  );
-};
-
-const MemoryMatch: React.FC = () => {
-  const [darkMode, setDarkMode] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("home");
-  const [showGame, setShowGame] = useState(false);
-
-  // Initialize darkMode from localStorage
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem("memoryMatchDarkMode");
-    if (savedDarkMode !== null) {
-      setDarkMode(savedDarkMode === "true");
-    } else {
-      localStorage.setItem("memoryMatchDarkMode", "true"); // Default to dark mode
-    }
-  }, []);
-
-  // Lock/unlock body scroll when mobile menu is open/closed
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    // Clean up on unmount
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => {
-      const newMode = !prev;
-      localStorage.setItem("memoryMatchDarkMode", newMode.toString());
-      return newMode;
-    });
-  };
-
-  // Scroll to section
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-    setActiveSection(sectionId);
-    setMenuOpen(false);
-  };
-
-  // Features data
-  const features = [
-    {
-      title: "Multiple Difficulty Levels",
-      description:
-        "Challenge yourself with easy, medium, or hard levels featuring different grid sizes and complexity.",
-      icon: <Brain className="w-12 h-12" />,
-    },
-    {
-      title: "Various Card Categories",
-      description:
-        "Choose from different card categories like animals, foods, travel and more to keep the game fresh.",
-      icon: <Shuffle className="w-12 h-12" />,
-    },
-    {
-      title: "Achievements System",
-      description:
-        "Earn achievements and unlock new themes and categories as you improve your skills.",
-      icon: <Trophy className="w-12 h-12" />,
-    },
-    {
-      title: "Time Challenge Mode",
-      description:
-        "Race against the clock with configurable time limits for an extra challenge.",
-      icon: <Clock className="w-12 h-12" />,
-    },
-    {
-      title: "Statistics Tracking",
-      description:
-        "Track your progress with detailed statistics about your performance and improvements.",
-      icon: <Award className="w-12 h-12" />,
-    },
-    {
-      title: "Customizable Themes",
-      description:
-        "Personalize your gaming experience with multiple visual themes and color schemes.",
-      icon: <Gift className="w-12 h-12" />,
-    },
-  ];
-
-  // Testimonials data
-  const testimonials = [
-    {
-      name: "Alex Johnson",
-      role: "Regular Player",
-      content:
-        "MemMatch has become my go-to brain training app. The variety of difficulty levels and categories keeps me engaged, and I've noticed real improvements in my memory.",
-      rating: 5,
-    },
-    {
-      name: "Sarah Miller",
-      role: "Teacher",
-      content:
-        "I use MemMatch with my students as a fun educational activity. The kids love unlocking new themes and the competitive aspect keeps them motivated to improve.",
-      rating: 5,
-    },
-    {
-      name: "David Chen",
-      role: "Game Enthusiast",
-      content:
-        "What I love about MemMatch is the perfect balance of challenge and fun. The achievement system gives me goals to work toward, and the stats help me track my progress.",
-      rating: 4,
-    },
-  ];
-
-  // Pricing plans
-  const plans = [
-    {
-      name: "Free",
-      price: "$0",
-      period: "forever",
-      features: [
-        "Basic game modes",
-        "3 difficulty levels",
-        "2 card categories",
-        "Basic statistics",
-        "Dark/Light mode",
-      ],
-      cta: "Play Now",
-      popular: false,
-    },
-    {
-      name: "Premium",
-      price: "$4.99",
-      period: "monthly",
-      features: [
-        "All game modes",
-        "All difficulty levels",
-        "All card categories",
-        "Advanced statistics",
-        "Priority updates",
-        "No advertisements",
-        "Cloud save progress",
-      ],
-      cta: "Get Premium",
-      popular: true,
-    },
-    {
-      name: "Family",
-      price: "$9.99",
-      period: "monthly",
-      features: [
-        "Everything in Premium",
-        "Up to 5 user profiles",
-        "Family leaderboards",
-        "Multiplayer challenges",
-        "Parental controls",
-        "Premium support",
-      ],
-      cta: "Choose Family",
-      popular: false,
-    },
-  ];
-
-  return (
-    <div style={{ fontFamily: "var(--font-roboto), sans-serif" }}>
-      {showGame ? (
-        <Game setShowGame={setShowGame} />
-      ) : (
-        <div
-          className={`min-h-screen flex flex-col ${
-            darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"
-          } transition-colors duration-300`}
-        >
-          {/* Navbar */}
-          <nav
-            className={`fixed w-full z-50 ${
-              darkMode ? "bg-slate-800" : "bg-white"
-            } shadow-md transition-colors duration-300`}
-          >
-            <div className="container mx-auto px-4">
-              <div className="flex justify-between items-center py-4">
-                {/* Logo */}
-                <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 ${
-                      darkMode ? "bg-blue-600" : "bg-indigo-600"
-                    } rounded-lg flex items-center justify-center mr-3`}
-                  >
-                    <span className="text-white text-xl font-bold">M</span>
-                  </div>
-                  <h1
-                    className={`text-2xl font-bold ${
-                      darkMode ? "text-white" : "text-indigo-600"
-                    }`}
-                  >
-                    MemMatch
-                  </h1>
-                </div>
-
-                {/* Desktop Navigation */}
-                <div className="hidden md:flex space-x-8">
-                  <button
-                    onClick={() => scrollToSection("home")}
-                    className={`font-medium transition-colors duration-300 cursor-pointer ${
-                      activeSection === "home"
-                        ? darkMode
-                          ? "text-blue-400"
-                          : "text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Home
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("features")}
-                    className={`font-medium transition-colors duration-300 cursor-pointer ${
-                      activeSection === "features"
-                        ? darkMode
-                          ? "text-blue-400"
-                          : "text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Features
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("testimonials")}
-                    className={`font-medium transition-colors duration-300 cursor-pointer ${
-                      activeSection === "testimonials"
-                        ? darkMode
-                          ? "text-blue-400"
-                          : "text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Testimonials
-                  </button>
-                </div>
-
-                {/* Right side buttons */}
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={toggleDarkMode}
-                    className={`${
-                      darkMode
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-100 hover:bg-slate-200"
-                    } p-2 rounded-lg transition-colors duration-300 shadow-md cursor-pointer`}
-                    aria-label={
-                      darkMode ? "Switch to light mode" : "Switch to dark mode"
-                    }
-                  >
-                    {darkMode ? (
-                      <Sun size={18} className="text-white" />
-                    ) : (
-                      <Moon size={18} className="text-slate-700" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setShowGame(!showGame)}
-                    className={`hidden md:flex items-center ${
-                      darkMode
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-indigo-600 hover:bg-indigo-700"
-                    } text-white px-4 py-2 rounded-lg transition-colors duration-300 shadow-md cursor-pointer`}
-                  >
-                    {showGame ? "Hide Game" : "Play Now"}
-                  </button>
-
-                  {/* Mobile menu button */}
-                  <button
-                    onClick={() => setMenuOpen(!menuOpen)}
-                    className="md:hidden p-2 rounded-lg cursor-pointer"
-                    aria-label="Toggle menu"
-                  >
-                    {menuOpen ? <X size={24} /> : <Menu size={24} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-            {/* loveleen */}
-            {/* Mobile Navigation Menu */}
-            {menuOpen && (
-              <div
-                className={`md:hidden ${
-                  darkMode ? "bg-slate-800" : "bg-white"
-                } py-4 px-4 shadow-lg transition-all duration-300 max-h-screen overflow-y-auto`}
-              >
-                <div className="flex flex-col space-y-4">
-                  <button
-                    onClick={() => scrollToSection("home")}
-                    className={`font-medium p-2 rounded-lg cursor-pointer ${
-                      activeSection === "home"
-                        ? darkMode
-                          ? "bg-slate-700 text-blue-400"
-                          : "bg-slate-100 text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Home
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("features")}
-                    className={`font-medium p-2 rounded-lg cursor-pointer ${
-                      activeSection === "features"
-                        ? darkMode
-                          ? "bg-slate-700 text-blue-400"
-                          : "bg-slate-100 text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Features
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("testimonials")}
-                    className={`font-medium p-2 rounded-lg cursor-pointer ${
-                      activeSection === "testimonials"
-                        ? darkMode
-                          ? "bg-slate-700 text-blue-400"
-                          : "bg-slate-100 text-indigo-600"
-                        : ""
-                    }`}
-                  >
-                    Testimonials
-                  </button>
-
-                  <button
-                    onClick={() => setShowGame(!showGame)}
-                    className={`flex items-center justify-center ${
-                      darkMode
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-indigo-600 hover:bg-indigo-700"
-                    } text-white px-4 py-2 rounded-lg transition-colors duration-300 shadow-md cursor-pointer`}
-                  >
-                    {showGame ? "Hide Game" : "Play Now"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </nav>
-
-          {/* Main Content */}
-          <div className="pt-20">
-            {/* Hero Section */}
-            <section id="home" className="py-12 sm:py-16 md:py-24">
-              <div className="container mx-auto px-4">
-                <div className="flex flex-col md:flex-row items-center">
-                  <div className="md:w-1/2 mb-8 sm:mb-10 md:mb-0">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
-                      Train Your Brain with{" "}
-                      <span
-                        className={
-                          darkMode ? "text-blue-400" : "text-indigo-600"
-                        }
-                      >
-                        MemMatch
-                      </span>
-                    </h1>
-                    <p className="text-lg sm:text-xl mb-6 sm:mb-8 opacity-80 leading-relaxed">
-                      Challenge your memory with our engaging card-matching
-                      game. Improve focus, concentration, and cognitive skills
-                      while having fun.
-                    </p>
-                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-                      <button
-                        onClick={() => setShowGame(true)}
-                        className={`flex items-center justify-center ${
-                          darkMode
-                            ? "bg-blue-600 hover:bg-blue-700"
-                            : "bg-indigo-600 hover:bg-indigo-700"
-                        } text-white px-6 py-3 rounded-lg transition-colors duration-300 shadow-md text-base sm:text-lg cursor-pointer`}
-                      >
-                        Play Now <ChevronRight size={20} className="ml-2" />
-                      </button>
-                      <button
-                        onClick={() => scrollToSection("features")}
-                        className={`flex items-center justify-center ${
-                          darkMode
-                            ? "bg-slate-800 hover:bg-slate-700 border border-slate-700"
-                            : "bg-white hover:bg-slate-50 border border-slate-200"
-                        } px-6 py-3 rounded-lg transition-colors duration-300 shadow-md text-base sm:text-lg cursor-pointer`}
-                      >
-                        See Features
-                      </button>
-                    </div>
-                  </div>
-                  <div className="md:w-1/2">
-                    <div
-                      className={`${
-                        darkMode ? "bg-slate-800" : "bg-slate-100"
-                      } rounded-xl shadow-xl overflow-hidden transition-colors duration-300 p-3 sm:p-4 md:p-6`}
-                    >
-                      <div className="aspect-video rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                        <div className="text-center text-white p-4 sm:p-6 md:p-8 w-full">
-                          <div className="flex justify-center mb-3 sm:mb-4">
-                            <div className="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-xs">
-                              {[...Array(8)].map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={`aspect-square ${
-                                    i % 3 === 0 ? "bg-white/20" : "bg-white/10"
-                                  } rounded-lg flex items-center justify-center ${
-                                    i % 5 === 0 ? "animate-pulse" : ""
-                                  }`}
-                                >
-                                  {i % 4 === 0 && (
-                                    <span className="text-lg sm:text-xl md:text-2xl">🎮</span>
-                                  )}
-                                  {i % 4 === 1 && (
-                                    <span className="text-lg sm:text-xl md:text-2xl">🧠</span>
-                                  )}
-                                  {i % 4 === 2 && (
-                                    <span className="text-lg sm:text-xl md:text-2xl">🏆</span>
-                                  )}
-                                  {i % 4 === 3 && (
-                                    <span className="text-lg sm:text-xl md:text-2xl">⭐</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <h3 className="text-lg sm:text-xl md:text-xl font-bold mb-1 sm:mb-2">
-                            MemMatch Game
-                          </h3>
-                          <p className="text-sm sm:text-base leading-relaxed">Flip cards, find matches, and train your memory</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Features Section */}
-            <section
-              id="features"
-              className={`py-16 ${
-                darkMode ? "bg-slate-800/50" : "bg-slate-50"
-              } transition-colors duration-300`}
-            >
-              <div className="container mx-auto px-4">
-                <div className="text-center mb-16">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                    Game Features
-                  </h2>
-                  <p className="text-xl opacity-80 max-w-2xl mx-auto">
-                    Discover all the exciting features that make MemMatch the
-                    perfect game for entertainment and mental exercise.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {features.map((feature, index) => (
-                    <div
-                      key={index}
-                      className={`${
-                        darkMode ? "bg-slate-900" : "bg-white"
-                      } rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1`}
-                    >
-                      <div
-                        className={`${
-                          darkMode ? "text-blue-400" : "text-indigo-600"
-                        } mb-4`}
-                      >
-                        {feature.icon}
-                      </div>
-                      <h3 className="text-xl font-bold mb-2">
-                        {feature.title}
-                      </h3>
-                      <p className="opacity-80">{feature.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Testimonials Section */}
-            <section id="testimonials" className="py-16">
-              <div className="container mx-auto px-4">
-                <div className="text-center mb-16">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                    What Players Say
-                  </h2>
-                  <p className="text-xl opacity-80 max-w-2xl mx-auto">
-                    Join thousands of satisfied players who are improving their
-                    memory skills with MemMatch.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {testimonials.map((testimonial, index) => (
-                    <div
-                      key={index}
-                      className={`${
-                        darkMode ? "bg-slate-800" : "bg-white"
-                      } rounded-xl shadow-lg p-6 transition-all duration-300`}
-                    >
-                      <div className="flex space-x-1 mb-4">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={20}
-                            className={
-                              i < testimonial.rating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-slate-400"
-                            }
-                          />
-                        ))}
-                      </div>
-                      <p className="mb-6 opacity-90 italic">
-                        "{testimonial.content}"
-                      </p>
-                      <div className="flex items-center">
-                        <div
-                          className={`w-10 h-10 rounded-full ${
-                            darkMode ? "bg-slate-700" : "bg-slate-100"
-                          } flex items-center justify-center mr-3`}
-                        >
-                          <Users
-                            size={20}
-                            className={
-                              darkMode ? "text-blue-400" : "text-indigo-600"
-                            }
-                          />
-                        </div>
-                        <div>
-                          <p className="font-bold">{testimonial.name}</p>
-                          <p className="text-sm opacity-70">
-                            {testimonial.role}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-16">
-              <div className="container mx-auto px-4">
-                <div
-                  className={`${
-                    darkMode ? "bg-slate-800" : "bg-white"
-                  } rounded-xl shadow-xl overflow-hidden transition-colors duration-300 p-8 md:p-12`}
-                >
-                  <div className="flex flex-col md:flex-row items-center">
-                    <div className="md:w-2/3 mb-8 md:mb-0">
-                      <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                        Ready to challenge your memory?
-                      </h2>
-                      <p className="text-xl opacity-80 mb-6">
-                        Start playing now and see how your memory skills improve
-                        over time.
-                      </p>
-                      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                        <button
-                          onClick={() => setShowGame(true)}
-                          className={`flex items-center justify-center ${
-                            darkMode
-                              ? "bg-blue-600 hover:bg-blue-700"
-                              : "bg-indigo-600 hover:bg-indigo-700"
-                          } text-white px-6 py-3 rounded-lg transition-colors duration-300 shadow-md text-lg cursor-pointer`}
-                        >
-                          Play Now <ChevronRight size={20} className="ml-2" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="md:w-1/3 flex justify-center">
-                      <div
-                        className={`${
-                          darkMode ? "bg-slate-900" : "bg-indigo-50"
-                        } p-4 rounded-full`}
-                      >
-                        <div className="relative">
-                          <div className="absolute -top-6 -right-6 animate-pulse">
-                            <div
-                              className={`${
-                                darkMode ? "bg-blue-600" : "bg-indigo-600"
-                              } text-white p-3 rounded-full shadow-lg`}
-                            >
-                              <Trophy size={24} />
-                            </div>
-                          </div>
-                          <div className="w-40 h-40 rounded-full bg-gradient-to-br from-indigo-400 to-blue-600 flex items-center justify-center text-white">
-                            <div className="text-center">
-                              <h3 className="text-xl font-bold mb-1">
-                                Start Now
-                              </h3>
-                              <p className="text-sm">Train your brain</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* Footer */}
-          <footer
-            className={`${
-              darkMode ? "bg-slate-800" : "bg-slate-900"
-            } text-white py-8 sm:py-12 mt-auto transition-colors duration-300`}
-          >
-            <div className="container mx-auto px-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8">
-                <div className="col-span-1 sm:col-span-2 md:col-span-1">
-                  <div className="flex items-center mb-4">
-                    <div className="w-8 sm:w-10 h-8 sm:h-10 bg-white rounded-lg flex items-center justify-center mr-3">
-                      <span
-                        className={`${
-                          darkMode
-                            ? "text-blue-600"
-                            : "text-indigo-600"
-                        } text-lg sm:text-xl font-bold`}
-                      >
-                        M
-                      </span>
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-bold">MemMatch</h2>
-                  </div>
-                  <p className="text-slate-400 mb-4 text-sm sm:text-base leading-relaxed">
-                    Challenging your memory in a fun and engaging way. Improve
-                    focus, concentration, and cognitive skills.
-                  </p>
-                  <div className="flex space-x-3 sm:space-x-4">
-                    <a
-                      href="#"
-                      className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer"
-                    >
-                      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors duration-300">
-                        <span className="text-white font-bold text-sm sm:text-lg">F</span>
-                      </div>
-                    </a>
-                    <a
-                      href="#"
-                      className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer"
-                    >
-                      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors duration-300">
-                        <span className="text-white font-bold text-sm sm:text-lg">T</span>
-                      </div>
-                    </a>
-                    <a
-                      href="#"
-                      className="text-slate-300 hover:text-white transition-colors duration-300 cursor-pointer"
-                    >
-                      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors duration-300">
-                        <span className="text-white font-bold text-sm sm:text-lg">I</span>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Quick Links</h3>
-                  <ul className="space-y-1 sm:space-y-2">
-                    <li>
-                      <button
-                        onClick={() => scrollToSection("home")}
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Home
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={() => scrollToSection("features")}
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Features
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={() => scrollToSection("testimonials")}
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Testimonials
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Resources</h3>
-                  <ul className="space-y-1 sm:space-y-2">
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Help Center
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Blog
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Memory Science
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Developer API
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Legal</h3>
-                  <ul className="space-y-1 sm:space-y-2">
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Privacy Policy
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Terms of Service
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Cookie Policy
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="text-slate-400 hover:text-white transition-colors duration-300 cursor-pointer text-sm sm:text-base block"
-                      >
-                        Contact Us
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="pt-6 sm:pt-8 border-t border-slate-700 text-slate-400 text-xs sm:text-sm">
-                <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-                  <p className="text-center sm:text-left">© 2025 MemMatch Inc. All rights reserved.</p>
-                  <p className="text-center sm:text-right">
-                    Made with <span className="text-red-500">♥</span> for memory
-                    enthusiasts around the world
-                  </p>
-                </div>
-              </div>
-            </div>
-          </footer>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default MemoryMatch;
+  )
+}
