@@ -1,560 +1,529 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Heart,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Trophy,
   Shuffle,
-  Sparkles,
+  Grid3X3,
+  Circle,
+  Square,
+  Triangle,
+  Star,
+  Hexagon,
+  Users,
   Zap,
   Target,
-  Lightbulb,
-  BookOpen,
-  Palette,
-  Camera,
-  Music,
-  Pen,
-  Globe,
-  Star,
   Search,
-  Download,
-  Share2,
-  Settings,
-  Moon,
-  Sun,
-  Menu,
-  X,
+  Filter,
+  Clock,
   Play,
   Pause,
   RotateCcw,
-  TrendingUp,
+  BookOpen,
   Award,
-  Users,
-  CheckCircle,
+  TrendingUp,
+  Settings,
+  Moon,
+  Sun,
+  Download,
+  Share2,
+  BarChart3,
+  Calendar,
+  Tag,
+  Eye,
+  Heart,
+  MessageSquare,
+  Bookmark,
   ArrowRight,
-  Mail,
-  Phone,
-  MapPin,
-  PieChart,
+  CheckCircle2,
+  Timer,
+  Lightbulb,
+  Palette,
+  Code,
+  Layers,
+  Database,
+  Bell,
+  User,
+  ChevronDown,
+  Menu,
+  X,
+  Home,
+  Activity,
+  Archive,
+  Plus,
+  Edit3,
+  ExternalLink,
 } from "lucide-react";
 
-interface Prompt {
+interface Challenge {
   id: number;
-  text: string;
-  category: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  tags: string[];
+  title: string;
+  description: string;
+  detailedDescription: string;
+  shape: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
   estimatedTime: string;
-  type: "Visual" | "Written" | "Strategic" | "Technical";
+  category: string;
+  tags: string[];
+  likes: number;
+  views: number;
+  completions: number;
+  dateAdded: string;
+  featured: boolean;
 }
 
 interface UserStats {
   totalCompleted: number;
-  currentStreak: number;
-  favoriteCategory: string;
-  timeSpent: number;
+  streakDays: number;
+  totalTimeSpent: number;
+  favoriteShape: string;
+  rank: string;
+  points: number;
 }
 
-interface Toast {
-  id: number;
-  message: string;
-  type: "success" | "error" | "info";
-  duration?: number;
-}
-
-// In a real app, this would use localStorage or a database
-const useLocalStorage = (key: string, initialValue: any) => {
-  // Always start with initial value to match server rendering
-  const [storedValue, setStoredValue] = useState(initialValue);
-  const [isClient, setIsClient] = useState(false);
-
-  // Hydrate the actual stored value after client-side rendering
-  useEffect(() => {
-    setIsClient(true);
-    try {
-      // For demo purposes, we'll simulate persistence using sessionStorage
-      // In production, you'd use localStorage
-      const item = sessionStorage.getItem(key);
-      if (item) {
-        setStoredValue(JSON.parse(item));
-      }
-    } catch (error) {
-      console.log("Storage not available");
-    }
-  }, [key]);
-
-  const setValue = (value: any) => {
-    try {
-      setStoredValue(value);
-      if (isClient) {
-        sessionStorage.setItem(key, JSON.stringify(value));
-      }
-    } catch (error) {
-      console.log("Storage not available");
-    }
-  };
-
-  return [storedValue, setValue];
-};
-
-const CREATIVE_PROMPTS: Prompt[] = [
+const challenges: Challenge[] = [
   {
     id: 1,
-    text: "Design a mobile app that helps people form better habits through gamification",
-    category: "UX/UI",
-    difficulty: "Medium",
-    tags: ["mobile", "gamification", "habits"],
-    estimatedTime: "45 min",
-    type: "Technical",
+    title: "Geometric Loader",
+    description:
+      "Create an animated loading spinner using only triangles that rotate and scale",
+    detailedDescription:
+      "Design a sophisticated loading animation that uses triangular shapes in various sizes. The animation should demonstrate smooth rotation, scaling effects, and color transitions. Consider using CSS transforms and keyframe animations for optimal performance.",
+    shape: "triangles",
+    difficulty: "Beginner",
+    estimatedTime: "15 min",
+    category: "Animation",
+    tags: ["loader", "animation", "css", "triangles"],
+    likes: 234,
+    views: 1520,
+    completions: 145,
+    dateAdded: "2025-05-15",
+    featured: true,
   },
   {
     id: 2,
-    text: "Write a short story from the perspective of the last tree on Earth",
-    category: "Writing",
-    difficulty: "Hard",
-    tags: ["environment", "fiction", "dystopian"],
-    estimatedTime: "60 min",
-    type: "Written",
+    title: "Circular Progress Dashboard",
+    description:
+      "Design a comprehensive progress indicator using concentric circles with data visualization",
+    detailedDescription:
+      "Build an enterprise-grade progress dashboard featuring multiple circular progress indicators. Include percentage displays, smooth animations, and interactive hover states. Perfect for corporate dashboards and analytics platforms.",
+    shape: "circles",
+    difficulty: "Intermediate",
+    estimatedTime: "25 min",
+    category: "Data Visualization",
+    tags: ["progress", "dashboard", "circles", "data-viz"],
+    likes: 189,
+    views: 980,
+    completions: 87,
+    dateAdded: "2025-05-10",
+    featured: false,
   },
   {
     id: 3,
-    text: "Create a brand identity for a sustainable fashion startup targeting Gen Z",
-    category: "Branding",
-    difficulty: "Medium",
-    tags: ["sustainability", "fashion", "branding"],
-    estimatedTime: "90 min",
-    type: "Visual",
+    title: "Interactive Square Grid System",
+    description:
+      "Build a responsive grid layout with squares that animate and reorganize dynamically",
+    detailedDescription:
+      "Create a sophisticated grid system using square elements that can be filtered, sorted, and animated. Include hover effects, smooth transitions, and responsive behavior. Ideal for portfolio layouts and product showcases.",
+    shape: "squares",
+    difficulty: "Advanced",
+    estimatedTime: "35 min",
+    category: "Layout",
+    tags: ["grid", "responsive", "squares", "layout"],
+    likes: 312,
+    views: 2100,
+    completions: 203,
+    dateAdded: "2025-04-28",
+    featured: true,
   },
   {
     id: 4,
-    text: "Compose a 30-second jingle for a fictional coffee shop in space",
-    category: "Music",
-    difficulty: "Easy",
-    tags: ["audio", "commercial", "space"],
-    estimatedTime: "30 min",
-    type: "Technical",
+    title: "Hexagonal Navigation Interface",
+    description:
+      "Create a honeycomb-style navigation menu with smooth animations and interactions",
+    detailedDescription:
+      "Design an innovative navigation system using hexagonal shapes arranged in a honeycomb pattern. Include hover effects, smooth transitions between states, and responsive behavior for mobile devices.",
+    shape: "hexagons",
+    difficulty: "Advanced",
+    estimatedTime: "45 min",
+    category: "Navigation",
+    tags: ["navigation", "hexagons", "interface", "mobile"],
+    likes: 156,
+    views: 890,
+    completions: 76,
+    dateAdded: "2025-05-01",
+    featured: false,
   },
   {
     id: 5,
-    text: "Design a public art installation that brings communities together",
-    category: "Art",
-    difficulty: "Hard",
-    tags: ["community", "public art", "social"],
-    estimatedTime: "120 min",
-    type: "Strategic",
+    title: "Interactive Star Rating System",
+    description:
+      "Design a premium 5-star rating component with smooth animations and feedback",
+    detailedDescription:
+      "Build a production-ready star rating system with smooth fill animations, hover previews, and accessibility features. Include half-star support and visual feedback for user interactions.",
+    shape: "stars",
+    difficulty: "Beginner",
+    estimatedTime: "12 min",
+    category: "UI Components",
+    tags: ["rating", "stars", "interactive", "accessibility"],
+    likes: 445,
+    views: 3200,
+    completions: 334,
+    dateAdded: "2025-05-20",
+    featured: true,
   },
   {
     id: 6,
-    text: "Write a product description for a time machine that only goes backwards 5 minutes",
-    category: "Copywriting",
-    difficulty: "Easy",
-    tags: ["humor", "product", "sci-fi"],
-    estimatedTime: "20 min",
-    type: "Written",
+    title: "Triangular Masonry Gallery",
+    description:
+      "Build an artistic image gallery using triangular frames with masonry layout",
+    detailedDescription:
+      "Create a visually striking gallery layout using triangular frames arranged in a masonry-style grid. Include lazy loading, lightbox functionality, and smooth transitions between different view modes.",
+    shape: "triangles",
+    difficulty: "Intermediate",
+    estimatedTime: "30 min",
+    category: "Gallery",
+    tags: ["gallery", "masonry", "triangles", "images"],
+    likes: 278,
+    views: 1650,
+    completions: 142,
+    dateAdded: "2025-04-15",
+    featured: false,
   },
   {
     id: 7,
-    text: "Create a photography series capturing 'invisible' emotions",
-    category: "Photography",
-    difficulty: "Medium",
-    tags: ["emotion", "abstract", "series"],
-    estimatedTime: "180 min",
-    type: "Visual",
+    title: "Radial Action Menu",
+    description:
+      "Create an expandable circular menu that reveals options in radial formation",
+    detailedDescription:
+      "Design a sophisticated radial menu system that expands from a central point, revealing action items in a circular pattern. Include smooth animations, keyboard navigation, and touch gesture support.",
+    shape: "circles",
+    difficulty: "Advanced",
+    estimatedTime: "40 min",
+    category: "Navigation",
+    tags: ["menu", "radial", "circles", "gestures"],
+    likes: 167,
+    views: 1100,
+    completions: 89,
+    dateAdded: "2025-04-22",
+    featured: false,
   },
   {
     id: 8,
-    text: "Design a user interface for controlling dreams",
-    category: "UX/UI",
-    difficulty: "Hard",
-    tags: ["dreams", "interface", "futuristic"],
-    estimatedTime: "75 min",
-    type: "Technical",
+    title: "Flip Card Dashboard",
+    description:
+      "Design a dashboard with square tiles that flip to reveal detailed information",
+    detailedDescription:
+      "Create an interactive dashboard featuring square cards that flip on hover or click to reveal additional content. Include smooth 3D transformations, loading states, and responsive grid behavior.",
+    shape: "squares",
+    difficulty: "Intermediate",
+    estimatedTime: "28 min",
+    category: "Dashboard",
+    tags: ["cards", "flip", "squares", "dashboard"],
+    likes: 201,
+    views: 1350,
+    completions: 118,
+    dateAdded: "2025-05-05",
+    featured: false,
   },
   {
     id: 9,
-    text: "Write a haiku about the Internet having feelings",
-    category: "Poetry",
-    difficulty: "Easy",
-    tags: ["technology", "emotion", "poetry"],
-    estimatedTime: "15 min",
-    type: "Written",
+    title: "Diamond Pattern Parallax",
+    description:
+      "Create an animated background using diamond shapes with parallax scrolling",
+    detailedDescription:
+      "Build a sophisticated background animation featuring diamond shapes that move at different speeds to create a parallax effect. Include color transitions and performance optimizations for smooth scrolling.",
+    shape: "diamonds",
+    difficulty: "Beginner",
+    estimatedTime: "18 min",
+    category: "Background",
+    tags: ["parallax", "diamonds", "animation", "background"],
+    likes: 356,
+    views: 2400,
+    completions: 267,
+    dateAdded: "2025-05-12",
+    featured: true,
   },
   {
     id: 10,
-    text: "Create a logo using only geometric shapes for a meditation app",
-    category: "Design",
-    difficulty: "Medium",
-    tags: ["minimal", "geometric", "wellness"],
-    estimatedTime: "40 min",
-    type: "Visual",
+    title: "Morphing Pentagon Logo",
+    description:
+      "Design a logo animation using pentagon transformations and state changes",
+    detailedDescription:
+      "Create a dynamic logo system that transforms between different pentagon configurations. Include smooth morphing animations, color transitions, and scalable vector graphics for crisp rendering at all sizes.",
+    shape: "pentagons",
+    difficulty: "Advanced",
+    estimatedTime: "50 min",
+    category: "Branding",
+    tags: ["logo", "morphing", "pentagons", "svg"],
+    likes: 134,
+    views: 780,
+    completions: 67,
+    dateAdded: "2025-04-18",
+    featured: false,
   },
   {
     id: 11,
-    text: "Develop a creative solution to reduce food waste in restaurants",
-    category: "Innovation",
-    difficulty: "Hard",
-    tags: ["sustainability", "business", "innovation"],
-    estimatedTime: "90 min",
-    type: "Strategic",
+    title: "Circular Data Visualization",
+    description:
+      "Build a complex data visualization using circular charts and indicators",
+    detailedDescription:
+      "Design a comprehensive data visualization dashboard featuring circular charts, donut charts, and radial progress indicators. Include interactive tooltips, smooth animations, and real-time data updates.",
+    shape: "circles",
+    difficulty: "Advanced",
+    estimatedTime: "55 min",
+    category: "Data Visualization",
+    tags: ["charts", "data", "circles", "analytics"],
+    likes: 289,
+    views: 1890,
+    completions: 134,
+    dateAdded: "2025-04-08",
+    featured: true,
   },
   {
     id: 12,
-    text: "Write dialogue between two AI assistants falling in love",
-    category: "Writing",
-    difficulty: "Medium",
-    tags: ["AI", "romance", "dialogue"],
-    estimatedTime: "35 min",
-    type: "Written",
-  },
-  {
-    id: 13,
-    text: "Design packaging for a product that doesn't exist yet",
-    category: "Product Design",
-    difficulty: "Medium",
-    tags: ["packaging", "future", "product"],
+    title: "Geometric Pattern Generator",
+    description:
+      "Create a tool that generates patterns using various geometric shapes",
+    detailedDescription:
+      "Build an interactive pattern generator that allows users to create complex geometric patterns using different shapes. Include customization options, export functionality, and preset pattern libraries.",
+    shape: "mixed",
+    difficulty: "Advanced",
     estimatedTime: "60 min",
-    type: "Visual",
-  },
-  {
-    id: 14,
-    text: "Create a dance routine inspired by data visualization",
-    category: "Performance",
-    difficulty: "Hard",
-    tags: ["data", "movement", "performance"],
-    estimatedTime: "150 min",
-    type: "Technical",
-  },
-  {
-    id: 15,
-    text: "Write a review for a restaurant on Mars",
-    category: "Creative Writing",
-    difficulty: "Easy",
-    tags: ["space", "humor", "review"],
-    estimatedTime: "25 min",
-    type: "Written",
-  },
-  {
-    id: 16,
-    text: "Design a board game that teaches empathy",
-    category: "Game Design",
-    difficulty: "Hard",
-    tags: ["empathy", "education", "games"],
-    estimatedTime: "180 min",
-    type: "Strategic",
-  },
-  {
-    id: 17,
-    text: "Create a color palette inspired by your favorite memory",
-    category: "Design",
-    difficulty: "Easy",
-    tags: ["color", "memory", "personal"],
-    estimatedTime: "30 min",
-    type: "Visual",
-  },
-  {
-    id: 18,
-    text: "Write instructions for building happiness from scratch",
-    category: "Writing",
-    difficulty: "Medium",
-    tags: ["happiness", "instructions", "philosophy"],
-    estimatedTime: "45 min",
-    type: "Written",
-  },
-  {
-    id: 19,
-    text: "Design a smart home feature for introverts",
-    category: "UX/UI",
-    difficulty: "Medium",
-    tags: ["smart home", "introvert", "technology"],
-    estimatedTime: "55 min",
-    type: "Technical",
-  },
-  {
-    id: 20,
-    text: "Create a sculpture using only everyday office supplies",
-    category: "Art",
-    difficulty: "Easy",
-    tags: ["sculpture", "office", "upcycling"],
-    estimatedTime: "45 min",
-    type: "Visual",
-  },
-  {
-    id: 21,
-    text: "Write a news report from 100 years in the future",
-    category: "Journalism",
-    difficulty: "Medium",
-    tags: ["future", "news", "speculation"],
-    estimatedTime: "40 min",
-    type: "Written",
-  },
-  {
-    id: 22,
-    text: "Design a social platform for connecting with your past selves",
-    category: "Product Design",
-    difficulty: "Hard",
-    tags: ["social", "time", "self-reflection"],
-    estimatedTime: "120 min",
-    type: "Strategic",
-  },
-  {
-    id: 23,
-    text: "Create a recipe that tells a story with each ingredient",
-    category: "Culinary Arts",
-    difficulty: "Medium",
-    tags: ["food", "storytelling", "recipe"],
-    estimatedTime: "50 min",
-    type: "Written",
-  },
-  {
-    id: 24,
-    text: "Write a love letter from Earth to the Moon",
-    category: "Poetry",
-    difficulty: "Easy",
-    tags: ["astronomy", "romance", "poetry"],
-    estimatedTime: "20 min",
-    type: "Written",
-  },
-  {
-    id: 25,
-    text: "Design a voting system that encourages participation through creativity",
-    category: "Civic Design",
-    difficulty: "Hard",
-    tags: ["civic", "democracy", "engagement"],
-    estimatedTime: "100 min",
-    type: "Strategic",
+    category: "Tools",
+    tags: ["generator", "patterns", "mixed", "tool"],
+    likes: 412,
+    views: 2800,
+    completions: 178,
+    dateAdded: "2025-03-25",
+    featured: true,
   },
 ];
 
-const CATEGORIES = [
-  "All",
-  "UX/UI",
-  "Writing",
-  "Design",
-  "Art",
-  "Photography",
-  "Music",
-  "Innovation",
-  "Poetry",
-  "Branding",
-  "Copywriting",
-  "Product Design",
-  "Performance",
-  "Creative Writing",
-  "Game Design",
-  "Journalism",
-  "Culinary Arts",
-  "Civic Design",
-];
-const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"];
-const TYPES = ["All", "Visual", "Written", "Strategic", "Technical"];
+const ShapeIcon = ({
+  shape,
+  className = "w-6 h-6",
+}: {
+  shape: string;
+  className?: string;
+}) => {
+  switch (shape) {
+    case "triangles":
+      return <Triangle className={className} />;
+    case "circles":
+      return <Circle className={className} />;
+    case "squares":
+      return <Square className={className} />;
+    case "hexagons":
+      return <Hexagon className={className} />;
+    case "stars":
+      return <Star className={className} />;
+    case "diamonds":
+      return <Grid3X3 className={className} />;
+    case "pentagons":
+      return <Target className={className} />;
+    case "mixed":
+      return <Layers className={className} />;
+    default:
+      return <Circle className={className} />;
+  }
+};
 
-const PromptJournal: React.FC = () => {
-  const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
-  const [favorites, setBookmarks] = useLocalStorage(
-    "creativeflow-favorites",
+const DifficultyBadge = ({ difficulty }: { difficulty: string }) => {
+  const colors = {
+    Beginner:
+      "bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-700",
+    Intermediate:
+      "bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700",
+    Advanced:
+      "bg-gradient-to-r from-red-100 to-red-200 text-red-700",
+  };
+
+  return (
+    <span
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+        colors[difficulty as keyof typeof colors]
+      }`}
+    >
+      {difficulty}
+    </span>
+  );
+};
+
+export default function DesignChallengePlatform() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [completedChallenges, setCompletedChallenges] = useState<Set<number>>(
     new Set()
   );
-  const [seenPrompts, setSeenPrompts] = useState<Set<number>>(new Set());
-  const [completedPrompts, setCompletedPrompts] = useLocalStorage(
-    "creativeflow-completed",
-    new Set()
-  );
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [viewMode, setViewMode] = useState<
+    "challenge" | "completed" | "analytics" | "discover"
+  >("challenge");
   const [isAnimating, setIsAnimating] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
-  const [selectedType, setSelectedType] = useState("All");
-  const [darkMode, setDarkMode] = useLocalStorage(
-    "creativeflow-darkmode",
-    false
-  );
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
-  const [activeTab, setActiveTab] = useState("generator");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
-  const [userStats, setUserStats] = useLocalStorage("creativeflow-stats", {
-    totalCompleted: 0,
-    currentStreak: 3,
-    favoriteCategory: "Design",
-    timeSpent: 247,
-  });
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  // Add tab transition state
-  const [tabTransition, setTabTransition] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState("featured");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentChallenge = challenges[currentIndex];
 
-  // Convert Set to Array for persistence and back
-  const favoritesArray = Array.from(favorites);
-  const completedArray = Array.from(completedPrompts);
+  const categories = [
+    "All",
+    ...Array.from(new Set(challenges.map((c) => c.category))),
+  ];
+  const difficulties = ["All", "Beginner", "Intermediate", "Advanced"];
 
-  // Toast functionality
-  const showToast = (message: string, type: "success" | "error" | "info" = "info", duration: number = 4000) => {
-    const id = Date.now();
-    const newToast: Toast = { id, message, type, duration };
-    setToasts(prev => [...prev, newToast]);
-
-    // Auto-dismiss after duration
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, duration);
-  };
-
-  const dismissToast = (id: number) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
-
-  const filteredPrompts = CREATIVE_PROMPTS.filter((prompt) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      prompt.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prompt.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prompt.tags.some((tag) =>
-        tag.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    const matchesCategory =
-      selectedCategory === "All" || prompt.category === selectedCategory;
-    const matchesDifficulty =
-      selectedDifficulty === "All" || prompt.difficulty === selectedDifficulty;
-    const matchesType = selectedType === "All" || prompt.type === selectedType;
-
-    if (activeTab === "favorites") {
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesDifficulty &&
-        matchesType &&
-        favoritesArray.includes(prompt.id)
-      );
-    }
-
-    // For library tab, don't apply showOnlyFavorites filter
-    return (
-      matchesSearch &&
-      matchesCategory &&
-      matchesDifficulty &&
-      matchesType
-    );
-  });
-
-  // Separate filtering for generator tab (includes showOnlyFavorites)
-  const getGeneratorFilteredPrompts = () => {
-    return CREATIVE_PROMPTS.filter((prompt) => {
+  const filteredChallenges = useMemo(() => {
+    let filtered = challenges.filter((challenge) => {
       const matchesSearch =
-        searchQuery === "" ||
-        prompt.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prompt.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prompt.tags.some((tag) =>
+        challenge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        challenge.description
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        challenge.tags.some((tag) =>
           tag.toLowerCase().includes(searchQuery.toLowerCase())
         );
       const matchesCategory =
-        selectedCategory === "All" || prompt.category === selectedCategory;
+        selectedCategory === "All" || challenge.category === selectedCategory;
       const matchesDifficulty =
-        selectedDifficulty === "All" || prompt.difficulty === selectedDifficulty;
-      const matchesType = selectedType === "All" || prompt.type === selectedType;
-      const matchesBookmarks =
-        !showOnlyFavorites || favoritesArray.includes(prompt.id);
+        selectedDifficulty === "All" ||
+        challenge.difficulty === selectedDifficulty;
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesDifficulty &&
-        matchesType &&
-        matchesBookmarks
-      );
+      return matchesSearch && matchesCategory && matchesDifficulty;
+    });
+
+    switch (sortBy) {
+      case "featured":
+        return filtered.sort(
+          (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+        );
+      case "popular":
+        return filtered.sort((a, b) => b.likes - a.likes);
+      case "recent":
+        return filtered.sort(
+          (a, b) =>
+            new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+        );
+      case "difficulty":
+        return filtered.sort((a, b) => {
+          const order = { Beginner: 1, Intermediate: 2, Advanced: 3 };
+          return (
+            order[a.difficulty as keyof typeof order] -
+            order[b.difficulty as keyof typeof order]
+          );
+        });
+      default:
+        return filtered;
+    }
+  }, [searchQuery, selectedCategory, selectedDifficulty, sortBy]);
+
+  const completedList = challenges.filter((challenge) =>
+    completedChallenges.has(challenge.id)
+  );
+  const completionPercentage = Math.round(
+    (completedChallenges.size / challenges.length) * 100
+  );
+
+  const userStats: UserStats = {
+    totalCompleted: completedChallenges.size,
+    streakDays: 7,
+    totalTimeSpent: completedChallenges.size * 25,
+    favoriteShape: "circles",
+    rank: "Advanced Designer",
+    points: completedChallenges.size * 100 + favoriteIds.size * 25,
+  };
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (timerActive) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive]);
+
+  const navigateToChallenge = (direction: "next" | "prev") => {
+    // Reset timer when changing challenges
+    setTimerSeconds(0);
+    setTimerActive(false);
+    
+    setIsAnimating(true);
+    setTimeout(() => {
+      if (direction === "next") {
+        setCurrentIndex((prev) => (prev + 1) % filteredChallenges.length);
+      } else {
+        setCurrentIndex(
+          (prev) =>
+            (prev - 1 + filteredChallenges.length) % filteredChallenges.length
+        );
+      }
+      setIsAnimating(false);
+    }, 200);
+  };
+
+  const shuffleChallenge = () => {
+    // Reset timer when changing challenges
+    setTimerSeconds(0);
+    setTimerActive(false);
+    
+    setIsAnimating(true);
+    setTimeout(() => {
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * filteredChallenges.length);
+      } while (newIndex === currentIndex && filteredChallenges.length > 1);
+      setCurrentIndex(newIndex);
+      setIsAnimating(false);
+    }, 200);
+  };
+
+  const toggleCompleted = (challengeId: number) => {
+    setCompletedChallenges((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(challengeId)) {
+        newSet.delete(challengeId);
+      } else {
+        newSet.add(challengeId);
+      }
+      return newSet;
     });
   };
 
-  const getRandomPrompt = () => {
-    const generatorPrompts = getGeneratorFilteredPrompts();
-    const availablePrompts = generatorPrompts.filter(
-      (p) => !seenPrompts.has(p.id)
-    );
-
-    if (availablePrompts.length === 0) {
-      if (generatorPrompts.length === 0) return null;
-      setSeenPrompts(new Set());
-      return generatorPrompts[
-        Math.floor(Math.random() * generatorPrompts.length)
-      ];
-    }
-
-    return availablePrompts[
-      Math.floor(Math.random() * availablePrompts.length)
-    ];
-  };
-
-  const handleNewPrompt = () => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      const newPrompt = getRandomPrompt();
-      if (newPrompt) {
-        setCurrentPrompt(newPrompt);
-        setSeenPrompts((prev) => new Set([...prev, newPrompt.id]));
-        resetTimer();
+  const toggleFavorite = (challengeId: number) => {
+    setFavoriteIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(challengeId)) {
+        newSet.delete(challengeId);
       } else {
-        // Clear current prompt if no prompts are available
-        setCurrentPrompt(null);
+        newSet.add(challengeId);
       }
-      setIsAnimating(false);
-    }, 300);
-  };
-
-  const toggleFavorite = (promptId: number) => {
-    const newBookmarks = new Set(favoritesArray);
-    if (newBookmarks.has(promptId)) {
-      newBookmarks.delete(promptId);
-    } else {
-      newBookmarks.add(promptId);
-    }
-    setBookmarks(newBookmarks);
-  };
-
-  const markComplete = (promptId: number) => {
-    const newCompleted = new Set(completedArray);
-    newCompleted.add(promptId);
-    setCompletedPrompts(newCompleted);
-
-    const newStats = {
-      ...userStats,
-      totalCompleted: userStats.totalCompleted + 1,
-      timeSpent: userStats.timeSpent + Math.floor(timerSeconds / 60),
-    };
-    setUserStats(newStats);
-
-    pauseTimer();
-
-    // Show completion feedback
-    showToast(
-      `🎉 Congratulations! You've completed this prompt in ${formatTime(
-        timerSeconds
-      )}!`,
-      "success",
-      5000
-    );
+      return newSet;
+    });
   };
 
   const startTimer = () => {
-    setIsTimerRunning(true);
-    timerRef.current = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
-    }, 1000);
+    setTimerSeconds(0);
+    setTimerActive(true);
   };
 
   const pauseTimer = () => {
-    setIsTimerRunning(false);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+    setTimerActive(false);
   };
 
   const resetTimer = () => {
-    setIsTimerRunning(false);
     setTimerSeconds(0);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+    setTimerActive(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -565,1515 +534,1490 @@ const PromptJournal: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
-  const exportPrompts = () => {
-    const bookmarkedPrompts = CREATIVE_PROMPTS.filter((p) =>
-      favoritesArray.includes(p.id)
-    );
-    const data = JSON.stringify(bookmarkedPrompts, null, 2);
-    const blob = new Blob([data], { type: "application/json" });
+  const exportData = () => {
+    const data = {
+      completedChallenges: Array.from(completedChallenges),
+      favorites: Array.from(favoriteIds),
+      stats: userStats,
+      exportDate: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `creativeflow-favorites-${
-      new Date().toISOString().split("T")[0]
-    }.json`;
+    a.download = "shapeforge-progress.json";
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const sharePrompt = async () => {
-    if (!currentPrompt) return;
+  const shareChallenge = async () => {
+    const shareData = {
+      title: `${currentChallenge.title} - ShapeForge Challenge`,
+      text: currentChallenge.description,
+      url: window.location.href,
+    };
 
-    const shareText = `Check out this creative prompt: "${currentPrompt.text}" - via CreativeFlow Professional`;
-
-    // Try native sharing first if available
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Creative Prompt from CreativeFlow",
-          text: shareText,
-          url: window.location.href,
-        });
-        return; // Exit early if sharing was successful
-      } catch (err) {
-        console.log("Error sharing:", err);
-        // Fall through to clipboard copy
-      }
-    }
-
-    // Fallback to clipboard copy
-    try {
-      await navigator.clipboard.writeText(shareText);
-      showToast("Prompt copied to clipboard!", "success");
-    } catch (err) {
-      console.log("Error copying to clipboard:", err);
-      showToast("Failed to copy prompt", "error");
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    const colors = {
-      Easy: darkMode
-        ? "text-emerald-400 bg-emerald-900/30"
-        : "text-emerald-600 bg-emerald-50",
-      Medium: darkMode
-        ? "text-amber-400 bg-amber-900/30"
-        : "text-amber-600 bg-amber-50",
-      Hard: darkMode ? "text-red-400 bg-red-900/30" : "text-red-600 bg-red-50",
-    };
-    return (
-      colors[difficulty as keyof typeof colors] || "text-gray-600 bg-gray-50"
-    );
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      "UX/UI": <Target className="w-4 h-4" />,
-      Writing: <Pen className="w-4 h-4" />,
-      Branding: <Star className="w-4 h-4" />,
-      Music: <Music className="w-4 h-4" />,
-      Art: <Palette className="w-4 h-4" />,
-      Photography: <Camera className="w-4 h-4" />,
-      Design: <Lightbulb className="w-4 h-4" />,
-      Innovation: <Zap className="w-4 h-4" />,
-      "Product Design": <BookOpen className="w-4 h-4" />,
-      Performance: <Music className="w-4 h-4" />,
-      "Game Design": <Target className="w-4 h-4" />,
-      Journalism: <Globe className="w-4 h-4" />,
-    };
-    return iconMap[category] || <Sparkles className="w-4 h-4" />;
-  };
-
-  useEffect(() => {
-    if (activeTab === "generator" && !currentPrompt) {
-      handleNewPrompt();
-    }
-  }, [activeTab]);
-
-  // Handle favorites-only toggle changes
-  useEffect(() => {
-    if (activeTab === "generator") {
-      if (showOnlyFavorites && currentPrompt && !favoritesArray.includes(currentPrompt.id)) {
-        // Clear current prompt if it's not a favorite and favorites-only is active
-        setCurrentPrompt(null);
-        // Generate a new prompt that matches the favorites filter
-        setTimeout(() => handleNewPrompt(), 100);
-      } else if (!showOnlyFavorites && !currentPrompt) {
-        // Generate a new prompt when favorites filter is turned off and no prompt is shown
-        setTimeout(() => handleNewPrompt(), 100);
-      }
-    }
-  }, [showOnlyFavorites, favoritesArray, currentPrompt, activeTab]);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
+      await navigator.share(shareData);
     } else {
-      document.documentElement.classList.remove("dark");
+      navigator.clipboard.writeText(
+        `${shareData.title}\n${shareData.text}\n${shareData.url}`
+      );
+      // Show toast notification (would be implemented in a real app)
     }
-  }, [darkMode]);
-
-
-
-  const themeClass = darkMode
-    ? "dark bg-gray-900"
-    : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100";
-  const cardClass = darkMode
-    ? "bg-gray-800/80 border-gray-700/50"
-    : "bg-white/80 border-gray-200/50";
-  const textClass = darkMode ? "text-gray-100" : "text-gray-900";
-  const textSecondaryClass = darkMode ? "text-gray-300" : "text-gray-600";
-
-  // Handle tab switching with animation
-  const handleTabSwitch = (newTab: string) => {
-    setTabTransition(true);
-    setTimeout(() => {
-      setActiveTab(newTab);
-      setTabTransition(false);
-    }, 150);
   };
+
+  useEffect(() => {
+    if (showSettings || sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    // Clean up in case the component unmounts while modal is open
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showSettings, sidebarOpen]);
 
   return (
-    <motion.div 
-      className={`min-h-screen transition-all duration-500 font-[Roboto] ${themeClass}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+    <div
+      className={`min-h-screen transition-colors duration-300 font-[Roboto] ${
+        darkMode
+          ? "bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 text-white"
+          : "bg-gradient-to-br from-white via-purple-50 to-blue-50 text-gray-900"
+      }`}
     >
-      {/* Navigation */}
-      <motion.nav
-        className={`${cardClass} backdrop-blur-lg sticky top-0 z-50 transition-all duration-300`}
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+      {/* Navigation Header */}
+      <header
+        className={`${
+          darkMode ? "bg-gray-900" : "bg-white"
+        } sticky top-0 z-50`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  CreativeFlow
-                </span>
-                <div className="text-xs text-gray-500 font-medium">
-                  Professional Edition
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left Section */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                aria-label="Open mobile menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              <div
+                onClick={() => setViewMode("challenge")}
+                className="flex items-center space-x-3 cursor-pointer"
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Triangle className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div className="">
+                  <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    ShapeForge
+                  </h1>
+                  <p
+                    className={`text-sm md:block hidden  ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Professional Design Platform
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-8">
-              <button
-                onClick={() => handleTabSwitch("generator")}
-                className={`cursor-pointer ${
-                  activeTab === "generator"
-                    ? "text-indigo-600"
-                    : textSecondaryClass
-                } hover:text-indigo-600 transition-colors font-semibold`}
-              >
-                Generator
-              </button>
-              <button
-                onClick={() => handleTabSwitch("analytics")}
-                className={`cursor-pointer ${
-                  activeTab === "analytics"
-                    ? "text-indigo-600"
-                    : textSecondaryClass
-                } hover:text-indigo-600 transition-colors font-semibold`}
-              >
-                Analytics
-              </button>
-              <button
-                onClick={() => handleTabSwitch("library")}
-                className={`cursor-pointer ${
-                  activeTab === "library"
-                    ? "text-indigo-600"
-                    : textSecondaryClass
-                } hover:text-indigo-600 transition-colors font-semibold`}
-              >
-                Library
-              </button>
-              <button
-                onClick={() => handleTabSwitch("favorites")}
-                className={`cursor-pointer ${
-                  activeTab === "favorites"
-                    ? "text-indigo-600"
-                    : textSecondaryClass
-                } hover:text-indigo-600 transition-colors font-semibold flex items-center space-x-1`}
-              >
-                <Heart className="w-4 h-4" />
-                <span>Favorites ({favoritesArray.length})</span>
-              </button>
+            {/* Right Section - Desktop */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setViewMode("challenge")}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors font-medium cursor-pointer ${
+                    viewMode === "challenge"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Triangle className="w-4 h-4" />
+                  <span>Practice</span>
+                </button>
+                
+                <button
+                  onClick={() => setViewMode("discover")}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors font-medium cursor-pointer ${
+                    viewMode === "discover"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Discover</span>
+                </button>
+                
+                <button
+                  onClick={() => setViewMode("analytics")}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors font-medium cursor-pointer ${
+                    viewMode === "analytics"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Analytics</span>
+                </button>
+                
+                <button
+                  onClick={() => setViewMode("completed")}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors font-medium cursor-pointer ${
+                    viewMode === "completed"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Completed</span>
+                </button>
+              </div>
+
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors font-semibold flex items-center space-x-1`}
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                  darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+                }`}
+                aria-label="Toggle dark mode"
               >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                <span>{darkMode ? 'Light' : 'Dark'} Mode</span>
+                {darkMode ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                  darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+                }`}
+                aria-label="Open settings"
+              >
+                <Settings className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className={`cursor-pointer lg:hidden p-2 rounded-lg ${textClass} hover:bg-gray-100/50 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} transition-colors duration-200`}
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
+            {/* Right Section - Mobile */}
+            <div className="lg:hidden flex items-center space-x-2">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                  darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+                }`}
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className={`lg:hidden border-t py-4 ${darkMode ? "border-gray-700/50" : "border-gray-200/50"}`}>
+        {/* Mobile Menu */}
+        {sidebarOpen && (
+          <div className="lg:hidden">
+            <div
+              className={`${darkMode ? "bg-gray-900" : "bg-white"} px-4 py-4 space-y-4`}
+            >
+              {/* Mobile Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div
+                  className={`text-center p-3 rounded-lg ${
+                    darkMode ? "bg-gray-800" : "bg-gray-100"
+                  }`}
+                >
+                  <Users className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                  <div className="text-sm font-semibold">
+                    {challenges.length}
+                  </div>
+                  <div
+                    className={`text-xs ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Challenges
+                  </div>
+                </div>
+                <div
+                  className={`text-center p-3 rounded-lg ${
+                    darkMode ? "bg-gray-800" : "bg-gray-100"
+                  }`}
+                >
+                  <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-600" />
+                  <div className="text-sm font-semibold">
+                    {completedChallenges.size}
+                  </div>
+                  <div
+                    className={`text-xs ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Completed
+                  </div>
+                </div>
+                <div
+                  className={`text-center p-3 rounded-lg ${
+                    darkMode ? "bg-gray-800" : "bg-gray-100"
+                  }`}
+                >
+                  <TrendingUp className="w-5 h-5 mx-auto mb-1 text-green-600" />
+                  <div className="text-sm font-semibold">
+                    {userStats.points}
+                  </div>
+                  <div
+                    className={`text-xs ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Points
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Navigation */}
               <div className="space-y-2">
                 <button
                   onClick={() => {
-                    handleTabSwitch("generator");
-                    setMobileMenuOpen(false);
+                    setViewMode("challenge");
+                    setSidebarOpen(false);
                   }}
-                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    activeTab === "generator"
-                      ? "bg-indigo-500 text-white shadow-lg"
-                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === "challenge"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  Generator
+                  <Triangle className="w-5 h-5" />
+                  <span>Practice Mode</span>
                 </button>
+
                 <button
                   onClick={() => {
-                    handleTabSwitch("analytics");
-                    setMobileMenuOpen(false);
+                    setViewMode("discover");
+                    setSidebarOpen(false);
                   }}
-                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    activeTab === "analytics"
-                      ? "bg-indigo-500 text-white shadow-lg"
-                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === "discover"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  Analytics
+                  <Search className="w-5 h-5" />
+                  <span>Discover</span>
                 </button>
+
                 <button
                   onClick={() => {
-                    handleTabSwitch("library");
-                    setMobileMenuOpen(false);
+                    setViewMode("analytics");
+                    setSidebarOpen(false);
                   }}
-                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    activeTab === "library"
-                      ? "bg-indigo-500 text-white shadow-lg"
-                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === "analytics"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  Library
+                  <BarChart3 className="w-5 h-5" />
+                  <span>Analytics</span>
                 </button>
+
                 <button
                   onClick={() => {
-                    handleTabSwitch("favorites");
-                    setMobileMenuOpen(false);
+                    setViewMode("completed");
+                    setSidebarOpen(false);
                   }}
-                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    activeTab === "favorites"
-                      ? "bg-indigo-500 text-white shadow-lg"
-                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                    viewMode === "completed"
+                      ? "bg-indigo-600 text-white"
+                      : darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  Favorites ({favoritesArray.length})
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>Completed</span>
                 </button>
+              </div>
+
+              {/* Mobile Settings */}
+              <div className="pt-4">
                 <button
                   onClick={() => {
-                    setDarkMode(!darkMode);
-                    setMobileMenuOpen(false);
+                    setShowSettings(!showSettings);
+                    setSidebarOpen(false);
                   }}
-                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"} flex items-center space-x-2`}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                    darkMode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
                 >
-                  {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  <span>{darkMode ? 'Light' : 'Dark'} Mode</span>
+                  <Settings className="w-5 h-5" />
+                  <span>Settings</span>
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      </motion.nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className={tabTransition ? "opacity-50" : "opacity-100"}
-        >
-          {activeTab === "generator" && (
-            <div>
-            {/* Hero Section */}
-            <motion.div 
-              className="text-center mb-12"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <motion.h1
-                className={`md:text-6xl text-5xl font-bold ${textClass} mb-6 leading-tight`}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-              >
-                Professional Creative
-                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  {" "}
-                  Intelligence{" "}
-                </span>
-                Platform
-              </motion.h1>
-              <motion.p
-                className={`md:text-xl text-lg ${textSecondaryClass} mb-8 md:max-w-3xl mx-auto leading-relaxed`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-              >
-                Advanced prompt generation system trusted by creative
-                professionals worldwide. AI-powered insights, analytics, and
-                workflow optimization for maximum creative output.
-              </motion.p>
-
-              {/* Key Metrics */}
-              <motion.div 
-                className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-              >
-                <motion.div
-                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="text-3xl font-bold text-indigo-600 mb-2">
-                    25+
-                  </div>
-                  <div className={`${textSecondaryClass} font-medium`}>
-                    Premium Prompts
-                  </div>
-                </motion.div>
-                <motion.div
-                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="text-3xl font-bold text-green-600 mb-2">
-                    {userStats.currentStreak}
-                  </div>
-                  <div className={`${textSecondaryClass} font-medium`}>
-                    Day Streak
-                  </div>
-                </motion.div>
-                <motion.div
-                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="text-3xl font-bold text-purple-600 mb-2">
-                    {favoritesArray.length}
-                  </div>
-                  <div className={`${textSecondaryClass} font-medium`}>
-                    Favorited
-                  </div>
-                </motion.div>
-                <motion.div
-                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="text-3xl font-bold text-orange-600 mb-2">
-                    {userStats.timeSpent}h
-                  </div>
-                  <div className={`${textSecondaryClass} font-medium`}>
-                    Time Invested
-                  </div>
-                </motion.div>
-              </motion.div>
-            </motion.div>
-
-            {/* Simple Controls */}
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 1.0 }}
-            >
-              <motion.button
-                onClick={handleNewPrompt}
-                disabled={isAnimating}
-                className="cursor-pointer group bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 font-semibold text-lg"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Shuffle
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isAnimating ? "animate-spin" : "group-hover:rotate-180"
-                  }`}
-                />
-                <span>Generate New Prompt</span>
-              </motion.button>
-
-              <motion.button
-                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-                className={`cursor-pointer px-8 py-4 rounded-xl border-2 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold text-lg ${
-                  showOnlyFavorites
-                    ? "bg-pink-500 text-white border-pink-500 hover:bg-pink-600"
-                    : `${cardClass} ${textClass} hover:border-pink-300 hover:text-pink-600`
-                }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Heart className="w-6 h-6" />
-                <span>Favorites Only</span>
-              </motion.button>
-            </motion.div>
-
-            {/* Timer & Progress */}
-            {currentPrompt && (
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-4 sm:p-6 mb-8 shadow-lg`}
-              >
-                {/* Mobile Layout */}
-                <div className="flex flex-col space-y-4 md:hidden">
-                  {/* Timer and Controls Row */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-3xl sm:text-4xl font-mono font-bold text-indigo-600">
-                      {formatTime(timerSeconds)}
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={isTimerRunning ? pauseTimer : startTimer}
-                        className="cursor-pointer p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                      >
-                        {isTimerRunning ? (
-                          <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
-                        ) : (
-                          <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={resetTimer}
-                        className="cursor-pointer p-2.5 sm:p-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-300"
-                      >
-                        <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Estimated Time */}
-                  <div className={`text-sm ${textSecondaryClass} text-center`}>
-                    Estimated: {currentPrompt.estimatedTime}
-                  </div>
-                  
-                  {/* Action Buttons Row */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={sharePrompt}
-                      className="cursor-pointer bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold flex-1"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </button>
-                    <button
-                      onClick={() =>
-                        currentPrompt && markComplete(currentPrompt.id)
-                      }
-                      disabled={completedArray.includes(currentPrompt.id)}
-                      className={`cursor-pointer px-4 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 font-semibold flex-1 ${
-                        completedArray.includes(currentPrompt.id)
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-green-600 text-white hover:bg-green-700"
-                      }`}
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>
-                        {completedArray.includes(currentPrompt.id)
-                          ? "Completed"
-                          : "Mark Complete"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Desktop Layout */}
-                <div className="hidden md:flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="text-4xl font-mono font-bold text-indigo-600">
-                      {formatTime(timerSeconds)}
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={isTimerRunning ? pauseTimer : startTimer}
-                        className="cursor-pointer p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                      >
-                        {isTimerRunning ? (
-                          <Pause className="w-5 h-5" />
-                        ) : (
-                          <Play className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={resetTimer}
-                        className="cursor-pointer p-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-300"
-                      >
-                        <RotateCcw className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className={`text-sm ${textSecondaryClass}`}>
-                      Estimated: {currentPrompt.estimatedTime}
-                    </div>
-                    <button
-                      onClick={sharePrompt}
-                      className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center space-x-2 font-semibold"
-                    >
-                      <Share2 className="w-5 h-5" />
-                      <span>Share</span>
-                    </button>
-                    <button
-                      onClick={() =>
-                        currentPrompt && markComplete(currentPrompt.id)
-                      }
-                      disabled={completedArray.includes(currentPrompt.id)}
-                      className={`cursor-pointer px-6 py-3 rounded-xl transition-all duration-300 flex items-center space-x-2 font-semibold ${
-                        completedArray.includes(currentPrompt.id)
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-green-600 text-white hover:bg-green-700"
-                      }`}
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                      <span>
-                        {completedArray.includes(currentPrompt.id)
-                          ? "Completed"
-                          : "Mark Complete"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Current Prompt Display */}
-            <AnimatePresence mode="wait">
-              {currentPrompt && (!showOnlyFavorites || favoritesArray.includes(currentPrompt.id)) ? (
-                <motion.div
-                  key={currentPrompt.id}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: -20 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500`}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                >
-                <div className="mb-8">
-                  {/* Desktop layout - hidden on mobile */}
-                  <div className="hidden md:flex items-start justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
-                        {getCategoryIcon(currentPrompt.category)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <span
-                            className={`text-lg font-semibold ${textClass}`}
-                          >
-                            {currentPrompt.category}
-                          </span>
-                          <div
-                            className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(
-                              currentPrompt.difficulty
-                            )}`}
-                          >
-                            {currentPrompt.difficulty}
-                          </div>
-                          <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                            {currentPrompt.type}
-                          </div>
-                          {completedArray.includes(currentPrompt.id) && (
-                            <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center space-x-1">
-                              <CheckCircle className="w-4 h-4" />
-                              <span>Completed</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {currentPrompt.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className={`px-2 py-1 bg-gray-100 ${
-                                darkMode
-                                  ? "bg-gray-700 text-gray-300"
-                                  : "text-gray-600"
-                              } rounded-md text-xs`}
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleFavorite(currentPrompt.id)}
-                      className={`cursor-pointer p-4 rounded-full transition-all duration-300 hover:scale-110 relative ${
-                        favoritesArray.includes(currentPrompt.id)
-                          ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg ring-2 ring-pink-200"
-                          : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
-                      }`}
-                    >
-                      <Heart
-                        className={`w-6 h-6 ${
-                          favoritesArray.includes(currentPrompt.id)
-                            ? "fill-current animate-pulse"
-                            : ""
-                        }`}
-                      />
-                      {favoritesArray.includes(currentPrompt.id) && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                          <Star className="w-2.5 h-2.5 text-yellow-800 fill-current" />
-                        </div>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Mobile layout - hidden on desktop */}
-                  <div className="md:hidden space-y-3">
-                    {/* First line: Icon + Category */}
-                    <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
-                        {getCategoryIcon(currentPrompt.category)}
-                      </div>
-                      <span className={`text-lg font-semibold ${textClass}`}>
-                        {currentPrompt.category}
-                      </span>
-                    </div>
-
-                    {/* Second line: Badges + Like button */}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex flex-wrap gap-2 flex-1">
-                        <div
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(
-                            currentPrompt.difficulty
-                          )}`}
-                        >
-                          {currentPrompt.difficulty}
-                        </div>
-                        <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                          {currentPrompt.type}
-                        </div>
-                        {completedArray.includes(currentPrompt.id) && (
-                          <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center space-x-1">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Completed</span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => toggleFavorite(currentPrompt.id)}
-                        className={`cursor-pointer p-3 rounded-full transition-all duration-300 hover:scale-110 flex-shrink-0 relative ${
-                          favoritesArray.includes(currentPrompt.id)
-                            ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg ring-2 ring-pink-200"
-                            : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
-                        }`}
-                      >
-                        <Heart
-                          className={`w-5 h-5 ${
-                            favoritesArray.includes(currentPrompt.id)
-                              ? "fill-current animate-pulse"
-                              : ""
-                          }`}
-                        />
-                        {favoritesArray.includes(currentPrompt.id) && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center">
-                            <Star className="w-2 h-2 text-yellow-800 fill-current" />
-                          </div>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Third line: Tags */}
-                    <div className="flex flex-wrap gap-2">
-                      {currentPrompt.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={`px-2 py-1 bg-gray-100 ${
-                            darkMode
-                              ? "bg-gray-700 text-gray-300"
-                              : "text-gray-600"
-                          } rounded-md text-xs`}
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {/* Main Prompt Display */}
-                <div className="relative mb-8">
-                  {/* Main prompt container */}
-                  <div className={`relative ${darkMode ? 'bg-gray-800/40' : 'bg-gray-50/60'} backdrop-blur-sm border ${darkMode ? 'border-gray-600/30' : 'border-gray-200/40'} rounded-xl p-6 md:p-8`}>
-                    {/* Prompt label */}
-                    <div className="flex items-center justify-center mb-4">
-                      <div className={`flex items-center space-x-2 px-3 py-1.5 ${darkMode ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-100/80 text-gray-600'} rounded-full text-xs font-medium`}>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Creative Prompt</span>
-                      </div>
-                    </div>
-                    
-                    {/* Main prompt text */}
-                    <div className={`text-center text-xl md:text-2xl ${textClass} leading-relaxed font-medium mb-4`}>
-                      "{currentPrompt.text}"
-                    </div>
-                    
-                    {/* Visual accent line */}
-                    <div className="flex justify-center">
-                      <div className={`w-16 h-0.5 ${darkMode ? 'bg-gray-600' : 'bg-gray-300'} rounded-full`}></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                    <h4 className="font-semibold text-indigo-900 mb-3 flex items-center">
-                      <Lightbulb className="w-5 h-5 mr-2" />
-                      Pro Tips
-                    </h4>
-                    <ul className="text-sm text-indigo-800 space-y-2">
-                      <li>
-                        • Break down the challenge into smaller components
-                      </li>
-                      <li>• Research similar projects for inspiration</li>
-                      <li>• Set a timer to maintain focus and momentum</li>
-                    </ul>
-                  </div>
-
-                  <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                    <h4 className="font-semibold text-green-900 mb-3 flex items-center">
-                      <Target className="w-5 h-5 mr-2" />
-                      Success Metrics
-                    </h4>
-                    <ul className="text-sm text-green-800 space-y-2">
-                      <li>• Clear concept development</li>
-                      <li>• Original approach or perspective</li>
-                      <li>• Attention to target audience</li>
-                    </ul>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg text-center`}
-              >
-                {favoritesArray.length === 0 ? (
-                  <>
-                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
-                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
-                      No favorite prompts yet!
-                    </p>
-                    <p className={`${textSecondaryClass} mb-6`}>
-                      Start exploring prompts and mark your favorites to build your personal collection.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <button
-                        onClick={() => setShowOnlyFavorites(false)}
-                        className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                      >
-                        Browse All Prompts
-                      </button>
-                      <button
-                        onClick={() => handleTabSwitch("library")}
-                        className="cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300"
-                      >
-                        Explore Library
-                      </button>
-                    </div>
-                  </>
-                ) : showOnlyFavorites ? (
-                  <>
-                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
-                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
-                      No favorite prompts available right now.
-                    </p>
-                    <p className={`${textSecondaryClass} mb-6`}>
-                      Generate new prompts to find ones you'd like to favorite.
-                    </p>
-                    <button
-                      onClick={() => setShowOnlyFavorites(false)}
-                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                    >
-                      Browse All Prompts
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Shuffle className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
-                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
-                      No prompts available.
-                    </p>
-                    <p className={`${textSecondaryClass} mb-6`}>
-                      Try generating a new prompt or check your filters.
-                    </p>
-                    <button
-                      onClick={handleNewPrompt}
-                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                    >
-                      Generate New Prompt
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            </AnimatePresence>
           </div>
         )}
+      </header>
 
-          {(activeTab === "library" || activeTab === "favorites") && (
-            <div className="space-y-8">
-            <div className="text-center mb-12">
-              <h2 className={`text-4xl font-bold ${textClass} mb-4`}>
-                {activeTab === "favorites"
-                  ? "Your Favorite Prompts"
-                  : "Creative Library"}
-              </h2>
-              <p className={`text-lg ${textSecondaryClass}`}>
-                {activeTab === "favorites"
-                  ? `${favoritesArray.length} favorite prompts ready for your next creative session`
-                  : "Browse, search, and organize your complete creative prompt collection"}
+      {/* Settings Modal */}
+      {showSettings && (
+        <div
+          onClick={() => setShowSettings(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()} // ← prevent the overlay click
+            className={`${
+              darkMode
+                ? "bg-gray-900"
+                : "bg-white"
+            } rounded-2xl p-6 w-full max-w-md`}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Settings</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                  darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Dark Mode</span>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                    darkMode ? "bg-indigo-600" : "bg-gray-300"
+                  } relative`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                      darkMode ? "translate-x-6" : "translate-x-0.5"
+                    } absolute top-0.5`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Export Progress</span>
+                <button
+                  onClick={exportData}
+                  className="flex items-center space-x-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+              </div>
+
+              <div className="pt-4">
+                <h4 className="font-medium mb-2">Statistics</h4>
+                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex justify-between">
+                    <span>Total Points:</span>
+                    <span className="font-medium">{userStats.points}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Current Streak:</span>
+                    <span className="font-medium">
+                      {userStats.streakDays} days
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time Spent:</span>
+                    <span className="font-medium">
+                      {userStats.totalTimeSpent} min
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="md:max-w-7xl mx-auto md:px-6 px-2 py-8">
+        {viewMode === "analytics" ? (
+          /* Analytics Dashboard */
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Analytics Dashboard</h2>
+              <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                Track your progress and performance metrics
               </p>
             </div>
 
-            {/* Advanced Filters */}
-            <div
-              className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 mb-8 shadow-lg`}
-            >
-              <h3 className={`text-lg font-semibold ${textClass} mb-6`}>
-                Advanced Filtering & Search
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search prompts, tags, categories..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
-                      darkMode
-                        ? "bg-gray-700 border-gray-600 text-white"
-                        : "bg-white"
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Trophy className="w-8 h-8 text-yellow-500" />
+                  <span
+                    className={`text-2xl font-bold ${
+                      darkMode ? "text-white" : "text-gray-900"
                     }`}
-                  />
+                  >
+                    {userStats.totalCompleted}
+                  </span>
                 </div>
-
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
-                    darkMode
-                      ? "bg-gray-700 border-gray-600 text-white"
-                      : "bg-white"
+                <h3 className="font-semibold mb-1">Challenges Completed</h3>
+                <p
+                  className={`text-sm ${
+                    darkMode ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat} Category
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
-                    darkMode
-                      ? "bg-gray-700 border-gray-600 text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  {DIFFICULTIES.map((diff) => (
-                    <option key={diff} value={diff}>
-                      {diff} Difficulty
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
-                    darkMode
-                      ? "bg-gray-700 border-gray-600 text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  {TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type} Type
-                    </option>
-                  ))}
-                </select>
+                  {completionPercentage}% of total
+                </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("All");
-                    setSelectedDifficulty("All");
-                    setSelectedType("All");
-                  }}
-                  className={`cursor-pointer w-full sm:w-auto px-6 py-3 rounded-xl border-2 ${cardClass} ${textClass} hover:border-indigo-300 hover:text-indigo-600 transition-all duration-300 font-semibold`}
-                >
-                  Clear Filters
-                </button>
-
-                {activeTab === "favorites" && (
-                  <button
-                    onClick={exportPrompts}
-                    className={`cursor-pointer w-full sm:w-auto px-6 py-3 rounded-xl border-2 ${cardClass} ${textClass} hover:border-green-300 hover:text-green-600 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold`}
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Zap className="w-8 h-8 text-orange-500" />
+                  <span
+                    className={`text-2xl font-bold ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
                   >
-                    <Download className="w-5 h-5" />
-                    <span>Export Favorites</span>
-                  </button>
-                )}
-
-                <div
-                  className={`w-full sm:w-auto px-4 py-3 rounded-xl ${cardClass} ${textSecondaryClass} text-sm text-center sm:text-left`}
-                >
-                  Showing {filteredPrompts.length} prompt
-                  {filteredPrompts.length !== 1 ? "s" : ""}
+                    {userStats.streakDays}
+                  </span>
                 </div>
+                <h3 className="font-semibold mb-1">Day Streak</h3>
+                <p
+                  className={`text-sm ${
+                    darkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  Keep it up!
+                </p>
+              </div>
+
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="w-8 h-8 text-blue-500" />
+                  <span
+                    className={`text-2xl font-bold ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    {userStats.totalTimeSpent}m
+                  </span>
+                </div>
+                <h3 className="font-semibold mb-1">Time Invested</h3>
+                <p
+                  className={`text-sm ${
+                    darkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  Learning & creating
+                </p>
+              </div>
+
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Star className="w-8 h-8 text-purple-500" />
+                  <span
+                    className={`text-2xl font-bold ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    {userStats.points}
+                  </span>
+                </div>
+                <h3 className="font-semibold mb-1">Total Points</h3>
+                <p
+                  className={`text-sm ${
+                    darkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {userStats.rank}
+                </p>
               </div>
             </div>
 
-            {filteredPrompts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPrompts.map((prompt) => (
-                  <div
-                    key={prompt.id}
-                    className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col h-full`}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
-                          {getCategoryIcon(prompt.category)}
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-500">
-                            {prompt.category}
-                          </div>
-                          <div
-                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(
-                              prompt.difficulty
-                            )}`}
+            {/* Progress Charts */}
+            <div className="space-y-8">
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <h3 className="text-xl font-semibold mb-6">
+                  Completion by Difficulty
+                </h3>
+                <div className="space-y-4">
+                  {difficulties.slice(1).map((difficulty) => {
+                    const challengesOfDifficulty = challenges.filter(
+                      (c) => c.difficulty === difficulty
+                    );
+                    const completedOfDifficulty = challengesOfDifficulty.filter(
+                      (c) => completedChallenges.has(c.id)
+                    );
+                    const percentage = Math.round(
+                      (completedOfDifficulty.length /
+                        challengesOfDifficulty.length) *
+                        100
+                    );
+
+                    return (
+                      <div key={difficulty}>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium">{difficulty}</span>
+                          <span
+                            className={`text-sm ${
+                              darkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
                           >
-                            {prompt.difficulty}
-                          </div>
+                            {completedOfDifficulty.length}/
+                            {challengesOfDifficulty.length}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-full ${
+                            darkMode ? "bg-gray-700" : "bg-gray-200"
+                          } rounded-full h-2`}
+                        >
+                          <div
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div
+                className={`${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700 shadow-lg"
+                    : "bg-white border border-gray-200 shadow-lg"
+                } rounded-xl p-6`}
+              >
+                <h3 className="text-xl font-semibold mb-6">
+                  Category Progress
+                </h3>
+                <div className="space-y-4">
+                  {categories.slice(1).map((category) => {
+                    const challengesOfCategory = challenges.filter(
+                      (c) => c.category === category
+                    );
+                    const completedOfCategory = challengesOfCategory.filter(
+                      (c) => completedChallenges.has(c.id)
+                    );
+                    const percentage = Math.round(
+                      (completedOfCategory.length /
+                        challengesOfCategory.length) *
+                        100
+                    );
+
+                    return (
+                      <div key={category}>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium">{category}</span>
+                          <span
+                            className={`text-sm ${
+                              darkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
+                            {completedOfCategory.length}/
+                            {challengesOfCategory.length}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-full ${
+                            darkMode ? "bg-gray-700" : "bg-gray-200"
+                          } rounded-full h-2`}
+                        >
+                          <div
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : viewMode === "discover" ? (
+          /* Discover Mode */
+          <div className="space-y-8">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-3xl font-bold mb-2">Discover Challenges</h2>
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  Find your next design challenge
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search
+                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search challenges..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
+                      darkMode
+                        ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                    } focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
+                  />
+                </div>
+
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`px-6 py-3 rounded-lg transition-colors cursor-pointer flex items-center space-x-2 ${
+                    darkMode
+                      ? "bg-gray-800 hover:bg-gray-700"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  <span>Filters</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            {showFilters && (
+              <div
+                              className={`${
+                darkMode
+                  ? "bg-gray-800"
+                  : "bg-white"
+              } rounded-xl p-6`}
+              >
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Category
+                    </label>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className={`w-full p-2 rounded-lg border ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      {categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Difficulty
+                    </label>
+                    <select
+                      value={selectedDifficulty}
+                      onChange={(e) => setSelectedDifficulty(e.target.value)}
+                      className={`w-full p-2 rounded-lg border ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      {difficulties.map((difficulty) => (
+                        <option key={difficulty} value={difficulty}>
+                          {difficulty}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Sort By
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className={`w-full p-2 rounded-lg border ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    >
+                      <option value="featured">Featured</option>
+                      <option value="popular">Most Popular</option>
+                      <option value="recent">Most Recent</option>
+                      <option value="difficulty">By Difficulty</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Challenge Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredChallenges.map((challenge) => (
+                <div
+                  key={challenge.id}
+                  className={`${
+                    darkMode
+                      ? "bg-gray-800"
+                      : "bg-white"
+                  } rounded-xl hover:bg-opacity-80 transition-all duration-300 overflow-hidden group cursor-pointer`}
+                  onClick={() => {
+                    // Reset timer when changing challenges
+                    setTimerSeconds(0);
+                    setTimerActive(false);
+                    
+                    setCurrentIndex(
+                      challenges.findIndex((c) => c.id === challenge.id)
+                    );
+                    setViewMode("challenge");
+                  }}
+                >
+                  {challenge.featured && (
+                    <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold px-3 py-1">
+                      ✨ FEATURED
+                    </div>
+                  )}
+
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                        <ShapeIcon shape={challenge.shape} />
+                      </div>
+
                       <div className="flex items-center space-x-2">
-                        {completedArray.includes(prompt.id) && (
-                          <div className="p-2 bg-green-100 text-green-600 rounded-full">
-                            <CheckCircle className="w-4 h-4" />
-                          </div>
-                        )}
                         <button
-                          onClick={() => toggleFavorite(prompt.id)}
-                          className={`cursor-pointer p-2 rounded-full transition-all duration-300 ${
-                            favoritesArray.includes(prompt.id)
-                              ? "bg-pink-500 text-white"
-                              : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(challenge.id);
+                          }}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            favoriteIds.has(challenge.id)
+                              ? "text-red-500 hover:bg-red-50"
+                              : darkMode
+                              ? "text-gray-400 hover:bg-gray-700"
+                              : "text-gray-400 hover:bg-gray-50"
                           }`}
                         >
                           <Heart
                             className={`w-4 h-4 ${
-                              favoritesArray.includes(prompt.id)
+                              favoriteIds.has(challenge.id)
                                 ? "fill-current"
                                 : ""
                             }`}
                           />
                         </button>
+
+                        {completedChallenges.has(challenge.id) && (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        )}
                       </div>
                     </div>
 
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-indigo-600 transition-colors">
+                      {challenge.title}
+                    </h3>
                     <p
-                      className={`${textClass} text-sm leading-relaxed mb-4 flex-grow`}
+                      className={`${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      } text-sm mb-4 line-clamp-2`}
                     >
-                      {prompt.text}
+                      {challenge.description}
                     </p>
 
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex flex-wrap gap-1">
-                        {prompt.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className={`px-2 py-1 bg-gray-100 ${
-                              darkMode
-                                ? "bg-gray-700 text-gray-300"
-                                : "text-gray-600"
-                            } rounded-md text-xs`}
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                      <div className={`text-xs ${textSecondaryClass}`}>
-                        {prompt.estimatedTime}
-                      </div>
+                      <DifficultyBadge difficulty={challenge.difficulty} />
+                      <span
+                        className={`text-xs ${
+                          darkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {challenge.estimatedTime}
+                      </span>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setCurrentPrompt(prompt);
-                        setShowOnlyFavorites(false); // Reset favorites filter when starting challenge from library
-                        handleTabSwitch("generator");
-                        resetTimer();
-                      }}
-                      className="cursor-pointer w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold flex items-center justify-center space-x-2 mt-auto"
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center space-x-3">
+                        <span className="flex items-center space-x-1">
+                          <Heart className="w-3 h-3" />
+                          <span>{challenge.likes}</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <Eye className="w-3 h-3" />
+                          <span>{challenge.views}</span>
+                        </span>
+                      </div>
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {challenge.category}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : viewMode === "completed" ? (
+          /* Completed Challenges */
+          <div className="space-y-8">
+            <div>
+              <h2 className="md:text-3xl text-2xl font-bold mb-2">
+                Completed Challenges
+              </h2>
+              <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                You've completed {completedChallenges.size} out of{" "}
+                {challenges.length} challenges ({completionPercentage}%)
+              </p>
+            </div>
+
+            {completedList.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {completedList.map((challenge) => (
+                  <div
+                    key={challenge.id}
+                    className={`${
+                      darkMode
+                        ? "bg-gray-800"
+                        : "bg-white"
+                    } rounded-xl p-6 hover:bg-opacity-80 transition-all`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl flex items-center justify-center text-emerald-600">
+                        <ShapeIcon shape={challenge.shape} />
+                      </div>
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                    </div>
+
+                    <h3 className="text-xl font-semibold mb-2">
+                      {challenge.title}
+                    </h3>
+                    <p
+                      className={`${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      } text-sm mb-4`}
                     >
-                      <span>Start Challenge</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                      {challenge.description}
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <DifficultyBadge difficulty={challenge.difficulty} />
+                      <span
+                        className={`text-sm ${
+                          darkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {challenge.estimatedTime}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg text-center`}
-              >
-                {activeTab === "favorites" ? (
-                  <>
-                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
-                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
-                      No favorite prompts yet!
-                    </p>
-                    <p className={`${textSecondaryClass} mb-6`}>
-                      Start exploring prompts and mark your favorites to
-                      build your personal collection.
-                    </p>
-                    <button
-                      onClick={() => handleTabSwitch("library")}
-                      className="cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300"
-                    >
-                      Browse Library
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
-                      No prompts match your search criteria.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedCategory("All");
-                        setSelectedDifficulty("All");
-                        setSelectedType("All");
-                      }}
-                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
-                    >
-                      Clear All Filters
-                    </button>
-                  </>
-                )}
+              <div className="text-center py-16">
+                <div
+                  className={`w-24 h-24 ${
+                    darkMode ? "bg-gray-800" : "bg-gray-100"
+                  } rounded-full flex items-center justify-center mx-auto mb-4`}
+                >
+                  <Trophy
+                    className={`w-12 h-12 ${
+                      darkMode ? "text-gray-600" : "text-gray-400"
+                    }`}
+                  />
+                </div>
+                <h3 className="text-xl font-medium mb-2">
+                  No completed challenges yet
+                </h3>
+                <p
+                  className={`${
+                    darkMode ? "text-gray-400" : "text-gray-600"
+                  } mb-6`}
+                >
+                  Start completing challenges to see them here!
+                </p>
+                <button
+                  onClick={() => setViewMode("challenge")}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium cursor-pointer"
+                >
+                  Start Your First Challenge
+                </button>
               </div>
             )}
           </div>
-        )}
-
-        {activeTab === "analytics" && (
-          <div className="space-y-8">
-            <div className="text-center mb-12">
-              <h2 className={`text-4xl font-bold ${textClass} mb-4`}>
-                Creative Analytics Dashboard
-              </h2>
-              <p className={`text-lg ${textSecondaryClass}`}>
-                Track your creative progress and optimize your workflow
-              </p>
+        ) : (
+          /* Main Challenge View */
+          <div className="max-w-5xl mx-auto space-y-8">
+            {/* Progress Overview */}
+            <div
+              className={`${
+                darkMode
+                  ? "bg-gray-800"
+                  : "bg-white"
+              } rounded-2xl md:px-6 py-6 px-3`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Your Progress</h3>
+                <div className="flex items-center space-x-4">
+                  <span
+                    className={`text-sm ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    {completedChallenges.size}/{challenges.length} completed
+                  </span>
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {completionPercentage}%
+                  </span>
+                </div>
+              </div>
+              <div
+                className={`w-full ${
+                  darkMode ? "bg-gray-700" : "bg-gray-200"
+                } rounded-full h-3`}
+              >
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${completionPercentage}%` }}
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Performance Metrics */}
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
-              >
-                <h3
-                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
-                >
-                  <TrendingUp className="w-6 h-6 mr-2 text-indigo-600" />
-                  Performance Overview
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className={textSecondaryClass}>Completion Rate</span>
-                    <span className="font-bold text-green-600">
-                      {Math.round(
-                        (completedArray.length / CREATIVE_PROMPTS.length) * 100
-                      )}
-                      %
+            {/* Timer & Tools */}
+            <div
+              className={`${
+                darkMode
+                  ? "bg-gray-800"
+                  : "bg-white"
+              } rounded-2xl md:px-6 py-6 px-3`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Timer className="w-5 h-5 text-blue-600" />
+                    <span className="text-lg font-mono font-semibold">
+                      {formatTime(timerSeconds)}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full"
-                      style={{
-                        width: `${
-                          (completedArray.length / CREATIVE_PROMPTS.length) *
-                          100
-                        }%`,
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={textSecondaryClass}>Total Completed</span>
-                    <span className="font-bold text-blue-600">
-                      {userStats.totalCompleted}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={textSecondaryClass}>Favorited</span>
-                    <span className="font-bold text-pink-600">
-                      {favoritesArray.length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={textSecondaryClass}>Time Invested</span>
-                    <span className="font-bold text-purple-600">
-                      {userStats.timeSpent}h
-                    </span>
+
+                  <div className="flex items-center space-x-2">
+                    {!timerActive ? (
+                      <button
+                        onClick={startTimer}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm cursor-pointer"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Start</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={pauseTimer}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm cursor-pointer"
+                      >
+                        <Pause className="w-4 h-4" />
+                        <span>Pause</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={resetTimer}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+                      }`}
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={shareChallenge}
+                    className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                      darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+                    }`}
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => toggleFavorite(currentChallenge.id)}
+                    className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                      favoriteIds.has(currentChallenge.id)
+                        ? "text-red-500 hover:bg-red-50"
+                        : darkMode
+                        ? "text-gray-400 hover:bg-gray-700"
+                        : "text-gray-400 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        favoriteIds.has(currentChallenge.id)
+                          ? "fill-current"
+                          : ""
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
+            </div>
 
-              {/* Category Breakdown */}
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
-              >
-                <h3
-                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
-                >
-                  <PieChart className="w-6 h-6 mr-2 text-purple-600" />
-                  Category Distribution
-                </h3>
-                <div className="space-y-3">
-                  {["Design", "Writing", "UX/UI", "Art", "Innovation"].map(
-                    (cat, idx) => {
-                      const categoryPrompts = CREATIVE_PROMPTS.filter((p) => {
-                        if (cat === "Design") {
-                          return p.category.includes("Design") || p.category === "Branding";
-                        }
-                        if (cat === "Writing") {
-                          return p.category.includes("Writing") || p.category === "Copywriting" || p.category === "Poetry" || p.category === "Journalism";
-                        }
-                        if (cat === "UX/UI") {
-                          return p.category === "UX/UI";
-                        }
-                        if (cat === "Art") {
-                          return p.category === "Art" || p.category === "Photography" || p.category === "Performance" || p.category === "Culinary Arts";
-                        }
-                        if (cat === "Innovation") {
-                          return p.category === "Innovation" || p.category === "Music" || p.category === "Game Design";
-                        }
-                        return p.category === cat;
-                      });
-                      const completedInCategory = categoryPrompts.filter((p) =>
-                        completedArray.includes(p.id)
-                      ).length;
-                      const percentage =
-                        categoryPrompts.length > 0
-                          ? Math.round(
-                              (completedInCategory / categoryPrompts.length) *
-                                100
-                            )
-                          : 0;
+            {/* Main Challenge Card */}
+            <div
+              className={`${
+                darkMode
+                  ? "bg-gray-800"
+                  : "bg-white"
+              } rounded-2xl overflow-hidden transition-all duration-300 ${
+                isAnimating ? "scale-95 opacity-50" : "scale-100 opacity-100"
+              }`}
+            >
+              {currentChallenge.featured && (
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-2">
+                  Featured Challenge
+                </div>
+              )}
 
-                      return (
-                        <div
-                          key={cat}
-                          className="flex items-center gap-3"
+              <div className="md:px-6 py-6 px-3 md:p-12">
+                {/* Mobile Layout */}
+                <div className="block md:hidden mb-8">
+                  {/* Line 1: Icon and Title */}
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center text-blue-600">
+                      <ShapeIcon
+                        shape={currentChallenge.shape}
+                        className="w-6 h-6"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <h1 className="text-xl font-bold">
+                          {currentChallenge.title}
+                        </h1>
+                        {completedChallenges.has(currentChallenge.id) && (
+                          <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Line 2: Badges and Info */}
+                  <div className="flex items-center flex-wrap gap-2 mb-4">
+                    <DifficultyBadge difficulty={currentChallenge.difficulty} />
+                    <span
+                      className={`flex items-center space-x-1 text-sm ${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      <span>{currentChallenge.estimatedTime}</span>
+                    </span>
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {currentChallenge.category}
+                    </span>
+                  </div>
+
+                  {/* Line 3: Stats */}
+                  <div className="flex items-center flex-wrap gap-3 text-sm text-gray-500 mb-4">
+                    <span className="flex items-center space-x-1">
+                      <Heart className="w-4 h-4" />
+                      <span>{currentChallenge.likes}</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <Eye className="w-4 h-4" />
+                      <span>{currentChallenge.views}</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <Users className="w-4 h-4" />
+                      <span>{currentChallenge.completions} completed</span>
+                    </span>
+                  </div>
+
+                  {/* Line 4: Full Width Completed Button */}
+                  <button
+                    onClick={() => toggleCompleted(currentChallenge.id)}
+                    className={`w-full py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 font-medium cursor-pointer ${
+                      completedChallenges.has(currentChallenge.id)
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700"
+                    }`}
+                  >
+                    <Check className="w-5 h-5" />
+                    <span>
+                      {completedChallenges.has(currentChallenge.id)
+                        ? "Mark as Incomplete"
+                        : "Mark as Complete"}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden md:flex items-start justify-between mb-8">
+                  <div className="flex items-start space-x-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center text-blue-600">
+                      <ShapeIcon
+                        shape={currentChallenge.shape}
+                        className="w-10 h-10"
+                      />
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <h1 className="text-4xl font-bold">
+                          {currentChallenge.title}
+                        </h1>
+                        {completedChallenges.has(currentChallenge.id) && (
+                          <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-4 mb-4">
+                        <DifficultyBadge
+                          difficulty={currentChallenge.difficulty}
+                        />
+                        <span
+                          className={`flex items-center space-x-1 text-sm ${
+                            darkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
                         >
-                          <span className={`${textSecondaryClass} flex-shrink-0`} style={{ width: '85px' }}>
-                            {cat}
-                          </span>
-                          <div className={`flex-1 rounded-full h-2.5 ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}>
-                            <div
-                              className={`h-2.5 rounded-full transition-all duration-300 ${
-                                [
-                                  "bg-blue-500",
-                                  "bg-green-500",
-                                  "bg-purple-500",
-                                  "bg-yellow-500",
-                                  "bg-red-500",
-                                ][idx]
-                              }`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                          <span className={`text-sm font-semibold ${textClass} flex-shrink-0`} style={{ width: '35px', textAlign: 'right' }}>
-                            {percentage}%
-                          </span>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              </div>
-
-              {/* Achievements */}
-              <div
-                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
-              >
-                <h3
-                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
-                >
-                  <Award className="w-6 h-6 mr-2 text-yellow-600" />
-                  Recent Achievements
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                      <Star className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-yellow-800">
-                        Creative Streak
+                          <Clock className="w-4 h-4" />
+                          <span>{currentChallenge.estimatedTime}</span>
+                        </span>
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {currentChallenge.category}
+                        </span>
                       </div>
-                      <div className="text-sm text-yellow-600">
-                        {userStats.currentStreak} days in a row
+
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span className="flex items-center space-x-1">
+                          <Heart className="w-4 h-4" />
+                          <span>{currentChallenge.likes}</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <Eye className="w-4 h-4" />
+                          <span>{currentChallenge.views}</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <Users className="w-4 h-4" />
+                          <span>{currentChallenge.completions} completed</span>
+                        </span>
                       </div>
                     </div>
                   </div>
-                  {completedArray.length > 0 && (
-                    <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-green-800">
-                          First Completion
-                        </div>
-                        <div className="text-sm text-green-600">
-                          You've completed your first prompt!
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {favoritesArray.length >= 5 && (
-                    <div className="flex items-center space-x-3 p-3 bg-pink-50 rounded-lg">
-                      <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-white fill-current" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-pink-800">
-                          Curator
-                        </div>
-                        <div className="text-sm text-pink-600">
-                          5+ prompts favorited
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
+                  <button
+                    onClick={() => toggleCompleted(currentChallenge.id)}
+                    className={`p-4 rounded-2xl transition-all duration-200 cursor-pointer ${
+                      completedChallenges.has(currentChallenge.id)
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg"
+                        : darkMode
+                        ? "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                        : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Check className="w-6 h-6" />
+                  </button>
                 </div>
+                <div className="mb-8">
+                  <p
+                    className={`text-lg leading-relaxed mb-6 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    {currentChallenge.description}
+                  </p>
+
+                  <div
+                    className={`${
+                      darkMode
+                        ? "bg-gray-900"
+                        : "bg-gray-100"
+                    } rounded-xl p-6`}
+                  >
+                    <h3 className="font-semibold mb-3 flex items-center space-x-2">
+                      <Lightbulb className="w-5 h-5 text-yellow-500" />
+                      <span>Detailed Instructions</span>
+                    </h3>
+                    <p
+                      className={`${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      } leading-relaxed`}
+                    >
+                      {currentChallenge.detailedDescription}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Navigation Buttons */}
+                  <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                    <button
+                      onClick={() => navigateToChallenge("prev")}
+                      className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-5 py-3 rounded-xl transition-all duration-200 cursor-pointer border-2 ${
+                        darkMode
+                          ? "bg-gray-800 hover:bg-gray-700 text-white border-gray-600 hover:border-gray-500 shadow-lg"
+                          : "bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-gray-400 shadow-lg"
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base">Previous</span>
+                    </button>
+
+                    <button
+                      onClick={shuffleChallenge}
+                      className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      <Shuffle className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base">Random</span>
+                    </button>
+
+                    <button
+                      onClick={() => navigateToChallenge("next")}
+                      className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-5 py-3 rounded-xl transition-all duration-200 cursor-pointer border-2 ${
+                        darkMode
+                          ? "bg-gray-800 hover:bg-gray-700 text-white border-gray-600 hover:border-gray-500 shadow-lg"
+                          : "bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-gray-400 shadow-lg"
+                      }`}
+                    >
+                      <span className="text-sm sm:text-base">Next</span>
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </div>
+
+                  {/* Progress Info */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+                    <span
+                      className={`text-sm ${
+                        darkMode ? "text-gray-400" : "text-gray-500"
+                      } text-center sm:text-left`}
+                    >
+                      Challenge {currentIndex + 1} of {challenges.length}
+                    </span>
+
+                    <button
+                      onClick={() => setViewMode("completed")}
+                      className="flex items-center space-x-2 px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer w-full sm:w-auto justify-center"
+                    >
+                      <Trophy className="w-5 h-5" />
+                      <span>View Progress</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Challenge Grid Navigation */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">All Challenges</h3>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={`text-sm ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Quick navigation
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {challenges.map((challenge, index) => (
+                  <button
+                    key={challenge.id}
+                    onClick={() => {
+                      // Reset timer when changing challenges
+                      setTimerSeconds(0);
+                      setTimerActive(false);
+                      
+                      setIsAnimating(true);
+                      setTimeout(() => {
+                        setCurrentIndex(index);
+                        setIsAnimating(false);
+                      }, 200);
+                    }}
+                    className={`p-4 rounded-xl transition-all duration-200 relative overflow-hidden group cursor-pointer ${
+                      index === currentIndex
+                        ? "bg-indigo-100 dark:bg-indigo-900/30"
+                        : darkMode
+                        ? "bg-gray-800 hover:bg-gray-700"
+                        : "bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    {challenge.featured && (
+                      <div className="absolute top-2 right-2">
+                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mb-3">
+                      <ShapeIcon
+                        shape={challenge.shape}
+                        className="w-6 h-6 text-blue-600"
+                      />
+                      {completedChallenges.has(challenge.id) && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      )}
+                    </div>
+
+                    <h4 className="text-sm font-semibold text-left mb-2 line-clamp-2">
+                      {challenge.title}
+                    </h4>
+
+                    <div className="flex items-center justify-between">
+                      <DifficultyBadge difficulty={challenge.difficulty} />
+                      <span
+                        className={`text-xs ${
+                          darkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {challenge.estimatedTime}
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         )}
-        </motion.div>
       </main>
 
-      {/* Toast Container */}
-      <div className="fixed top-20 right-4 z-50 space-y-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 300, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 300, scale: 0.8 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className={`max-w-sm p-4 rounded-xl shadow-lg backdrop-blur-lg ${
-                toast.type === "success"
-                  ? "bg-green-500/90 text-white"
-                  : toast.type === "error"
-                  ? "bg-red-500/90 text-white"
-                  : "bg-blue-500/90 text-white"
-              }`}
-            >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  {toast.type === "success" && (
-                    <CheckCircle className="w-5 h-5" />
-                  )}
-                  {toast.type === "error" && (
-                    <X className="w-5 h-5" />
-                  )}
-                  {toast.type === "info" && (
-                    <Lightbulb className="w-5 h-5" />
-                  )}
-                </div>
-                <p className="text-sm font-medium flex-1">{toast.message}</p>
-              </div>
-              <button
-                onClick={() => dismissToast(toast.id)}
-                className="cursor-pointer ml-3 p-1 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Footer */}
-      <footer className={`mt-12 ${cardClass} backdrop-blur-sm border-t`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Sparkles className="w-6 h-6 text-white" />
+      {/* Premium Footer */}
+      <footer
+        className={`${
+          darkMode ? "bg-gray-900" : "bg-white"
+        } mt-16`}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="md:col-span-2">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <Triangle className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    CreativeFlow
-                  </span>
-                  <div className="text-xs text-gray-500 font-medium">
-                    Professional Edition
-                  </div>
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    ShapeForge
+                  </h3>
+                  <p
+                    className={`text-sm ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    Professional Design Platform
+                  </p>
                 </div>
               </div>
               <p
-                className={`${textSecondaryClass} mb-6 max-w-md leading-relaxed`}
+                className={`${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                } mb-6 max-w-md`}
               >
-                Empowering creative professionals worldwide with AI-driven
-                prompt generation, advanced analytics, and workflow optimization
-                tools.
+                Elevate your design skills with our comprehensive collection of
+                shape-based challenges. Perfect for designers, developers, and
+                creative professionals.
               </p>
-              <div className="flex space-x-4">
-                <a
-                  href="#"
-                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+              <div className="flex items-center space-x-4">
+                <div
+                  className={`text-sm ${
+                    darkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
                 >
-                  F
-                </a>
-                <a
-                  href="#"
-                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-sky-400 to-sky-500 text-white rounded-xl hover:from-sky-500 hover:to-sky-600 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  T
-                </a>
-                <a
-                  href="#"
-                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  L
-                </a>
-                <a
-                  href="#"
-                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl hover:from-pink-600 hover:to-pink-700 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
-                  I
-                </a>
+                  © 2025 ShapeForge. Crafted with passion.
+                </div>
               </div>
             </div>
 
             <div>
-              <h4 className={`font-semibold ${textClass} mb-6`}>Product</h4>
-              <ul className={`space-y-3 ${textSecondaryClass}`}>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    API Access
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Enterprise
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Integrations
-                  </a>
-                </li>
-              </ul>
+              <h4 className="font-semibold mb-4">Platform</h4>
+              <div
+                className={`space-y-3 text-sm ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Challenges</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Analytics</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Progress Tracking</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Achievements</a>
+              </div>
             </div>
 
             <div>
-              <h4 className={`font-semibold ${textClass} mb-6`}>Company</h4>
-              <ul className={`space-y-3 ${textSecondaryClass}`}>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Blog
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Press Kit
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="cursor-pointer hover:text-indigo-600 transition-colors"
-                  >
-                    Contact
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div
-            className={`border-t ${
-              darkMode ? "border-gray-700" : "border-gray-200"
-            } pt-8 mt-12`}
-          >
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className={`text-sm ${textSecondaryClass} mb-4 md:mb-0`}>
-                © 2025 CreativeFlow Professional. All rights reserved.
-              </div>
-              <div className="flex space-x-6 text-sm">
-                <a
-                  href="#"
-                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
-                >
-                  Privacy Policy
-                </a>
-                <a
-                  href="#"
-                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
-                >
-                  Terms of Service
-                </a>
-                <a
-                  href="#"
-                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
-                >
-                  Security
-                </a>
+              <h4 className="font-semibold mb-4">Resources</h4>
+              <div
+                className={`space-y-3 text-sm ${
+                  darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Design Guidelines</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Best Practices</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Community</a>
+                <a href="#" className="block hover:text-indigo-600 transition-colors cursor-pointer">Support</a>
               </div>
             </div>
           </div>
@@ -2082,8 +2026,6 @@ const PromptJournal: React.FC = () => {
       <style jsx>{`
         @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
       `}</style>
-    </motion.div>
+    </div>
   );
-};
-
-export default PromptJournal;
+}
