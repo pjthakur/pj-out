@@ -1,2548 +1,2487 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 import {
-Heart, MessageCircle, Users, MapPin, Calendar, Search, Bell, User, Plus, Share2, X, Send, ChevronDown, Check, Menu, Home, Briefcase, Sidebar,
-} from "lucide-react"
+  Download,
+  Type,
+  Square,
+  Circle,
+  Triangle,
+  Palette,
+  Move,
+  RotateCw,
+  Zap,
+  Image,
+  Layers,
+  Settings,
+  Trash2,
+  Copy,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  Sparkles,
+  Undo2,
+  Redo2,
+  Grid3X3,
+  Lock,
+  Unlock,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Italic,
+  Underline,
+  Upload,
+  Star,
+  Users,
+  Shield,
+  Check,
+  Menu,
+  X,
+  ArrowRight,
+  PlayCircle,
+  ChevronRight,
+  Hexagon,
+  PenTool,
+} from "lucide-react";
 
-interface AppUser {
-  id: string
-  name: string
-  avatar: string
-  verified: boolean
+interface CanvasElement {
+  id: string;
+  type: "text" | "shape" | "image";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: "normal" | "bold";
+  fontStyle?: "normal" | "italic";
+  textDecoration?: "none" | "underline";
+  textAlign?: "left" | "center" | "right";
+  color: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  shapeType?:
+    | "rectangle"
+    | "circle"
+    | "triangle"
+    | "hexagon"
+    | "star"
+    | "diamond";
+  rotation: number;
+  opacity: number;
+  animation?:
+    | "none"
+    | "pulse"
+    | "rotate"
+    | "bounce"
+    | "fade"
+    | "slide"
+    | "scale"
+    | "float";
+  animationSpeed: number;
+  animationDelay?: number;
+  visible: boolean;
+  locked: boolean;
+  zIndex: number;
+  shadow?: {
+    x: number;
+    y: number;
+    blur: number;
+    color: string;
+  };
 }
 
-interface Comment {
-  id: string
-  user: AppUser
-  content: string
-  likes: number
-  isLiked: boolean
-  replies: Comment[]
-  timestamp: string
+interface Template {
+  id: string;
+  name: string;
+  category: string;
+  elements: Omit<CanvasElement, "id">[];
+  background: string;
+  preview: string;
 }
 
-interface TravelPost {
-  id: string
-  user: AppUser
-  destination: string
-  state: string
-  description: string
-  image: string
-  departureDate: string
-  duration: string
-  budget: string
-  maxTravelers: number
-  currentTravelers: number
-  tags: string[]
-  likes: number
-  comments: Comment[]
-  isLiked: boolean
-  postedAt: string
-  hasJoined: boolean
-}
+const PosterDesigner: React.FC = () => {
+  const [currentView, setCurrentView] = useState<"landing" | "designer">(
+    "landing"
+  );
+  const [elements, setElements] = useState<CanvasElement[]>([]);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const [selectedElements, setSelectedElements] = useState<string[]>([]);
+  const [tool, setTool] = useState<"select" | "text" | "shape" | "draw">(
+    "select"
+  );
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [canvasBackground, setCanvasBackground] = useState("#ffffff");
+  const [showGrid, setShowGrid] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(false);
+  const [history, setHistory] = useState<CanvasElement[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null
+  );
+  const [exportFormat, setExportFormat] = useState<"png" | "jpg">("png");
+  const [exportQuality, setExportQuality] = useState<
+    "standard" | "high" | "ultra"
+  >("high");
 
-interface Notification {
-  id: string
-  type: "join" | "like" | "comment"
-  message: string
-  timestamp: string
-  read: boolean
-  postId: string
-}
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasSize] = useState({ width: 900, height: 800 });
+  const [windowSize, setWindowSize] = useState({ width: 900, height: 800 });
 
-const currentUser: AppUser = {
-  id: "current-user",
-  name: "Priya Sharma",
-  avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-  verified: true,
-}
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    elementId: string | null;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  }>({
+    isDragging: false,
+    elementId: null,
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+    offsetY: 0,
+  });
 
-const mockUsers: AppUser[] = [
-  {
-    id: "1",
-    name: "Arjun Patel",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-    verified: true,
-  },
-  {
-    id: "2",
-    name: "Kavya Reddy",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
-    verified: false,
-  },
-  {
-    id: "3",
-    name: "Rohit Singh",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    verified: true,
-  },
-  {
-    id: "4",
-    name: "Ananya Gupta",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-    verified: false,
-  },
-]
+  const fonts = [
+    "Inter",
+    "Roboto",
+    "Poppins",
+    "Montserrat",
+    "Playfair Display",
+    "Source Sans Pro",
+    "Open Sans",
+    "Lato",
+    "Nunito",
+    "Raleway",
+    "Arial",
+    "Helvetica",
+    "Times New Roman",
+    "Georgia",
+    "Verdana",
+  ];
 
-const initialPosts: TravelPost[] = [
-  {
-    id: "1",
-    user: mockUsers[0],
-    destination: "Goa",
-    state: "Goa",
-    description:
-      "Planning an amazing beach vacation in Goa! Looking for fellow travelers to explore the beautiful beaches, try water sports, and experience the vibrant nightlife. We'll visit Baga Beach, Anjuna, and take a sunset cruise.",
-    image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop",
-    departureDate: "2024-03-15",
-    duration: "5 days",
-    budget: "₹15,000 - ₹25,000",
-    maxTravelers: 4,
-    currentTravelers: 2,
-    tags: ["Beach", "Nightlife", "Water Sports", "Cruise"],
-    likes: 127,
-    comments: [],
-    isLiked: false,
-    postedAt: "2 hours ago",
-    hasJoined: false,
-  },
-  {
-    id: "2",
-    user: mockUsers[1],
-    destination: "Manali",
-    state: "Himachal Pradesh",
-    description:
-      "Adventure seekers wanted for an epic Himalayan expedition! Planning to trek through beautiful valleys, visit ancient temples, and experience the snow-capped mountains. Perfect for nature lovers and photography enthusiasts.",
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
-    departureDate: "2024-04-10",
-    duration: "8 days",
-    budget: "₹20,000 - ₹35,000",
-    maxTravelers: 6,
-    currentTravelers: 3,
-    tags: ["Mountains", "Trekking", "Photography", "Adventure"],
-    likes: 89,
-    comments: [],
-    isLiked: true,
-    postedAt: "5 hours ago",
-    hasJoined: false,
-  },
-  {
-    id: "3",
-    user: mockUsers[2],
-    destination: "Rajasthan",
-    state: "Rajasthan",
-    description:
-      "Royal heritage tour through the land of kings! Exploring magnificent palaces, riding camels in the Thar Desert, and experiencing the rich culture of Jaipur, Udaipur, and Jodhpur. A journey through India's royal history.",
-    image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&h=600&fit=crop",
-    departureDate: "2024-05-05",
-    duration: "12 days",
-    budget: "₹30,000 - ₹50,000",
-    maxTravelers: 8,
-    currentTravelers: 4,
-    tags: ["Heritage", "Culture", "Desert", "Palaces"],
-    likes: 203,
-    comments: [],
-    isLiked: false,
-    postedAt: "1 day ago",
-    hasJoined: false,
-  },
-  {
-    id: "4",
-    user: mockUsers[3],
-    destination: "Kerala",
-    state: "Kerala",
-    description:
-      "Backwater bliss and spice plantation tour! Seeking travel companions for a peaceful journey through Kerala's serene backwaters, lush tea gardens, and spice plantations. Includes houseboat stays and Ayurvedic treatments.",
-    image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
-    departureDate: "2024-06-20",
-    duration: "10 days",
-    budget: "₹25,000 - ₹40,000",
-    maxTravelers: 5,
-    currentTravelers: 2,
-    tags: ["Backwaters", "Nature", "Ayurveda", "Houseboat"],
-    likes: 156,
-    comments: [],
-    isLiked: true,
-    postedAt: "3 days ago",
-    hasJoined: false,
-  },
-  {
-    id: "5",
-    user: mockUsers[1],
-    destination: "Leh Ladakh",
-    state: "Jammu & Kashmir",
-    description:
-      "Ultimate high-altitude adventure in the Land of High Passes! Experience breathtaking landscapes, Buddhist monasteries, and the thrill of riding through the world's highest motorable roads. Perfect for adventure enthusiasts!",
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
-    departureDate: "2024-07-15",
-    duration: "14 days",
-    budget: "₹40,000 - ₹60,000",
-    maxTravelers: 6,
-    currentTravelers: 4,
-    tags: ["Mountains", "Adventure", "Biking", "Photography"],
-    likes: 298,
-    comments: [],
-    isLiked: true,
-    postedAt: "1 week ago",
-    hasJoined: false,
-  },
-  {
-    id: "6",
-    user: mockUsers[2],
-    destination: "Andaman",
-    state: "Andaman",
-    description:
-      "Pristine beaches and crystal clear waters await! Explore untouched coral reefs, indulge in water sports, and witness stunning sunsets. A perfect tropical getaway for beach lovers and diving enthusiasts.",
-    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop",
-    departureDate: "2024-08-10",
-    duration: "7 days",
-    budget: "₹35,000 - ₹50,000",
-    maxTravelers: 8,
-    currentTravelers: 6,
-    tags: ["Beach", "Diving", "Island", "Adventure"],
-    likes: 167,
-    comments: [],
-    isLiked: false,
-    postedAt: "4 days ago",
-    hasJoined: false,
-  },
-]
+  const colors = [
+    "#000000",
+    "#1f2937",
+    "#374151",
+    "#6b7280",
+    "#9ca3af",
+    "#d1d5db",
+    "#f3f4f6",
+    "#ffffff",
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+    "#14b8a6",
+    "#dc2626",
+    "#ea580c",
+    "#ca8a04",
+    "#16a34a",
+    "#2563eb",
+    "#7c3aed",
+    "#db2777",
+    "#0f766e",
+    "#7f1d1d",
+    "#9a3412",
+    "#a16207",
+    "#14532d",
+    "#1e3a8a",
+    "#581c87",
+    "#831843",
+    "#134e4a",
+  ];
 
-export default function TravelSocialPlatform() {
-  const [posts, setPosts] = useState<TravelPost[]>(initialPosts)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [showCreateTrip, setShowCreateTrip] = useState(false)
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
-  const [expandedComments, setExpandedComments] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filteredPosts, setFilteredPosts] = useState<TravelPost[]>(initialPosts)
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
-  const [currentView, setCurrentView] = useState<"feed" | "mytrips">("feed")
-  const [isLoading, setIsLoading] = useState(false)
-  const [selectedFilter, setSelectedFilter] = useState<string>("all")
-  const [showStats, setShowStats] = useState(false)
-  const [randomStats, setRandomStats] = useState({
-    monthlyTrips: 35,
-    activeUsers: 75,
-    tipNumber: 42,
-    userTripCounts: [5, 7, 3] // for suggested users
-  })
-  const [subscribeEmail, setSubscribeEmail] = useState("")
+  const backgroundGradients = [
+    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+    "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+    "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+    "linear-gradient(135deg, #667db6 0%, #0082c8 100%)",
+    "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
+    "linear-gradient(135deg, #833ab4 0%, #fd1d1d 100%)",
+    "linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)",
+  ];
 
-  // Refs for click outside detection
-  const notificationRef = useRef<HTMLDivElement>(null)
-  const userMenuRef = useRef<HTMLDivElement>(null)
-  const mobileMenuRef = useRef<HTMLDivElement>(null)
-  const mobileSidebarRef = useRef<HTMLDivElement>(null)
+  const templates = [
+    {
+      id: "modern-minimal",
+      name: "Modern Minimal",
+      category: "Business",
+      preview: "#f8fafc",
+      background: "linear-gradient(135deg, #421a2e 0%, #64213e 100%)",
+      elements: [
+        {
+          type: "text",
+          x: 100,
+          y: 150,
+          width: 800,
+          height: 120,
+          content: "INNOVATE",
+          fontSize: 84,
+          fontFamily: "Inter",
+          fontWeight: "bold",
+          color: "#ffffff",
+          textAlign: "center",
+          rotation: 0,
+          opacity: 1,
+          animation: "none",
+          animationSpeed: 1,
+          visible: true,
+          locked: false,
+          zIndex: 1,
+        },
+        {
+          type: "text",
+          x: 100,
+          y: 280,
+          width: 800,
+          height: 60,
+          content: "Transform your ideas into reality",
+          fontSize: 24,
+          fontFamily: "Inter",
+          color: "#64748b",
+          textAlign: "center",
+          rotation: 0,
+          opacity: 1,
+          animation: "none",
+          animationSpeed: 1,
+          visible: true,
+          locked: false,
+          zIndex: 2,
+        },
+        {
+          type: "shape",
+          x: 500,
+          y: 400,
+          width: 200,
+          height: 8,
+          shapeType: "rectangle",
+          backgroundColor: "#3b82f6",
+          rotation: 0,
+          opacity: 1,
+          animation: "none",
+          animationSpeed: 1,
+          visible: true,
+          locked: false,
+          zIndex: 3,
+          color: "#3b82f6",
+        },
+      ],
+    },
+    {
+      id: "creative-burst",
+      name: "Creative Burst",
+      category: "Creative",
+      preview: "#1a1a2e",
+      background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+      elements: [
+        {
+          type: "shape",
+          x: 200,
+          y: 100,
+          width: 150,
+          height: 150,
+          shapeType: "circle",
+          backgroundColor: "#ff6b6b",
+          visible: true,
+          locked: false,
+          zIndex: 1,
+          color: "#ff6b6b",
+        },
+        {
+          type: "text",
+          x: 400,
+          y: 200,
+          width: 600,
+          height: 200,
+          content: "CREATE\nAMAZING\nDESIGNS",
+          fontSize: 48,
+          fontFamily: "Montserrat",
+          fontWeight: "bold",
+          color: "#ffffff",
+          textAlign: "left",
+          rotation: 0,
+          opacity: 1,
+          animation: "none",
+          animationSpeed: 1,
+          visible: true,
+          locked: false,
+          zIndex: 2,
+        },
+        {
+          type: "shape",
+          x: 900,
+          y: 450,
+          width: 100,
+          height: 100,
+          shapeType: "triangle",
+          backgroundColor: "#4ecdc4",
+          opacity: 0.7,
+          visible: true,
+          locked: false,
+          zIndex: 3,
+          color: "#4ecdc4",
+        },
+      ],
+    },
+  ];
 
-  // New trip form state
-  const [newTrip, setNewTrip] = useState({
-    destination: "",
-    state: "",
-    description: "",
-    image: null as File | null,
-    departureDate: "",
-    duration: "",
-    budget: "",
-    maxTravelers: 1,
-    tags: [] as string[],
-  })
-
-  // Comment state
-  const [commentText, setCommentText] = useState("")
-  const [replyText, setReplyText] = useState("")
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-
-  // Get user's trips
-  const userTrips = posts.filter((post) => post.user.id === currentUser.id)
-
-  const [imagePreview, setImagePreview] = useState<string>("")
-
-  // Get popular destinations
-  const popularDestinations = Array.from(new Set(posts.map(post => post.destination)))
-    .slice(0, 6)
-    .map(dest => ({
-      name: dest,
-      count: posts.filter(post => post.destination === dest).length
-    }))
-    .sort((a, b) => b.count - a.count)
-
-  // Get travel statistics
-  const travelStats = {
-    totalTrips: posts.length,
-    activeUsers: mockUsers.length,
-    totalTravelers: posts.reduce((sum, post) => sum + post.currentTravelers, 0),
-    upcomingTrips: posts.filter(post => new Date(post.departureDate) > new Date()).length
-  }
-
-  // Filter options
-  const filterOptions = [
-    { value: "all", label: "All Trips" },
-    { value: "Beach", label: "Beach" },
-    { value: "Mountains", label: "Mountains" },
-    { value: "Heritage", label: "Heritage" },
-    { value: "Adventure", label: "Adventure" },
-    { value: "Nature", label: "Nature" }
-  ]
-
-  useEffect(() => {
-    let filtered = posts
-
-    // Apply search filter
-    if (searchQuery.trim() !== "") {
-      filtered = filtered.filter(
-        (post) =>
-          post.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
+  function parseGradientStops(
+    cssGradient: string
+  ): { angle: number; stops: [number, string][] } | null {
+    // This regex only handles “linear-gradient(123deg, #rrggbb 0%, #rrggbb 100%)” etc.
+    const match = cssGradient.match(
+      /linear-gradient\(\s*([0-9]+)deg\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?(?:\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?)*\s*\)/
+    );
+    if (!match) return null;
+    const angle = parseInt(match[1], 10);
+    const stops: [number, string][] = [];
+    // match[2]=firstColor, match[3]=firstPos, match[4]=secondColor, match[5]=secondPos, etc.
+    for (let i = 2; i + 1 < match.length; i += 2) {
+      const color = match[i];
+      const posRaw = match[i + 1];
+      if (!color || !posRaw) continue;
+      const pos = parseInt(posRaw, 10) / 100;
+      stops.push([pos, color]);
     }
+    return { angle, stops };
+  }
 
-    // Apply category filter
-    if (selectedFilter !== "all") {
-      filtered = filtered.filter(post => 
-        post.tags.some(tag => tag.toLowerCase().includes(selectedFilter.toLowerCase()))
-      )
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  const addToHistory = useCallback(
+    (newElements: CanvasElement[]) => {
+      setHistory((prev) => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        return [...newHistory, JSON.parse(JSON.stringify(newElements))];
+      });
+      setHistoryIndex((prev) => prev + 1);
+    },
+    [historyIndex]
+  );
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex((prev) => prev - 1);
+      setElements(history[historyIndex - 1]);
     }
+  }, [history, historyIndex]);
 
-    setFilteredPosts(filtered)
-  }, [searchQuery, posts, selectedFilter])
-
-  //outside 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-
-       
-      if (target.textContent === "Mark all as read") {
-        return
-      }
-
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false)
-      }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-        setShowMobileMenu(false)
-      }
-      if (mobileSidebarRef.current && !mobileSidebarRef.current.contains(event.target as Node)) {
-        setShowMobileSidebar(false)
-      }
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex((prev) => prev + 1);
+      setElements(history[historyIndex + 1]);
     }
+  }, [history, historyIndex]);
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  const addElement = useCallback(
+    (type: "text" | "shape", shapeType?: string) => {
+      setElements((prev) => {
+        const newElement: CanvasElement = {
+          id: generateId(),
+          type,
+          x: canvasSize.width / 2 - 100,
+          y: canvasSize.height / 2 - 50,
+          width: type === "text" ? 200 : 100,
+          height: type === "text" ? 50 : 100,
+          content: type === "text" ? "Your Text Here" : undefined,
+          fontSize: 24,
+          fontFamily: "Inter",
+          fontWeight: "normal",
+          fontStyle: "normal",
+          textDecoration: "none",
+          textAlign: "center",
+          color: "#000000",
+          backgroundColor: type === "shape" ? "#3b82f6" : undefined,
+          borderColor: "#000000",
+          borderWidth: 0,
+          borderRadius: 0,
+          shapeType: (shapeType as any) || "rectangle",
+          rotation: 0,
+          opacity: 1,
+          animation: "none",
+          animationSpeed: 1,
+          animationDelay: 0,
+          visible: true,
+          locked: false,
+          zIndex: prev.length,
+          shadow: {
+            x: 0,
+            y: 0,
+            blur: 0,
+            color: "#000000",
+          },
+        };
 
-  // Prevent scroll when modal is open 
-  useEffect(() => {
-    if (showCreateTrip || showMobileSidebar) {
-      document.body.style.overflow = "hidden"
-      document.body.style.position = "fixed"
-      document.body.style.width = "100%"
-      document.body.style.height = "100%"
-      // Prevent scroll on touch devices
-      document.body.style.touchAction = "none"
-    } else {
-      document.body.style.overflow = "unset"
-      document.body.style.position = "unset"
-      document.body.style.width = "unset"
-      document.body.style.height = "unset"
-      document.body.style.touchAction = "unset"
-    }
+        const newElements = [...prev, newElement];
+        addToHistory(newElements);
+        setSelectedElement(newElement.id);
+        setTool("select");
+        return newElements;
+      });
+    },
+    [canvasSize, addToHistory]
+  );
 
-    return () => {
-      document.body.style.overflow = "unset"
-      document.body.style.position = "unset"
-      document.body.style.width = "unset"
-      document.body.style.height = "unset"
-      document.body.style.touchAction = "unset"
-    }
-  }, [showCreateTrip, showMobileSidebar])
+  const updateElement = useCallback(
+    (id: string, updates: Partial<CanvasElement>) => {
+      setElements((prev) =>
+        prev.map((el) => (el.id === id ? { ...el, ...updates } : el))
+      );
+    },
+    []
+  );
 
-  // Set random values after component mounts to avoid hydration mismatch
-  useEffect(() => {
-    setRandomStats({
-      monthlyTrips: Math.floor(Math.random() * 50 + 20),
-      activeUsers: Math.floor(Math.random() * 100 + 50),
-      tipNumber: Math.floor(Math.random() * 100 + 1),
-      userTripCounts: [
-        Math.floor(Math.random() * 10 + 1),
-        Math.floor(Math.random() * 10 + 1),
-        Math.floor(Math.random() * 10 + 1)
-      ]
-    })
-  }, [])
+  const deleteElement = useCallback(
+    (id: string) => {
+      setElements((prev) => {
+        const newElements = prev.filter((el) => el.id !== id);
+        addToHistory(newElements);
+        return newElements;
+      });
+      setSelectedElement(null);
+    },
+    [addToHistory]
+  );
 
-  const showToastMessage = (message: string) => {
-    setToastMessage(message)
-    setShowToast(true)
-    setTimeout(() => setShowToast(false), 3000)
-  }
-
-  const addNotification = (type: "join" | "like" | "comment", message: string, postId: string) => {
-    const newNotification: Notification = {
-      id: Date.now().toString(),
-      type,
-      message,
-      timestamp: "Just now",
-      read: false,
-      postId,
-    }
-    setNotifications((prev) => [newNotification, ...prev])
-  }
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setNewTrip({ ...newTrip, image: file })
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleLike = (postId: string) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const newIsLiked = !post.isLiked
-          if (newIsLiked) {
-            addNotification("like", `You liked ${post.destination} trip`, postId)
-          }
-          return {
-            ...post,
-            isLiked: newIsLiked,
-            likes: newIsLiked ? post.likes + 1 : post.likes - 1,
-          }
-        }
-        return post
-      }),
-    )
-  }
-
-  const handleJoin = (postId: string) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId && post.currentTravelers < post.maxTravelers && !post.hasJoined) {
-          addNotification("join", `You joined the ${post.destination} trip!`, postId)
-          showToastMessage("Successfully joined the trip!")
-          return {
-            ...post,
-            currentTravelers: post.currentTravelers + 1,
-            hasJoined: true,
-          }
-        }
-        return post
-      }),
-    )
-  }
-
-  const handleShare = (postId: string) => {
-    const post = posts.find((p) => p.id === postId)
-    if (post) {
-      if (post.currentTravelers >= post.maxTravelers) {
-        showToastMessage(`${post.destination} trip is full!`)
-      } else {
-        showToastMessage(`${post.destination} trip shared successfully!`)
-      }
-    }
-  }
-
-  const handleCreateTrip = () => {
-    if (!newTrip.destination || !newTrip.description || !newTrip.image) {
-      showToastMessage("Please fill all required fields including uploading an image!")
-      return
-    }
-
-    const imageUrl = imagePreview || "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=600&fit=crop"
-
-    const trip: TravelPost = {
-      id: Date.now().toString(),
-      user: currentUser,
-      destination: newTrip.destination,
-      state: newTrip.state,
-      description: newTrip.description,
-      image: imageUrl,
-      departureDate: newTrip.departureDate,
-      duration: newTrip.duration,
-      budget: newTrip.budget,
-      maxTravelers: newTrip.maxTravelers,
-      currentTravelers: 1,
-      tags: newTrip.tags,
-      likes: 0,
-      comments: [],
-      isLiked: false,
-      postedAt: "Just now",
-      hasJoined: true,
-    }
-
-    setPosts([trip, ...posts])
-    setNewTrip({
-      destination: "",
-      state: "",
-      description: "",
-      image: null,
-      departureDate: "",
-      duration: "",
-      budget: "",
-      maxTravelers: 1,
-      tags: [],
-    })
-    setImagePreview("")
-    setShowCreateTrip(false)
-    showToastMessage("Trip created successfully!")
-  }
-
-  const handleComment = (postId: string) => {
-    if (!commentText.trim()) return
-
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      user: currentUser,
-      content: commentText,
-      likes: 0,
-      isLiked: false,
-      replies: [],
-      timestamp: "Just now",
-    }
-
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          addNotification("comment", `You commented on ${post.destination} trip`, postId)
-          return {
-            ...post,
-            comments: [...post.comments, newComment],
-          }
-        }
-        return post
-      }),
-    )
-
-    setCommentText("")
-  }
-
-  const handleReply = (postId: string, commentId: string) => {
-    if (!replyText.trim()) return
-
-    const newReply: Comment = {
-      id: Date.now().toString(),
-      user: currentUser,
-      content: replyText,
-      likes: 0,
-      isLiked: false,
-      replies: [],
-      timestamp: "Just now",
-    }
-
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: post.comments.map((comment) => {
-              if (comment.id === commentId) {
-                return {
-                  ...comment,
-                  replies: [...comment.replies, newReply],
-                }
-              }
-              return comment
-            }),
-          }
-        }
-        return post
-      }),
-    )
-
-    setReplyText("")
-    setReplyingTo(null)
-  }
-
-  const handleCommentLike = (postId: string, commentId: string, isReply = false, parentCommentId?: string) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: post.comments.map((comment) => {
-              if (isReply && comment.id === parentCommentId) {
-                return {
-                  ...comment,
-                  replies: comment.replies.map((reply) => {
-                    if (reply.id === commentId) {
-                      return {
-                        ...reply,
-                        isLiked: !reply.isLiked,
-                        likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
-                      }
-                    }
-                    return reply
-                  }),
-                }
-              } else if (!isReply && comment.id === commentId) {
-                return {
-                  ...comment,
-                  isLiked: !comment.isLiked,
-                  likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-                }
-              }
-              return comment
-            }),
-          }
-        }
-        return post
-      }),
-    )
-  }
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })))
-  }
-
-  const markAsRead = (notificationId: string) => {
-    setNotifications((prev) => prev.map((notif) => 
-      notif.id === notificationId ? { ...notif, read: true } : notif
-    ))
-  }
-
-  const addTag = (tag: string) => {
-    if (tag && !newTrip.tags.includes(tag)) {
-      setNewTrip({ ...newTrip, tags: [...newTrip.tags, tag] })
-    }
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    setNewTrip({ ...newTrip, tags: newTrip.tags.filter((tag) => tag !== tagToRemove) })
-  }
-
-  const handleMyTrips = () => {
-    setCurrentView("mytrips")
-    setShowUserMenu(false)
-    setShowMobileMenu(false)
-  }
-
-  const handleFeed = () => {
-    setCurrentView("feed")
-    setShowMobileMenu(false)
-  }
-
-  const toggleComments = (postId: string) => {
-    setExpandedComments(expandedComments === postId ? null : postId)
-  }
-
-  const handleSubscribe = () => {
-    if (!subscribeEmail.trim()) {
-      showToastMessage("Please enter a valid email address!")
-      return
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(subscribeEmail)) {
-      showToastMessage("Please enter a valid email address!")
-      return
-    }
-
-    // Show success message and clear input
-    showToastMessage("Successfully subscribed to newsletter! 🎉")
-    setSubscribeEmail("")
-  }
-
-  // Helper function to format budget with k notation
-  const formatBudget = (budget: string) => {
-    // Extract numbers from budget string like "₹15,000 - ₹25,000"
-    const numbers = budget.match(/[\d,]+/g)
-    if (!numbers) return budget
-    
-    const formatNumber = (num: string) => {
-      const cleanNum = num.replace(/,/g, '')
-      const value = parseInt(cleanNum)
-      if (value >= 1000) {
-        return `${Math.floor(value / 1000)}k`
-      }
-      return cleanNum
-    }
-    
-    if (numbers.length === 2) {
-      return `₹${formatNumber(numbers[0])} - ₹${formatNumber(numbers[1])}`
-    } else if (numbers.length === 1) {
-      return `₹${formatNumber(numbers[0])}`
-    }
-    
-    return budget
-  }
-
-  // Function to scroll to destination card
-  const scrollToDestination = (destinationName: string) => {
-    // First set the search query to filter posts
-    setSearchQuery(destinationName)
-    
-    // Close mobile sidebar if open
-    setShowMobileSidebar(false)
-    
-    // Switch to feed view if on My Trips
-    if (currentView !== "feed") {
-      setCurrentView("feed")
-    }
-    
-    // Wait a bit for the search filter to apply, then scroll
-    setTimeout(() => {
-      // Find the post with matching destination
-      const targetPost = posts.find(post => 
-        post.destination.toLowerCase() === destinationName.toLowerCase()
-      )
-      
-      if (targetPost) {
-        // Find the element with data-destination attribute
-        const element = document.querySelector(`[data-destination="${destinationName}"]`)
+  const duplicateElement = useCallback(
+    (id: string) => {
+      setElements((prev) => {
+        const element = prev.find((el) => el.id === id);
         if (element) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
-          })
-          
-          // Add a highlight effect
-          element.classList.add('highlight-destination')
-          setTimeout(() => {
-            element.classList.remove('highlight-destination')
-          }, 2000)
+          const newElement = {
+            ...element,
+            id: generateId(),
+            x: element.x + 20,
+            y: element.y + 20,
+            zIndex: prev.length,
+          };
+          const newElements = [...prev, newElement];
+          addToHistory(newElements);
+          setSelectedElement(newElement.id);
+          return newElements;
+        }
+        return prev;
+      });
+    },
+    [addToHistory]
+  );
+
+  const loadTemplate = useCallback(
+    (template: Template) => {
+      const newElements = template.elements.map((el, index) => ({
+        ...el,
+        id: generateId(),
+        zIndex: index,
+      }));
+      setElements(newElements);
+      setCanvasBackground(template.background);
+      addToHistory(newElements);
+      setSelectedTemplate(template);
+      setSelectedElement(null);
+    },
+    [addToHistory]
+  );
+
+  const exportAsImage = useCallback(async () => {
+    // 1) Wait for all fonts to be loaded so text renders correctly
+    await document.fonts.ready;
+
+    // 2) Create a new <canvas> sized to (canvasSize.width × scale) × (canvasSize.height × scale)
+    const scale =
+      exportQuality === "ultra" ? 4 : exportQuality === "high" ? 3 : 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvasSize.width * scale;
+    canvas.height = canvasSize.height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Scale everything so 1 CSS pixel = 1 logical unit
+    ctx.scale(scale, scale);
+
+    // 3) Draw the background (solid color or parsed gradient)
+    if (canvasBackground.startsWith("linear-gradient")) {
+      const parsed = parseGradientStops(canvasBackground);
+      if (parsed) {
+        const rad = (parsed.angle * Math.PI) / 180;
+        // Compute gradient vector from angle
+        const x0 = canvasSize.width * 0.5 * (1 - Math.cos(rad));
+        const y0 = canvasSize.height * 0.5 * (1 - Math.sin(rad));
+        const x1 = canvasSize.width * 0.5 * (1 + Math.cos(rad));
+        const y1 = canvasSize.height * 0.5 * (1 + Math.sin(rad));
+        const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+        parsed.stops.forEach(([pos, color]) => {
+          gradient.addColorStop(pos, color);
+        });
+        ctx.fillStyle = gradient;
+      } else {
+        // Fallback if parsing fails
+        ctx.fillStyle = "#ffffff";
+      }
+    } else {
+      // Solid color
+      ctx.fillStyle = canvasBackground;
+    }
+    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+    // 4) Draw each element (sorted by zIndex)
+    const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
+    sorted.forEach((element) => {
+      if (!element.visible) return;
+      ctx.save();
+      ctx.globalAlpha = element.opacity;
+
+      // Apply shadow if any
+      if (element.shadow && element.shadow.blur > 0) {
+        ctx.shadowOffsetX = element.shadow.x;
+        ctx.shadowOffsetY = element.shadow.y;
+        ctx.shadowBlur = element.shadow.blur;
+        ctx.shadowColor = element.shadow.color;
+      }
+
+      // Move origin to element’s center, then rotate
+      const centerX = element.x + element.width / 2;
+      const centerY = element.y + element.height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate((element.rotation * Math.PI) / 180);
+
+      // Draw text
+      if (element.type === "text" && element.content) {
+        ctx.fillStyle = element.color;
+        // Build font string: "<fontStyle> <fontWeight> <fontSize>px <fontFamily>"
+        const stylePart = element.fontStyle === "italic" ? "italic " : "";
+        const weightPart = element.fontWeight === "bold" ? "bold " : "";
+        const sizePart = `${element.fontSize}px`;
+        ctx.font = `${stylePart}${weightPart}${sizePart} ${element.fontFamily}`;
+        ctx.textAlign = (element.textAlign as CanvasTextAlign) || "center";
+        ctx.textBaseline = "middle";
+
+        const lines = element.content.split("\n");
+        const lineHeight = (element.fontSize as number) * 1.2;
+        // Vertical offset so multi-line is centered
+        const startY = -((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((line, i) => {
+          ctx.fillText(line, 0, startY + i * lineHeight);
+        });
+      } else if (element.type === "shape") {
+        // Draw shapes
+        const fillColor = element.backgroundColor ?? element.color;
+        ctx.fillStyle = fillColor;
+        if (element.borderWidth && element.borderWidth > 0) {
+          ctx.strokeStyle = element.borderColor ?? "#000000";
+          ctx.lineWidth = element.borderWidth;
+        }
+
+        switch (element.shapeType) {
+          case "rectangle":
+            if (element.borderRadius && element.borderRadius > 0) {
+              // Rounded rectangle
+              const r = Math.min(
+                element.borderRadius,
+                element.width / 2,
+                element.height / 2
+              );
+              // Path for a rounded rect
+              ctx.beginPath();
+              ctx.moveTo(-element.width / 2 + r, -element.height / 2);
+              ctx.lineTo(element.width / 2 - r, -element.height / 2);
+              ctx.quadraticCurveTo(
+                element.width / 2,
+                -element.height / 2,
+                element.width / 2,
+                -element.height / 2 + r
+              );
+              ctx.lineTo(element.width / 2, element.height / 2 - r);
+              ctx.quadraticCurveTo(
+                element.width / 2,
+                element.height / 2,
+                element.width / 2 - r,
+                element.height / 2
+              );
+              ctx.lineTo(-element.width / 2 + r, element.height / 2);
+              ctx.quadraticCurveTo(
+                -element.width / 2,
+                element.height / 2,
+                -element.width / 2,
+                element.height / 2 - r
+              );
+              ctx.lineTo(-element.width / 2, -element.height / 2 + r);
+              ctx.quadraticCurveTo(
+                -element.width / 2,
+                -element.height / 2,
+                -element.width / 2 + r,
+                -element.height / 2
+              );
+              ctx.closePath();
+              ctx.fill();
+              if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            } else {
+              // Normal rectangle
+              ctx.fillRect(
+                -element.width / 2,
+                -element.height / 2,
+                element.width,
+                element.height
+              );
+              if (element.borderWidth && element.borderWidth > 0) {
+                ctx.strokeRect(
+                  -element.width / 2,
+                  -element.height / 2,
+                  element.width,
+                  element.height
+                );
+              }
+            }
+            break;
+
+          case "circle":
+            ctx.beginPath();
+            ctx.arc(0, 0, element.width / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            break;
+
+          case "triangle":
+            ctx.beginPath();
+            ctx.moveTo(0, -element.height / 2);
+            ctx.lineTo(-element.width / 2, element.height / 2);
+            ctx.lineTo(element.width / 2, element.height / 2);
+            ctx.closePath();
+            ctx.fill();
+            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            break;
+
+          case "hexagon":
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const theta = (Math.PI / 3) * i - Math.PI / 2;
+              const x = (element.width / 2) * Math.cos(theta);
+              const y = (element.height / 2) * Math.sin(theta);
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            break;
+
+          case "star":
+            // 5-point star
+            const outerR = element.width / 2;
+            const innerR = outerR * 0.5;
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+              const r = i % 2 === 0 ? outerR : innerR;
+              const theta = ((Math.PI * 2) / 10) * i - Math.PI / 2;
+              const x = r * Math.cos(theta);
+              const y = r * Math.sin(theta);
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            break;
+
+          case "diamond":
+            ctx.beginPath();
+            ctx.moveTo(0, -element.height / 2);
+            ctx.lineTo(element.width / 2, 0);
+            ctx.lineTo(0, element.height / 2);
+            ctx.lineTo(-element.width / 2, 0);
+            ctx.closePath();
+            ctx.fill();
+            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
+            break;
+
+          default:
+            break;
         }
       }
-    }, 100)
+
+      ctx.restore();
+    });
+
+    // 5) Download as PNG or JPG
+    const link = document.createElement("a");
+    link.download = `poster-design.${exportFormat}`;
+    link.href = canvas.toDataURL(
+      `image/${exportFormat}`,
+      exportFormat === "jpg" ? 0.9 : undefined
+    );
+    link.click();
+  }, [elements, canvasBackground, canvasSize, exportFormat, exportQuality]);
+
+  const handleExport = useCallback(() => {
+    if (exportFormat === "png" || exportFormat === "jpg") {
+      exportAsImage();
+    }
+  }, [exportFormat, exportAsImage]);
+
+  const selectedElementData = selectedElement
+    ? elements.find((el) => el.id === selectedElement)
+    : null;
+
+  const getAnimationClass = (animation: string, speed: number) => {
+    const speedClass =
+      speed === 0.5
+        ? "duration-[4s]"
+        : speed === 2
+        ? "duration-[0.5s]"
+        : "duration-[2s]";
+    switch (animation) {
+      case "pulse":
+        return `animate-pulse ${speedClass}`;
+      case "rotate":
+        return `animate-spin ${speedClass}`;
+      case "bounce":
+        return `animate-bounce ${speedClass}`;
+      case "fade":
+        return `animate-pulse ${speedClass}`;
+      case "scale":
+        return `animate-ping ${speedClass}`;
+      default:
+        return "";
+    }
+  };
+
+  // Landing Page Component
+  const LandingPage = () => (
+    <div className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Sparkles className="w-10 h-10 text-blue-600" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                PosterCraft Pro
+              </span>
+            </div>
+
+            <div className="hidden md:flex items-center space-x-8">
+              <a
+                href="#features"
+                className="text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
+              >
+                Features
+              </a>
+              <a
+                href="#templates"
+                className="text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
+              >
+                Templates
+              </a>
+            
+              <button
+                onClick={() => setCurrentView("designer")}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 cursor-pointer"
+              >
+                Launch App
+              </button>
+            </div>
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-gray-600 hover:text-gray-900 cursor-pointer"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
+            <div className="px-4 py-6 space-y-4">
+              <a
+                href="#features"
+                className="block text-gray-600 hover:text-gray-900 font-medium cursor-pointer"
+              >
+                Features
+              </a>
+              <a
+                href="#templates"
+                className="block text-gray-600 hover:text-gray-900 font-medium cursor-pointer"
+              >
+                Templates
+              </a>
+              <button
+                onClick={() => setCurrentView("designer")}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer"
+              >
+                Launch App
+              </button>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="absolute inset-0 bg-grid-gray-100 opacity-50"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="animate-fadeIn">
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-8 leading-tight">
+              Design
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                {" "}
+                Stunning{" "}
+              </span>
+              Posters
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
+              Professional-grade poster design platform trusted by Fortune 500
+              companies. Create, animate, and export beautiful designs in
+              minutes.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
+              <button
+                onClick={() => setCurrentView("designer")}
+                className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-3 cursor-pointer"
+              >
+                <PlayCircle className="w-6 h-6" />
+                <span>Start Creating</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap items-center justify-center space-x-8 opacity-60">
+              <div className="flex items-center space-x-2 mb-4">
+                <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                <span className="text-sm font-medium">4.9/5 Rating</span>
+              </div>
+              <div className="flex items-center space-x-2 mb-4">
+                <Users className="w-5 h-5 text-blue-500" />
+                <span className="text-sm font-medium">500K+ Users</span>
+              </div>
+              <div className="flex items-center space-x-2 mb-4">
+                <Shield className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-medium">Enterprise Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-20 animate-float"></div>
+        <div className="absolute bottom-20 right-10 w-32 h-32 bg-gradient-to-r from-pink-400 to-red-400 rounded-full opacity-20 animate-float delay-1000"></div>
+        <div className="absolute top-1/2 left-20 w-16 h-16 bg-gradient-to-r from-green-400 to-blue-400 rounded-full opacity-20 animate-float delay-2000"></div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Powerful Features for
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {" "}
+                Professionals
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Everything you need to create stunning posters, from advanced
+              design tools to professional export options.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <PenTool className="w-8 h-8 text-blue-600" />,
+                title: "Advanced Design Tools",
+                description:
+                  "Professional vector tools, text formatting, shapes, and drawing capabilities with pixel-perfect precision.",
+              },
+              {
+                icon: <Zap className="w-8 h-8 text-purple-600" />,
+                title: "Smooth Animations",
+                description:
+                  "Add life to your designs with 8+ animation types, custom timing, and hardware-accelerated rendering.",
+              },
+              {
+                icon: <Layers className="w-8 h-8 text-green-600" />,
+                title: "Layer Management",
+                description:
+                  "Organize complex designs with advanced layer controls, grouping, locking, and visibility management.",
+              },
+              {
+                icon: <Palette className="w-8 h-8 text-pink-600" />,
+                title: "Color & Typography",
+                description:
+                  "15+ professional fonts, unlimited colors, gradients, and advanced typography controls.",
+              },
+              {
+                icon: <Download className="w-8 h-8 text-indigo-600" />,
+                title: "Export Options",
+                description:
+                  "Export in PNG, JPG, SVG formats with ultra-high resolution up to 4K quality.",
+              },
+              {
+                icon: <Grid3X3 className="w-8 h-8 text-teal-600" />,
+                title: "Precision Controls",
+                description:
+                  "Grid snapping, alignment tools, rulers, and precise positioning for pixel-perfect designs.",
+              },
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className="group p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 transform hover:-translate-y-1"
+              >
+                <div className="mb-6 group-hover:scale-110 transition-transform duration-300">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Templates Section */}
+      <section
+        id="templates"
+        className="py-24 bg-gradient-to-br from-gray-50 to-white"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Professional
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {" "}
+                Templates
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Start with our curated collection of professional templates
+              designed by experts.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {templates.map((template) => (
+              <div key={template.id} className="group cursor-pointer">
+                <div className="relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                  <div
+                    className="h-64 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"
+                    style={{ background: template.background }}
+                  >
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold text-white mb-2">
+                        {template.name}
+                      </h3>
+                      <span className="text-sm text-white/80 px-3 py-1 bg-white/20 rounded-full">
+                        {template.category}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                      {template.name}
+                    </h4>
+                    <p className="text-gray-600 text-sm mb-4">
+                      Perfect for {template.category.toLowerCase()} designs
+                    </p>
+                    <button
+                      onClick={() => {
+                        loadTemplate(template as Template);
+                        setCurrentView("designer");
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 cursor-pointer"
+                    >
+                      Use Template
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Sparkles className="w-8 h-8 text-blue-400" />
+                <span className="text-xl font-bold">PosterCraft Pro</span>
+              </div>
+              <p className="text-gray-400">
+                Professional poster design platform for modern creators and
+                businesses.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
+                  F
+                </a>
+                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
+                  T
+                </a>
+                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
+                  P
+                </a>
+                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
+                  A
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Product</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Templates
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    API
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Support</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Help Center
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Status
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Company</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Privacy
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Terms
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center">
+            <p className="text-gray-400">
+              © 2025 PosterCraft Pro. All rights reserved. Built with ❤️ for
+              creators worldwide.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+
+  // Mouse event handlers
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent, elementId: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const element = elements.find((el) => el.id === elementId);
+      if (!element || element.locked) return;
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      setSelectedElement(elementId);
+      setDragState({
+        isDragging: true,
+        elementId,
+        startX: e.clientX - rect.left,
+        startY: e.clientY - rect.top,
+        offsetX: e.clientX - rect.left - element.x,
+        offsetY: e.clientY - rect.top - element.y,
+      });
+    },
+    [elements]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragState.isDragging || !dragState.elementId) return;
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      let x = e.clientX - rect.left - dragState.offsetX;
+      let y = e.clientY - rect.top - dragState.offsetY;
+
+      if (snapToGrid) {
+        x = Math.round(x / 20) * 20;
+        y = Math.round(y / 20) * 20;
+      }
+
+      x = Math.max(0, Math.min(canvasSize.width - 50, x));
+      y = Math.max(0, Math.min(canvasSize.height - 50, y));
+
+      updateElement(dragState.elementId, { x, y });
+    },
+    [dragState, updateElement, canvasSize, snapToGrid]
+  );
+
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // Only clear selection if clicking directly on canvas background
+    if (e.target === e.currentTarget) {
+      setSelectedElement(null);
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    if (dragState.isDragging) {
+      addToHistory(elements);
+    }
+    setDragState((prev) => ({ ...prev, isDragging: false, elementId: null }));
+  }, [dragState.isDragging, elements, addToHistory]);
+
+  // Window resize handler
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    // Set initial size
+    handleResize();
+    
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (currentView !== "designer") return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "y" || (e.key === "z" && e.shiftKey))
+      ) {
+        e.preventDefault();
+        redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
+        if (selectedElement) duplicateElement(selectedElement);
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedElement) deleteElement(selectedElement);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    currentView,
+    selectedElement,
+    undo,
+    redo,
+    duplicateElement,
+    deleteElement,
+  ]);
+
+  if (currentView === "landing") {
+    return <LandingPage />;
   }
 
   return (
-    <div className="min-h-screen bg-[#EFE1D1] font-mulish">
-      {/* Toast Notification - Bottom Right */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 z-50 bg-[#3F2E3E] text-white px-6 py-3 rounded-lg shadow-lg animate-slide-up">
-          {toastMessage}
-        </div>
-      )}
-
+    <div className="min-h-screen bg-gray-50 flex flex-col h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-[#A78295]/20">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-[#3F2E3E] mr-8">Yatra</h1>
-            </div>
+      <header className="bg-white shadow-sm border-b border-gray-200 z-40">
+        <div className="max-w-full mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-6">
+            {/* Mobile Tools Toggle */}
+            <button
+              onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Toggle Tools"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-4 ml-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#1f2937' }} />
-                <input
-                  type="text"
-                  placeholder="Search destinations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-64 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-[#3F2E3E] placeholder-[#A78295]"
-                />
-              </div>
+            <button
+              onClick={() => setCurrentView("landing")}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">
+                PosterCraft Pro
+              </h1>
+            </button>
 
-              <div className="relative" ref={notificationRef}>
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all relative cursor-pointer"
-                >
-                  <Bell className="w-5 h-5" />
-                  {notifications.filter((n) => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#A78295] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {notifications.filter((n) => !n.read).length}
-                    </span>
-                  )}
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 animate-fade-in">
-                    <div className="p-4 border-b border-[#A78295]/20 flex justify-between items-center">
-                      <h3 className="font-semibold text-[#3F2E3E]">Notifications</h3>
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-sm text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                      >
-                        Mark all as read
-                      </button>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="p-4 text-[#A78295] text-center">No notifications yet</p>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markAsRead(notif.id)}
-                            className={`p-4 border-b border-[#A78295]/10 cursor-pointer hover:bg-[#A78295]/10 transition-colors ${!notif.read ? "bg-[#A78295]/5" : ""}`}
-                          >
-                            <p className="text-sm text-[#3F2E3E]">{notif.message}</p>
-                            <p className="text-xs text-[#A78295] mt-1">{notif.timestamp}</p>
-                            {!notif.read && (
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-[#A78295] rounded-full"></div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
-                >
-                  <User className="w-5 h-5" />
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 top-12 w-64 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 overflow-hidden animate-fade-in">
-                    {/* Profile Header with Gradient */}
-                    <div className="relative bg-gradient-to-br from-[#3F2E3E] via-[#5A4A5A] to-[#A78295] p-6">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
-                      <div className="relative flex items-center space-x-4">
-                        <div className="relative">
-                          <img
-                            src={currentUser.avatar || "/placeholder.svg"}
-                            alt={currentUser.name}
-                            className="w-12 h-12 rounded-full object-cover border-3 border-white/30 shadow-lg"
-                          />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-white text-lg">{currentUser.name}</h3>
-                          <p className="text-white/80 text-sm">Travel Enthusiast</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="p-3 space-y-1">
-                      <button
-                        onClick={handleMyTrips}
-                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
-                      >
-                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
-                          <Briefcase className="w-4 h-4 text-[#3F2E3E]" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium">My Trips</p>
-                          <p className="text-xs text-[#A78295]">{userTrips.length} active trips</p>
-                        </div>
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setCurrentView("feed")
-                          setShowUserMenu(false)
-                        }}
-                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
-                      >
-                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
-                          <Home className="w-4 h-4 text-[#3F2E3E]" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium">Explore Feed</p>
-                          <p className="text-xs text-[#A78295]">Discover new trips</p>
-                        </div>
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </button>
-                    </div>
-
-                    {/* Stats Section */}
-                    <div className="border-t border-[#A78295]/10 p-4 bg-gradient-to-r from-[#A78295]/5 to-transparent">
-                      <div className="flex justify-between text-center">
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">{userTrips.length}</p>
-                          <p className="text-xs text-[#A78295]">Trips</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">
-                            {posts.filter(post => post.isLiked).length}
-                          </p>
-                          <p className="text-xs text-[#A78295]">Liked</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">
-                            {posts.filter(post => post.hasJoined).length}
-                          </p>
-                          <p className="text-xs text-[#A78295]">Joined</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
+            <div className="hidden lg:flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setShowCreateTrip(true)}
-                className="px-4 py-2 bg-[#3F2E3E] text-white rounded-full hover:bg-[#331D2C] transition-all font-medium flex items-center space-x-2 cursor-pointer"
+                onClick={() => setTool("select")}
+                className={`p-2 rounded-md transition-all cursor-pointer ${
+                  tool === "select"
+                    ? "bg-white shadow-sm text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="Select Tool (V)"
               >
-                <Plus className="w-4 h-4" />
-                <span>Create Trip</span>
+                <Move className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => addElement("text")}
+                className={`p-2 rounded-md transition-all cursor-pointer ${
+                  tool === "text"
+                    ? "bg-white shadow-sm text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="Add Text (T)"
+              >
+                <Type className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center space-x-2">
-              {/* Mobile Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#1f2937' }} />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-32 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-[#3F2E3E] placeholder-[#A78295] text-sm"
-                />
-              </div>
-
-              {/* Mobile Sidebar Button */}
+            <div className="hidden lg:flex items-center space-x-2">
               <button
-                onClick={() => setShowMobileSidebar(true)}
-                className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
+                onClick={undo}
+                disabled={historyIndex <= 0}
+                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                title="Undo (Ctrl+Z)"
               >
-                <Sidebar className="w-4 h-4" />
+                <Undo2 className="w-4 h-4" />
               </button>
-
-              {/* Mobile Notifications */}
-              <div className="relative" ref={notificationRef}>
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all relative cursor-pointer"
-                >
-                  <Bell className="w-4 h-4" />
-                  {notifications.filter((n) => !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#A78295] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                      {notifications.filter((n) => !n.read).length}
-                    </span>
-                  )}
-                </button>
-
-                {showNotifications && (
-                  <div className="fixed left-4 right-4 top-20 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 animate-fade-in">
-                    <div className="p-4 border-b border-[#A78295]/20 flex justify-between items-center">
-                      <h3 className="font-semibold text-[#3F2E3E]">Notifications</h3>
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-sm text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                      >
-                        Mark all as read
-                      </button>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="p-4 text-[#A78295] text-center">No notifications yet</p>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markAsRead(notif.id)}
-                            className={`relative p-4 border-b border-[#A78295]/10 cursor-pointer hover:bg-[#A78295]/10 transition-colors ${!notif.read ? "bg-[#A78295]/5" : ""}`}
-                          >
-                            <p className="text-sm text-[#3F2E3E] pr-4">{notif.message}</p>
-                            <p className="text-xs text-[#A78295] mt-1">{notif.timestamp}</p>
-                            {!notif.read && (
-                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-[#A78295] rounded-full"></div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile Menu */}
-              <div ref={mobileMenuRef}>
-                <button
-                  onClick={() => setShowMobileMenu(!showMobileMenu)}
-                  className="p-2 rounded-full bg-white/60 backdrop-blur-sm border border-[#A78295]/30 text-[#3F2E3E] hover:bg-[#A78295]/10 transition-all cursor-pointer"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
-
-                {showMobileMenu && (
-                  <div className="absolute right-4 top-16 w-72 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 z-50 overflow-hidden animate-fade-in">
-                    {/* Profile Header with Gradient */}
-                    <div className="relative bg-gradient-to-br from-[#3F2E3E] via-[#5A4A5A] to-[#A78295] p-6">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
-                      <div className="relative flex items-center space-x-4">
-                        <div className="relative">
-                          <img
-                            src={currentUser.avatar || "/placeholder.svg"}
-                            alt={currentUser.name}
-                            className="w-12 h-12 rounded-full object-cover border-3 border-white/30 shadow-lg"
-                          />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-white text-lg">{currentUser.name}</h3>
-                          <p className="text-white/80 text-sm">Travel Enthusiast</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="p-3 space-y-1">
-                      <button
-                        onClick={handleFeed}
-                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
-                      >
-                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
-                          <Home className="w-4 h-4 text-[#3F2E3E]" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium">Explore Feed</p>
-                          <p className="text-xs text-[#A78295]">Discover new trips</p>
-                        </div>
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </button>
-
-                      <button
-                        onClick={handleMyTrips}
-                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
-                      >
-                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
-                          <Briefcase className="w-4 h-4 text-[#3F2E3E]" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium">My Trips</p>
-                          <p className="text-xs text-[#A78295]">{userTrips.length} active trips</p>
-                        </div>
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowCreateTrip(true)
-                          setShowMobileMenu(false)
-                        }}
-                        className="w-full group flex items-center space-x-3 px-4 py-3 text-[#3F2E3E] hover:bg-gradient-to-r hover:from-[#A78295]/10 hover:to-[#3F2E3E]/10 rounded-xl transition-all duration-200 cursor-pointer transform hover:translate-x-1"
-                      >
-                        <div className="p-2 bg-gradient-to-br from-[#3F2E3E]/10 to-[#A78295]/10 rounded-lg group-hover:from-[#3F2E3E]/20 group-hover:to-[#A78295]/20 transition-all">
-                          <Plus className="w-4 h-4 text-[#3F2E3E]" />
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-medium">Create Trip</p>
-                          <p className="text-xs text-[#A78295]">Plan your next adventure</p>
-                        </div>
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </button>
-                    </div>
-
-                    {/* Stats Section */}
-                    <div className="border-t border-[#A78295]/10 p-4 bg-gradient-to-r from-[#A78295]/5 to-transparent">
-                      <div className="flex justify-between text-center">
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">{userTrips.length}</p>
-                          <p className="text-xs text-[#A78295]">Trips</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">
-                            {posts.filter(post => post.isLiked).length}
-                          </p>
-                          <p className="text-xs text-[#A78295]">Liked</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-[#3F2E3E]">
-                            {posts.filter(post => post.hasJoined).length}
-                          </p>
-                          <p className="text-xs text-[#A78295]">Joined</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={redo}
+                disabled={historyIndex >= history.length - 1}
+                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="hidden md:flex items-center space-x-2">
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className={`p-2 rounded-md transition-all cursor-pointer ${
+                  showGrid
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="Toggle Grid"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value as any)}
+                className="text-xs sm:text-sm border border-gray-300 rounded-md px-1 sm:px-2 py-1 cursor-pointer"
+              >
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+              </select>
+              <button
+                onClick={handleExport}
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span className="font-medium hidden sm:inline">Export</span>
+              </button>
+            </div>
+
+            {/* Mobile Properties Toggle */}
+            <button
+              onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Toggle Properties"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Create Trip Modal */}
-      {showCreateTrip && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#A78295]/20 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-[#3F2E3E]">Create New Trip</h2>
-              <button
-                onClick={() => setShowCreateTrip(false)}
-                className="p-2 hover:bg-[#A78295]/10 rounded-full transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5 text-[#A78295]" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Destination</label>
-                  <input
-                    type="text"
-                    value={newTrip.destination}
-                    onChange={(e) => setNewTrip({ ...newTrip, destination: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                    placeholder="e.g., Goa"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">State</label>
-                  <input
-                    type="text"
-                    value={newTrip.state}
-                    onChange={(e) => setNewTrip({ ...newTrip, state: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                    placeholder="e.g., Goa"
-                  />
-                </div>
+      <div className="flex-1 flex overflow-hidden h-full relative">
+        {/* Mobile Overlay */}
+        {(leftSidebarOpen || rightSidebarOpen) && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+            onClick={() => {
+              setLeftSidebarOpen(false);
+              setRightSidebarOpen(false);
+            }}
+          />
+        )}
+
+        {/* Left Sidebar */}
+        <div className={`${
+          leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 fixed lg:relative top-16 lg:top-0 left-0 z-30 w-80 h-full lg:h-auto bg-white shadow-lg lg:shadow-sm border-r border-gray-200 flex flex-col overflow-hidden transition-transform duration-300 ease-in-out`}>
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Design Tools
+                </h2>
+                <button
+                  onClick={() => setLeftSidebarOpen(false)}
+                  className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Description</label>
-                <textarea
-                  value={newTrip.description}
-                  onChange={(e) => setNewTrip({ ...newTrip, description: e.target.value })}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                  placeholder="Describe your trip plans..."
-                />
-              </div>
+              {/* Quick Actions */}
+              <div className="space-y-3 mb-8">
+                <button
+                  onClick={() => addElement("text")}
+                  className="w-full flex items-center space-x-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group cursor-pointer"
+                >
+                  <Type className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-gray-900">Add Text</span>
+                </button>
 
-              <div>
-                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">
-                  Upload Image <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#3F2E3E] file:text-white hover:file:bg-[#331D2C] file:cursor-pointer"
-                  required
-                />
-                {imagePreview && (
-                  <div className="mt-3">
-                    <img
-                      src={imagePreview || "/placeholder.svg"}
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg border border-[#A78295]/30"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Departure Date</label>
-                  <input
-                    type="date"
-                    value={newTrip.departureDate}
-                    onChange={(e) => setNewTrip({ ...newTrip, departureDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Duration</label>
-                  <input
-                    type="text"
-                    value={newTrip.duration}
-                    onChange={(e) => setNewTrip({ ...newTrip, duration: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                    placeholder="e.g., 5 days"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Budget</label>
-                  <input
-                    type="text"
-                    value={newTrip.budget}
-                    onChange={(e) => setNewTrip({ ...newTrip, budget: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                    placeholder="e.g., ₹15,000 - ₹25,000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Max Travelers</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={newTrip.maxTravelers}
-                    onChange={(e) => setNewTrip({ ...newTrip, maxTravelers: Number.parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#3F2E3E] mb-2">Tags</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {newTrip.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm flex items-center space-x-1"
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { shape: "rectangle", icon: Square, name: "Rectangle" },
+                    { shape: "circle", icon: Circle, name: "Circle" },
+                    { shape: "triangle", icon: Triangle, name: "Triangle" },
+                    { shape: "hexagon", icon: Hexagon, name: "Hexagon" },
+                    { shape: "star", icon: Star, name: "Star" },
+                    { shape: "diamond", icon: Sparkles, name: "Diamond" },
+                  ].map(({ shape, icon: Icon, name }) => (
+                    <button
+                      key={shape}
+                      onClick={() => addElement("shape", shape)}
+                      className="flex flex-col items-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group cursor-pointer"
+                      title={name}
                     >
-                      <span>{tag}</span>
-                      <button
-                        onClick={() => removeTag(tag)}
-                        className="text-[#A78295] hover:text-[#3F2E3E] cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
+                      <Icon className="w-4 h-4 text-gray-600 mb-1 group-hover:text-gray-900" />
+                      <span className="text-xs text-gray-600 group-hover:text-gray-900">
+                        {name}
+                      </span>
+                    </button>
                   ))}
                 </div>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Add a tag..."
-                    className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50"
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        addTag((e.target as HTMLInputElement).value)
-                        ;(e.target as HTMLInputElement).value = ""
-                      }
-                    }}
-                  />
-                </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setShowCreateTrip(false)}
-                  className="px-4 py-2 text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateTrip}
-                  className="px-6 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
-                >
-                  Create Trip
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Sidebar Drawer */}
-      {showMobileSidebar && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 lg:hidden" style={{ touchAction: 'none' }}>
-          <div className="flex h-full">
-            {/* Overlay */}
-            <div 
-              className="flex-1" 
-              onClick={() => setShowMobileSidebar(false)}
-            ></div>
-            
-            {/* Sidebar Content */}
-            <div 
-              ref={mobileSidebarRef}
-              className="w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-lg shadow-2xl h-full flex flex-col animate-slide-in-right"
-              style={{ touchAction: 'auto' }}
-            >
-              {/* Header - Fixed */}
-              <div className="flex-shrink-0 p-6 border-b border-[#A78295]/20 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">Explore</h2>
-                  <button
-                    onClick={() => setShowMobileSidebar(false)}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A78295]/50 scrollbar-track-transparent min-h-0">
-                <div className="p-6 space-y-6 pb-8 min-h-full">
-                {/* Trending Destinations */}
-                <div>
-                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                    <MapPin className="w-5 h-5 mr-2 text-[#A78295]" />
-                    Trending Destinations
-                  </h3>
-                  <div className="space-y-3">
-                    {popularDestinations.map((dest, index) => (
-                      <button
-                        key={dest.name}
-                        onClick={() => scrollToDestination(dest.name)}
-                        className="flex items-center justify-between w-full p-3 rounded-xl bg-white/50 hover:bg-white/70 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}></div>
-                          <span className="text-[#3F2E3E] font-medium">{dest.name}</span>
-                        </div>
-                        <span className="text-[#A78295] text-sm group-hover:text-[#3F2E3E] transition-colors">{dest.count} trips</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Community Stats */}
-                <div>
-                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-[#A78295]" />
-                    Community Stats
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#A78295] text-sm">This Month</span>
-                      <span className="text-[#3F2E3E] font-bold">+{randomStats.monthlyTrips} trips</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#A78295] text-sm">Active Now</span>
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-[#3F2E3E] font-bold">{randomStats.activeUsers} users</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#A78295] text-sm">Success Rate</span>
-                      <span className="text-green-600 font-bold">94%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div>
-                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                    <Bell className="w-5 h-5 mr-2 text-[#A78295]" />
-                    Recent Activity
-                  </h3>
-                  <div className="space-y-3">
-                    {[
-                      { action: "joined", user: "Priya", trip: "Goa Beach", time: "2h ago" },
-                      { action: "created", user: "Rahul", trip: "Himalayan Trek", time: "4h ago" },
-                    ].map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-3 p-3 rounded-xl bg-white/30 hover:bg-white/50 transition-colors">
-                        <div className="w-2 h-2 bg-[#A78295] rounded-full mt-2"></div>
-                        <div className="flex-1">
-                          <p className="text-[#3F2E3E] text-sm">
-                            <span className="font-medium">{activity.user}</span> {activity.action} <span className="font-medium">{activity.trip}</span>
-                          </p>
-                          <p className="text-[#A78295] text-xs">{activity.time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Travel Tips */}
-                <div className="bg-gradient-to-br from-[#A78295]/10 to-[#3F2E3E]/10 rounded-2xl p-6 relative overflow-hidden">
-                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-br from-[#A78295] to-[#3F2E3E] rounded-full flex items-center justify-center mr-3 shadow-lg">
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    Travel Tip
-                  </h3>
-                  <p className="text-sm text-[#3F2E3E] leading-relaxed mb-4">
-                    "Book accommodations 2-3 weeks in advance for the best deals. Popular destinations fill up quickly during peak seasons!"
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-[#A78295] bg-[#A78295]/10 px-3 py-1 rounded-full border border-[#A78295]/20">
-                      💡 Tip #{randomStats.tipNumber} of 100
-                    </div>
-                    <div className="w-2 h-2 bg-[#A78295] rounded-full animate-pulse"></div>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div>
-                  <h3 className="text-lg font-bold text-[#3F2E3E] mb-4">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => {
-                        setShowCreateTrip(true)
-                        setShowMobileSidebar(false)
-                      }}
-                      className="w-full p-3 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-xl hover:shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
+              {/* Templates */}
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Templates
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => loadTemplate(template as Template)}
+                      className="group p-3 bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 cursor-pointer"
                     >
-                      <Plus className="w-4 h-4" />
-                      <span>Create Trip</span>
+                      <div
+                        className="h-16 rounded-md mb-2 flex items-center justify-center"
+                        style={{ background: template.background }}
+                      >
+                        <span className="text-xs font-medium text-white/80">
+                          {template.name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 text-center">
+                        {template.category}
+                      </p>
                     </button>
-                  </div>
+                  ))}
                 </div>
+              </div>
+
+              {/* Background Controls */}
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Canvas Background
+                </h3>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3">
+                  {colors.slice(0, 12).map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setCanvasBackground(color)}
+                                              className={`w-10 h-10 sm:w-8 sm:h-8 rounded-lg border-2 transition-all hover:scale-110 cursor-pointer ${
+                        canvasBackground === color
+                          ? "border-blue-500 ring-2 ring-blue-200"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {backgroundGradients.slice(0, 6).map((gradient, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCanvasBackground(gradient)}
+                      className={`h-8 rounded-lg border-2 transition-all hover:scale-105 cursor-pointer ${
+                        canvasBackground === gradient
+                          ? "border-blue-500 ring-2 ring-blue-200"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      style={{ background: gradient }}
+                      title={`Gradient ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* View Controls */}
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  View Options
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={showGrid}
+                      onChange={(e) => setShowGrid(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Show Grid</span>
+                  </label>
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={snapToGrid}
+                      onChange={(e) => setSnapToGrid(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Snap to Grid</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Layers */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Layers ({elements.length})
+                </h3>
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {[...elements]
+                    .sort((a, b) => b.zIndex - a.zIndex)
+                    .map((element) => (
+                      <div
+                        key={element.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedElement(element.id);
+                        }}
+                        className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                          selectedElement === element.id
+                            ? "bg-blue-50 border border-blue-200"
+                            : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateElement(element.id, {
+                              visible: !element.visible,
+                            });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                        >
+                          {element.visible ? (
+                            <Eye className="w-4 h-4 text-gray-600" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateElement(element.id, {
+                              locked: !element.locked,
+                            });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                        >
+                          {element.locked ? (
+                            <Lock className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <Unlock className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {element.type === "text"
+                              ? element.content || "Text"
+                              : `${element.shapeType || "Shape"}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {element.type} • Layer {element.zIndex + 1}
+                          </p>
+                        </div>
+                        {selectedElement === element.id && (
+                          <ChevronRight className="w-4 h-4 text-blue-600" />
+                        )}
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Hero Section with Stats */}
-      <div className="bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Your Next Adventure</h1>
-            <p className="text-xl opacity-90">Connect with fellow travelers and explore the world together</p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold">{travelStats.totalTrips}</div>
-              <div className="text-sm opacity-80">Total Trips</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold">{travelStats.activeUsers}</div>
-              <div className="text-sm opacity-80">Active Users</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold">{travelStats.totalTravelers}</div>
-              <div className="text-sm opacity-80">Total Travelers</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold">{travelStats.upcomingTrips}</div>
-              <div className="text-sm opacity-80">Upcoming Trips</div>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* Main Canvas Area */}
+        <div className="flex-1 flex flex-col bg-gray-100 min-h-0 lg:mx-0">
+          <div className="flex-1 flex items-center justify-center p-2 sm:p-4 lg:p-8 overflow-auto min-h-0">
+            <div className="relative">
+                              <div
+                  ref={canvasRef}
+                  className="relative bg-white shadow-2xl rounded-xl overflow-hidden cursor-crosshair border border-gray-200"
+                  style={{
+                    width: Math.min(canvasSize.width, windowSize.width - 32),
+                    height: Math.min(canvasSize.height, windowSize.height - 200),
+                    maxWidth: '100vw',
+                    maxHeight: '100vh',
+                    background: canvasBackground.startsWith("linear-gradient")
+                      ? canvasBackground
+                      : canvasBackground,
+                  }}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onClick={handleCanvasClick}
+              >
+                {/* Grid */}
+                {showGrid && (
+                  <div className="absolute inset-0 pointer-events-none opacity-30">
+                    <svg width="100%" height="100%">
+                      <defs>
+                        <pattern
+                          id="grid"
+                          width="20"
+                          height="20"
+                          patternUnits="userSpaceOnUse"
+                        >
+                          <path
+                            d="M 20 0 L 0 0 0 20"
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="1"
+                          />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+                  </div>
+                )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Sidebar */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 h-fit">
-            {/* Trending Destinations */}
-            <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
-              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2 text-[#A78295]" />
-                Trending Destinations
-              </h3>
-              <div className="space-y-3">
-                {popularDestinations.map((dest, index) => (
-                  <button
-                    key={dest.name}
-                    onClick={() => scrollToDestination(dest.name)}
-                    className="flex items-center justify-between w-full p-3 rounded-xl bg-white/50 hover:bg-white/70 transition-colors cursor-pointer group"
+                {/* Elements */}
+                {elements.map((element) => (
+                  <div
+                    key={element.id}
+                    className={`absolute select-none transition-all duration-200 ${
+                      !element.locked ? "cursor-move" : "cursor-default"
+                    } ${
+                      selectedElement === element.id
+                        ? "ring-2 ring-blue-500 ring-opacity-75"
+                        : ""
+                    } ${
+                      isAnimating &&
+                      element.animation &&
+                      element.animation !== "none"
+                        ? getAnimationClass(
+                            element.animation,
+                            element.animationSpeed
+                          )
+                        : ""
+                    }`}
+                    style={{
+                      left: element.x,
+                      top: element.y,
+                      width: element.width,
+                      height: element.height,
+                      transform: `rotate(${element.rotation}deg)`,
+                      opacity: element.opacity,
+                      zIndex: element.zIndex,
+                      display: element.visible ? "block" : "none",
+                      filter:
+                        element.shadow && element.shadow.blur > 0
+                          ? `drop-shadow(${element.shadow.x}px ${element.shadow.y}px ${element.shadow.blur}px ${element.shadow.color})`
+                          : "none",
+                    }}
+                    onMouseDown={(e) => handleMouseDown(e, element.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedElement(element.id);
+                    }}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}></div>
-                      <span className="text-[#3F2E3E] font-medium">{dest.name}</span>
-                    </div>
-                    <span className="text-[#A78295] text-sm group-hover:text-[#3F2E3E] transition-colors">{dest.count} trips</span>
-                  </button>
+                    {element.type === "text" ? (
+                      <div
+                        className="w-full h-full flex items-center justify-center p-2 leading-tight"
+                        style={{
+                          color: element.color,
+                          fontSize: element.fontSize,
+                          fontFamily: element.fontFamily,
+                          fontWeight: element.fontWeight,
+                          fontStyle: element.fontStyle,
+                          textDecoration: element.textDecoration,
+                          textAlign: element.textAlign,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {element.content}
+                      </div>
+                    ) : (
+                      <div
+                        className="w-full h-full"
+                        style={{
+                          backgroundColor:
+                            element.backgroundColor || element.color,
+                          border:
+                            element.borderWidth && element.borderWidth > 0
+                              ? `${element.borderWidth}px solid ${element.borderColor}`
+                              : "none",
+                          borderRadius:
+                            element.shapeType === "circle"
+                              ? "50%"
+                              : element.borderRadius
+                              ? `${element.borderRadius}px`
+                              : "0",
+                          clipPath:
+                            element.shapeType === "triangle"
+                              ? "polygon(50% 0%, 0% 100%, 100% 100%)"
+                              : element.shapeType === "hexagon"
+                              ? "polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)"
+                              : element.shapeType === "star"
+                              ? "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"
+                              : element.shapeType === "diamond"
+                              ? "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)"
+                              : "none",
+                        }}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Quick Stats */}
-            <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
-              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-[#A78295]" />
-                Community Stats
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#A78295] text-sm">This Month</span>
-                  <span className="text-[#3F2E3E] font-bold">+{randomStats.monthlyTrips} trips</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#A78295] text-sm">Active Now</span>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[#3F2E3E] font-bold">{randomStats.activeUsers} users</span>
+        {/* Right Sidebar - Properties */}
+        <div className={`${
+          rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+        } lg:translate-x-0 fixed lg:relative top-16 lg:top-0 right-0 z-30 w-80 h-full lg:h-auto bg-white shadow-lg lg:shadow-sm border-l border-gray-200 flex flex-col min-h-0 transition-transform duration-300 ease-in-out`}>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="p-4 sm:p-6">
+                              <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Properties
+                  </h2>
+                  <div className="flex items-center space-x-2">
+                    {selectedElementData && (
+                      <>
+                        <button
+                          onClick={() => duplicateElement(selectedElementData.id)}
+                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                          title="Duplicate (Ctrl+D)"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteElement(selectedElementData.id)}
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                          title="Delete (Del)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setRightSidebarOpen(false)}
+                      className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#A78295] text-sm">Success Rate</span>
-                  <span className="text-green-600 font-bold">94%</span>
-                </div>
-              </div>
-            </div>
-          </aside>
 
-          {/* Main Content Area */}
-          <div className="col-span-1 lg:col-span-6">
-            {/* Inline Filters - Only show on feed view */}
-            {currentView === "feed" && (
-              <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-4 mb-6">
-                <div className="space-y-3">
-                  {/* Filter Buttons - Horizontally Scrollable */}
-                  <div className="relative">
-                    <div className="flex items-center space-x-3 overflow-x-auto scrollbar-hide">
-                      <div className="flex space-x-2 min-w-max">
-                        {filterOptions.map((option) => (
+              {selectedElementData ? (
+                <div className="space-y-6">
+                  {/* Element Type Badge */}
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {selectedElementData.type === "text" ? (
+                      <Type className="w-3 h-3 mr-1" />
+                    ) : (
+                      <Square className="w-3 h-3 mr-1" />
+                    )}
+                    {selectedElementData.type.charAt(0).toUpperCase() +
+                      selectedElementData.type.slice(1)}
+                  </div>
+
+                  {/* Text Properties */}
+                  {selectedElementData.type === "text" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Content
+                        </label>
+                        <textarea
+                          value={selectedElementData.content || ""}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              content: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                          rows={3}
+                          placeholder="Enter your text..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Font Family
+                        </label>
+                        <select
+                          value={selectedElementData.fontFamily}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              fontFamily: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                        >
+                          {fonts.map((font) => (
+                            <option
+                              key={font}
+                              value={font}
+                              style={{ fontFamily: font }}
+                            >
+                              {font}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Font Size: {selectedElementData.fontSize}px
+                        </label>
+                        <input
+                          type="range"
+                          min="8"
+                          max="120"
+                          value={selectedElementData.fontSize}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              fontSize: parseInt(e.target.value),
+                            })
+                          }
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Text Formatting */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Formatting
+                        </label>
+                        <div className="flex items-center space-x-2">
                           <button
-                            key={option.value}
-                            onClick={() => setSelectedFilter(option.value)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                              selectedFilter === option.value
-                                ? "bg-[#3F2E3E] text-white shadow-lg"
-                                : "bg-white/60 text-[#3F2E3E] hover:bg-[#A78295]/20"
+                            onClick={() =>
+                              updateElement(selectedElementData.id, {
+                                fontWeight:
+                                  selectedElementData.fontWeight === "bold"
+                                    ? "normal"
+                                    : "bold",
+                              })
+                            }
+                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
+                              selectedElementData.fontWeight === "bold"
+                                ? "bg-blue-100 border-blue-300 text-blue-700"
+                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                             }`}
                           >
-                            {option.label}
+                            <Bold className="w-4 h-4" />
                           </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Scroll fade indicator */}
-                    <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white/60 to-transparent pointer-events-none"></div>
-                  </div>
-
-                  {/* Popular Destinations - Compact */}
-                  <div className="flex items-center space-x-3">
-                    <span className="text-xs font-medium text-[#A78295] flex-shrink-0">Popular:</span>
-                    <div className="flex space-x-1.5 overflow-x-auto scrollbar-hide">
-                      <div className="flex space-x-1.5 min-w-max">
-                        {popularDestinations.slice(0, 4).map((dest) => (
                           <button
-                            key={dest.name}
-                            onClick={() => scrollToDestination(dest.name)}
-                            className="px-2 py-0.5 bg-[#A78295]/15 text-[#3F2E3E] rounded-full text-xs hover:bg-[#A78295]/25 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
+                            onClick={() =>
+                              updateElement(selectedElementData.id, {
+                                fontStyle:
+                                  selectedElementData.fontStyle === "italic"
+                                    ? "normal"
+                                    : "italic",
+                              })
+                            }
+                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
+                              selectedElementData.fontStyle === "italic"
+                                ? "bg-blue-100 border-blue-300 text-blue-700"
+                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                            }`}
                           >
-                            {dest.name}
+                            <Italic className="w-4 h-4" />
                           </button>
-                        ))}
+                          <button
+                            onClick={() =>
+                              updateElement(selectedElementData.id, {
+                                textDecoration:
+                                  selectedElementData.textDecoration ===
+                                  "underline"
+                                    ? "none"
+                                    : "underline",
+                              })
+                            }
+                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
+                              selectedElementData.textDecoration === "underline"
+                                ? "bg-blue-100 border-blue-300 text-blue-700"
+                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <Underline className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Text Alignment */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Alignment
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          {[
+                            { align: "left", icon: AlignLeft },
+                            { align: "center", icon: AlignCenter },
+                            { align: "right", icon: AlignRight },
+                          ].map(({ align, icon: Icon }) => (
+                            <button
+                              key={align}
+                              onClick={() =>
+                                updateElement(selectedElementData.id, {
+                                  textAlign: align as any,
+                                })
+                              }
+                              className={`p-2 rounded-md border transition-colors cursor-pointer ${
+                                selectedElementData.textAlign === align
+                                  ? "bg-blue-100 border-blue-300 text-blue-700"
+                                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Shape Properties */}
+                  {selectedElementData.type === "shape" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Shape Type
+                        </label>
+                        <select
+                          value={selectedElementData.shapeType}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              shapeType: e.target.value as any,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                        >
+                          <option value="rectangle">Rectangle</option>
+                          <option value="circle">Circle</option>
+                          <option value="triangle">Triangle</option>
+                          <option value="hexagon">Hexagon</option>
+                          <option value="star">Star</option>
+                          <option value="diamond">Diamond</option>
+                        </select>
+                      </div>
+
+                      {selectedElementData.shapeType === "rectangle" && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Border Radius:{" "}
+                            {selectedElementData.borderRadius || 0}px
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            value={selectedElementData.borderRadius || 0}
+                            onChange={(e) =>
+                              updateElement(selectedElementData.id, {
+                                borderRadius: parseInt(e.target.value),
+                              })
+                            }
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Border Width: {selectedElementData.borderWidth || 0}px
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="10"
+                          value={selectedElementData.borderWidth || 0}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              borderWidth: parseInt(e.target.value),
+                            })
+                          }
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {selectedElementData.borderWidth &&
+                        selectedElementData.borderWidth > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Border Color
+                            </label>
+                            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                              {colors.map((color) => (
+                                                              <button
+                                key={color}
+                                onClick={() =>
+                                  updateElement(selectedElementData.id, {
+                                    borderColor: color,
+                                  })
+                                }
+                                className={`w-8 h-8 sm:w-6 sm:h-6 rounded-md border-2 transition-all hover:scale-110 cursor-pointer ${
+                                  selectedElementData.borderColor === color
+                                    ? "border-blue-500 ring-2 ring-blue-200"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                                style={{ backgroundColor: color }}
+                              />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </>
+                  )}
+
+                  {/* Color */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {selectedElementData.type === "text"
+                        ? "Text Color"
+                        : "Fill Color"}
+                    </label>
+                    <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                      {colors.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() =>
+                            selectedElementData.type === "text"
+                              ? updateElement(selectedElementData.id, { color })
+                              : updateElement(selectedElementData.id, {
+                                  backgroundColor: color,
+                                })
+                          }
+                          className={`w-8 h-8 sm:w-6 sm:h-6 rounded-md border-2 transition-all hover:scale-110 cursor-pointer ${
+                            (selectedElementData.type === "text"
+                              ? selectedElementData.color
+                              : selectedElementData.backgroundColor) === color
+                              ? "border-blue-500 ring-2 ring-blue-200"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Transform */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Width
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedElementData.width}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            width: Math.max(10, parseInt(e.target.value) || 10),
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        min="10"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Height
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedElementData.height}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            height: Math.max(
+                              10,
+                              parseInt(e.target.value) || 10
+                            ),
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        min="10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        X Position
+                      </label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.x)}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            x: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Y Position
+                      </label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.y)}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            y: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Rotation: {selectedElementData.rotation}°
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="360"
+                      value={selectedElementData.rotation}
+                      onChange={(e) =>
+                        updateElement(selectedElementData.id, {
+                          rotation: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Opacity: {Math.round(selectedElementData.opacity * 100)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={selectedElementData.opacity}
+                      onChange={(e) =>
+                        updateElement(selectedElementData.id, {
+                          opacity: parseFloat(e.target.value),
+                        })
+                      }
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Shadow */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Drop Shadow
+                    </label>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            X Offset
+                          </label>
+                          <input
+                            type="number"
+                            value={selectedElementData.shadow?.x || 0}
+                            onChange={(e) =>
+                              updateElement(selectedElementData.id, {
+                                shadow: {
+                                  ...selectedElementData.shadow,
+                                  x: parseInt(e.target.value) || 0,
+                                } as any,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Y Offset
+                          </label>
+                          <input
+                            type="number"
+                            value={selectedElementData.shadow?.y || 0}
+                            onChange={(e) =>
+                              updateElement(selectedElementData.id, {
+                                shadow: {
+                                  ...selectedElementData.shadow,
+                                  y: parseInt(e.target.value) || 0,
+                                } as any,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Blur
+                          </label>
+                          <input
+                            type="number"
+                            value={selectedElementData.shadow?.blur || 0}
+                            onChange={(e) =>
+                              updateElement(selectedElementData.id, {
+                                shadow: {
+                                  ...selectedElementData.shadow,
+                                  blur: Math.max(
+                                    0,
+                                    parseInt(e.target.value) || 0
+                                  ),
+                                } as any,
+                              })
+                            }
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-        {currentView === "mytrips" ? (
-          <div>
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-2xl font-bold text-[#3F2E3E]">My Trips</h1>
-              <button
-                onClick={handleFeed}
-                className="px-4 py-2 text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-              >
-                Back to Feed
-              </button>
-            </div>
-            <div className="space-y-8">
-              {userTrips.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="mb-8">
-                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-[#3F2E3E] to-[#A78295] rounded-full flex items-center justify-center mb-6 shadow-xl">
-                      <Briefcase className="w-16 h-16 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-[#3F2E3E] mb-4">Start Your Travel Journey</h3>
-                    <p className="text-[#A78295] text-lg mb-8 max-w-md mx-auto">Create your first trip and connect with fellow travelers to explore the world together.</p>
-                    <div className="space-y-4">
-                  <button
-                    onClick={() => setShowCreateTrip(true)}
-                        className="px-8 py-4 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-full hover:shadow-lg transition-all font-medium cursor-pointer transform hover:scale-105"
-                  >
-                        <Plus className="w-5 h-5 inline mr-2" />
-                    Create Your First Trip
-                  </button>
-                      <div className="flex justify-center space-x-8 text-sm text-[#A78295]">
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4" />
-                          <span>Connect with travelers</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <MapPin className="w-4 h-4" />
-                          <span>Explore destinations</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Heart className="w-4 h-4" />
-                          <span>Share experiences</span>
-                        </div>
+                  {/* Element Controls */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedElementData.locked}
+                          onChange={(e) =>
+                            updateElement(selectedElementData.id, {
+                              locked: e.target.checked,
+                            })
+                          }
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Lock Element
+                        </span>
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() =>
+                            updateElement(selectedElementData.id, {
+                              zIndex: selectedElementData.zIndex + 1,
+                            })
+                          }
+                          className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                          title="Bring Forward"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() =>
+                            updateElement(selectedElementData.id, {
+                              zIndex: Math.max(
+                                0,
+                                selectedElementData.zIndex - 1
+                              ),
+                            })
+                          }
+                          className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                          title="Send Backward"
+                        >
+                          ↓
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                userTrips.map((post) => (
-                  <article
-                    key={post.id}
-                    data-destination={post.destination}
-                    className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden animate-fade-in group relative w-full"
-                  >
-                    {/* Status Badge */}
-                    <div className="absolute top-4 right-4 z-10">
-                      {post.currentTravelers >= post.maxTravelers ? (
-                        <span className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                          Full
-                        </span>
-                      ) : post.hasJoined ? (
-                        <span className="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                          Joined
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                          Open
-                        </span>
-                      )}
-                    </div>
-                    {/* Post Header */}
-                    <div className="p-6 pb-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={post.user.avatar || "/placeholder.svg"}
-                            alt={post.user.name}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-white/60"
-                          />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold text-[#3F2E3E]">{post.user.name}</h3>
-                              {post.user.verified && (
-                                <div className="w-4 h-4 bg-[#A78295] rounded-full flex items-center justify-center">
-                                  <Check className="w-2 h-2 text-white" />
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-sm text-[#A78295]">{post.postedAt}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleShare(post.id)}
-                          className="p-2 rounded-full hover:bg-white/40 transition-all cursor-pointer"
-                        >
-                          <Share2 className="w-5 h-5 text-[#A78295]" />
-                        </button>
-                      </div>
-
-                      {/* Destination Info */}
-                      <div className="mb-4">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <MapPin className="w-5 h-5 text-[#A78295]" />
-                          <h2 className="text-xl font-bold text-[#3F2E3E]">{post.destination}</h2>
-                          <span className="text-[#A78295]">, {post.state}</span>
-                        </div>
-                        <p className="text-[#3F2E3E] leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">{post.description}</p>
-                      </div>
-                    </div>
-
-                    {/* Post Image */}
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={post.image || "/placeholder.svg"}
-                        alt={post.destination}
-                        className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p className="text-sm font-medium">Explore {post.destination}</p>
-                      </div>
-                    </div>
-
-                    {/* Trip Details */}
-                    <div className="p-6">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Calendar className="w-4 h-4 text-[#A78295]" />
-                            <span className="text-sm font-medium text-[#3F2E3E]">Departure</span>
-                          </div>
-                          <p className="text-sm text-[#3F2E3E]">
-                            {new Date(post.departureDate).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric' 
-                            })}
-                          </p>
-                        </div>
-                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-sm font-medium text-[#3F2E3E]">Duration</span>
-                          </div>
-                          <p className="text-sm text-[#3F2E3E]">{post.duration}</p>
-                        </div>
-                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-sm font-medium text-[#3F2E3E]">Budget</span>
-                          </div>
-                          <p className="text-sm text-[#3F2E3E]">{formatBudget(post.budget)}</p>
-                        </div>
-                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Users className="w-4 h-4 text-[#A78295]" />
-                            <span className="text-sm font-medium text-[#3F2E3E]">Travelers</span>
-                          </div>
-                          <p className="text-sm text-[#3F2E3E] mb-2">
-                            {post.currentTravelers}/{post.maxTravelers}
-                          </p>
-                          <div className="w-full bg-[#A78295]/20 rounded-full h-2">
-                            <div 
-                              className="bg-gradient-to-r from-[#3F2E3E] to-[#A78295] h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${(post.currentTravelers / post.maxTravelers) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {post.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm font-medium border border-[#A78295]/30"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-6">
-                          <button
-                            onClick={() => handleLike(post.id)}
-                            className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
-                          >
-                            <Heart className={`w-5 h-5 ${post.isLiked ? "fill-red-500 text-red-500" : ""}`} />
-                            <span className="font-medium">{post.likes}</span>
-                          </button>
-                          <button
-                            onClick={() => toggleComments(post.id)}
-                            className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
-                          >
-                            <MessageCircle className="w-5 h-5" />
-                            <span className="font-medium">{post.comments.length}</span>
-                          </button>
-                        </div>
-
-                        <div className="px-6 py-3 rounded-full font-semibold bg-[#A78295] text-white">Your Trip</div>
-                      </div>
-
-                      {/*Comments Section */} 
-                      {expandedComments === post.id && (
-                        <div className="mt-6 border-t border-[#A78295]/20 pt-6">
-                          {/* Comment Input */}
-                          <div className="flex space-x-3 mb-6">
-                            <img
-                              src={currentUser.avatar || "/placeholder.svg"}
-                              alt={currentUser.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                            <div className="flex-1 flex space-x-2">
-                              <input
-                                type="text"
-                                value={commentText}
-                                onChange={(e) => setCommentText(e.target.value)}
-                                placeholder="Write a comment..."
-                                className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white/50"
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleComment(post.id)
-                                  }
-                                }}
-                              />
-                              <button
-                                onClick={() => handleComment(post.id)}
-                                className="px-4 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
-                              >
-                                <Send className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Comments List */}
-                          <div className="space-y-4">
-                            {post.comments.map((comment) => (
-                              <div key={comment.id} className="flex items-start space-x-3">
-                                <img
-                                  src={comment.user.avatar || "/placeholder.svg"}
-                                  alt={comment.user.name}
-                                  className="w-8 h-8 rounded-full object-cover"
-                                />
-                                <div className="flex-1">
-                                  <div className="bg-white/70 rounded-lg p-3">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <span className="font-semibold text-[#3F2E3E] text-sm">{comment.user.name}</span>
-                                      <span className="text-xs text-[#A78295]">{comment.timestamp}</span>
-                                    </div>
-                                    <p className="text-[#3F2E3E] text-sm">{comment.content}</p>
-                                  </div>
-                                  <div className="flex items-center space-x-4 mt-2">
-                                    <button
-                                      onClick={() => handleCommentLike(post.id, comment.id)}
-                                      className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                                    >
-                                      <Heart
-                                        className={`w-3 h-3 ${comment.isLiked ? "fill-red-500 text-red-500" : ""}`}
-                                      />
-                                      <span>{comment.likes}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => setReplyingTo(comment.id)}
-                                      className="text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                                    >
-                                      Reply
-                                    </button>
-                                  </div>
-
-                                  {/* Replies */}
-                                  {comment.replies.map((reply) => (
-                                    <div key={reply.id} className="ml-6 mt-3 flex items-start space-x-3">
-                                      <img
-                                        src={reply.user.avatar || "/placeholder.svg"}
-                                        alt={reply.user.name}
-                                        className="w-6 h-6 rounded-full object-cover"
-                                      />
-                                      <div className="flex-1">
-                                        <div className="bg-white rounded-lg p-3 border border-[#A78295]/20">
-                                          <div className="flex items-center space-x-2 mb-1">
-                                            <span className="font-semibold text-[#3F2E3E] text-xs">
-                                              {reply.user.name}
-                                            </span>
-                                            <span className="text-xs text-[#A78295]">{reply.timestamp}</span>
-                                          </div>
-                                          <p className="text-[#3F2E3E] text-xs">{reply.content}</p>
-                                        </div>
-                                        <button
-                                          onClick={() => handleCommentLike(post.id, reply.id, true, comment.id)}
-                                          className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors mt-1 cursor-pointer"
-                                        >
-                                          <Heart
-                                            className={`w-3 h-3 ${reply.isLiked ? "fill-red-500 text-red-500" : ""}`}
-                                          />
-                                          <span>{reply.likes}</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-
-                                  {/* Reply Input */}
-                                  {replyingTo === comment.id && (
-                                    <div className="ml-6 mt-3 flex space-x-2">
-                                      <input
-                                        type="text"
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        placeholder="Write a reply..."
-                                        className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-sm bg-white/50"
-                                        onKeyPress={(e) => {
-                                          if (e.key === "Enter") {
-                                            handleReply(post.id, comment.id)
-                                          }
-                                        }}
-                                      />
-                                      <button
-                                        onClick={() => handleReply(post.id, comment.id)}
-                                        className="px-3 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
-                                      >
-                                        <Send className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <Settings className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No Element Selected
+                  </h3>
+                  <p className="text-gray-500 text-sm max-w-xs">
+                    Select an element on the canvas to view and edit its
+                    properties
+                  </p>
+                  <div className="mt-6 space-y-2 text-xs text-gray-400">
+                    <p>💡 Tips:</p>
+                    <p>• Click any element to select it</p>
+                    <p>• Use tools to add new elements</p>
+                    <p>• Drag elements to move them</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
-        ) : (
-          <div>
-            {/* Loading State */}
-            {isLoading && (
-          <div className="space-y-8">
-                {[...Array(3)].map((_, index) => (
-                  <div key={index} className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg overflow-hidden animate-pulse">
-                    <div className="p-6 pb-4">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-12 h-12 bg-[#A78295]/20 rounded-full"></div>
-                        <div>
-                          <div className="w-32 h-4 bg-[#A78295]/20 rounded mb-2"></div>
-                          <div className="w-20 h-3 bg-[#A78295]/20 rounded"></div>
-              </div>
-                      </div>
-                      <div className="w-48 h-6 bg-[#A78295]/20 rounded mb-2"></div>
-                      <div className="w-full h-20 bg-[#A78295]/20 rounded"></div>
-                    </div>
-                    <div className="w-full h-80 bg-[#A78295]/20"></div>
-                    <div className="p-6">
-                      <div className="grid grid-cols-4 gap-4 mb-4">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="bg-[#A78295]/10 rounded-2xl p-4">
-                            <div className="w-full h-4 bg-[#A78295]/20 rounded mb-2"></div>
-                            <div className="w-2/3 h-3 bg-[#A78295]/20 rounded"></div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex space-x-2 mb-4">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="w-16 h-6 bg-[#A78295]/20 rounded-full"></div>
-                        ))}
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex space-x-4">
-                          <div className="w-12 h-6 bg-[#A78295]/20 rounded"></div>
-                          <div className="w-12 h-6 bg-[#A78295]/20 rounded"></div>
-                        </div>
-                        <div className="w-24 h-10 bg-[#A78295]/20 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="space-y-8">
-              {!isLoading && filteredPosts.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="mb-6">
-                    <div className="w-24 h-24 mx-auto bg-[#A78295]/20 rounded-full flex items-center justify-center mb-4">
-                      <MapPin className="w-12 h-12 text-[#A78295]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-[#3F2E3E] mb-2">No trips found</h3>
-                    <p className="text-[#A78295] text-lg mb-6">Try adjusting your search or filters to find more trips</p>
-                    <button
-                      onClick={() => {
-                        setSearchQuery("")
-                        setSelectedFilter("all")
-                      }}
-                      className="px-6 py-3 bg-[#3F2E3E] text-white rounded-full hover:bg-[#331D2C] transition-colors cursor-pointer"
-                    >
-                      Clear Filters
-                    </button>
-                  </div>
-                </div>
-              ) : !isLoading ? (
-              filteredPosts.map((post) => (
-                <article
-                  key={post.id}
-                  data-destination={post.destination}
-                  className="bg-white/60 backdrop-blur-lg rounded-3xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden animate-fade-in"
-                >
-                  {/* Post Header */}
-                  <div className="p-6 pb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={post.user.avatar || "/placeholder.svg"}
-                          alt={post.user.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-white/60"
-                        />
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-semibold text-[#3F2E3E]">{post.user.name}</h3>
-                            {post.user.verified && (
-                              <div className="w-4 h-4 bg-[#A78295] rounded-full flex items-center justify-center">
-                                <Check className="w-2 h-2 text-white" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-sm text-[#A78295]">{post.postedAt}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleShare(post.id)}
-                        className="p-2 rounded-full hover:bg-white/40 transition-all cursor-pointer"
-                      >
-                        <Share2 className="w-5 h-5 text-[#A78295]" />
-                      </button>
-                    </div>
-
-                    {/* Destination Info */}
-                    <div className="mb-4">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <MapPin className="w-5 h-5 text-[#A78295]" />
-                        <h2 className="text-xl font-bold text-[#3F2E3E]">{post.destination}</h2>
-                        <span className="text-[#A78295]">, {post.state}</span>
-                      </div>
-                      <p className="text-[#3F2E3E] leading-relaxed line-clamp-1 overflow-hidden text-ellipsis">{post.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Post Image */}
-                  <div className="relative">
-                    <img
-                      src={post.image || "/placeholder.svg"}
-                      alt={post.destination}
-                      className="w-full h-80 object-cover"
-                    />
-                  </div>
-
-                  {/* Trip Details */}
-                  <div className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Calendar className="w-4 h-4 text-[#A78295]" />
-                          <span className="text-sm font-medium text-[#3F2E3E]">Departure</span>
-                        </div>
-                        <p className="text-sm text-[#3F2E3E]">{post.departureDate}</p>
-                      </div>
-                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-sm font-medium text-[#3F2E3E]">Duration</span>
-                        </div>
-                        <p className="text-sm text-[#3F2E3E]">{post.duration}</p>
-                      </div>
-                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-sm font-medium text-[#3F2E3E]">Budget</span>
-                        </div>
-                        <p className="text-sm text-[#3F2E3E]">{formatBudget(post.budget)}</p>
-                      </div>
-                      <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-white/60">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Users className="w-4 h-4 text-[#A78295]" />
-                          <span className="text-sm font-medium text-[#3F2E3E]">Travelers</span>
-                        </div>
-                        <p className="text-sm text-[#3F2E3E]">
-                          {post.currentTravelers}/{post.maxTravelers}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {post.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-[#A78295]/20 text-[#3F2E3E] rounded-full text-sm font-medium border border-[#A78295]/30"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6">
-                        <button
-                          onClick={() => handleLike(post.id)}
-                          className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
-                        >
-                          <Heart className={`w-5 h-5 ${post.isLiked ? "fill-red-500 text-red-500" : ""}`} />
-                          <span className="font-medium">{post.likes}</span>
-                        </button>
-                        <button
-                          onClick={() => toggleComments(post.id)}
-                          className="flex items-center space-x-2 text-[#A78295] hover:text-[#3F2E3E] transition-all cursor-pointer"
-                        >
-                          <MessageCircle className="w-5 h-5" />
-                          <span className="font-medium">{post.comments.length}</span>
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => handleJoin(post.id)}
-                        disabled={post.currentTravelers >= post.maxTravelers || post.hasJoined}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all cursor-pointer ${
-                          post.hasJoined
-                            ? "bg-[#A78295] text-white cursor-default"
-                            : post.currentTravelers >= post.maxTravelers
-                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                              : "bg-[#3F2E3E] text-white hover:bg-[#331D2C] shadow-lg hover:shadow-xl"
-                        }`}
-                      >
-                        {post.hasJoined
-                          ? "Joined"
-                          : post.currentTravelers >= post.maxTravelers
-                            ? "Trip Full"
-                            : "Join Trip"}
-                      </button>
-                    </div>
-
-                    {/* Comments Section */} 
-                    {expandedComments === post.id && (
-                      <div className="mt-6 border-t border-[#A78295]/20 pt-6">
-                        {/* Comment Input */}
-                        <div className="flex space-x-3 mb-6">
-                          <img
-                            src={currentUser.avatar || "/placeholder.svg"}
-                            alt={currentUser.name}
-                            className="w-8 h-8 rounded-full object-cover"
-                          />
-                          <div className="flex-1 flex space-x-2">
-                            <input
-                              type="text"
-                              value={commentText}
-                              onChange={(e) => setCommentText(e.target.value)}
-                              placeholder="Write a comment..."
-                              className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 bg-white/50"
-                              onKeyPress={(e) => {
-                                if (e.key === "Enter") {
-                                  handleComment(post.id)
-                                }
-                              }}
-                            />
-                            <button
-                              onClick={() => handleComment(post.id)}
-                              className="px-4 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
-                            >
-                              <Send className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Comments List */}
-                        <div className="space-y-4">
-                          {post.comments.map((comment) => (
-                            <div key={comment.id} className="flex items-start space-x-3">
-                              <img
-                                src={comment.user.avatar || "/placeholder.svg"}
-                                alt={comment.user.name}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                              <div className="flex-1">
-                                <div className="bg-white/70 rounded-lg p-3">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="font-semibold text-[#3F2E3E] text-sm">{comment.user.name}</span>
-                                    <span className="text-xs text-[#A78295]">{comment.timestamp}</span>
-                                  </div>
-                                  <p className="text-[#3F2E3E] text-sm">{comment.content}</p>
-                                </div>
-                                <div className="flex items-center space-x-4 mt-2">
-                                  <button
-                                    onClick={() => handleCommentLike(post.id, comment.id)}
-                                    className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                                  >
-                                    <Heart
-                                      className={`w-3 h-3 ${comment.isLiked ? "fill-red-500 text-red-500" : ""}`}
-                                    />
-                                    <span>{comment.likes}</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setReplyingTo(comment.id)}
-                                    className="text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors cursor-pointer"
-                                  >
-                                    Reply
-                                  </button>
-                                </div>
-
-                                {/* Replies */}
-                                {comment.replies.map((reply) => (
-                                  <div key={reply.id} className="ml-6 mt-3 flex items-start space-x-3">
-                                    <img
-                                      src={reply.user.avatar || "/placeholder.svg"}
-                                      alt={reply.user.name}
-                                      className="w-6 h-6 rounded-full object-cover"
-                                    />
-                                    <div className="flex-1">
-                                      <div className="bg-white rounded-lg p-3 border border-[#A78295]/20">
-                                        <div className="flex items-center space-x-2 mb-1">
-                                          <span className="font-semibold text-[#3F2E3E] text-xs">
-                                            {reply.user.name}
-                                          </span>
-                                          <span className="text-xs text-[#A78295]">{reply.timestamp}</span>
-                                        </div>
-                                        <p className="text-[#3F2E3E] text-xs">{reply.content}</p>
-                                      </div>
-                                      <button
-                                        onClick={() => handleCommentLike(post.id, reply.id, true, comment.id)}
-                                        className="flex items-center space-x-1 text-xs text-[#A78295] hover:text-[#3F2E3E] transition-colors mt-1 cursor-pointer"
-                                      >
-                                        <Heart
-                                          className={`w-3 h-3 ${reply.isLiked ? "fill-red-500 text-red-500" : ""}`}
-                                        />
-                                        <span>{reply.likes}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-
-                                {/* Reply Input */}
-                                {replyingTo === comment.id && (
-                                  <div className="ml-6 mt-3 flex space-x-2">
-                                    <input
-                                      type="text"
-                                      value={replyText}
-                                      onChange={(e) => setReplyText(e.target.value)}
-                                      placeholder="Write a reply..."
-                                      className="flex-1 px-3 py-2 border border-[#A78295]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A78295]/50 text-sm bg-white/50"
-                                      onKeyPress={(e) => {
-                                        if (e.key === "Enter") {
-                                          handleReply(post.id, comment.id)
-                                        }
-                                      }}
-                                    />
-                                    <button
-                                      onClick={() => handleReply(post.id, comment.id)}
-                                      className="px-3 py-2 bg-[#3F2E3E] text-white rounded-lg hover:bg-[#331D2C] transition-colors cursor-pointer"
-                                    >
-                                      <Send className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              ))
-            ) : null}
-            </div>
-          </div>
-        )}
         </div>
 
-        {/* Right Sidebar */}
-        <aside className="hidden lg:block lg:col-span-3 space-y-6 sticky top-24 h-fit">
-
-          {/* Recent Activity */}
-          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
-            <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-              <Bell className="w-5 h-5 mr-2 text-[#A78295]" />
-              Recent Activity
-            </h3>
-            <div className="space-y-3">
-              {[
-                { action: "joined", user: "Priya", trip: "Goa Beach", time: "2h ago" },
-                { action: "created", user: "Rahul", trip: "Himalayan Trek", time: "4h ago" },
-              ].map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3 p-3 rounded-xl bg-white/30 hover:bg-white/50 transition-colors">
-                  <div className="w-2 h-2 bg-[#A78295] rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-[#3F2E3E] text-sm">
-                      <span className="font-medium">{activity.user}</span> {activity.action} <span className="font-medium">{activity.trip}</span>
-                    </p>
-                    <p className="text-[#A78295] text-xs">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Travel Tips */}
-          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#A78295]/10 to-[#3F2E3E]/10"></div>
-            <div className="relative">
-              <h3 className="text-lg font-bold text-[#3F2E3E] mb-4 flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#A78295] to-[#3F2E3E] rounded-full flex items-center justify-center mr-3 shadow-lg">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                Travel Tip
-              </h3>
-              <p className="text-sm text-[#3F2E3E] leading-relaxed mb-4">
-                "Book accommodations 2-3 weeks in advance for the best deals. Popular destinations fill up quickly during peak seasons!"
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-[#A78295] bg-[#A78295]/10 px-3 py-1 rounded-full border border-[#A78295]/20">
-                  💡 Tip #{randomStats.tipNumber} of 100
-                </div>
-                <div className="w-2 h-2 bg-[#A78295] rounded-full animate-pulse"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg p-6">
-            <h3 className="text-lg font-bold text-[#3F2E3E] mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button 
-                onClick={() => setShowCreateTrip(true)}
-                className="w-full p-3 bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white rounded-xl hover:shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Trip</span>
-              </button>
-            </div>
-          </div>
-        </aside>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-gradient-to-r from-[#3F2E3E] to-[#5A4A5A] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Company Info */}
-            <div className="space-y-4">
-              <h3 className="text-2xl font-bold">Yatra</h3>
-              <p className="text-white/80 text-sm leading-relaxed">
-                Connect with fellow travelers and explore the world together. Create memories, share experiences, and discover amazing destinations.
-              </p>
-                <div className="flex space-x-3">
-                 <a href="#"
-                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
-                   title="Follow us on Twitter"
-                 >
-                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">T</span>
-                 </a>
-                 <a href="#"
-                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
-                   title="Follow us on Pinterest"
-                 >
-                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">P</span>
-                 </a>
-                 <a href="#"
-                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
-                   title="Follow us on Instagram"
-                 >
-                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">I</span>
-                 </a>
-                 <a href="#"
-                   className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer group"
-                   title="Follow us on LinkedIn"
-                 >
-                   <span className="text-white/60 group-hover:text-white/80 text-sm font-medium">L</span>
-                 </a>
-               </div>
-            </div>
-
-            {/* Explore */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold">Explore</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Beach Destinations</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Mountain Adventures</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Cultural Heritage</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Wildlife & Nature</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">City Breaks</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Adventure Sports</a></li>
-              </ul>
-            </div>
-
-            {/* Support */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold">Support</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Help Center</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Safety Guidelines</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Community Rules</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Contact Us</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Report Issue</a></li>
-                <li><a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Feedback</a></li>
-              </ul>
-            </div>
-
-            {/* Newsletter */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold">Stay Updated</h4>
-              <p className="text-white/80 text-sm">Get the latest travel tips and destination updates.</p>
-              <div className="space-y-3">
-                <div className="flex">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={subscribeEmail}
-                    onChange={(e) => setSubscribeEmail(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleSubscribe()
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 rounded-l-lg bg-white/10 border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={handleSubscribe}
-                    className="px-4 py-2 bg-white text-[#3F2E3E] rounded-r-lg hover:bg-white/90 transition-colors font-medium cursor-pointer"
-                  >
-                    Subscribe
-                  </button>
-                </div>
-                <p className="text-xs text-white/60">
-                  By subscribing, you agree to our Privacy Policy and consent to receive updates.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Bar */}
-          <div className="border-t border-white/20 mt-8 pt-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="text-sm text-white/80">
-                © 2024 Yatra. All rights reserved.
-              </div>
-              <div className="flex flex-wrap gap-6 text-sm">
-                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Privacy Policy</a>
-                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Terms of Service</a>
-                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Cookie Policy</a>
-                <a href="#" className="text-white/80 hover:text-white transition-colors cursor-pointer">Accessibility</a>
-              </div>
-            </div>
+        {/* Mobile Quick Tools */}
+        <div className="lg:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40">
+          <div className="flex items-center space-x-2 bg-white rounded-full shadow-lg border border-gray-200 px-4 py-2">
+            <button
+              onClick={() => addElement("text")}
+              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+              title="Add Text"
+            >
+              <Type className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-gray-200"></div>
+            <button
+              onClick={() => addElement("shape", "rectangle")}
+              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+              title="Add Rectangle"
+            >
+              <Square className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => addElement("shape", "circle")}
+              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+              title="Add Circle"
+            >
+              <Circle className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-gray-200"></div>
+            <button
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              className="p-2 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              title="Undo"
+            >
+              <Undo2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              className="p-2 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              title="Redo"
+            >
+              <Redo2 className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      </footer>
+      </div>
 
-      <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,200..1000;1,200..1000&display=swap');
-          
-          .font-mulish {
-            font-family: "Mulish", sans-serif;
-            font-optical-sizing: auto;
-            font-style: normal;
-          }
-          
-          @keyframes slide-up {
-            from {
-              transform: translateY(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateY(0);
-              opacity: 1;
-            }
-          }
+      {/* Custom Styles */}
+      <style jsx global>{`
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+        body {
+          font-family: "Roboto", sans-serif !important;
+        }
 
-          @keyframes slide-in-right {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px);
           }
-          
-          @keyframes fade-in {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
+          50% {
+            transform: translateY(-20px);
           }
-
-          @keyframes pulse {
-            0%, 100% {
-              opacity: 1;
-            }
-            50% {
-              opacity: .5;
-            }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        .delay-1000 {
+          animation-delay: 1s;
+        }
+        .delay-2000 {
+          animation-delay: 2s;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
           }
-
-          @keyframes bounce-in {
-            0% {
-              transform: scale(0.3);
-              opacity: 0;
-            }
-            50% {
-              transform: scale(1.05);
-            }
-            70% {
-              transform: scale(0.9);
-            }
-            100% {
-              transform: scale(1);
-              opacity: 1;
-            }
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
-          
-          .animate-slide-up {
-            animation: slide-up 0.3s ease-out;
-          }
-
-          .animate-slide-in-right {
-            animation: slide-in-right 0.3s ease-out;
-          }
-          
-          .animate-fade-in {
-            animation: fade-in 0.5s ease-out;
-          }
-
-          .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-          }
-
-          .animate-bounce-in {
-            animation: bounce-in 0.6s ease-out;
-          }
-
-          /* Hide scrollbar but keep functionality */
-          .scrollbar-hide {
-            -ms-overflow-style: none;  /* Internet Explorer 10+ */
-            scrollbar-width: none;  /* Firefox */
-          }
-          .scrollbar-hide::-webkit-scrollbar { 
-            display: none;  /* Safari and Chrome */
-          }
-
-          /* Custom scrollbar for mobile sidebar */
-          .scrollbar-thin {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(167, 130, 149, 0.5) transparent;
-            -webkit-overflow-scrolling: touch;
-          }
-          
-          .scrollbar-thin::-webkit-scrollbar {
-            width: 4px;
-          }
-          
-          .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          
-          .scrollbar-thin::-webkit-scrollbar-thumb {
-            background-color: rgba(167, 130, 149, 0.5);
-            border-radius: 20px;
-          }
-          
-          .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(167, 130, 149, 0.7);
-          }
-
-          /* Prevent background scroll on mobile when sidebar is open */
-          body.sidebar-open {
-            overflow: hidden !important;
-            position: fixed !important;
-            width: 100% !important;
-            height: 100% !important;
-          }
-
-          /* Highlight effect for destination cards */
-          .highlight-destination {
-            animation: highlight-pulse 2s ease-in-out;
-            transform: scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(63, 46, 62, 0.3), 0 10px 10px -5px rgba(63, 46, 62, 0.1) !important;
-          }
-
-          @keyframes highlight-pulse {
-            0%, 100% {
-              box-shadow: 0 20px 25px -5px rgba(63, 46, 62, 0.3), 0 10px 10px -5px rgba(63, 46, 62, 0.1);
-            }
-            50% {
-              box-shadow: 0 25px 35px -5px rgba(167, 130, 149, 0.4), 0 15px 15px -5px rgba(167, 130, 149, 0.2);
-            }
-          }
-
-          /* Smooth scrolling */
-          .scrollbar-hide {
-            scroll-behavior: smooth;
-          }
-
-          .cursor-pointer {
-            cursor: pointer;
-          }
-
-          button {
-            cursor: pointer;
-          }
-
-          input[type="text"], input[type="url"], input[type="date"], input[type="number"], textarea {
-            cursor: text;
-          }
-        `}</style>
+        }
+        .animate-fadeIn {
+          animation: fadeIn 1s ease-out;
+        }
+        .bg-grid-gray-100 {
+          background-image: radial-gradient(
+            circle,
+            #f3f4f6 1px,
+            transparent 1px
+          );
+          background-size: 20px 20px;
+        }
+      `}</style>
     </div>
-  )
+  );
+};
+
+export default PosterDesigner;
+
+
+// Zod Schema
+export const Schema = {
+    "commentary": "A poster designer website that lets users create poster-style graphics using text, backgrounds, and animated shapes. Users can drag and place elements, pick fonts and colors, and preview a subtle animation. The final design can be exported as a static image.",
+    "template": "nextjs-developer",
+    "title": "Poster Designer",
+    "description": "A website that lets users create poster-style graphics using text, backgrounds, and animated shapes.",
+    "additional_dependencies": [
+        "lucide-react"
+    ],
+    "has_additional_dependencies": true,
+    "install_dependencies_command": "npm install lucide-react",
+    "port": 3000,
+    "file_path": "pages/index.tsx",
+    "code": "<see code above>"
 }
