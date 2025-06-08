@@ -1,974 +1,1019 @@
 "use client";
 
-import React, {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Download,
-  Type,
-  Square,
-  Circle,
-  Triangle,
-  Palette,
-  Move,
-  RotateCw,
+  TrendingUp,
   Zap,
-  Image,
-  Layers,
-  Settings,
-  Trash2,
-  Copy,
-  Eye,
-  EyeOff,
-  ChevronDown,
-  Sparkles,
-  Undo2,
-  Redo2,
-  Grid3X3,
-  Lock,
-  Unlock,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Bold,
-  Italic,
-  Underline,
-  Upload,
+  Globe,
+  Smartphone,
+  Laptop,
+  Monitor,
+  BarChart3,
+  ArrowUpRight,
   Star,
   Users,
-  Shield,
-  Check,
+  Award,
+  Target,
+  ChevronLeft,
+  ChevronRight,
   Menu,
   X,
+  Play,
+  CheckCircle,
+  Lightbulb,
+  Rocket,
+  Heart,
+  Shield,
+  Clock,
+  Download,
   ArrowRight,
-  PlayCircle,
-  ChevronRight,
-  Hexagon,
-  PenTool,
+  Building,
+  TrendingDown,
+  Cpu,
+  Headphones,
+  Tablet,
+  Camera,
+  Gamepad2,
+  Watch,
+  Home,
+  Package,
+  Brain,
+  Info,
+  Calendar,
+  Mail,
+  Phone,
+  MapPin,
+  ChevronDown,
+  Filter,
+  Search,
+  Settings,
+  Bell,
+  User,
+  LogOut,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  RadialBarChart,
+  RadialBar,
+} from "recharts";
 
-interface CanvasElement {
-  id: string;
-  type: "text" | "shape" | "image";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  content?: string;
-  fontSize?: number;
-  fontFamily?: string;
-  fontWeight?: "normal" | "bold";
-  fontStyle?: "normal" | "italic";
-  textDecoration?: "none" | "underline";
-  textAlign?: "left" | "center" | "right";
-  color: string;
-  backgroundColor?: string;
-  borderColor?: string;
-  borderWidth?: number;
-  borderRadius?: number;
-  shapeType?:
-    | "rectangle"
-    | "circle"
-    | "triangle"
-    | "hexagon"
-    | "star"
-    | "diamond";
-  rotation: number;
-  opacity: number;
-  animation?:
-    | "none"
-    | "pulse"
-    | "rotate"
-    | "bounce"
-    | "fade"
-    | "slide"
-    | "scale"
-    | "float";
-  animationSpeed: number;
-  animationDelay?: number;
-  visible: boolean;
-  locked: boolean;
-  zIndex: number;
-  shadow?: {
-    x: number;
-    y: number;
-    blur: number;
-    color: string;
-  };
+interface QuoteData {
+  id: number;
+  quote: string;
+  author: string;
+  category: string;
 }
 
-interface Template {
-  id: string;
+interface MetricData {
+  name: string;
+  value: number;
+  change: number;
+  trend: "up" | "down";
+}
+
+interface ProductData {
+  id: number;
   name: string;
   category: string;
-  elements: Omit<CanvasElement, "id">[];
-  background: string;
-  preview: string;
+  price: number;
+  sales: number;
+  rating: number;
+  image: string;
+  status: "trending" | "new" | "bestseller";
 }
 
-const PosterDesigner: React.FC = () => {
-  const [currentView, setCurrentView] = useState<"landing" | "designer">(
-    "landing"
-  );
-  const [elements, setElements] = useState<CanvasElement[]>([]);
-  const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [selectedElements, setSelectedElements] = useState<string[]>([]);
-  const [tool, setTool] = useState<"select" | "text" | "shape" | "draw">(
-    "select"
-  );
-  const [isAnimating, setIsAnimating] = useState(true);
-  const [canvasBackground, setCanvasBackground] = useState("#ffffff");
-  const [showGrid, setShowGrid] = useState(false);
-  const [snapToGrid, setSnapToGrid] = useState(false);
-  const [history, setHistory] = useState<CanvasElement[][]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
-    null
-  );
-  const [exportFormat, setExportFormat] = useState<"png" | "jpg">("png");
-  const [exportQuality, setExportQuality] = useState<
-    "standard" | "high" | "ultra"
-  >("high");
-
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasSize] = useState({ width: 900, height: 800 });
-  const [windowSize, setWindowSize] = useState({ width: 900, height: 800 });
-
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    elementId: string | null;
-    startX: number;
-    startY: number;
-    offsetX: number;
-    offsetY: number;
-  }>({
-    isDragging: false,
-    elementId: null,
-    startX: 0,
-    startY: 0,
-    offsetX: 0,
-    offsetY: 0,
+const TechVisionApp: React.FC = () => {
+  const [currentView, setCurrentView] = useState("landing");
+  const [currentQuote, setCurrentQuote] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filters, setFilters] = useState({
+    dateRange: "last3months",
+    category: "all",
+    region: "global",
   });
 
-  const fonts = [
-    "Inter",
-    "Roboto",
-    "Poppins",
-    "Montserrat",
-    "Playfair Display",
-    "Source Sans Pro",
-    "Open Sans",
-    "Lato",
-    "Nunito",
-    "Raleway",
-    "Arial",
-    "Helvetica",
-    "Times New Roman",
-    "Georgia",
-    "Verdana",
-  ];
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const colors = [
-    "#000000",
-    "#1f2937",
-    "#374151",
-    "#6b7280",
-    "#9ca3af",
-    "#d1d5db",
-    "#f3f4f6",
-    "#ffffff",
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#14b8a6",
-    "#dc2626",
-    "#ea580c",
-    "#ca8a04",
-    "#16a34a",
-    "#2563eb",
-    "#7c3aed",
-    "#db2777",
-    "#0f766e",
-    "#7f1d1d",
-    "#9a3412",
-    "#a16207",
-    "#14532d",
-    "#1e3a8a",
-    "#581c87",
-    "#831843",
-    "#134e4a",
-  ];
+  // Dummy user info; swap with your actual data source
+  const userName = "Sachin Gurjar";
+  const userEmail = "sachin.gurjar@example.com";
 
-  const backgroundGradients = [
-    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-    "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-    "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
-    "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
-    "linear-gradient(135deg, #667db6 0%, #0082c8 100%)",
-    "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
-    "linear-gradient(135deg, #833ab4 0%, #fd1d1d 100%)",
-    "linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)",
-  ];
-
-  const templates = [
-    {
-      id: "modern-minimal",
-      name: "Modern Minimal",
-      category: "Business",
-      preview: "#f8fafc",
-      background: "linear-gradient(135deg, #421a2e 0%, #64213e 100%)",
-      elements: [
-        {
-          type: "text",
-          x: 100,
-          y: 150,
-          width: 800,
-          height: 120,
-          content: "INNOVATE",
-          fontSize: 84,
-          fontFamily: "Inter",
-          fontWeight: "bold",
-          color: "#ffffff",
-          textAlign: "center",
-          rotation: 0,
-          opacity: 1,
-          animation: "none",
-          animationSpeed: 1,
-          visible: true,
-          locked: false,
-          zIndex: 1,
-        },
-        {
-          type: "text",
-          x: 100,
-          y: 280,
-          width: 800,
-          height: 60,
-          content: "Transform your ideas into reality",
-          fontSize: 24,
-          fontFamily: "Inter",
-          color: "#64748b",
-          textAlign: "center",
-          rotation: 0,
-          opacity: 1,
-          animation: "none",
-          animationSpeed: 1,
-          visible: true,
-          locked: false,
-          zIndex: 2,
-        },
-        {
-          type: "shape",
-          x: 500,
-          y: 400,
-          width: 200,
-          height: 8,
-          shapeType: "rectangle",
-          backgroundColor: "#3b82f6",
-          rotation: 0,
-          opacity: 1,
-          animation: "none",
-          animationSpeed: 1,
-          visible: true,
-          locked: false,
-          zIndex: 3,
-          color: "#3b82f6",
-        },
-      ],
-    },
-    {
-      id: "creative-burst",
-      name: "Creative Burst",
-      category: "Creative",
-      preview: "#1a1a2e",
-      background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
-      elements: [
-        {
-          type: "shape",
-          x: 200,
-          y: 100,
-          width: 150,
-          height: 150,
-          shapeType: "circle",
-          backgroundColor: "#ff6b6b",
-          visible: true,
-          locked: false,
-          zIndex: 1,
-          color: "#ff6b6b",
-        },
-        {
-          type: "text",
-          x: 400,
-          y: 200,
-          width: 600,
-          height: 200,
-          content: "CREATE\nAMAZING\nDESIGNS",
-          fontSize: 48,
-          fontFamily: "Montserrat",
-          fontWeight: "bold",
-          color: "#ffffff",
-          textAlign: "left",
-          rotation: 0,
-          opacity: 1,
-          animation: "none",
-          animationSpeed: 1,
-          visible: true,
-          locked: false,
-          zIndex: 2,
-        },
-        {
-          type: "shape",
-          x: 900,
-          y: 450,
-          width: 100,
-          height: 100,
-          shapeType: "triangle",
-          backgroundColor: "#4ecdc4",
-          opacity: 0.7,
-          visible: true,
-          locked: false,
-          zIndex: 3,
-          color: "#4ecdc4",
-        },
-      ],
-    },
-  ];
-
-  function parseGradientStops(
-    cssGradient: string
-  ): { angle: number; stops: [number, string][] } | null {
-    // This regex only handles “linear-gradient(123deg, #rrggbb 0%, #rrggbb 100%)” etc.
-    const match = cssGradient.match(
-      /linear-gradient\(\s*([0-9]+)deg\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?(?:\s*,\s*(#[0-9a-fA-F]{3,6})\s*([0-9]{1,3})%?)*\s*\)/
-    );
-    if (!match) return null;
-    const angle = parseInt(match[1], 10);
-    const stops: [number, string][] = [];
-    // match[2]=firstColor, match[3]=firstPos, match[4]=secondColor, match[5]=secondPos, etc.
-    for (let i = 2; i + 1 < match.length; i += 2) {
-      const color = match[i];
-      const posRaw = match[i + 1];
-      if (!color || !posRaw) continue;
-      const pos = parseInt(posRaw, 10) / 100;
-      stops.push([pos, color]);
-    }
-    return { angle, stops };
-  }
-
-  const generateId = () => Math.random().toString(36).substr(2, 9);
-
-  const addToHistory = useCallback(
-    (newElements: CanvasElement[]) => {
-      setHistory((prev) => {
-        const newHistory = prev.slice(0, historyIndex + 1);
-        return [...newHistory, JSON.parse(JSON.stringify(newElements))];
-      });
-      setHistoryIndex((prev) => prev + 1);
-    },
-    [historyIndex]
-  );
-
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      setHistoryIndex((prev) => prev - 1);
-      setElements(history[historyIndex - 1]);
-    }
-  }, [history, historyIndex]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex((prev) => prev + 1);
-      setElements(history[historyIndex + 1]);
-    }
-  }, [history, historyIndex]);
-
-  const addElement = useCallback(
-    (type: "text" | "shape", shapeType?: string) => {
-      setElements((prev) => {
-        const newElement: CanvasElement = {
-          id: generateId(),
-          type,
-          x: canvasSize.width / 2 - 100,
-          y: canvasSize.height / 2 - 50,
-          width: type === "text" ? 200 : 100,
-          height: type === "text" ? 50 : 100,
-          content: type === "text" ? "Your Text Here" : undefined,
-          fontSize: 24,
-          fontFamily: "Inter",
-          fontWeight: "normal",
-          fontStyle: "normal",
-          textDecoration: "none",
-          textAlign: "center",
-          color: "#000000",
-          backgroundColor: type === "shape" ? "#3b82f6" : undefined,
-          borderColor: "#000000",
-          borderWidth: 0,
-          borderRadius: 0,
-          shapeType: (shapeType as any) || "rectangle",
-          rotation: 0,
-          opacity: 1,
-          animation: "none",
-          animationSpeed: 1,
-          animationDelay: 0,
-          visible: true,
-          locked: false,
-          zIndex: prev.length,
-          shadow: {
-            x: 0,
-            y: 0,
-            blur: 0,
-            color: "#000000",
-          },
-        };
-
-        const newElements = [...prev, newElement];
-        addToHistory(newElements);
-        setSelectedElement(newElement.id);
-        setTool("select");
-        return newElements;
-      });
-    },
-    [canvasSize, addToHistory]
-  );
-
-  const updateElement = useCallback(
-    (id: string, updates: Partial<CanvasElement>) => {
-      setElements((prev) =>
-        prev.map((el) => (el.id === id ? { ...el, ...updates } : el))
-      );
-    },
-    []
-  );
-
-  const deleteElement = useCallback(
-    (id: string) => {
-      setElements((prev) => {
-        const newElements = prev.filter((el) => el.id !== id);
-        addToHistory(newElements);
-        return newElements;
-      });
-      setSelectedElement(null);
-    },
-    [addToHistory]
-  );
-
-  const duplicateElement = useCallback(
-    (id: string) => {
-      setElements((prev) => {
-        const element = prev.find((el) => el.id === id);
-        if (element) {
-          const newElement = {
-            ...element,
-            id: generateId(),
-            x: element.x + 20,
-            y: element.y + 20,
-            zIndex: prev.length,
-          };
-          const newElements = [...prev, newElement];
-          addToHistory(newElements);
-          setSelectedElement(newElement.id);
-          return newElements;
-        }
-        return prev;
-      });
-    },
-    [addToHistory]
-  );
-
-  const loadTemplate = useCallback(
-    (template: Template) => {
-      const newElements = template.elements.map((el, index) => ({
-        ...el,
-        id: generateId(),
-        zIndex: index,
-      }));
-      setElements(newElements);
-      setCanvasBackground(template.background);
-      addToHistory(newElements);
-      setSelectedTemplate(template);
-      setSelectedElement(null);
-    },
-    [addToHistory]
-  );
-
-  const exportAsImage = useCallback(async () => {
-    // 1) Wait for all fonts to be loaded so text renders correctly
-    await document.fonts.ready;
-
-    // 2) Create a new <canvas> sized to (canvasSize.width × scale) × (canvasSize.height × scale)
-    const scale =
-      exportQuality === "ultra" ? 4 : exportQuality === "high" ? 3 : 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = canvasSize.width * scale;
-    canvas.height = canvasSize.height * scale;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Scale everything so 1 CSS pixel = 1 logical unit
-    ctx.scale(scale, scale);
-
-    // 3) Draw the background (solid color or parsed gradient)
-    if (canvasBackground.startsWith("linear-gradient")) {
-      const parsed = parseGradientStops(canvasBackground);
-      if (parsed) {
-        const rad = (parsed.angle * Math.PI) / 180;
-        // Compute gradient vector from angle
-        const x0 = canvasSize.width * 0.5 * (1 - Math.cos(rad));
-        const y0 = canvasSize.height * 0.5 * (1 - Math.sin(rad));
-        const x1 = canvasSize.width * 0.5 * (1 + Math.cos(rad));
-        const y1 = canvasSize.height * 0.5 * (1 + Math.sin(rad));
-        const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-        parsed.stops.forEach(([pos, color]) => {
-          gradient.addColorStop(pos, color);
-        });
-        ctx.fillStyle = gradient;
-      } else {
-        // Fallback if parsing fails
-        ctx.fillStyle = "#ffffff";
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (
+        isDropdownOpen &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsDropdownOpen(false);
       }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const quotes: QuoteData[] = [
+    {
+      id: 1,
+      quote: "Innovation distinguishes between a leader and a follower.",
+      author: "Steve Jobs",
+      category: "Innovation",
+    },
+    {
+      id: 2,
+      quote:
+        "The future belongs to those who believe in the beauty of their dreams.",
+      author: "Eleanor Roosevelt",
+      category: "Dreams",
+    },
+    {
+      id: 3,
+      quote: "Technology is best when it brings people together.",
+      author: "Matt Mullenweg",
+      category: "Technology",
+    },
+    {
+      id: 4,
+      quote:
+        "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+      author: "Winston Churchill",
+      category: "Perseverance",
+    },
+    {
+      id: 5,
+      quote:
+        "The only way to make sense out of change is to plunge into it, move with it, and join the dance.",
+      author: "Alan Watts",
+      category: "Change",
+    },
+  ];
+
+  const salesData = [
+    {
+      month: "Jan",
+      smartphones: 4000,
+      laptops: 2400,
+      monitors: 1200,
+      tablets: 800,
+      accessories: 600,
+    },
+    {
+      month: "Feb",
+      smartphones: 3000,
+      laptops: 1398,
+      monitors: 1800,
+      tablets: 900,
+      accessories: 750,
+    },
+    {
+      month: "Mar",
+      smartphones: 2000,
+      laptops: 9800,
+      monitors: 1600,
+      tablets: 1100,
+      accessories: 820,
+    },
+    {
+      month: "Apr",
+      smartphones: 2780,
+      laptops: 3908,
+      monitors: 2200,
+      tablets: 1200,
+      accessories: 900,
+    },
+    {
+      month: "May",
+      smartphones: 1890,
+      laptops: 4800,
+      monitors: 1900,
+      tablets: 1000,
+      accessories: 650,
+    },
+    {
+      month: "Jun",
+      smartphones: 2390,
+      laptops: 3800,
+      monitors: 2100,
+      tablets: 1300,
+      accessories: 780,
+    },
+  ];
+
+  const revenueData = [
+    { quarter: "Q1 2024", revenue: 125000, profit: 45000, expenses: 80000 },
+    { quarter: "Q2 2024", revenue: 145000, profit: 52000, expenses: 93000 },
+    { quarter: "Q3 2024", revenue: 165000, profit: 61000, expenses: 104000 },
+    { quarter: "Q4 2024", revenue: 185000, profit: 68000, expenses: 117000 },
+  ];
+
+  const marketShareData = [
+    { name: "Smartphones", value: 35, color: "#3B82F6" },
+    { name: "Laptops", value: 28, color: "#8B5CF6" },
+    { name: "Monitors", value: 20, color: "#06D6A0" },
+    { name: "Tablets", value: 17, color: "#F59E0B" },
+  ];
+
+  const performanceData = [
+    { name: "Customer Satisfaction", value: 94, fill: "#3B82F6" },
+    { name: "Market Growth", value: 87, fill: "#8B5CF6" },
+    { name: "Innovation Index", value: 91, fill: "#06D6A0" },
+    { name: "Brand Recognition", value: 89, fill: "#F59E0B" },
+  ];
+
+  const keyMetrics: MetricData[] = [
+    { name: "Total Revenue", value: 2.4, change: 12.5, trend: "up" },
+    { name: "Active Users", value: 1.8, change: 8.3, trend: "up" },
+    { name: "Market Share", value: 23.1, change: 3.2, trend: "up" },
+    { name: "Customer Satisfaction", value: 94.2, change: 2.1, trend: "up" },
+  ];
+
+  const products: ProductData[] = [
+    {
+      id: 1,
+      name: "TechPhone Pro Max",
+      category: "Smartphones",
+      price: 1299,
+      sales: 15420,
+      rating: 4.8,
+      image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center",
+      status: "trending",
+    },
+    {
+      id: 2,
+      name: "UltraBook Elite",
+      category: "Laptops",
+      price: 2199,
+      sales: 8950,
+      rating: 4.9,
+      image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=300&fit=crop&crop=center",
+      status: "bestseller",
+    },
+    {
+      id: 3,
+      name: "Vision Monitor 4K",
+      category: "Monitors",
+      price: 899,
+      sales: 6340,
+      rating: 4.7,
+      image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=300&h=300&fit=crop&crop=center",
+      status: "new",
+    },
+    {
+      id: 4,
+      name: "TabletMax Pro",
+      category: "Tablets",
+      price: 799,
+      sales: 4280,
+      rating: 4.6,
+      image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300&h=300&fit=crop&crop=center",
+      status: "trending",
+    },
+    {
+      id: 5,
+      name: "Gaming Headset Pro",
+      category: "Accessories",
+      price: 299,
+      sales: 12560,
+      rating: 4.8,
+      image: "https://images.unsplash.com/photo-1599669454699-248893623440?w=300&h=300&fit=crop&crop=center",
+      status: "bestseller",
+    },
+    {
+      id: 6,
+      name: "Smart Watch Series X",
+      category: "Wearables",
+      price: 599,
+      sales: 7890,
+      rating: 4.5,
+      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop&crop=center",
+      status: "new",
+    },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentQuote((prev) => (prev + 1) % quotes.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [quotes.length]);
+
+  // Prevent body scroll when modals are open
+  useEffect(() => {
+    if (showExportModal || showFilterModal) {
+      document.body.style.overflow = "hidden";
     } else {
-      // Solid color
-      ctx.fillStyle = canvasBackground;
+      document.body.style.overflow = "unset";
     }
-    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showExportModal, showFilterModal]);
 
-    // 4) Draw each element (sorted by zIndex)
-    const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
-    sorted.forEach((element) => {
-      if (!element.visible) return;
-      ctx.save();
-      ctx.globalAlpha = element.opacity;
+  const nextQuote = () => {
+    setCurrentQuote((prev) => (prev + 1) % quotes.length);
+  };
 
-      // Apply shadow if any
-      if (element.shadow && element.shadow.blur > 0) {
-        ctx.shadowOffsetX = element.shadow.x;
-        ctx.shadowOffsetY = element.shadow.y;
-        ctx.shadowBlur = element.shadow.blur;
-        ctx.shadowColor = element.shadow.color;
-      }
+  const prevQuote = () => {
+    setCurrentQuote((prev) => (prev - 1 + quotes.length) % quotes.length);
+  };
 
-      // Move origin to element’s center, then rotate
-      const centerX = element.x + element.width / 2;
-      const centerY = element.y + element.height / 2;
-      ctx.translate(centerX, centerY);
-      ctx.rotate((element.rotation * Math.PI) / 180);
+  const navigateTo = (view: string) => {
+    setCurrentView(view);
+    setIsMenuOpen(false);
+  };
 
-      // Draw text
-      if (element.type === "text" && element.content) {
-        ctx.fillStyle = element.color;
-        // Build font string: "<fontStyle> <fontWeight> <fontSize>px <fontFamily>"
-        const stylePart = element.fontStyle === "italic" ? "italic " : "";
-        const weightPart = element.fontWeight === "bold" ? "bold " : "";
-        const sizePart = `${element.fontSize}px`;
-        ctx.font = `${stylePart}${weightPart}${sizePart} ${element.fontFamily}`;
-        ctx.textAlign = (element.textAlign as CanvasTextAlign) || "center";
-        ctx.textBaseline = "middle";
+  const handleExport = () => {
+    setShowExportModal(true);
+  };
 
-        const lines = element.content.split("\n");
-        const lineHeight = (element.fontSize as number) * 1.2;
-        // Vertical offset so multi-line is centered
-        const startY = -((lines.length - 1) * lineHeight) / 2;
-        lines.forEach((line, i) => {
-          ctx.fillText(line, 0, startY + i * lineHeight);
-        });
-      } else if (element.type === "shape") {
-        // Draw shapes
-        const fillColor = element.backgroundColor ?? element.color;
-        ctx.fillStyle = fillColor;
-        if (element.borderWidth && element.borderWidth > 0) {
-          ctx.strokeStyle = element.borderColor ?? "#000000";
-          ctx.lineWidth = element.borderWidth;
-        }
+  const handleFilter = () => {
+    setShowFilterModal(true);
+  };
 
-        switch (element.shapeType) {
-          case "rectangle":
-            if (element.borderRadius && element.borderRadius > 0) {
-              // Rounded rectangle
-              const r = Math.min(
-                element.borderRadius,
-                element.width / 2,
-                element.height / 2
-              );
-              // Path for a rounded rect
-              ctx.beginPath();
-              ctx.moveTo(-element.width / 2 + r, -element.height / 2);
-              ctx.lineTo(element.width / 2 - r, -element.height / 2);
-              ctx.quadraticCurveTo(
-                element.width / 2,
-                -element.height / 2,
-                element.width / 2,
-                -element.height / 2 + r
-              );
-              ctx.lineTo(element.width / 2, element.height / 2 - r);
-              ctx.quadraticCurveTo(
-                element.width / 2,
-                element.height / 2,
-                element.width / 2 - r,
-                element.height / 2
-              );
-              ctx.lineTo(-element.width / 2 + r, element.height / 2);
-              ctx.quadraticCurveTo(
-                -element.width / 2,
-                element.height / 2,
-                -element.width / 2,
-                element.height / 2 - r
-              );
-              ctx.lineTo(-element.width / 2, -element.height / 2 + r);
-              ctx.quadraticCurveTo(
-                -element.width / 2,
-                -element.height / 2,
-                -element.width / 2 + r,
-                -element.height / 2
-              );
-              ctx.closePath();
-              ctx.fill();
-              if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            } else {
-              // Normal rectangle
-              ctx.fillRect(
-                -element.width / 2,
-                -element.height / 2,
-                element.width,
-                element.height
-              );
-              if (element.borderWidth && element.borderWidth > 0) {
-                ctx.strokeRect(
-                  -element.width / 2,
-                  -element.height / 2,
-                  element.width,
-                  element.height
-                );
-              }
-            }
-            break;
+  const applyFilters = () => {
+    setShowFilterModal(false);
+    // Filter logic is applied through getFilteredData function
+  };
 
-          case "circle":
-            ctx.beginPath();
-            ctx.arc(0, 0, element.width / 2, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.fill();
-            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            break;
+  const getFilteredData = () => {
+    // Base data
+    let filteredSales = [...salesData];
+    let filteredRevenue = [...revenueData];
+    let filteredMetrics = [...keyMetrics];
 
-          case "triangle":
-            ctx.beginPath();
-            ctx.moveTo(0, -element.height / 2);
-            ctx.lineTo(-element.width / 2, element.height / 2);
-            ctx.lineTo(element.width / 2, element.height / 2);
-            ctx.closePath();
-            ctx.fill();
-            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            break;
+    // Apply date range filter
+    if (filters.dateRange === "last7days") {
+      filteredSales = salesData.slice(-1); // Show only last month for demo
+      filteredRevenue = revenueData.slice(-1); // Show only last quarter for demo
+    } else if (filters.dateRange === "last30days") {
+      filteredSales = salesData.slice(-2); // Show last 2 months for demo
+      filteredRevenue = revenueData.slice(-2); // Show last 2 quarters for demo
+    } else if (filters.dateRange === "last12months") {
+      // Show all data
+      filteredSales = salesData;
+      filteredRevenue = revenueData;
+    }
 
-          case "hexagon":
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-              const theta = (Math.PI / 3) * i - Math.PI / 2;
-              const x = (element.width / 2) * Math.cos(theta);
-              const y = (element.height / 2) * Math.sin(theta);
-              if (i === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fill();
-            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            break;
+    // Apply category filter
+    if (filters.category !== "all") {
+      filteredSales = filteredSales.map((item) => ({
+        ...item,
+        smartphones: filters.category === "smartphones" ? item.smartphones : 0,
+        laptops: filters.category === "laptops" ? item.laptops : 0,
+        monitors: filters.category === "monitors" ? item.monitors : 0,
+        tablets: filters.category === "tablets" ? item.tablets : 0,
+        accessories: filters.category === "accessories" ? item.accessories : 0,
+      }));
+    }
 
-          case "star":
-            // 5-point star
-            const outerR = element.width / 2;
-            const innerR = outerR * 0.5;
-            ctx.beginPath();
-            for (let i = 0; i < 10; i++) {
-              const r = i % 2 === 0 ? outerR : innerR;
-              const theta = ((Math.PI * 2) / 10) * i - Math.PI / 2;
-              const x = r * Math.cos(theta);
-              const y = r * Math.sin(theta);
-              if (i === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fill();
-            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            break;
+    // Apply region filter (simulate regional data adjustment)
+    if (filters.region !== "global") {
+      const regionMultiplier =
+        {
+          northamerica: 0.4,
+          europe: 0.3,
+          asia: 0.2,
+          latam: 0.1,
+        }[filters.region] || 1;
 
-          case "diamond":
-            ctx.beginPath();
-            ctx.moveTo(0, -element.height / 2);
-            ctx.lineTo(element.width / 2, 0);
-            ctx.lineTo(0, element.height / 2);
-            ctx.lineTo(-element.width / 2, 0);
-            ctx.closePath();
-            ctx.fill();
-            if (element.borderWidth && element.borderWidth > 0) ctx.stroke();
-            break;
+      filteredRevenue = filteredRevenue.map((item) => ({
+        ...item,
+        revenue: Math.round(item.revenue * regionMultiplier),
+        profit: Math.round(item.profit * regionMultiplier),
+        expenses: Math.round(item.expenses * regionMultiplier),
+      }));
 
-          default:
-            break;
-        }
-      }
+      filteredMetrics = filteredMetrics.map((metric) => ({
+        ...metric,
+        value: parseFloat((metric.value * regionMultiplier).toFixed(1)),
+      }));
+    }
 
-      ctx.restore();
-    });
+    return { filteredSales, filteredRevenue, filteredMetrics };
+  };
 
-    // 5) Download as PNG or JPG
+  const { filteredSales, filteredRevenue, filteredMetrics } = getFilteredData();
+
+  const exportData = (format: string) => {
+    // Simulate data export
+    const data = {
+      metrics: keyMetrics,
+      sales: salesData,
+      revenue: revenueData,
+      marketShare: marketShareData,
+    };
+
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
-    link.download = `poster-design.${exportFormat}`;
-    link.href = canvas.toDataURL(
-      `image/${exportFormat}`,
-      exportFormat === "jpg" ? 0.9 : undefined
-    );
+    link.href = url;
+    link.download = `analytics-data.${format}`;
+    document.body.appendChild(link);
     link.click();
-  }, [elements, canvasBackground, canvasSize, exportFormat, exportQuality]);
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setShowExportModal(false);
+  };
 
-  const handleExport = useCallback(() => {
-    if (exportFormat === "png" || exportFormat === "jpg") {
-      exportAsImage();
-    }
-  }, [exportFormat, exportAsImage]);
-
-  const selectedElementData = selectedElement
-    ? elements.find((el) => el.id === selectedElement)
-    : null;
-
-  const getAnimationClass = (animation: string, speed: number) => {
-    const speedClass =
-      speed === 0.5
-        ? "duration-[4s]"
-        : speed === 2
-        ? "duration-[0.5s]"
-        : "duration-[2s]";
-    switch (animation) {
-      case "pulse":
-        return `animate-pulse ${speedClass}`;
-      case "rotate":
-        return `animate-spin ${speedClass}`;
-      case "bounce":
-        return `animate-bounce ${speedClass}`;
-      case "fade":
-        return `animate-pulse ${speedClass}`;
-      case "scale":
-        return `animate-ping ${speedClass}`;
+  const getActiveTabContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                Overall Performance
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <RadialBarChart
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="20%"
+                  outerRadius="90%"
+                  data={performanceData}
+                >
+                  <RadialBar dataKey="value" cornerRadius={10} fill="#8884d8" />
+                  <Tooltip
+                    formatter={(value: number, name: string, item: any) => [
+                      value,
+                      item.payload.name
+                    ]}
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {performanceData.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center p-2 bg-white/5 rounded-lg"
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full mr-2`}
+                      style={{ backgroundColor: item.fill }}
+                    ></div>
+                    <span className="text-gray-300 text-sm">{item.name}</span>
+                    <span className="text-white text-sm ml-auto">
+                      {item.value}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Growth Metrics
+              </h3>
+              <div className="space-y-4">
+                {filteredMetrics.map((metric, index) => (
+                  <div
+                    key={metric.name}
+                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
+                  >
+                    <div>
+                      <p className="text-gray-300 text-sm">{metric.name}</p>
+                      <p className="text-white text-lg font-semibold">
+                        {index === 0
+                          ? `$${metric.value}B`
+                          : index === 2
+                          ? `${metric.value}%`
+                          : index === 3
+                          ? `${metric.value}%`
+                          : `${metric.value}M`}
+                      </p>
+                    </div>
+                    <div
+                      className={`flex items-center text-sm ${
+                        metric.trend === "up"
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      <ArrowUpRight className="h-4 w-4 mr-1" />
+                      {metric.change}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      case "sales":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Product Sales Trends
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={filteredSales}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="month" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="smartphones"
+                    stroke="#3B82F6"
+                    strokeWidth={3}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="laptops"
+                    stroke="#8B5CF6"
+                    strokeWidth={3}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="monitors"
+                    stroke="#06D6A0"
+                    strokeWidth={3}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="tablets"
+                    stroke="#F59E0B"
+                    strokeWidth={3}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="accessories"
+                    stroke="#EC4899"
+                    strokeWidth={3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Sales by Category
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={filteredSales}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="month" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar dataKey="smartphones" fill="#3B82F6" radius={2} />
+                  <Bar dataKey="laptops" fill="#8B5CF6" radius={2} />
+                  <Bar dataKey="monitors" fill="#06D6A0" radius={2} />
+                  <Bar dataKey="tablets" fill="#F59E0B" radius={2} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        );
+      case "revenue":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Revenue vs Profit
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <AreaChart data={filteredRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="quarter" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stackId="1"
+                    stroke="#3B82F6"
+                    fill="#3B82F6"
+                    fillOpacity={0.6}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="profit"
+                    stackId="2"
+                    stroke="#8B5CF6"
+                    fill="#8B5CF6"
+                    fillOpacity={0.8}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Financial Breakdown
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={filteredRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="quarter" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar dataKey="revenue" fill="#3B82F6" radius={4} />
+                  <Bar dataKey="expenses" fill="#EF4444" radius={4} />
+                  <Bar dataKey="profit" fill="#10B981" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        );
+      case "market":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Market Share Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie
+                    data={marketShareData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={140}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {marketShareData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {marketShareData.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center p-2 bg-white/5 rounded-lg"
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full mr-2`}
+                      style={{ backgroundColor: item.color }}
+                    ></div>
+                    <span className="text-gray-300 text-sm">{item.name}</span>
+                    <span className="text-white text-sm ml-auto">
+                      {item.value}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Market Trends
+              </h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-300">Mobile Devices</span>
+                    <span className="text-green-400 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      +15.2%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{ width: "78%" }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-300">Computing</span>
+                    <span className="text-green-400 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      +8.7%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-purple-500 h-2 rounded-full"
+                      style={{ width: "65%" }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-300">Wearables</span>
+                    <span className="text-green-400 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      +23.4%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full"
+                      style={{ width: "45%" }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-300">Gaming</span>
+                    <span className="text-red-400 flex items-center">
+                      <TrendingDown className="h-4 w-4 mr-1" />
+                      -2.1%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-orange-500 h-2 rounded-full"
+                      style={{ width: "38%" }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-300">Audio/Speakers</span>
+                    <span className="text-green-400 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      +11.3%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-pink-500 h-2 rounded-full"
+                      style={{ width: "52%" }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
-        return "";
+        return null;
     }
   };
 
-  // Landing Page Component
-  const LandingPage = () => (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Sparkles className="w-10 h-10 text-blue-600" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                PosterCraft Pro
-              </span>
-            </div>
-
-            <div className="hidden md:flex items-center space-x-8">
-              <a
-                href="#features"
-                className="text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
-              >
-                Features
-              </a>
-              <a
-                href="#templates"
-                className="text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
-              >
-                Templates
-              </a>
-            
-              <button
-                onClick={() => setCurrentView("designer")}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 cursor-pointer"
-              >
-                Launch App
-              </button>
-            </div>
-
+  const renderNavigation = () => (
+    <nav className="sticky top-0 z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+          <div className="flex items-center">
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-gray-900 cursor-pointer"
+              onClick={() => navigateTo("landing")}
+              className="flex-shrink-0 flex items-center group cursor-pointer"
             >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
+              <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Zap className="h-6 w-6 text-white" />
+              </div>
+              <span className="ml-3 text-2xl font-bold text-white">
+                TechVision
+              </span>
+            </button>
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="ml-10 flex items-baseline space-x-1">
+              {[
+                { name: "Dashboard", view: "dashboard", icon: Home },
+                { name: "Analytics", view: "analytics", icon: BarChart },
+                { name: "Products", view: "products", icon: Package },
+                { name: "Insights", view: "insights", icon: Brain },
+                { name: "About", view: "about", icon: Info },
+              ].map((item) => (
+                <button
+                  key={item.name}
+                  onClick={() => navigateTo(item.view)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center cursor-pointer ${
+                    currentView === item.view
+                      ? "bg-white/20 text-white"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4 mr-2" />
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden lg:flex items-center space-x-4">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                className="flex items-center text-gray-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+              >
+                <User className="h-5 w-5 mr-2" />
+                <span className="text-sm">Account</span>
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 bg-white backdrop-blur-md rounded-lg border border-white/20 shadow-lg">
+                  <div className="py-2 px-4">
+                    <p className="text-sm  font-semibold">{userName}</p>
+                    <p className="text-sm">{userEmail}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:hidden">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+            >
+              {isMenuOpen ? (
+                <X className="h-6 w-6" />
               ) : (
-                <Menu className="w-6 h-6" />
+                <Menu className="h-6 w-6" />
               )}
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
-            <div className="px-4 py-6 space-y-4">
-              <a
-                href="#features"
-                className="block text-gray-600 hover:text-gray-900 font-medium cursor-pointer"
-              >
-                Features
-              </a>
-              <a
-                href="#templates"
-                className="block text-gray-600 hover:text-gray-900 font-medium cursor-pointer"
-              >
-                Templates
-              </a>
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <div className="lg:hidden bg-black/90 backdrop-blur-md border-t border-white/20">
+          <div className="px-4 pt-4 pb-6 space-y-2">
+            {[
+              { name: "Dashboard", view: "dashboard", icon: Home },
+              { name: "Analytics", view: "analytics", icon: BarChart },
+              { name: "Products", view: "products", icon: Package },
+              { name: "Insights", view: "insights", icon: Brain },
+              { name: "About", view: "about", icon: Info },
+            ].map((item) => (
               <button
-                onClick={() => setCurrentView("designer")}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold cursor-pointer"
+                key={item.name}
+                onClick={() => navigateTo(item.view)}
+                className="flex items-center w-full text-gray-300 hover:text-white px-3 py-3 rounded-lg text-base font-medium hover:bg-white/10 transition-all duration-300 cursor-pointer"
               >
-                Launch App
+                <item.icon className="h-5 w-5 mr-3" />
+                {item.name}
               </button>
-            </div>
+            ))}
           </div>
-        )}
-      </nav>
+        </div>
+      )}
+    </nav>
+  );
+
+  const renderLandingPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="absolute inset-0 bg-grid-gray-100 opacity-50"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="animate-fadeIn">
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-8 leading-tight">
-              Design
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+      <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl"></div>
+        <div className="max-w-7xl mx-auto relative">
+          <div className="text-center">
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
+              Transform Your Business With
+              <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                 {" "}
-                Stunning{" "}
+                AI-Driven Analytics
               </span>
-              Posters
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Professional-grade poster design platform trusted by Fortune 500
-              companies. Create, animate, and export beautiful designs in
-              minutes.
+            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
+              Unlock the power of data-driven decision making with our
+              enterprise-grade platform. Combine powerful analytics with
+              inspirational insights to drive unprecedented growth.
             </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <button
-                onClick={() => setCurrentView("designer")}
-                className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-3 cursor-pointer"
+                onClick={() => navigateTo("dashboard")}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-12 py-4 rounded-xl text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center shadow-2xl cursor-pointer"
               >
-                <PlayCircle className="w-6 h-6" />
-                <span>Start Creating</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <Play className="mr-3 h-6 w-6" />
+                Get Started
               </button>
             </div>
 
             {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center space-x-8 opacity-60">
-              <div className="flex items-center space-x-2 mb-4">
-                <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                <span className="text-sm font-medium">4.9/5 Rating</span>
-              </div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Users className="w-5 h-5 text-blue-500" />
-                <span className="text-sm font-medium">500K+ Users</span>
-              </div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Shield className="w-5 h-5 text-green-500" />
-                <span className="text-sm font-medium">Enterprise Ready</span>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+              {[
+                { value: "50K+", label: "Enterprise Clients" },
+                { value: "99.9%", label: "Uptime SLA" },
+                { value: "2.4B+", label: "Data Points Analyzed" },
+                { value: "150+", label: "Countries Served" },
+              ].map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-white mb-2">
+                    {stat.value}
+                  </div>
+                  <div className="text-gray-400 text-sm">{stat.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-20 animate-float"></div>
-        <div className="absolute bottom-20 right-10 w-32 h-32 bg-gradient-to-r from-pink-400 to-red-400 rounded-full opacity-20 animate-float delay-1000"></div>
-        <div className="absolute top-1/2 left-20 w-16 h-16 bg-gradient-to-r from-green-400 to-blue-400 rounded-full opacity-20 animate-float delay-2000"></div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Powerful Features for
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {" "}
-                Professionals
-              </span>
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-black/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Enterprise-Grade Features
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Everything you need to create stunning posters, from advanced
-              design tools to professional export options.
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Everything you need to make data-driven decisions at scale
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                icon: <PenTool className="w-8 h-8 text-blue-600" />,
-                title: "Advanced Design Tools",
+                icon: <BarChart3 className="h-8 w-8" />,
+                title: "Real-time Analytics",
                 description:
-                  "Professional vector tools, text formatting, shapes, and drawing capabilities with pixel-perfect precision.",
+                  "Monitor your business metrics in real-time with our advanced analytics engine. Get instant insights as your data changes.",
               },
               {
-                icon: <Zap className="w-8 h-8 text-purple-600" />,
-                title: "Smooth Animations",
+                icon: <Shield className="h-8 w-8" />,
+                title: "Enterprise Security",
                 description:
-                  "Add life to your designs with 8+ animation types, custom timing, and hardware-accelerated rendering.",
+                  "Bank-grade security with SOC 2 compliance, end-to-end encryption, and advanced threat protection.",
               },
               {
-                icon: <Layers className="w-8 h-8 text-green-600" />,
-                title: "Layer Management",
+                icon: <Rocket className="h-8 w-8" />,
+                title: "AI-Powered Insights",
                 description:
-                  "Organize complex designs with advanced layer controls, grouping, locking, and visibility management.",
+                  "Leverage machine learning algorithms to discover hidden patterns and predict future trends in your data.",
               },
               {
-                icon: <Palette className="w-8 h-8 text-pink-600" />,
-                title: "Color & Typography",
+                icon: <Globe className="h-8 w-8" />,
+                title: "Global Scale",
                 description:
-                  "15+ professional fonts, unlimited colors, gradients, and advanced typography controls.",
+                  "Built to handle enterprise workloads with 99.9% uptime SLA and global content delivery network.",
               },
               {
-                icon: <Download className="w-8 h-8 text-indigo-600" />,
-                title: "Export Options",
+                icon: <Users className="h-8 w-8" />,
+                title: "Team Collaboration",
                 description:
-                  "Export in PNG, JPG, SVG formats with ultra-high resolution up to 4K quality.",
+                  "Share insights across your organization with advanced permission controls and collaborative workspaces.",
               },
               {
-                icon: <Grid3X3 className="w-8 h-8 text-teal-600" />,
-                title: "Precision Controls",
+                icon: <Heart className="h-8 w-8" />,
+                title: "24/7 Support",
                 description:
-                  "Grid snapping, alignment tools, rulers, and precise positioning for pixel-perfect designs.",
+                  "Get expert support whenever you need it with our dedicated customer success team and priority support.",
               },
             ].map((feature, index) => (
               <div
                 key={index}
-                className="group p-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 transform hover:scale-105 group"
               >
-                <div className="mb-6 group-hover:scale-110 transition-transform duration-300">
-                  {feature.icon}
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <div className="text-white">{feature.icon}</div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                <h3 className="text-xl font-semibold text-white mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-300 leading-relaxed">
                   {feature.description}
                 </p>
               </div>
@@ -977,60 +1022,62 @@ const PosterDesigner: React.FC = () => {
         </div>
       </section>
 
-      {/* Templates Section */}
-      <section
-        id="templates"
-        className="py-24 bg-gradient-to-br from-gray-50 to-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Professional
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {" "}
-                Templates
-              </span>
+      {/* Testimonials */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Trusted by Industry Leaders
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Start with our curated collection of professional templates
-              designed by experts.
+            <p className="text-xl text-gray-300">
+              See what our customers are saying
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {templates.map((template) => (
-              <div key={template.id} className="group cursor-pointer">
-                <div className="relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                  <div
-                    className="h-64 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"
-                    style={{ background: template.background }}
-                  >
-                    <div className="text-center">
-                      <h3 className="text-2xl font-bold text-white mb-2">
-                        {template.name}
-                      </h3>
-                      <span className="text-sm text-white/80 px-3 py-1 bg-white/20 rounded-full">
-                        {template.category}
-                      </span>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                quote:
+                  "TechVision transformed how we analyze our data. The insights we get are incredible and the platform is intuitive.",
+                author: "Sarah Chen",
+                title: "CTO, GlobalTech Corp",
+                rating: 5,
+              },
+              {
+                quote:
+                  "The real-time analytics have given us a competitive edge. We can react to market changes instantly.",
+                author: "Michael Rodriguez",
+                title: "VP Analytics, Innovation Labs",
+                rating: 5,
+              },
+              {
+                quote:
+                  "Best investment we've made. The ROI was evident within the first quarter of implementation.",
+                author: "Emily Watson",
+                title: "Head of Data, FutureTech Inc",
+                rating: 5,
+              },
+            ].map((testimonial, index) => (
+              <div
+                key={index}
+                className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10"
+              >
+                <div className="flex mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className="h-5 w-5 text-yellow-400 fill-current"
+                    />
+                  ))}
+                </div>
+                <blockquote className="text-gray-300 mb-6 text-lg leading-relaxed">
+                  "{testimonial.quote}"
+                </blockquote>
+                <div>
+                  <div className="font-semibold text-white">
+                    {testimonial.author}
                   </div>
-                  <div className="p-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                      {template.name}
-                    </h4>
-                    <p className="text-gray-600 text-sm mb-4">
-                      Perfect for {template.category.toLowerCase()} designs
-                    </p>
-                    <button
-                      onClick={() => {
-                        loadTemplate(template as Template);
-                        setCurrentView("designer");
-                      }}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200 cursor-pointer"
-                    >
-                      Use Template
-                    </button>
-                  </div>
+                  <div className="text-purple-300">{testimonial.title}</div>
                 </div>
               </div>
             ))}
@@ -1038,1449 +1085,826 @@ const PosterDesigner: React.FC = () => {
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600/20 to-purple-600/20">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-3xl p-12 border border-white/20 shadow-2xl">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Ready to Transform Your Data?
+            </h2>
+            <p className="text-xl text-blue-100 mb-10 leading-relaxed">
+              Join thousands of companies using TechVision to make smarter,
+              faster decisions. Start your free trial today.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <button
+                onClick={() => navigateTo("dashboard")}
+                className="bg-white text-purple-600 px-10 py-4 rounded-xl text-lg font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 flex items-center justify-center shadow-lg cursor-pointer"
+              >
+                <CheckCircle className="mr-3 h-6 w-6" />
+                Get Started
+              </button>
+              <button className="border-2 border-white text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-white hover:text-purple-600 transition-all duration-300 flex items-center justify-center cursor-pointer">
+                <Phone className="mr-3 h-6 w-6" />
+                Talk to Sales
+              </button>
+            </div>
+            <p className="text-blue-200 text-sm mt-6">
+              No credit card required • 14-day free trial • Cancel anytime
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
+      <footer className="bg-black/40 backdrop-blur-md border-t border-white/20 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Sparkles className="w-8 h-8 text-blue-400" />
-                <span className="text-xl font-bold">PosterCraft Pro</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center mb-6">
+                <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <span className="ml-3 text-2xl font-bold text-white">
+                  TechVision
+                </span>
               </div>
-              <p className="text-gray-400">
-                Professional poster design platform for modern creators and
-                businesses.
+              <p className="text-gray-300 mb-6 max-w-md leading-relaxed">
+                Empowering businesses worldwide with intelligent analytics and
+                inspirational insights to drive innovation and sustainable
+                growth in the digital age.
               </p>
-              <div className="flex space-x-4">
-                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
-                  F
-                </a>
-                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
-                  T
-                </a>
-                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
-                  P
-                </a>
-                <a href="#" className="w-8 h-8 bg-gray-700 hover:bg-blue-600 text-gray-400 hover:text-white rounded-full flex items-center justify-center font-semibold transition-colors cursor-pointer">
-                  A
-                </a>
+              <div className="flex gap-4 md:flex-row flex-col">
+                {["Twitter", "LinkedIn", "GitHub", "YouTube"].map((social) => (
+                  <a
+                    key={social}
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors duration-300 text-lg cursor-pointer"
+                  >
+                    {social}
+                  </a>
+                ))}
               </div>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Templates
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    API
-                  </a>
-                </li>
+              <h3 className="text-lg font-semibold text-white mb-6">Product</h3>
+              <ul className="space-y-3">
+                {[
+                  "Dashboard",
+                  "Analytics",
+                  "Reports",
+                  "API",
+                  "Integrations",
+                  "Mobile App",
+                ].map((item) => (
+                  <li key={item}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-white transition-colors duration-300 cursor-pointer"
+                    >
+                      {item}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-4">Support</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Status
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Company</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Privacy
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Terms
-                  </a>
-                </li>
+              <h3 className="text-lg font-semibold text-white mb-6">Company</h3>
+              <ul className="space-y-3">
+                {[
+                  "About Us",
+                  "Careers",
+                  "Contact",
+                  "Support",
+                  "Privacy",
+                  "Terms",
+                ].map((item) => (
+                  <li key={item}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-white transition-colors duration-300 cursor-pointer"
+                    >
+                      {item}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-            <p className="text-gray-400">
-              © 2025 PosterCraft Pro. All rights reserved. Built with ❤️ for
-              creators worldwide.
+          <div className="border-t border-white/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-400 text-sm">
+              © 2025 TechVision Analytics Inc. All rights reserved.
             </p>
+            <div className="flex items-center space-x-6 mt-4 md:mt-0">
+              <div className="flex items-center text-gray-400 text-sm">
+                <Shield className="h-4 w-4 mr-2" />
+                SOC 2 Certified
+              </div>
+              <div className="flex items-center text-gray-400 text-sm">
+                <Award className="h-4 w-4 mr-2" />
+                ISO 27001
+              </div>
+            </div>
           </div>
         </div>
       </footer>
     </div>
   );
 
-  // Mouse event handlers
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent, elementId: string) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const element = elements.find((el) => el.id === elementId);
-      if (!element || element.locked) return;
+  const renderDashboard = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
 
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      setSelectedElement(elementId);
-      setDragState({
-        isDragging: true,
-        elementId,
-        startX: e.clientX - rect.left,
-        startY: e.clientY - rect.top,
-        offsetX: e.clientX - rect.left - element.x,
-        offsetY: e.clientY - rect.top - element.y,
-      });
-    },
-    [elements]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragState.isDragging || !dragState.elementId) return;
-
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      let x = e.clientX - rect.left - dragState.offsetX;
-      let y = e.clientY - rect.top - dragState.offsetY;
-
-      if (snapToGrid) {
-        x = Math.round(x / 20) * 20;
-        y = Math.round(y / 20) * 20;
-      }
-
-      x = Math.max(0, Math.min(canvasSize.width - 50, x));
-      y = Math.max(0, Math.min(canvasSize.height - 50, y));
-
-      updateElement(dragState.elementId, { x, y });
-    },
-    [dragState, updateElement, canvasSize, snapToGrid]
-  );
-
-  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    // Only clear selection if clicking directly on canvas background
-    if (e.target === e.currentTarget) {
-      setSelectedElement(null);
-    }
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    if (dragState.isDragging) {
-      addToHistory(elements);
-    }
-    setDragState((prev) => ({ ...prev, isDragging: false, elementId: null }));
-  }, [dragState.isDragging, elements, addToHistory]);
-
-  // Window resize handler
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    // Set initial size
-    handleResize();
-    
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (currentView !== "designer") return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === "y" || (e.key === "z" && e.shiftKey))
-      ) {
-        e.preventDefault();
-        redo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
-        e.preventDefault();
-        if (selectedElement) duplicateElement(selectedElement);
-      } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedElement) deleteElement(selectedElement);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    currentView,
-    selectedElement,
-    undo,
-    redo,
-    duplicateElement,
-    deleteElement,
-  ]);
-
-  if (currentView === "landing") {
-    return <LandingPage />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col h-screen">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 z-40">
-        <div className="max-w-full mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-6">
-            {/* Mobile Tools Toggle */}
-            <button
-              onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-              title="Toggle Tools"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={() => setCurrentView("landing")}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">
-                PosterCraft Pro
+      {/* Dashboard Header */}
+      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-black/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Analytics Dashboard
               </h1>
-            </button>
-
-            <div className="hidden lg:flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setTool("select")}
-                className={`p-2 rounded-md transition-all cursor-pointer ${
-                  tool === "select"
-                    ? "bg-white shadow-sm text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                title="Select Tool (V)"
-              >
-                <Move className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => addElement("text")}
-                className={`p-2 rounded-md transition-all cursor-pointer ${
-                  tool === "text"
-                    ? "bg-white shadow-sm text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                title="Add Text (T)"
-              >
-                <Type className="w-4 h-4" />
-              </button>
+              <p className="text-gray-300">
+                Monitor your business performance and market trends
+              </p>
             </div>
-
-            <div className="hidden lg:flex items-center space-x-2">
-              <button
-                onClick={undo}
-                disabled={historyIndex <= 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                title="Undo (Ctrl+Z)"
-              >
-                <Undo2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={redo}
-                disabled={historyIndex >= history.length - 1}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                title="Redo (Ctrl+Y)"
-              >
-                <Redo2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <div className="hidden md:flex items-center space-x-2">
-              <button
-                onClick={() => setShowGrid(!showGrid)}
-                className={`p-2 rounded-md transition-all cursor-pointer ${
-                  showGrid
-                    ? "bg-blue-100 text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                title="Toggle Grid"
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <select
-                value={exportFormat}
-                onChange={(e) => setExportFormat(e.target.value as any)}
-                className="text-xs sm:text-sm border border-gray-300 rounded-md px-1 sm:px-2 py-1 cursor-pointer"
-              >
-                <option value="png">PNG</option>
-                <option value="jpg">JPG</option>
-              </select>
+            <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <button
                 onClick={handleExport}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                className="flex items-center px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-300 cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                <span className="font-medium hidden sm:inline">Export</span>
+                <Download className="h-4 w-4 mr-2" />
+                Export
               </button>
             </div>
-
-            {/* Mobile Properties Toggle */}
-            <button
-              onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-              title="Toggle Properties"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
-        </div>
-      </header>
 
-      <div className="flex-1 flex overflow-hidden h-full relative">
-        {/* Mobile Overlay */}
-        {(leftSidebarOpen || rightSidebarOpen) && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-            onClick={() => {
-              setLeftSidebarOpen(false);
-              setRightSidebarOpen(false);
-            }}
-          />
-        )}
+          {/* Key Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {filteredMetrics.map((metric, index) => (
+              <div
+                key={metric.name}
+                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                    {index === 0 && (
+                      <TrendingUp className="h-6 w-6 text-white" />
+                    )}
+                    {index === 1 && <Users className="h-6 w-6 text-white" />}
+                    {index === 2 && <Target className="h-6 w-6 text-white" />}
+                    {index === 3 && <Star className="h-6 w-6 text-white" />}
+                  </div>
+                  <div
+                    className={`flex items-center text-sm font-medium ${
+                      metric.trend === "up" ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    <ArrowUpRight className="h-4 w-4 mr-1" />
+                    {metric.change}%
+                  </div>
+                </div>
+                <h3 className="text-gray-300 text-sm font-medium mb-2">
+                  {metric.name}
+                </h3>
+                <p className="text-2xl font-bold text-white">
+                  {index === 0
+                    ? `$${metric.value}B`
+                    : index === 2
+                    ? `${metric.value}%`
+                    : index === 3
+                    ? `${metric.value}%`
+                    : `${metric.value}M`}
+                </p>
+              </div>
+            ))}
+          </div>
 
-        {/* Left Sidebar */}
-        <div className={`${
-          leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 fixed lg:relative top-16 lg:top-0 left-0 z-30 w-80 h-full lg:h-auto bg-white shadow-lg lg:shadow-sm border-r border-gray-200 flex flex-col overflow-hidden transition-transform duration-300 ease-in-out`}>
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 sm:p-6">
+          {/* Inspirational Quote */}
+          <div className="mb-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Design Tools
+                <h2 className="text-xl font-semibold text-white flex items-center">
+                  <Lightbulb className="mr-2 h-5 w-5" />
+                  Daily Inspiration
                 </h2>
-                <button
-                  onClick={() => setLeftSidebarOpen(false)}
-                  className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="space-y-3 mb-8">
-                <button
-                  onClick={() => addElement("text")}
-                  className="w-full flex items-center space-x-3 p-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group cursor-pointer"
-                >
-                  <Type className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-gray-900">Add Text</span>
-                </button>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { shape: "rectangle", icon: Square, name: "Rectangle" },
-                    { shape: "circle", icon: Circle, name: "Circle" },
-                    { shape: "triangle", icon: Triangle, name: "Triangle" },
-                    { shape: "hexagon", icon: Hexagon, name: "Hexagon" },
-                    { shape: "star", icon: Star, name: "Star" },
-                    { shape: "diamond", icon: Sparkles, name: "Diamond" },
-                  ].map(({ shape, icon: Icon, name }) => (
-                    <button
-                      key={shape}
-                      onClick={() => addElement("shape", shape)}
-                      className="flex flex-col items-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group cursor-pointer"
-                      title={name}
-                    >
-                      <Icon className="w-4 h-4 text-gray-600 mb-1 group-hover:text-gray-900" />
-                      <span className="text-xs text-gray-600 group-hover:text-gray-900">
-                        {name}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={prevQuote}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-white" />
+                  </button>
+                  <button
+                    onClick={nextQuote}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+                  >
+                    <ChevronRight className="h-5 w-5 text-white" />
+                  </button>
                 </div>
               </div>
 
-              {/* Templates */}
-              <div className="mb-8">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                  Templates
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => loadTemplate(template as Template)}
-                      className="group p-3 bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    >
-                      <div
-                        className="h-16 rounded-md mb-2 flex items-center justify-center"
-                        style={{ background: template.background }}
-                      >
-                        <span className="text-xs font-medium text-white/80">
-                          {template.name}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 text-center">
-                        {template.category}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Background Controls */}
-              <div className="mb-8">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                  Canvas Background
-                </h3>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3">
-                  {colors.slice(0, 12).map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setCanvasBackground(color)}
-                                              className={`w-10 h-10 sm:w-8 sm:h-8 rounded-lg border-2 transition-all hover:scale-110 cursor-pointer ${
-                        canvasBackground === color
-                          ? "border-blue-500 ring-2 ring-blue-200"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    />
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {backgroundGradients.slice(0, 6).map((gradient, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCanvasBackground(gradient)}
-                      className={`h-8 rounded-lg border-2 transition-all hover:scale-105 cursor-pointer ${
-                        canvasBackground === gradient
-                          ? "border-blue-500 ring-2 ring-blue-200"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                      style={{ background: gradient }}
-                      title={`Gradient ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* View Controls */}
-              <div className="mb-8">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                  View Options
-                </h3>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={showGrid}
-                      onChange={(e) => setShowGrid(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Show Grid</span>
-                  </label>
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={snapToGrid}
-                      onChange={(e) => setSnapToGrid(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Snap to Grid</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Layers */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                  Layers ({elements.length})
-                </h3>
-                <div className="space-y-1 max-h-60 overflow-y-auto">
-                  {[...elements]
-                    .sort((a, b) => b.zIndex - a.zIndex)
-                    .map((element) => (
-                      <div
-                        key={element.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedElement(element.id);
-                        }}
-                        className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                          selectedElement === element.id
-                            ? "bg-blue-50 border border-blue-200"
-                            : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateElement(element.id, {
-                              visible: !element.visible,
-                            });
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors cursor-pointer"
-                        >
-                          {element.visible ? (
-                            <Eye className="w-4 h-4 text-gray-600" />
-                          ) : (
-                            <EyeOff className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateElement(element.id, {
-                              locked: !element.locked,
-                            });
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors cursor-pointer"
-                        >
-                          {element.locked ? (
-                            <Lock className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <Unlock className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {element.type === "text"
-                              ? element.content || "Text"
-                              : `${element.shapeType || "Shape"}`}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {element.type} • Layer {element.zIndex + 1}
-                          </p>
-                        </div>
-                        {selectedElement === element.id && (
-                          <ChevronRight className="w-4 h-4 text-blue-600" />
-                        )}
-                      </div>
-                    ))}
+              <div className="text-center">
+                <blockquote className="text-xl md:text-2xl font-light text-white mb-4 leading-relaxed">
+                  "{quotes[currentQuote].quote}"
+                </blockquote>
+                <cite className="text-lg text-purple-300 font-medium">
+                  — {quotes[currentQuote].author}
+                </cite>
+                <div className="mt-4">
+                  <span className="inline-block bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full text-sm">
+                    {quotes[currentQuote].category}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col bg-gray-100 min-h-0 lg:mx-0">
-          <div className="flex-1 flex items-center justify-center p-2 sm:p-4 lg:p-8 overflow-auto min-h-0">
-            <div className="relative">
-                              <div
-                  ref={canvasRef}
-                  className="relative bg-white shadow-2xl rounded-xl overflow-hidden cursor-crosshair border border-gray-200"
-                  style={{
-                    width: Math.min(canvasSize.width, windowSize.width - 32),
-                    height: Math.min(canvasSize.height, windowSize.height - 200),
-                    maxWidth: '100vw',
-                    maxHeight: '100vh',
-                    background: canvasBackground.startsWith("linear-gradient")
-                      ? canvasBackground
-                      : canvasBackground,
-                  }}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onClick={handleCanvasClick}
-              >
-                {/* Grid */}
-                {showGrid && (
-                  <div className="absolute inset-0 pointer-events-none opacity-30">
-                    <svg width="100%" height="100%">
-                      <defs>
-                        <pattern
-                          id="grid"
-                          width="20"
-                          height="20"
-                          patternUnits="userSpaceOnUse"
-                        >
-                          <path
-                            d="M 20 0 L 0 0 0 20"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="1"
-                          />
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#grid)" />
-                    </svg>
-                  </div>
-                )}
+          {/* Tab Navigation */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-1 border border-white/10 inline-flex">
+              {["overview", "sales", "revenue", "market"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`md:px-8 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-300 capitalize cursor-pointer ${
+                    activeTab === tab
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                {/* Elements */}
-                {elements.map((element) => (
-                  <div
-                    key={element.id}
-                    className={`absolute select-none transition-all duration-200 ${
-                      !element.locked ? "cursor-move" : "cursor-default"
-                    } ${
-                      selectedElement === element.id
-                        ? "ring-2 ring-blue-500 ring-opacity-75"
-                        : ""
-                    } ${
-                      isAnimating &&
-                      element.animation &&
-                      element.animation !== "none"
-                        ? getAnimationClass(
-                            element.animation,
-                            element.animationSpeed
-                          )
-                        : ""
-                    }`}
-                    style={{
-                      left: element.x,
-                      top: element.y,
-                      width: element.width,
-                      height: element.height,
-                      transform: `rotate(${element.rotation}deg)`,
-                      opacity: element.opacity,
-                      zIndex: element.zIndex,
-                      display: element.visible ? "block" : "none",
-                      filter:
-                        element.shadow && element.shadow.blur > 0
-                          ? `drop-shadow(${element.shadow.x}px ${element.shadow.y}px ${element.shadow.blur}px ${element.shadow.color})`
-                          : "none",
-                    }}
-                    onMouseDown={(e) => handleMouseDown(e, element.id)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedElement(element.id);
-                    }}
+          {/* Tab Content */}
+          {getActiveTabContent()}
+
+          {/* Export Modal */}
+          {showExportModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 max-w-md w-full mx-4">
+                <h3 className="text-xl font-semibold text-white mb-6">
+                  Export Data
+                </h3>
+                <p className="text-gray-300 mb-6">
+                  Choose your preferred format to download the analytics data.
+                </p>
+                <div className="space-y-3 mb-6">
+                  <button
+                    onClick={() => exportData("json")}
+                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
                   >
-                    {element.type === "text" ? (
-                      <div
-                        className="w-full h-full flex items-center justify-center p-2 leading-tight"
-                        style={{
-                          color: element.color,
-                          fontSize: element.fontSize,
-                          fontFamily: element.fontFamily,
-                          fontWeight: element.fontWeight,
-                          fontStyle: element.fontStyle,
-                          textDecoration: element.textDecoration,
-                          textAlign: element.textAlign,
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {element.content}
+                    <span className="text-white">JSON Format</span>
+                    <Download className="h-4 w-4 text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => exportData("csv")}
+                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
+                  >
+                    <span className="text-white">CSV Format</span>
+                    <Download className="h-4 w-4 text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => exportData("xlsx")}
+                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
+                  >
+                    <span className="text-white">Excel Format</span>
+                    <Download className="h-4 w-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    className="flex-1 px-4 py-2 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Filter Modal */}
+          {showFilterModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 max-w-md w-full mx-4">
+                <h3 className="text-xl font-semibold text-white mb-6">
+                  Filter Data
+                </h3>
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Date Range
+                    </label>
+                    <select
+                      value={filters.dateRange}
+                      onChange={(e) =>
+                        setFilters({ ...filters, dateRange: e.target.value })
+                      }
+                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
+                    >
+                      <option value="last7days">Last 7 days</option>
+                      <option value="last30days">Last 30 days</option>
+                      <option value="last3months">Last 3 months</option>
+                      <option value="last12months">Last 12 months</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Product Category
+                    </label>
+                    <select
+                      value={filters.category}
+                      onChange={(e) =>
+                        setFilters({ ...filters, category: e.target.value })
+                      }
+                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="smartphones">Smartphones</option>
+                      <option value="laptops">Laptops</option>
+                      <option value="monitors">Monitors</option>
+                      <option value="tablets">Tablets</option>
+                      <option value="accessories">Accessories</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Region
+                    </label>
+                    <select
+                      value={filters.region}
+                      onChange={(e) =>
+                        setFilters({ ...filters, region: e.target.value })
+                      }
+                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
+                    >
+                      <option value="global">Global</option>
+                      <option value="northamerica">North America</option>
+                      <option value="europe">Europe</option>
+                      <option value="asia">Asia Pacific</option>
+                      <option value="latam">Latin America</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowFilterModal(false)}
+                    className="flex-1 px-4 py-2 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={applyFilters}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 cursor-pointer"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderProducts = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
+
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-white mb-4">Our Products</h1>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Discover our comprehensive range of cutting-edge electronics
+              designed to enhance your digital experience
+            </p>
+          </div>
+
+          {/* Product Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white/8 rounded-lg border border-white/10 hover:border-white/20 transition-colors duration-200"
+              >
+                {/* Image Container */}
+                <div className="relative h-48 bg-white/5 rounded-t-lg overflow-hidden">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Status Badge */}
+                  <div className="absolute top-3 right-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        product.status === "trending"
+                          ? "bg-blue-500 text-white"
+                          : product.status === "new"
+                          ? "bg-green-500 text-white"
+                          : "bg-yellow-500 text-black"
+                      }`}
+                    >
+                      {product.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  {/* Category */}
+                  <p className="text-gray-400 text-xs font-medium mb-2 uppercase tracking-wider">
+                    {product.category}
+                  </p>
+                  
+                  {/* Product Name */}
+                  <h3 className="text-lg font-semibold text-white mb-3 leading-tight">
+                    {product.name}
+                  </h3>
+
+                  {/* Rating */}
+                  <div className="flex items-center mb-4">
+                    <div className="flex mr-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-4 w-4 ${
+                            i < Math.floor(product.rating)
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-600"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-gray-300 text-sm">
+                      {product.rating}
+                    </span>
+                  </div>
+
+                  {/* Price and Sales */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold text-white">
+                      ${product.price.toLocaleString()}
+                    </span>
+                    <span className="text-gray-400 text-sm">
+                      {product.sales.toLocaleString()} sold
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
+
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Advanced Analytics
+            </h1>
+            <p className="text-xl text-gray-300">
+              Deep insights into your business performance
+            </p>
+          </div>
+
+          {/* Analytics Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Conversion Funnel
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { stage: "Visitors", value: 10000, percentage: 100 },
+                  { stage: "Product Views", value: 3500, percentage: 35 },
+                  { stage: "Add to Cart", value: 1200, percentage: 12 },
+                  { stage: "Checkout", value: 450, percentage: 4.5 },
+                  { stage: "Purchase", value: 380, percentage: 3.8 },
+                ].map((stage, index) => (
+                  <div
+                    key={stage.stage}
+                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
+                  >
+                    <span className="text-gray-300">{stage.stage}</span>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-32 bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full"
+                          style={{ width: `${stage.percentage}%` }}
+                        ></div>
                       </div>
-                    ) : (
-                      <div
-                        className="w-full h-full"
-                        style={{
-                          backgroundColor:
-                            element.backgroundColor || element.color,
-                          border:
-                            element.borderWidth && element.borderWidth > 0
-                              ? `${element.borderWidth}px solid ${element.borderColor}`
-                              : "none",
-                          borderRadius:
-                            element.shapeType === "circle"
-                              ? "50%"
-                              : element.borderRadius
-                              ? `${element.borderRadius}px`
-                              : "0",
-                          clipPath:
-                            element.shapeType === "triangle"
-                              ? "polygon(50% 0%, 0% 100%, 100% 100%)"
-                              : element.shapeType === "hexagon"
-                              ? "polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)"
-                              : element.shapeType === "star"
-                              ? "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"
-                              : element.shapeType === "diamond"
-                              ? "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)"
-                              : "none",
-                        }}
-                      />
-                    )}
+                      <span className="text-white font-medium w-16 text-right">
+                        {stage.value.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
+              <h3 className="text-xl font-semibold text-white mb-6">
+                Top Performing Regions
+              </h3>
+              <div className="space-y-4">
+                {[
+                  {
+                    region: "North America",
+                    revenue: "$2.4M",
+                    growth: "+15.2%",
+                  },
+                  { region: "Europe", revenue: "$1.8M", growth: "+12.7%" },
+                  {
+                    region: "Asia Pacific",
+                    revenue: "$1.5M",
+                    growth: "+23.1%",
+                  },
+                  {
+                    region: "Latin America",
+                    revenue: "$0.9M",
+                    growth: "+8.9%",
+                  },
+                  { region: "Middle East", revenue: "$0.6M", growth: "+18.3%" },
+                ].map((region) => (
+                  <div
+                    key={region.region}
+                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
+                  >
+                    <span className="text-gray-300">{region.region}</span>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-white font-medium">
+                        {region.revenue}
+                      </span>
+                      <span className="text-green-400 text-sm">
+                        {region.growth}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
 
-        {/* Right Sidebar - Properties */}
-        <div className={`${
-          rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-        } lg:translate-x-0 fixed lg:relative top-16 lg:top-0 right-0 z-30 w-80 h-full lg:h-auto bg-white shadow-lg lg:shadow-sm border-l border-gray-200 flex flex-col min-h-0 transition-transform duration-300 ease-in-out`}>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="p-4 sm:p-6">
-                              <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Properties
-                  </h2>
-                  <div className="flex items-center space-x-2">
-                    {selectedElementData && (
-                      <>
-                        <button
-                          onClick={() => duplicateElement(selectedElementData.id)}
-                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
-                          title="Duplicate (Ctrl+D)"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteElement(selectedElementData.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                          title="Delete (Del)"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => setRightSidebarOpen(false)}
-                      className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
+  const renderInsights = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
 
-              {selectedElementData ? (
-                <div className="space-y-6">
-                  {/* Element Type Badge */}
-                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {selectedElementData.type === "text" ? (
-                      <Type className="w-3 h-3 mr-1" />
-                    ) : (
-                      <Square className="w-3 h-3 mr-1" />
-                    )}
-                    {selectedElementData.type.charAt(0).toUpperCase() +
-                      selectedElementData.type.slice(1)}
-                  </div>
-
-                  {/* Text Properties */}
-                  {selectedElementData.type === "text" && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Content
-                        </label>
-                        <textarea
-                          value={selectedElementData.content || ""}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              content: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                          rows={3}
-                          placeholder="Enter your text..."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Font Family
-                        </label>
-                        <select
-                          value={selectedElementData.fontFamily}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              fontFamily: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
-                        >
-                          {fonts.map((font) => (
-                            <option
-                              key={font}
-                              value={font}
-                              style={{ fontFamily: font }}
-                            >
-                              {font}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Font Size: {selectedElementData.fontSize}px
-                        </label>
-                        <input
-                          type="range"
-                          min="8"
-                          max="120"
-                          value={selectedElementData.fontSize}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              fontSize: parseInt(e.target.value),
-                            })
-                          }
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-
-                      {/* Text Formatting */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Formatting
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() =>
-                              updateElement(selectedElementData.id, {
-                                fontWeight:
-                                  selectedElementData.fontWeight === "bold"
-                                    ? "normal"
-                                    : "bold",
-                              })
-                            }
-                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
-                              selectedElementData.fontWeight === "bold"
-                                ? "bg-blue-100 border-blue-300 text-blue-700"
-                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <Bold className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updateElement(selectedElementData.id, {
-                                fontStyle:
-                                  selectedElementData.fontStyle === "italic"
-                                    ? "normal"
-                                    : "italic",
-                              })
-                            }
-                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
-                              selectedElementData.fontStyle === "italic"
-                                ? "bg-blue-100 border-blue-300 text-blue-700"
-                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <Italic className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updateElement(selectedElementData.id, {
-                                textDecoration:
-                                  selectedElementData.textDecoration ===
-                                  "underline"
-                                    ? "none"
-                                    : "underline",
-                              })
-                            }
-                            className={`p-2 rounded-md border transition-colors cursor-pointer ${
-                              selectedElementData.textDecoration === "underline"
-                                ? "bg-blue-100 border-blue-300 text-blue-700"
-                                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <Underline className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Text Alignment */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Alignment
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          {[
-                            { align: "left", icon: AlignLeft },
-                            { align: "center", icon: AlignCenter },
-                            { align: "right", icon: AlignRight },
-                          ].map(({ align, icon: Icon }) => (
-                            <button
-                              key={align}
-                              onClick={() =>
-                                updateElement(selectedElementData.id, {
-                                  textAlign: align as any,
-                                })
-                              }
-                              className={`p-2 rounded-md border transition-colors cursor-pointer ${
-                                selectedElementData.textAlign === align
-                                  ? "bg-blue-100 border-blue-300 text-blue-700"
-                                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                              }`}
-                            >
-                              <Icon className="w-4 h-4" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Shape Properties */}
-                  {selectedElementData.type === "shape" && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Shape Type
-                        </label>
-                        <select
-                          value={selectedElementData.shapeType}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              shapeType: e.target.value as any,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
-                        >
-                          <option value="rectangle">Rectangle</option>
-                          <option value="circle">Circle</option>
-                          <option value="triangle">Triangle</option>
-                          <option value="hexagon">Hexagon</option>
-                          <option value="star">Star</option>
-                          <option value="diamond">Diamond</option>
-                        </select>
-                      </div>
-
-                      {selectedElementData.shapeType === "rectangle" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Border Radius:{" "}
-                            {selectedElementData.borderRadius || 0}px
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="50"
-                            value={selectedElementData.borderRadius || 0}
-                            onChange={(e) =>
-                              updateElement(selectedElementData.id, {
-                                borderRadius: parseInt(e.target.value),
-                              })
-                            }
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Border Width: {selectedElementData.borderWidth || 0}px
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="10"
-                          value={selectedElementData.borderWidth || 0}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              borderWidth: parseInt(e.target.value),
-                            })
-                          }
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-
-                      {selectedElementData.borderWidth &&
-                        selectedElementData.borderWidth > 0 && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Border Color
-                            </label>
-                            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                              {colors.map((color) => (
-                                                              <button
-                                key={color}
-                                onClick={() =>
-                                  updateElement(selectedElementData.id, {
-                                    borderColor: color,
-                                  })
-                                }
-                                className={`w-8 h-8 sm:w-6 sm:h-6 rounded-md border-2 transition-all hover:scale-110 cursor-pointer ${
-                                  selectedElementData.borderColor === color
-                                    ? "border-blue-500 ring-2 ring-blue-200"
-                                    : "border-gray-200 hover:border-gray-300"
-                                }`}
-                                style={{ backgroundColor: color }}
-                              />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                    </>
-                  )}
-
-                  {/* Color */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {selectedElementData.type === "text"
-                        ? "Text Color"
-                        : "Fill Color"}
-                    </label>
-                    <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                      {colors.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() =>
-                            selectedElementData.type === "text"
-                              ? updateElement(selectedElementData.id, { color })
-                              : updateElement(selectedElementData.id, {
-                                  backgroundColor: color,
-                                })
-                          }
-                          className={`w-8 h-8 sm:w-6 sm:h-6 rounded-md border-2 transition-all hover:scale-110 cursor-pointer ${
-                            (selectedElementData.type === "text"
-                              ? selectedElementData.color
-                              : selectedElementData.backgroundColor) === color
-                              ? "border-blue-500 ring-2 ring-blue-200"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Transform */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Width
-                      </label>
-                      <input
-                        type="number"
-                        value={selectedElementData.width}
-                        onChange={(e) =>
-                          updateElement(selectedElementData.id, {
-                            width: Math.max(10, parseInt(e.target.value) || 10),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        min="10"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Height
-                      </label>
-                      <input
-                        type="number"
-                        value={selectedElementData.height}
-                        onChange={(e) =>
-                          updateElement(selectedElementData.id, {
-                            height: Math.max(
-                              10,
-                              parseInt(e.target.value) || 10
-                            ),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        min="10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        X Position
-                      </label>
-                      <input
-                        type="number"
-                        value={Math.round(selectedElementData.x)}
-                        onChange={(e) =>
-                          updateElement(selectedElementData.id, {
-                            x: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Y Position
-                      </label>
-                      <input
-                        type="number"
-                        value={Math.round(selectedElementData.y)}
-                        onChange={(e) =>
-                          updateElement(selectedElementData.id, {
-                            y: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rotation: {selectedElementData.rotation}°
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      value={selectedElementData.rotation}
-                      onChange={(e) =>
-                        updateElement(selectedElementData.id, {
-                          rotation: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Opacity: {Math.round(selectedElementData.opacity * 100)}%
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={selectedElementData.opacity}
-                      onChange={(e) =>
-                        updateElement(selectedElementData.id, {
-                          opacity: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Shadow */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Drop Shadow
-                    </label>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            X Offset
-                          </label>
-                          <input
-                            type="number"
-                            value={selectedElementData.shadow?.x || 0}
-                            onChange={(e) =>
-                              updateElement(selectedElementData.id, {
-                                shadow: {
-                                  ...selectedElementData.shadow,
-                                  x: parseInt(e.target.value) || 0,
-                                } as any,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            Y Offset
-                          </label>
-                          <input
-                            type="number"
-                            value={selectedElementData.shadow?.y || 0}
-                            onChange={(e) =>
-                              updateElement(selectedElementData.id, {
-                                shadow: {
-                                  ...selectedElementData.shadow,
-                                  y: parseInt(e.target.value) || 0,
-                                } as any,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            Blur
-                          </label>
-                          <input
-                            type="number"
-                            value={selectedElementData.shadow?.blur || 0}
-                            onChange={(e) =>
-                              updateElement(selectedElementData.id, {
-                                shadow: {
-                                  ...selectedElementData.shadow,
-                                  blur: Math.max(
-                                    0,
-                                    parseInt(e.target.value) || 0
-                                  ),
-                                } as any,
-                              })
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Element Controls */}
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedElementData.locked}
-                          onChange={(e) =>
-                            updateElement(selectedElementData.id, {
-                              locked: e.target.checked,
-                            })
-                          }
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Lock Element
-                        </span>
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() =>
-                            updateElement(selectedElementData.id, {
-                              zIndex: selectedElementData.zIndex + 1,
-                            })
-                          }
-                          className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors cursor-pointer"
-                          title="Bring Forward"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          onClick={() =>
-                            updateElement(selectedElementData.id, {
-                              zIndex: Math.max(
-                                0,
-                                selectedElementData.zIndex - 1
-                              ),
-                            })
-                          }
-                          className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors cursor-pointer"
-                          title="Send Backward"
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <Settings className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No Element Selected
-                  </h3>
-                  <p className="text-gray-500 text-sm max-w-xs">
-                    Select an element on the canvas to view and edit its
-                    properties
-                  </p>
-                  <div className="mt-6 space-y-2 text-xs text-gray-400">
-                    <p>💡 Tips:</p>
-                    <p>• Click any element to select it</p>
-                    <p>• Use tools to add new elements</p>
-                    <p>• Drag elements to move them</p>
-                  </div>
-                </div>
-              )}
-            </div>
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Business Insights
+            </h1>
+            <p className="text-xl text-gray-300">
+              AI-powered recommendations and trends
+            </p>
           </div>
-        </div>
 
-        {/* Mobile Quick Tools */}
-        <div className="lg:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40">
-          <div className="flex items-center space-x-2 bg-white rounded-full shadow-lg border border-gray-200 px-4 py-2">
-            <button
-              onClick={() => addElement("text")}
-              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
-              title="Add Text"
-            >
-              <Type className="w-5 h-5" />
-            </button>
-            <div className="w-px h-6 bg-gray-200"></div>
-            <button
-              onClick={() => addElement("shape", "rectangle")}
-              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
-              title="Add Rectangle"
-            >
-              <Square className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => addElement("shape", "circle")}
-              className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
-              title="Add Circle"
-            >
-              <Circle className="w-5 h-5" />
-            </button>
-            <div className="w-px h-6 bg-gray-200"></div>
-            <button
-              onClick={undo}
-              disabled={historyIndex <= 0}
-              className="p-2 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              title="Undo"
-            >
-              <Undo2 className="w-5 h-5" />
-            </button>
-            <button
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-              className="p-2 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              title="Redo"
-            >
-              <Redo2 className="w-5 h-5" />
-            </button>
+          {/* Insights Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Market Opportunity",
+                insight:
+                  "Wearables market shows 23% growth potential in Q2 2025",
+                impact: "High",
+                action: "Expand product line",
+              },
+              {
+                title: "Customer Behavior",
+                insight: "Mobile users spend 40% more time on product pages",
+                impact: "Medium",
+                action: "Optimize mobile UX",
+              },
+              {
+                title: "Seasonal Trend",
+                insight: "Gaming accessories peak during holiday season",
+                impact: "High",
+                action: "Increase inventory",
+              },
+              {
+                title: "Price Optimization",
+                insight: "Premium products have 15% higher margins",
+                impact: "Medium",
+                action: "Adjust pricing strategy",
+              },
+              {
+                title: "Geographic Expansion",
+                insight: "Southeast Asia shows untapped potential",
+                impact: "High",
+                action: "Market research",
+              },
+              {
+                title: "Competition Analysis",
+                insight: "Competitors lag 6 months in innovation cycle",
+                impact: "Medium",
+                action: "Accelerate R&D",
+              },
+              {
+                title: "Supply Chain Optimization",
+                insight: "30% reduction possible in logistics costs through automation",
+                impact: "High",
+                action: "Implement AI logistics",
+              },
+              {
+                title: "Customer Retention",
+                insight: "Loyalty programs show 85% higher retention rates",
+                impact: "Medium",
+                action: "Launch loyalty program",
+              },
+              {
+                title: "Sustainability Trend",
+                insight: "Eco-friendly products drive 40% more engagement",
+                impact: "High",
+                action: "Green product line",
+              },
+            ].map((insight, index) => (
+              <div
+                key={index}
+                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">
+                    {insight.title}
+                  </h3>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      insight.impact === "High"
+                        ? "bg-red-500/20 text-red-300"
+                        : "bg-yellow-500/20 text-yellow-300"
+                    }`}
+                  >
+                    {insight.impact} Impact
+                  </span>
+                </div>
+                <p className="text-gray-300 mb-4">{insight.insight}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-purple-300 text-sm font-medium">
+                    {insight.action}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+    </div>
+  );
 
-      {/* Custom Styles */}
-      <style jsx global>{`
+  const renderAbout = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {renderNavigation()}
+
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              About TechVision
+            </h1>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              We're on a mission to democratize data analytics and inspire
+              innovation across industries
+            </p>
+          </div>
+
+          {/* Company Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+            {[
+              { number: "2018", label: "Founded" },
+              { number: "50K+", label: "Customers" },
+              { number: "150+", label: "Countries" },
+              { number: "500+", label: "Team Members" },
+            ].map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-2">
+                  {stat.number}
+                </div>
+                <div className="text-gray-400">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mission & Vision */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Our Mission
+              </h2>
+              <p className="text-gray-300 leading-relaxed">
+                To empower businesses of all sizes with intelligent analytics
+                tools that transform raw data into actionable insights, enabling
+                smarter decisions and sustainable growth in an increasingly
+                connected world.
+              </p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
+              <h2 className="text-2xl font-bold text-white mb-4">Our Vision</h2>
+              <p className="text-gray-300 leading-relaxed">
+                A future where every business decision is data-driven, where
+                inspiration meets intelligence, and where technology serves
+                humanity's greatest ambitions. We believe in building tools that
+                inspire as much as they inform.
+              </p>
+            </div>
+          </div>
+
+          {/* Team Section */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Leadership Team
+            </h2>
+            <p className="text-gray-300">
+              Meet the visionaries behind TechVision
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Alex Chen",
+                role: "CEO & Co-Founder",
+                bio: "Former VP of Engineering at Google, PhD in Computer Science from MIT",
+              },
+              {
+                name: "Sarah Kim",
+                role: "CTO & Co-Founder",
+                bio: "Ex-Principal Engineer at Amazon, Expert in distributed systems and ML",
+              },
+              {
+                name: "Marcus Rodriguez",
+                role: "VP of Product",
+                bio: "Previously led product teams at Spotify and Airbnb, Stanford MBA",
+              },
+            ].map((member, index) => (
+              <div
+                key={index}
+                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10 text-center"
+              >
+                <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <User className="h-10 w-10 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {member.name}
+                </h3>
+                <p className="text-purple-300 mb-3">{member.role}</p>
+                <p className="text-gray-300 text-sm">{member.bio}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Main render logic
+  return (
+    <div className="font-['Roboto']">
+      {!currentView && renderLandingPage()}
+      {currentView === "dashboard" && renderDashboard()}
+      {currentView === "analytics" && renderAnalytics()}
+      {currentView === "products" && renderProducts()}
+      {currentView === "insights" && renderInsights()}
+      {currentView === "about" && renderAbout()}
+      {currentView === "landing" && renderLandingPage()}
+
+            <style jsx>{`
         @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
-        body {
-          font-family: "Roboto", sans-serif !important;
-        }
-
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .delay-1000 {
-          animation-delay: 1s;
-        }
-        .delay-2000 {
-          animation-delay: 2s;
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 1s ease-out;
-        }
-        .bg-grid-gray-100 {
-          background-image: radial-gradient(
-            circle,
-            #f3f4f6 1px,
-            transparent 1px
-          );
-          background-size: 20px 20px;
-        }
       `}</style>
+
     </div>
   );
 };
 
-export default PosterDesigner;
-
+export default TechVisionApp;
 
 // Zod Schema
 export const Schema = {
-    "commentary": "A poster designer website that lets users create poster-style graphics using text, backgrounds, and animated shapes. Users can drag and place elements, pick fonts and colors, and preview a subtle animation. The final design can be exported as a static image.",
+    "commentary": "This is a Next.js 13+ app that reloads automatically. Using the pages router. All components must be included one file.",
     "template": "nextjs-developer",
-    "title": "Poster Designer",
-    "description": "A website that lets users create poster-style graphics using text, backgrounds, and animated shapes.",
-    "additional_dependencies": [
-        "lucide-react"
-    ],
+    "title": "Electronics Dashboard",
+    "description": "A dashboard interface that displays electronics product metrics and trends.",
+    "additional_dependencies": ["lucide-react", "recharts"],
     "has_additional_dependencies": true,
-    "install_dependencies_command": "npm install lucide-react",
+    "install_dependencies_command": "npm i lucide-react recharts",
     "port": 3000,
     "file_path": "pages/index.tsx",
     "code": "<see code above>"
