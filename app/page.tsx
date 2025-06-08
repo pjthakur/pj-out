@@ -1,1911 +1,2089 @@
 "use client";
-
 import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
-  TrendingUp,
+  Heart,
+  Shuffle,
+  Sparkles,
   Zap,
-  Globe,
-  Smartphone,
-  Laptop,
-  Monitor,
-  BarChart3,
-  ArrowUpRight,
-  Star,
-  Users,
-  Award,
   Target,
-  ChevronLeft,
-  ChevronRight,
+  Lightbulb,
+  BookOpen,
+  Palette,
+  Camera,
+  Music,
+  Pen,
+  Globe,
+  Star,
+  Search,
+  Download,
+  Share2,
+  Settings,
+  Moon,
+  Sun,
   Menu,
   X,
   Play,
+  Pause,
+  RotateCcw,
+  TrendingUp,
+  Award,
+  Users,
   CheckCircle,
-  Lightbulb,
-  Rocket,
-  Heart,
-  Shield,
-  Clock,
-  Download,
   ArrowRight,
-  Building,
-  TrendingDown,
-  Cpu,
-  Headphones,
-  Tablet,
-  Camera,
-  Gamepad2,
-  Watch,
-  Home,
-  Package,
-  Brain,
-  Info,
-  Calendar,
   Mail,
   Phone,
   MapPin,
-  ChevronDown,
-  Filter,
-  Search,
-  Settings,
-  Bell,
-  User,
-  LogOut,
-} from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
   PieChart,
-  Pie,
-  Cell,
-  RadialBarChart,
-  RadialBar,
-} from "recharts";
+} from "lucide-react";
 
-interface QuoteData {
+interface Prompt {
   id: number;
-  quote: string;
-  author: string;
+  text: string;
   category: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  tags: string[];
+  estimatedTime: string;
+  type: "Visual" | "Written" | "Strategic" | "Technical";
 }
 
-interface MetricData {
-  name: string;
-  value: number;
-  change: number;
-  trend: "up" | "down";
+interface UserStats {
+  totalCompleted: number;
+  currentStreak: number;
+  favoriteCategory: string;
+  timeSpent: number;
 }
 
-interface ProductData {
+interface Toast {
   id: number;
-  name: string;
-  category: string;
-  price: number;
-  sales: number;
-  rating: number;
-  image: string;
-  status: "trending" | "new" | "bestseller";
+  message: string;
+  type: "success" | "error" | "info";
+  duration?: number;
 }
 
-const TechVisionApp: React.FC = () => {
-  const [currentView, setCurrentView] = useState("landing");
-  const [currentQuote, setCurrentQuote] = useState(0);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filters, setFilters] = useState({
-    dateRange: "last3months",
-    category: "all",
-    region: "global",
+// In a real app, this would use localStorage or a database
+const useLocalStorage = (key: string, initialValue: any) => {
+  // Always start with initial value to match server rendering
+  const [storedValue, setStoredValue] = useState(initialValue);
+  const [isClient, setIsClient] = useState(false);
+
+  // Hydrate the actual stored value after client-side rendering
+  useEffect(() => {
+    setIsClient(true);
+    try {
+      // For demo purposes, we'll simulate persistence using sessionStorage
+      // In production, you'd use localStorage
+      const item = sessionStorage.getItem(key);
+      if (item) {
+        setStoredValue(JSON.parse(item));
+      }
+    } catch (error) {
+      console.log("Storage not available");
+    }
+  }, [key]);
+
+  const setValue = (value: any) => {
+    try {
+      setStoredValue(value);
+      if (isClient) {
+        sessionStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (error) {
+      console.log("Storage not available");
+    }
+  };
+
+  return [storedValue, setValue];
+};
+
+const CREATIVE_PROMPTS: Prompt[] = [
+  {
+    id: 1,
+    text: "Design a mobile app that helps people form better habits through gamification",
+    category: "UX/UI",
+    difficulty: "Medium",
+    tags: ["mobile", "gamification", "habits"],
+    estimatedTime: "45 min",
+    type: "Technical",
+  },
+  {
+    id: 2,
+    text: "Write a short story from the perspective of the last tree on Earth",
+    category: "Writing",
+    difficulty: "Hard",
+    tags: ["environment", "fiction", "dystopian"],
+    estimatedTime: "60 min",
+    type: "Written",
+  },
+  {
+    id: 3,
+    text: "Create a brand identity for a sustainable fashion startup targeting Gen Z",
+    category: "Branding",
+    difficulty: "Medium",
+    tags: ["sustainability", "fashion", "branding"],
+    estimatedTime: "90 min",
+    type: "Visual",
+  },
+  {
+    id: 4,
+    text: "Compose a 30-second jingle for a fictional coffee shop in space",
+    category: "Music",
+    difficulty: "Easy",
+    tags: ["audio", "commercial", "space"],
+    estimatedTime: "30 min",
+    type: "Technical",
+  },
+  {
+    id: 5,
+    text: "Design a public art installation that brings communities together",
+    category: "Art",
+    difficulty: "Hard",
+    tags: ["community", "public art", "social"],
+    estimatedTime: "120 min",
+    type: "Strategic",
+  },
+  {
+    id: 6,
+    text: "Write a product description for a time machine that only goes backwards 5 minutes",
+    category: "Copywriting",
+    difficulty: "Easy",
+    tags: ["humor", "product", "sci-fi"],
+    estimatedTime: "20 min",
+    type: "Written",
+  },
+  {
+    id: 7,
+    text: "Create a photography series capturing 'invisible' emotions",
+    category: "Photography",
+    difficulty: "Medium",
+    tags: ["emotion", "abstract", "series"],
+    estimatedTime: "180 min",
+    type: "Visual",
+  },
+  {
+    id: 8,
+    text: "Design a user interface for controlling dreams",
+    category: "UX/UI",
+    difficulty: "Hard",
+    tags: ["dreams", "interface", "futuristic"],
+    estimatedTime: "75 min",
+    type: "Technical",
+  },
+  {
+    id: 9,
+    text: "Write a haiku about the Internet having feelings",
+    category: "Poetry",
+    difficulty: "Easy",
+    tags: ["technology", "emotion", "poetry"],
+    estimatedTime: "15 min",
+    type: "Written",
+  },
+  {
+    id: 10,
+    text: "Create a logo using only geometric shapes for a meditation app",
+    category: "Design",
+    difficulty: "Medium",
+    tags: ["minimal", "geometric", "wellness"],
+    estimatedTime: "40 min",
+    type: "Visual",
+  },
+  {
+    id: 11,
+    text: "Develop a creative solution to reduce food waste in restaurants",
+    category: "Innovation",
+    difficulty: "Hard",
+    tags: ["sustainability", "business", "innovation"],
+    estimatedTime: "90 min",
+    type: "Strategic",
+  },
+  {
+    id: 12,
+    text: "Write dialogue between two AI assistants falling in love",
+    category: "Writing",
+    difficulty: "Medium",
+    tags: ["AI", "romance", "dialogue"],
+    estimatedTime: "35 min",
+    type: "Written",
+  },
+  {
+    id: 13,
+    text: "Design packaging for a product that doesn't exist yet",
+    category: "Product Design",
+    difficulty: "Medium",
+    tags: ["packaging", "future", "product"],
+    estimatedTime: "60 min",
+    type: "Visual",
+  },
+  {
+    id: 14,
+    text: "Create a dance routine inspired by data visualization",
+    category: "Performance",
+    difficulty: "Hard",
+    tags: ["data", "movement", "performance"],
+    estimatedTime: "150 min",
+    type: "Technical",
+  },
+  {
+    id: 15,
+    text: "Write a review for a restaurant on Mars",
+    category: "Creative Writing",
+    difficulty: "Easy",
+    tags: ["space", "humor", "review"],
+    estimatedTime: "25 min",
+    type: "Written",
+  },
+  {
+    id: 16,
+    text: "Design a board game that teaches empathy",
+    category: "Game Design",
+    difficulty: "Hard",
+    tags: ["empathy", "education", "games"],
+    estimatedTime: "180 min",
+    type: "Strategic",
+  },
+  {
+    id: 17,
+    text: "Create a color palette inspired by your favorite memory",
+    category: "Design",
+    difficulty: "Easy",
+    tags: ["color", "memory", "personal"],
+    estimatedTime: "30 min",
+    type: "Visual",
+  },
+  {
+    id: 18,
+    text: "Write instructions for building happiness from scratch",
+    category: "Writing",
+    difficulty: "Medium",
+    tags: ["happiness", "instructions", "philosophy"],
+    estimatedTime: "45 min",
+    type: "Written",
+  },
+  {
+    id: 19,
+    text: "Design a smart home feature for introverts",
+    category: "UX/UI",
+    difficulty: "Medium",
+    tags: ["smart home", "introvert", "technology"],
+    estimatedTime: "55 min",
+    type: "Technical",
+  },
+  {
+    id: 20,
+    text: "Create a sculpture using only everyday office supplies",
+    category: "Art",
+    difficulty: "Easy",
+    tags: ["sculpture", "office", "upcycling"],
+    estimatedTime: "45 min",
+    type: "Visual",
+  },
+  {
+    id: 21,
+    text: "Write a news report from 100 years in the future",
+    category: "Journalism",
+    difficulty: "Medium",
+    tags: ["future", "news", "speculation"],
+    estimatedTime: "40 min",
+    type: "Written",
+  },
+  {
+    id: 22,
+    text: "Design a social platform for connecting with your past selves",
+    category: "Product Design",
+    difficulty: "Hard",
+    tags: ["social", "time", "self-reflection"],
+    estimatedTime: "120 min",
+    type: "Strategic",
+  },
+  {
+    id: 23,
+    text: "Create a recipe that tells a story with each ingredient",
+    category: "Culinary Arts",
+    difficulty: "Medium",
+    tags: ["food", "storytelling", "recipe"],
+    estimatedTime: "50 min",
+    type: "Written",
+  },
+  {
+    id: 24,
+    text: "Write a love letter from Earth to the Moon",
+    category: "Poetry",
+    difficulty: "Easy",
+    tags: ["astronomy", "romance", "poetry"],
+    estimatedTime: "20 min",
+    type: "Written",
+  },
+  {
+    id: 25,
+    text: "Design a voting system that encourages participation through creativity",
+    category: "Civic Design",
+    difficulty: "Hard",
+    tags: ["civic", "democracy", "engagement"],
+    estimatedTime: "100 min",
+    type: "Strategic",
+  },
+];
+
+const CATEGORIES = [
+  "All",
+  "UX/UI",
+  "Writing",
+  "Design",
+  "Art",
+  "Photography",
+  "Music",
+  "Innovation",
+  "Poetry",
+  "Branding",
+  "Copywriting",
+  "Product Design",
+  "Performance",
+  "Creative Writing",
+  "Game Design",
+  "Journalism",
+  "Culinary Arts",
+  "Civic Design",
+];
+const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"];
+const TYPES = ["All", "Visual", "Written", "Strategic", "Technical"];
+
+const PromptJournal: React.FC = () => {
+  const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
+  const [favorites, setBookmarks] = useLocalStorage(
+    "creativeflow-favorites",
+    new Set()
+  );
+  const [seenPrompts, setSeenPrompts] = useState<Set<number>>(new Set());
+  const [completedPrompts, setCompletedPrompts] = useLocalStorage(
+    "creativeflow-completed",
+    new Set()
+  );
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("All");
+  const [selectedType, setSelectedType] = useState("All");
+  const [darkMode, setDarkMode] = useLocalStorage(
+    "creativeflow-darkmode",
+    false
+  );
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [activeTab, setActiveTab] = useState("generator");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [userStats, setUserStats] = useLocalStorage("creativeflow-stats", {
+    totalCompleted: 0,
+    currentStreak: 3,
+    favoriteCategory: "Design",
+    timeSpent: 247,
+  });
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  // Add tab transition state
+  const [tabTransition, setTabTransition] = useState(false);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Convert Set to Array for persistence and back
+  const favoritesArray = Array.from(favorites);
+  const completedArray = Array.from(completedPrompts);
+
+  // Toast functionality
+  const showToast = (message: string, type: "success" | "error" | "info" = "info", duration: number = 4000) => {
+    const id = Date.now();
+    const newToast: Toast = { id, message, type, duration };
+    setToasts(prev => [...prev, newToast]);
+
+    // Auto-dismiss after duration
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, duration);
+  };
+
+  const dismissToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  const filteredPrompts = CREATIVE_PROMPTS.filter((prompt) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      prompt.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prompt.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prompt.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    const matchesCategory =
+      selectedCategory === "All" || prompt.category === selectedCategory;
+    const matchesDifficulty =
+      selectedDifficulty === "All" || prompt.difficulty === selectedDifficulty;
+    const matchesType = selectedType === "All" || prompt.type === selectedType;
+
+    if (activeTab === "favorites") {
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesDifficulty &&
+        matchesType &&
+        favoritesArray.includes(prompt.id)
+      );
+    }
+
+    // For library tab, don't apply showOnlyFavorites filter
+    return (
+      matchesSearch &&
+      matchesCategory &&
+      matchesDifficulty &&
+      matchesType
+    );
   });
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // Separate filtering for generator tab (includes showOnlyFavorites)
+  const getGeneratorFilteredPrompts = () => {
+    return CREATIVE_PROMPTS.filter((prompt) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        prompt.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prompt.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prompt.tags.some((tag) =>
+          tag.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      const matchesCategory =
+        selectedCategory === "All" || prompt.category === selectedCategory;
+      const matchesDifficulty =
+        selectedDifficulty === "All" || prompt.difficulty === selectedDifficulty;
+      const matchesType = selectedType === "All" || prompt.type === selectedType;
+      const matchesBookmarks =
+        !showOnlyFavorites || favoritesArray.includes(prompt.id);
 
-  // Dummy user info; swap with your actual data source
-  const userName = "Sachin Gurjar";
-  const userEmail = "sachin.gurjar@example.com";
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesDifficulty &&
+        matchesType &&
+        matchesBookmarks
+      );
+    });
+  };
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (
-        isDropdownOpen &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setIsDropdownOpen(false);
+  const getRandomPrompt = () => {
+    const generatorPrompts = getGeneratorFilteredPrompts();
+    const availablePrompts = generatorPrompts.filter(
+      (p) => !seenPrompts.has(p.id)
+    );
+
+    if (availablePrompts.length === 0) {
+      if (generatorPrompts.length === 0) return null;
+      setSeenPrompts(new Set());
+      return generatorPrompts[
+        Math.floor(Math.random() * generatorPrompts.length)
+      ];
+    }
+
+    return availablePrompts[
+      Math.floor(Math.random() * availablePrompts.length)
+    ];
+  };
+
+  const handleNewPrompt = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      const newPrompt = getRandomPrompt();
+      if (newPrompt) {
+        setCurrentPrompt(newPrompt);
+        setSeenPrompts((prev) => new Set([...prev, newPrompt.id]));
+        resetTimer();
+      } else {
+        // Clear current prompt if no prompts are available
+        setCurrentPrompt(null);
+      }
+      setIsAnimating(false);
+    }, 300);
+  };
+
+  const toggleFavorite = (promptId: number) => {
+    const newBookmarks = new Set(favoritesArray);
+    if (newBookmarks.has(promptId)) {
+      newBookmarks.delete(promptId);
+    } else {
+      newBookmarks.add(promptId);
+    }
+    setBookmarks(newBookmarks);
+  };
+
+  const markComplete = (promptId: number) => {
+    const newCompleted = new Set(completedArray);
+    newCompleted.add(promptId);
+    setCompletedPrompts(newCompleted);
+
+    const newStats = {
+      ...userStats,
+      totalCompleted: userStats.totalCompleted + 1,
+      timeSpent: userStats.timeSpent + Math.floor(timerSeconds / 60),
+    };
+    setUserStats(newStats);
+
+    pauseTimer();
+
+    // Show completion feedback
+    showToast(
+      `🎉 Congratulations! You've completed this prompt in ${formatTime(
+        timerSeconds
+      )}!`,
+      "success",
+      5000
+    );
+  };
+
+  const startTimer = () => {
+    setIsTimerRunning(true);
+    timerRef.current = setInterval(() => {
+      setTimerSeconds((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    setIsTimerRunning(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const resetTimer = () => {
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const exportPrompts = () => {
+    const bookmarkedPrompts = CREATIVE_PROMPTS.filter((p) =>
+      favoritesArray.includes(p.id)
+    );
+    const data = JSON.stringify(bookmarkedPrompts, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `creativeflow-favorites-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const sharePrompt = async () => {
+    if (!currentPrompt) return;
+
+    const shareText = `Check out this creative prompt: "${currentPrompt.text}" - via CreativeFlow Professional`;
+
+    // Try native sharing first if available
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Creative Prompt from CreativeFlow",
+          text: shareText,
+          url: window.location.href,
+        });
+        return; // Exit early if sharing was successful
+      } catch (err) {
+        console.log("Error sharing:", err);
+        // Fall through to clipboard copy
       }
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", onClickOutside);
+
+    // Fallback to clipboard copy
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast("Prompt copied to clipboard!", "success");
+    } catch (err) {
+      console.log("Error copying to clipboard:", err);
+      showToast("Failed to copy prompt", "error");
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    const colors = {
+      Easy: darkMode
+        ? "text-emerald-400 bg-emerald-900/30"
+        : "text-emerald-600 bg-emerald-50",
+      Medium: darkMode
+        ? "text-amber-400 bg-amber-900/30"
+        : "text-amber-600 bg-amber-50",
+      Hard: darkMode ? "text-red-400 bg-red-900/30" : "text-red-600 bg-red-50",
     };
-  }, [isDropdownOpen]);
+    return (
+      colors[difficulty as keyof typeof colors] || "text-gray-600 bg-gray-50"
+    );
+  };
 
-  const quotes: QuoteData[] = [
-    {
-      id: 1,
-      quote: "Innovation distinguishes between a leader and a follower.",
-      author: "Steve Jobs",
-      category: "Innovation",
-    },
-    {
-      id: 2,
-      quote:
-        "The future belongs to those who believe in the beauty of their dreams.",
-      author: "Eleanor Roosevelt",
-      category: "Dreams",
-    },
-    {
-      id: 3,
-      quote: "Technology is best when it brings people together.",
-      author: "Matt Mullenweg",
-      category: "Technology",
-    },
-    {
-      id: 4,
-      quote:
-        "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-      author: "Winston Churchill",
-      category: "Perseverance",
-    },
-    {
-      id: 5,
-      quote:
-        "The only way to make sense out of change is to plunge into it, move with it, and join the dance.",
-      author: "Alan Watts",
-      category: "Change",
-    },
-  ];
-
-  const salesData = [
-    {
-      month: "Jan",
-      smartphones: 4000,
-      laptops: 2400,
-      monitors: 1200,
-      tablets: 800,
-      accessories: 600,
-    },
-    {
-      month: "Feb",
-      smartphones: 3000,
-      laptops: 1398,
-      monitors: 1800,
-      tablets: 900,
-      accessories: 750,
-    },
-    {
-      month: "Mar",
-      smartphones: 2000,
-      laptops: 9800,
-      monitors: 1600,
-      tablets: 1100,
-      accessories: 820,
-    },
-    {
-      month: "Apr",
-      smartphones: 2780,
-      laptops: 3908,
-      monitors: 2200,
-      tablets: 1200,
-      accessories: 900,
-    },
-    {
-      month: "May",
-      smartphones: 1890,
-      laptops: 4800,
-      monitors: 1900,
-      tablets: 1000,
-      accessories: 650,
-    },
-    {
-      month: "Jun",
-      smartphones: 2390,
-      laptops: 3800,
-      monitors: 2100,
-      tablets: 1300,
-      accessories: 780,
-    },
-  ];
-
-  const revenueData = [
-    { quarter: "Q1 2024", revenue: 125000, profit: 45000, expenses: 80000 },
-    { quarter: "Q2 2024", revenue: 145000, profit: 52000, expenses: 93000 },
-    { quarter: "Q3 2024", revenue: 165000, profit: 61000, expenses: 104000 },
-    { quarter: "Q4 2024", revenue: 185000, profit: 68000, expenses: 117000 },
-  ];
-
-  const marketShareData = [
-    { name: "Smartphones", value: 35, color: "#3B82F6" },
-    { name: "Laptops", value: 28, color: "#8B5CF6" },
-    { name: "Monitors", value: 20, color: "#06D6A0" },
-    { name: "Tablets", value: 17, color: "#F59E0B" },
-  ];
-
-  const performanceData = [
-    { name: "Customer Satisfaction", value: 94, fill: "#3B82F6" },
-    { name: "Market Growth", value: 87, fill: "#8B5CF6" },
-    { name: "Innovation Index", value: 91, fill: "#06D6A0" },
-    { name: "Brand Recognition", value: 89, fill: "#F59E0B" },
-  ];
-
-  const keyMetrics: MetricData[] = [
-    { name: "Total Revenue", value: 2.4, change: 12.5, trend: "up" },
-    { name: "Active Users", value: 1.8, change: 8.3, trend: "up" },
-    { name: "Market Share", value: 23.1, change: 3.2, trend: "up" },
-    { name: "Customer Satisfaction", value: 94.2, change: 2.1, trend: "up" },
-  ];
-
-  const products: ProductData[] = [
-    {
-      id: 1,
-      name: "TechPhone Pro Max",
-      category: "Smartphones",
-      price: 1299,
-      sales: 15420,
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center",
-      status: "trending",
-    },
-    {
-      id: 2,
-      name: "UltraBook Elite",
-      category: "Laptops",
-      price: 2199,
-      sales: 8950,
-      rating: 4.9,
-      image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=300&fit=crop&crop=center",
-      status: "bestseller",
-    },
-    {
-      id: 3,
-      name: "Vision Monitor 4K",
-      category: "Monitors",
-      price: 899,
-      sales: 6340,
-      rating: 4.7,
-      image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=300&h=300&fit=crop&crop=center",
-      status: "new",
-    },
-    {
-      id: 4,
-      name: "TabletMax Pro",
-      category: "Tablets",
-      price: 799,
-      sales: 4280,
-      rating: 4.6,
-      image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300&h=300&fit=crop&crop=center",
-      status: "trending",
-    },
-    {
-      id: 5,
-      name: "Gaming Headset Pro",
-      category: "Accessories",
-      price: 299,
-      sales: 12560,
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1599669454699-248893623440?w=300&h=300&fit=crop&crop=center",
-      status: "bestseller",
-    },
-    {
-      id: 6,
-      name: "Smart Watch Series X",
-      category: "Wearables",
-      price: 599,
-      sales: 7890,
-      rating: 4.5,
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop&crop=center",
-      status: "new",
-    },
-  ];
+  const getCategoryIcon = (category: string) => {
+    const iconMap: Record<string, React.ReactNode> = {
+      "UX/UI": <Target className="w-4 h-4" />,
+      Writing: <Pen className="w-4 h-4" />,
+      Branding: <Star className="w-4 h-4" />,
+      Music: <Music className="w-4 h-4" />,
+      Art: <Palette className="w-4 h-4" />,
+      Photography: <Camera className="w-4 h-4" />,
+      Design: <Lightbulb className="w-4 h-4" />,
+      Innovation: <Zap className="w-4 h-4" />,
+      "Product Design": <BookOpen className="w-4 h-4" />,
+      Performance: <Music className="w-4 h-4" />,
+      "Game Design": <Target className="w-4 h-4" />,
+      Journalism: <Globe className="w-4 h-4" />,
+    };
+    return iconMap[category] || <Sparkles className="w-4 h-4" />;
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentQuote((prev) => (prev + 1) % quotes.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [quotes.length]);
+    if (activeTab === "generator" && !currentPrompt) {
+      handleNewPrompt();
+    }
+  }, [activeTab]);
 
-  // Prevent body scroll when modals are open
+  // Handle favorites-only toggle changes
   useEffect(() => {
-    if (showExportModal || showFilterModal) {
-      document.body.style.overflow = "hidden";
+    if (activeTab === "generator") {
+      if (showOnlyFavorites && currentPrompt && !favoritesArray.includes(currentPrompt.id)) {
+        // Clear current prompt if it's not a favorite and favorites-only is active
+        setCurrentPrompt(null);
+        // Generate a new prompt that matches the favorites filter
+        setTimeout(() => handleNewPrompt(), 100);
+      } else if (!showOnlyFavorites && !currentPrompt) {
+        // Generate a new prompt when favorites filter is turned off and no prompt is shown
+        setTimeout(() => handleNewPrompt(), 100);
+      }
+    }
+  }, [showOnlyFavorites, favoritesArray, currentPrompt, activeTab]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
     } else {
-      document.body.style.overflow = "unset";
+      document.documentElement.classList.remove("dark");
     }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [showExportModal, showFilterModal]);
+  }, [darkMode]);
 
-  const nextQuote = () => {
-    setCurrentQuote((prev) => (prev + 1) % quotes.length);
+
+
+  const themeClass = darkMode
+    ? "dark bg-gray-900"
+    : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100";
+  const cardClass = darkMode
+    ? "bg-gray-800/80 border-gray-700/50"
+    : "bg-white/80 border-gray-200/50";
+  const textClass = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondaryClass = darkMode ? "text-gray-300" : "text-gray-600";
+
+  // Handle tab switching with animation
+  const handleTabSwitch = (newTab: string) => {
+    setTabTransition(true);
+    setTimeout(() => {
+      setActiveTab(newTab);
+      setTabTransition(false);
+    }, 150);
   };
 
-  const prevQuote = () => {
-    setCurrentQuote((prev) => (prev - 1 + quotes.length) % quotes.length);
-  };
-
-  const navigateTo = (view: string) => {
-    setCurrentView(view);
-    setIsMenuOpen(false);
-  };
-
-  const handleExport = () => {
-    setShowExportModal(true);
-  };
-
-  const handleFilter = () => {
-    setShowFilterModal(true);
-  };
-
-  const applyFilters = () => {
-    setShowFilterModal(false);
-    // Filter logic is applied through getFilteredData function
-  };
-
-  const getFilteredData = () => {
-    // Base data
-    let filteredSales = [...salesData];
-    let filteredRevenue = [...revenueData];
-    let filteredMetrics = [...keyMetrics];
-
-    // Apply date range filter
-    if (filters.dateRange === "last7days") {
-      filteredSales = salesData.slice(-1); // Show only last month for demo
-      filteredRevenue = revenueData.slice(-1); // Show only last quarter for demo
-    } else if (filters.dateRange === "last30days") {
-      filteredSales = salesData.slice(-2); // Show last 2 months for demo
-      filteredRevenue = revenueData.slice(-2); // Show last 2 quarters for demo
-    } else if (filters.dateRange === "last12months") {
-      // Show all data
-      filteredSales = salesData;
-      filteredRevenue = revenueData;
-    }
-
-    // Apply category filter
-    if (filters.category !== "all") {
-      filteredSales = filteredSales.map((item) => ({
-        ...item,
-        smartphones: filters.category === "smartphones" ? item.smartphones : 0,
-        laptops: filters.category === "laptops" ? item.laptops : 0,
-        monitors: filters.category === "monitors" ? item.monitors : 0,
-        tablets: filters.category === "tablets" ? item.tablets : 0,
-        accessories: filters.category === "accessories" ? item.accessories : 0,
-      }));
-    }
-
-    // Apply region filter (simulate regional data adjustment)
-    if (filters.region !== "global") {
-      const regionMultiplier =
-        {
-          northamerica: 0.4,
-          europe: 0.3,
-          asia: 0.2,
-          latam: 0.1,
-        }[filters.region] || 1;
-
-      filteredRevenue = filteredRevenue.map((item) => ({
-        ...item,
-        revenue: Math.round(item.revenue * regionMultiplier),
-        profit: Math.round(item.profit * regionMultiplier),
-        expenses: Math.round(item.expenses * regionMultiplier),
-      }));
-
-      filteredMetrics = filteredMetrics.map((metric) => ({
-        ...metric,
-        value: parseFloat((metric.value * regionMultiplier).toFixed(1)),
-      }));
-    }
-
-    return { filteredSales, filteredRevenue, filteredMetrics };
-  };
-
-  const { filteredSales, filteredRevenue, filteredMetrics } = getFilteredData();
-
-  const exportData = (format: string) => {
-    // Simulate data export
-    const data = {
-      metrics: keyMetrics,
-      sales: salesData,
-      revenue: revenueData,
-      marketShare: marketShareData,
-    };
-
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `analytics-data.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setShowExportModal(false);
-  };
-
-  const getActiveTabContent = () => {
-    switch (activeTab) {
-      case "overview":
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-                <BarChart3 className="mr-2 h-5 w-5" />
-                Overall Performance
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <RadialBarChart
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="20%"
-                  outerRadius="90%"
-                  data={performanceData}
-                >
-                  <RadialBar dataKey="value" cornerRadius={10} fill="#8884d8" />
-                  <Tooltip
-                    formatter={(value: number, name: string, item: any) => [
-                      value,
-                      item.payload.name
-                    ]}
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </RadialBarChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {performanceData.map((item) => (
-                  <div
-                    key={item.name}
-                    className="flex items-center p-2 bg-white/5 rounded-lg"
-                  >
-                    <div
-                      className={`w-3 h-3 rounded-full mr-2`}
-                      style={{ backgroundColor: item.fill }}
-                    ></div>
-                    <span className="text-gray-300 text-sm">{item.name}</span>
-                    <span className="text-white text-sm ml-auto">
-                      {item.value}%
-                    </span>
-                  </div>
-                ))}
+  return (
+    <motion.div 
+      className={`min-h-screen transition-all duration-500 font-[Roboto] ${themeClass}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Navigation */}
+      <motion.nav
+        className={`${cardClass} backdrop-blur-lg sticky top-0 z-50 transition-all duration-300`}
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5" />
-                Growth Metrics
-              </h3>
-              <div className="space-y-4">
-                {filteredMetrics.map((metric, index) => (
-                  <div
-                    key={metric.name}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
-                  >
-                    <div>
-                      <p className="text-gray-300 text-sm">{metric.name}</p>
-                      <p className="text-white text-lg font-semibold">
-                        {index === 0
-                          ? `$${metric.value}B`
-                          : index === 2
-                          ? `${metric.value}%`
-                          : index === 3
-                          ? `${metric.value}%`
-                          : `${metric.value}M`}
-                      </p>
-                    </div>
-                    <div
-                      className={`flex items-center text-sm ${
-                        metric.trend === "up"
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      <ArrowUpRight className="h-4 w-4 mr-1" />
-                      {metric.change}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      case "sales":
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Product Sales Trends
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={filteredSales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="month" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="smartphones"
-                    stroke="#3B82F6"
-                    strokeWidth={3}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="laptops"
-                    stroke="#8B5CF6"
-                    strokeWidth={3}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="monitors"
-                    stroke="#06D6A0"
-                    strokeWidth={3}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="tablets"
-                    stroke="#F59E0B"
-                    strokeWidth={3}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="accessories"
-                    stroke="#EC4899"
-                    strokeWidth={3}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Sales by Category
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={filteredSales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="month" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="smartphones" fill="#3B82F6" radius={2} />
-                  <Bar dataKey="laptops" fill="#8B5CF6" radius={2} />
-                  <Bar dataKey="monitors" fill="#06D6A0" radius={2} />
-                  <Bar dataKey="tablets" fill="#F59E0B" radius={2} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        );
-      case "revenue":
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Revenue vs Profit
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <AreaChart data={filteredRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="quarter" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stackId="1"
-                    stroke="#3B82F6"
-                    fill="#3B82F6"
-                    fillOpacity={0.6}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="profit"
-                    stackId="2"
-                    stroke="#8B5CF6"
-                    fill="#8B5CF6"
-                    fillOpacity={0.8}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Financial Breakdown
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={filteredRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="quarter" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="#3B82F6" radius={4} />
-                  <Bar dataKey="expenses" fill="#EF4444" radius={4} />
-                  <Bar dataKey="profit" fill="#10B981" radius={4} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        );
-      case "market":
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Market Share Distribution
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={marketShareData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={140}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {marketShareData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {marketShareData.map((item) => (
-                  <div
-                    key={item.name}
-                    className="flex items-center p-2 bg-white/5 rounded-lg"
-                  >
-                    <div
-                      className={`w-3 h-3 rounded-full mr-2`}
-                      style={{ backgroundColor: item.color }}
-                    ></div>
-                    <span className="text-gray-300 text-sm">{item.name}</span>
-                    <span className="text-white text-sm ml-auto">
-                      {item.value}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Market Trends
-              </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-300">Mobile Devices</span>
-                    <span className="text-green-400 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      +15.2%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: "78%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-300">Computing</span>
-                    <span className="text-green-400 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      +8.7%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-purple-500 h-2 rounded-full"
-                      style={{ width: "65%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-300">Wearables</span>
-                    <span className="text-green-400 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      +23.4%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: "45%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-300">Gaming</span>
-                    <span className="text-red-400 flex items-center">
-                      <TrendingDown className="h-4 w-4 mr-1" />
-                      -2.1%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-orange-500 h-2 rounded-full"
-                      style={{ width: "38%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-300">Audio/Speakers</span>
-                    <span className="text-green-400 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      +11.3%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-pink-500 h-2 rounded-full"
-                      style={{ width: "52%" }}
-                    ></div>
-                  </div>
+              <div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  CreativeFlow
+                </span>
+                <div className="text-xs text-gray-500 font-medium">
+                  Professional Edition
                 </div>
               </div>
             </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
 
-  const renderNavigation = () => (
-    <nav className="sticky top-0 z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <div className="flex items-center">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center space-x-8">
+              <button
+                onClick={() => handleTabSwitch("generator")}
+                className={`cursor-pointer ${
+                  activeTab === "generator"
+                    ? "text-indigo-600"
+                    : textSecondaryClass
+                } hover:text-indigo-600 transition-colors font-semibold`}
+              >
+                Generator
+              </button>
+              <button
+                onClick={() => handleTabSwitch("analytics")}
+                className={`cursor-pointer ${
+                  activeTab === "analytics"
+                    ? "text-indigo-600"
+                    : textSecondaryClass
+                } hover:text-indigo-600 transition-colors font-semibold`}
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => handleTabSwitch("library")}
+                className={`cursor-pointer ${
+                  activeTab === "library"
+                    ? "text-indigo-600"
+                    : textSecondaryClass
+                } hover:text-indigo-600 transition-colors font-semibold`}
+              >
+                Library
+              </button>
+              <button
+                onClick={() => handleTabSwitch("favorites")}
+                className={`cursor-pointer ${
+                  activeTab === "favorites"
+                    ? "text-indigo-600"
+                    : textSecondaryClass
+                } hover:text-indigo-600 transition-colors font-semibold flex items-center space-x-1`}
+              >
+                <Heart className="w-4 h-4" />
+                <span>Favorites ({favoritesArray.length})</span>
+              </button>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors font-semibold flex items-center space-x-1`}
+              >
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                <span>{darkMode ? 'Light' : 'Dark'} Mode</span>
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
             <button
-              onClick={() => navigateTo("landing")}
-              className="flex-shrink-0 flex items-center group cursor-pointer"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`cursor-pointer lg:hidden p-2 rounded-lg ${textClass} hover:bg-gray-100/50 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} transition-colors duration-200`}
             >
-              <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Zap className="h-6 w-6 text-white" />
-              </div>
-              <span className="ml-3 text-2xl font-bold text-white">
-                TechVision
-              </span>
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="ml-10 flex items-baseline space-x-1">
-              {[
-                { name: "Dashboard", view: "dashboard", icon: Home },
-                { name: "Analytics", view: "analytics", icon: BarChart },
-                { name: "Products", view: "products", icon: Package },
-                { name: "Insights", view: "insights", icon: Brain },
-                { name: "About", view: "about", icon: Info },
-              ].map((item) => (
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className={`lg:hidden border-t py-4 ${darkMode ? "border-gray-700/50" : "border-gray-200/50"}`}>
+              <div className="space-y-2">
                 <button
-                  key={item.name}
-                  onClick={() => navigateTo(item.view)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center cursor-pointer ${
-                    currentView === item.view
-                      ? "bg-white/20 text-white"
-                      : "text-gray-300 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    handleTabSwitch("generator");
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                    activeTab === "generator"
+                      ? "bg-indigo-500 text-white shadow-lg"
+                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
                   }`}
                 >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  {item.name}
+                  Generator
                 </button>
-              ))}
+                <button
+                  onClick={() => {
+                    handleTabSwitch("analytics");
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                    activeTab === "analytics"
+                      ? "bg-indigo-500 text-white shadow-lg"
+                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  }`}
+                >
+                  Analytics
+                </button>
+                <button
+                  onClick={() => {
+                    handleTabSwitch("library");
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                    activeTab === "library"
+                      ? "bg-indigo-500 text-white shadow-lg"
+                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  }`}
+                >
+                  Library
+                </button>
+                <button
+                  onClick={() => {
+                    handleTabSwitch("favorites");
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                    activeTab === "favorites"
+                      ? "bg-indigo-500 text-white shadow-lg"
+                      : `${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"}`
+                  }`}
+                >
+                  Favorites ({favoritesArray.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setDarkMode(!darkMode);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`cursor-pointer block w-full text-left px-4 py-2 rounded-lg transition-all duration-300 ${textClass} ${darkMode ? "hover:bg-gray-700/50" : "hover:bg-gray-100/50"} flex items-center space-x-2`}
+                >
+                  {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <span>{darkMode ? 'Light' : 'Dark'} Mode</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+      </motion.nav>
 
-          <div className="hidden lg:flex items-center space-x-4">
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setIsDropdownOpen((prev) => !prev)}
-                className="flex items-center text-gray-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className={tabTransition ? "opacity-50" : "opacity-100"}
+        >
+          {activeTab === "generator" && (
+            <div>
+            {/* Hero Section */}
+            <motion.div 
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <motion.h1
+                className={`md:text-6xl text-5xl font-bold ${textClass} mb-6 leading-tight`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
               >
-                <User className="h-5 w-5 mr-2" />
-                <span className="text-sm">Account</span>
-                <ChevronDown className="h-4 w-4 ml-1" />
-              </button>
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 bg-white backdrop-blur-md rounded-lg border border-white/20 shadow-lg">
-                  <div className="py-2 px-4">
-                    <p className="text-sm  font-semibold">{userName}</p>
-                    <p className="text-sm">{userEmail}</p>
+                Professional Creative
+                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {" "}
+                  Intelligence{" "}
+                </span>
+                Platform
+              </motion.h1>
+              <motion.p
+                className={`md:text-xl text-lg ${textSecondaryClass} mb-8 md:max-w-3xl mx-auto leading-relaxed`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
+                Advanced prompt generation system trusted by creative
+                professionals worldwide. AI-powered insights, analytics, and
+                workflow optimization for maximum creative output.
+              </motion.p>
+
+              {/* Key Metrics */}
+              <motion.div 
+                className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+              >
+                <motion.div
+                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="text-3xl font-bold text-indigo-600 mb-2">
+                    25+
+                  </div>
+                  <div className={`${textSecondaryClass} font-medium`}>
+                    Premium Prompts
+                  </div>
+                </motion.div>
+                <motion.div
+                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {userStats.currentStreak}
+                  </div>
+                  <div className={`${textSecondaryClass} font-medium`}>
+                    Day Streak
+                  </div>
+                </motion.div>
+                <motion.div
+                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="text-3xl font-bold text-purple-600 mb-2">
+                    {favoritesArray.length}
+                  </div>
+                  <div className={`${textSecondaryClass} font-medium`}>
+                    Favorited
+                  </div>
+                </motion.div>
+                <motion.div
+                  className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300`}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="text-3xl font-bold text-orange-600 mb-2">
+                    {userStats.timeSpent}h
+                  </div>
+                  <div className={`${textSecondaryClass} font-medium`}>
+                    Time Invested
+                  </div>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+
+            {/* Simple Controls */}
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.0 }}
+            >
+              <motion.button
+                onClick={handleNewPrompt}
+                disabled={isAnimating}
+                className="cursor-pointer group bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 font-semibold text-lg"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Shuffle
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isAnimating ? "animate-spin" : "group-hover:rotate-180"
+                  }`}
+                />
+                <span>Generate New Prompt</span>
+              </motion.button>
+
+              <motion.button
+                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+                className={`cursor-pointer px-8 py-4 rounded-xl border-2 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold text-lg ${
+                  showOnlyFavorites
+                    ? "bg-pink-500 text-white border-pink-500 hover:bg-pink-600"
+                    : `${cardClass} ${textClass} hover:border-pink-300 hover:text-pink-600`
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Heart className="w-6 h-6" />
+                <span>Favorites Only</span>
+              </motion.button>
+            </motion.div>
+
+            {/* Timer & Progress */}
+            {currentPrompt && (
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-4 sm:p-6 mb-8 shadow-lg`}
+              >
+                {/* Mobile Layout */}
+                <div className="flex flex-col space-y-4 md:hidden">
+                  {/* Timer and Controls Row */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl sm:text-4xl font-mono font-bold text-indigo-600">
+                      {formatTime(timerSeconds)}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={isTimerRunning ? pauseTimer : startTimer}
+                        className="cursor-pointer p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                      >
+                        {isTimerRunning ? (
+                          <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+                        ) : (
+                          <Play className="w-4 h-4 sm:w-5 sm:h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={resetTimer}
+                        className="cursor-pointer p-2.5 sm:p-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-300"
+                      >
+                        <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Estimated Time */}
+                  <div className={`text-sm ${textSecondaryClass} text-center`}>
+                    Estimated: {currentPrompt.estimatedTime}
+                  </div>
+                  
+                  {/* Action Buttons Row */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={sharePrompt}
+                      className="cursor-pointer bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold flex-1"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Share</span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        currentPrompt && markComplete(currentPrompt.id)
+                      }
+                      disabled={completedArray.includes(currentPrompt.id)}
+                      className={`cursor-pointer px-4 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 font-semibold flex-1 ${
+                        completedArray.includes(currentPrompt.id)
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>
+                        {completedArray.includes(currentPrompt.id)
+                          ? "Completed"
+                          : "Mark Complete"}
+                      </span>
+                    </button>
                   </div>
                 </div>
-              )}
+
+                {/* Desktop Layout */}
+                <div className="hidden md:flex justify-between items-center">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-4xl font-mono font-bold text-indigo-600">
+                      {formatTime(timerSeconds)}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={isTimerRunning ? pauseTimer : startTimer}
+                        className="cursor-pointer p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                      >
+                        {isTimerRunning ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={resetTimer}
+                        className="cursor-pointer p-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-300"
+                      >
+                        <RotateCcw className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className={`text-sm ${textSecondaryClass}`}>
+                      Estimated: {currentPrompt.estimatedTime}
+                    </div>
+                    <button
+                      onClick={sharePrompt}
+                      className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center space-x-2 font-semibold"
+                    >
+                      <Share2 className="w-5 h-5" />
+                      <span>Share</span>
+                    </button>
+                    <button
+                      onClick={() =>
+                        currentPrompt && markComplete(currentPrompt.id)
+                      }
+                      disabled={completedArray.includes(currentPrompt.id)}
+                      className={`cursor-pointer px-6 py-3 rounded-xl transition-all duration-300 flex items-center space-x-2 font-semibold ${
+                        completedArray.includes(currentPrompt.id)
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      <span>
+                        {completedArray.includes(currentPrompt.id)
+                          ? "Completed"
+                          : "Mark Complete"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Current Prompt Display */}
+            <AnimatePresence mode="wait">
+              {currentPrompt && (!showOnlyFavorites || favoritesArray.includes(currentPrompt.id)) ? (
+                <motion.div
+                  key={currentPrompt.id}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500`}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                >
+                <div className="mb-8">
+                  {/* Desktop layout - hidden on mobile */}
+                  <div className="hidden md:flex items-start justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
+                        {getCategoryIcon(currentPrompt.category)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span
+                            className={`text-lg font-semibold ${textClass}`}
+                          >
+                            {currentPrompt.category}
+                          </span>
+                          <div
+                            className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(
+                              currentPrompt.difficulty
+                            )}`}
+                          >
+                            {currentPrompt.difficulty}
+                          </div>
+                          <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                            {currentPrompt.type}
+                          </div>
+                          {completedArray.includes(currentPrompt.id) && (
+                            <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center space-x-1">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Completed</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {currentPrompt.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className={`px-2 py-1 bg-gray-100 ${
+                                darkMode
+                                  ? "bg-gray-700 text-gray-300"
+                                  : "text-gray-600"
+                              } rounded-md text-xs`}
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleFavorite(currentPrompt.id)}
+                      className={`cursor-pointer p-4 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                        favoritesArray.includes(currentPrompt.id)
+                          ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg ring-2 ring-pink-200"
+                          : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
+                      }`}
+                    >
+                      <Heart
+                        className={`w-6 h-6 ${
+                          favoritesArray.includes(currentPrompt.id)
+                            ? "fill-current animate-pulse"
+                            : ""
+                        }`}
+                      />
+                      {favoritesArray.includes(currentPrompt.id) && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                          <Star className="w-2.5 h-2.5 text-yellow-800 fill-current" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Mobile layout - hidden on desktop */}
+                  <div className="md:hidden space-y-3">
+                    {/* First line: Icon + Category */}
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
+                        {getCategoryIcon(currentPrompt.category)}
+                      </div>
+                      <span className={`text-lg font-semibold ${textClass}`}>
+                        {currentPrompt.category}
+                      </span>
+                    </div>
+
+                    {/* Second line: Badges + Like button */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap gap-2 flex-1">
+                        <div
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(
+                            currentPrompt.difficulty
+                          )}`}
+                        >
+                          {currentPrompt.difficulty}
+                        </div>
+                        <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                          {currentPrompt.type}
+                        </div>
+                        {completedArray.includes(currentPrompt.id) && (
+                          <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center space-x-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Completed</span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => toggleFavorite(currentPrompt.id)}
+                        className={`cursor-pointer p-3 rounded-full transition-all duration-300 hover:scale-110 flex-shrink-0 relative ${
+                          favoritesArray.includes(currentPrompt.id)
+                            ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg ring-2 ring-pink-200"
+                            : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
+                        }`}
+                      >
+                        <Heart
+                          className={`w-5 h-5 ${
+                            favoritesArray.includes(currentPrompt.id)
+                              ? "fill-current animate-pulse"
+                              : ""
+                          }`}
+                        />
+                        {favoritesArray.includes(currentPrompt.id) && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center">
+                            <Star className="w-2 h-2 text-yellow-800 fill-current" />
+                          </div>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Third line: Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {currentPrompt.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className={`px-2 py-1 bg-gray-100 ${
+                            darkMode
+                              ? "bg-gray-700 text-gray-300"
+                              : "text-gray-600"
+                          } rounded-md text-xs`}
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Main Prompt Display */}
+                <div className="relative mb-8">
+                  {/* Main prompt container */}
+                  <div className={`relative ${darkMode ? 'bg-gray-800/40' : 'bg-gray-50/60'} backdrop-blur-sm border ${darkMode ? 'border-gray-600/30' : 'border-gray-200/40'} rounded-xl p-6 md:p-8`}>
+                    {/* Prompt label */}
+                    <div className="flex items-center justify-center mb-4">
+                      <div className={`flex items-center space-x-2 px-3 py-1.5 ${darkMode ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-100/80 text-gray-600'} rounded-full text-xs font-medium`}>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Creative Prompt</span>
+                      </div>
+                    </div>
+                    
+                    {/* Main prompt text */}
+                    <div className={`text-center text-xl md:text-2xl ${textClass} leading-relaxed font-medium mb-4`}>
+                      "{currentPrompt.text}"
+                    </div>
+                    
+                    {/* Visual accent line */}
+                    <div className="flex justify-center">
+                      <div className={`w-16 h-0.5 ${darkMode ? 'bg-gray-600' : 'bg-gray-300'} rounded-full`}></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                    <h4 className="font-semibold text-indigo-900 mb-3 flex items-center">
+                      <Lightbulb className="w-5 h-5 mr-2" />
+                      Pro Tips
+                    </h4>
+                    <ul className="text-sm text-indigo-800 space-y-2">
+                      <li>
+                        • Break down the challenge into smaller components
+                      </li>
+                      <li>• Research similar projects for inspiration</li>
+                      <li>• Set a timer to maintain focus and momentum</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                    <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+                      <Target className="w-5 h-5 mr-2" />
+                      Success Metrics
+                    </h4>
+                    <ul className="text-sm text-green-800 space-y-2">
+                      <li>• Clear concept development</li>
+                      <li>• Original approach or perspective</li>
+                      <li>• Attention to target audience</li>
+                    </ul>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg text-center`}
+              >
+                {favoritesArray.length === 0 ? (
+                  <>
+                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
+                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
+                      No favorite prompts yet!
+                    </p>
+                    <p className={`${textSecondaryClass} mb-6`}>
+                      Start exploring prompts and mark your favorites to build your personal collection.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <button
+                        onClick={() => setShowOnlyFavorites(false)}
+                        className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                      >
+                        Browse All Prompts
+                      </button>
+                      <button
+                        onClick={() => handleTabSwitch("library")}
+                        className="cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300"
+                      >
+                        Explore Library
+                      </button>
+                    </div>
+                  </>
+                ) : showOnlyFavorites ? (
+                  <>
+                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
+                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
+                      No favorite prompts available right now.
+                    </p>
+                    <p className={`${textSecondaryClass} mb-6`}>
+                      Generate new prompts to find ones you'd like to favorite.
+                    </p>
+                    <button
+                      onClick={() => setShowOnlyFavorites(false)}
+                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                    >
+                      Browse All Prompts
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Shuffle className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
+                      No prompts available.
+                    </p>
+                    <p className={`${textSecondaryClass} mb-6`}>
+                      Try generating a new prompt or check your filters.
+                    </p>
+                    <button
+                      onClick={handleNewPrompt}
+                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                    >
+                      Generate New Prompt
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            </AnimatePresence>
+          </div>
+        )}
+
+          {(activeTab === "library" || activeTab === "favorites") && (
+            <div className="space-y-8">
+            <div className="text-center mb-12">
+              <h2 className={`text-4xl font-bold ${textClass} mb-4`}>
+                {activeTab === "favorites"
+                  ? "Your Favorite Prompts"
+                  : "Creative Library"}
+              </h2>
+              <p className={`text-lg ${textSecondaryClass}`}>
+                {activeTab === "favorites"
+                  ? `${favoritesArray.length} favorite prompts ready for your next creative session`
+                  : "Browse, search, and organize your complete creative prompt collection"}
+              </p>
+            </div>
+
+            {/* Advanced Filters */}
+            <div
+              className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 mb-8 shadow-lg`}
+            >
+              <h3 className={`text-lg font-semibold ${textClass} mb-6`}>
+                Advanced Filtering & Search
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search prompts, tags, categories..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
+                      darkMode
+                        ? "bg-gray-700 border-gray-600 text-white"
+                        : "bg-white"
+                    }`}
+                  />
+                </div>
+
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
+                    darkMode
+                      ? "bg-gray-700 border-gray-600 text-white"
+                      : "bg-white"
+                  }`}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat} Category
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
+                    darkMode
+                      ? "bg-gray-700 border-gray-600 text-white"
+                      : "bg-white"
+                  }`}
+                >
+                  {DIFFICULTIES.map((diff) => (
+                    <option key={diff} value={diff}>
+                      {diff} Difficulty
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className={`cursor-pointer px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 ${
+                    darkMode
+                      ? "bg-gray-700 border-gray-600 text-white"
+                      : "bg-white"
+                  }`}
+                >
+                  {TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type} Type
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("All");
+                    setSelectedDifficulty("All");
+                    setSelectedType("All");
+                  }}
+                  className={`cursor-pointer w-full sm:w-auto px-6 py-3 rounded-xl border-2 ${cardClass} ${textClass} hover:border-indigo-300 hover:text-indigo-600 transition-all duration-300 font-semibold`}
+                >
+                  Clear Filters
+                </button>
+
+                {activeTab === "favorites" && (
+                  <button
+                    onClick={exportPrompts}
+                    className={`cursor-pointer w-full sm:w-auto px-6 py-3 rounded-xl border-2 ${cardClass} ${textClass} hover:border-green-300 hover:text-green-600 transition-all duration-300 flex items-center justify-center space-x-2 font-semibold`}
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>Export Favorites</span>
+                  </button>
+                )}
+
+                <div
+                  className={`w-full sm:w-auto px-4 py-3 rounded-xl ${cardClass} ${textSecondaryClass} text-sm text-center sm:text-left`}
+                >
+                  Showing {filteredPrompts.length} prompt
+                  {filteredPrompts.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </div>
+
+            {filteredPrompts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPrompts.map((prompt) => (
+                  <div
+                    key={prompt.id}
+                    className={`${cardClass} backdrop-blur-sm rounded-2xl p-6 hover:shadow-xl transition-all duration-300 flex flex-col h-full`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
+                          {getCategoryIcon(prompt.category)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-500">
+                            {prompt.category}
+                          </div>
+                          <div
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(
+                              prompt.difficulty
+                            )}`}
+                          >
+                            {prompt.difficulty}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {completedArray.includes(prompt.id) && (
+                          <div className="p-2 bg-green-100 text-green-600 rounded-full">
+                            <CheckCircle className="w-4 h-4" />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => toggleFavorite(prompt.id)}
+                          className={`cursor-pointer p-2 rounded-full transition-all duration-300 ${
+                            favoritesArray.includes(prompt.id)
+                              ? "bg-pink-500 text-white"
+                              : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-500"
+                          }`}
+                        >
+                          <Heart
+                            className={`w-4 h-4 ${
+                              favoritesArray.includes(prompt.id)
+                                ? "fill-current"
+                                : ""
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p
+                      className={`${textClass} text-sm leading-relaxed mb-4 flex-grow`}
+                    >
+                      {prompt.text}
+                    </p>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-wrap gap-1">
+                        {prompt.tags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag}
+                            className={`px-2 py-1 bg-gray-100 ${
+                              darkMode
+                                ? "bg-gray-700 text-gray-300"
+                                : "text-gray-600"
+                            } rounded-md text-xs`}
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                      <div className={`text-xs ${textSecondaryClass}`}>
+                        {prompt.estimatedTime}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setCurrentPrompt(prompt);
+                        setShowOnlyFavorites(false); // Reset favorites filter when starting challenge from library
+                        handleTabSwitch("generator");
+                        resetTimer();
+                      }}
+                      className="cursor-pointer w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold flex items-center justify-center space-x-2 mt-auto"
+                    >
+                      <span>Start Challenge</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg text-center`}
+              >
+                {activeTab === "favorites" ? (
+                  <>
+                    <Heart className="w-16 h-16 text-pink-300 mx-auto mb-4" />
+                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
+                      No favorite prompts yet!
+                    </p>
+                    <p className={`${textSecondaryClass} mb-6`}>
+                      Start exploring prompts and mark your favorites to
+                      build your personal collection.
+                    </p>
+                    <button
+                      onClick={() => handleTabSwitch("library")}
+                      className="cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300"
+                    >
+                      Browse Library
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className={`text-xl ${textSecondaryClass} mb-4`}>
+                      No prompts match your search criteria.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory("All");
+                        setSelectedDifficulty("All");
+                        setSelectedType("All");
+                      }}
+                      className="cursor-pointer bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all duration-300"
+                    >
+                      Clear All Filters
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "analytics" && (
+          <div className="space-y-8">
+            <div className="text-center mb-12">
+              <h2 className={`text-4xl font-bold ${textClass} mb-4`}>
+                Creative Analytics Dashboard
+              </h2>
+              <p className={`text-lg ${textSecondaryClass}`}>
+                Track your creative progress and optimize your workflow
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Performance Metrics */}
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
+              >
+                <h3
+                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
+                >
+                  <TrendingUp className="w-6 h-6 mr-2 text-indigo-600" />
+                  Performance Overview
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className={textSecondaryClass}>Completion Rate</span>
+                    <span className="font-bold text-green-600">
+                      {Math.round(
+                        (completedArray.length / CREATIVE_PROMPTS.length) * 100
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-600 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (completedArray.length / CREATIVE_PROMPTS.length) *
+                          100
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={textSecondaryClass}>Total Completed</span>
+                    <span className="font-bold text-blue-600">
+                      {userStats.totalCompleted}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={textSecondaryClass}>Favorited</span>
+                    <span className="font-bold text-pink-600">
+                      {favoritesArray.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className={textSecondaryClass}>Time Invested</span>
+                    <span className="font-bold text-purple-600">
+                      {userStats.timeSpent}h
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Breakdown */}
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
+              >
+                <h3
+                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
+                >
+                  <PieChart className="w-6 h-6 mr-2 text-purple-600" />
+                  Category Distribution
+                </h3>
+                <div className="space-y-3">
+                  {["Design", "Writing", "UX/UI", "Art", "Innovation"].map(
+                    (cat, idx) => {
+                      const categoryPrompts = CREATIVE_PROMPTS.filter((p) => {
+                        if (cat === "Design") {
+                          return p.category.includes("Design") || p.category === "Branding";
+                        }
+                        if (cat === "Writing") {
+                          return p.category.includes("Writing") || p.category === "Copywriting" || p.category === "Poetry" || p.category === "Journalism";
+                        }
+                        if (cat === "UX/UI") {
+                          return p.category === "UX/UI";
+                        }
+                        if (cat === "Art") {
+                          return p.category === "Art" || p.category === "Photography" || p.category === "Performance" || p.category === "Culinary Arts";
+                        }
+                        if (cat === "Innovation") {
+                          return p.category === "Innovation" || p.category === "Music" || p.category === "Game Design";
+                        }
+                        return p.category === cat;
+                      });
+                      const completedInCategory = categoryPrompts.filter((p) =>
+                        completedArray.includes(p.id)
+                      ).length;
+                      const percentage =
+                        categoryPrompts.length > 0
+                          ? Math.round(
+                              (completedInCategory / categoryPrompts.length) *
+                                100
+                            )
+                          : 0;
+
+                      return (
+                        <div
+                          key={cat}
+                          className="flex items-center gap-3"
+                        >
+                          <span className={`${textSecondaryClass} flex-shrink-0`} style={{ width: '85px' }}>
+                            {cat}
+                          </span>
+                          <div className={`flex-1 rounded-full h-2.5 ${darkMode ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                            <div
+                              className={`h-2.5 rounded-full transition-all duration-300 ${
+                                [
+                                  "bg-blue-500",
+                                  "bg-green-500",
+                                  "bg-purple-500",
+                                  "bg-yellow-500",
+                                  "bg-red-500",
+                                ][idx]
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className={`text-sm font-semibold ${textClass} flex-shrink-0`} style={{ width: '35px', textAlign: 'right' }}>
+                            {percentage}%
+                          </span>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+
+              {/* Achievements */}
+              <div
+                className={`${cardClass} backdrop-blur-sm rounded-3xl p-8 shadow-lg`}
+              >
+                <h3
+                  className={`text-xl font-semibold ${textClass} mb-6 flex items-center`}
+                >
+                  <Award className="w-6 h-6 mr-2 text-yellow-600" />
+                  Recent Achievements
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
+                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <Star className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-yellow-800">
+                        Creative Streak
+                      </div>
+                      <div className="text-sm text-yellow-600">
+                        {userStats.currentStreak} days in a row
+                      </div>
+                    </div>
+                  </div>
+                  {completedArray.length > 0 && (
+                    <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-green-800">
+                          First Completion
+                        </div>
+                        <div className="text-sm text-green-600">
+                          You've completed your first prompt!
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {favoritesArray.length >= 5 && (
+                    <div className="flex items-center space-x-3 p-3 bg-pink-50 rounded-lg">
+                      <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-white fill-current" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-pink-800">
+                          Curator
+                        </div>
+                        <div className="text-sm text-pink-600">
+                          5+ prompts favorited
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+        )}
+        </motion.div>
+      </main>
 
-          <div className="lg:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
+      {/* Toast Container */}
+      <div className="fixed top-20 right-4 z-50 space-y-2">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 300, scale: 0.8 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 300, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className={`max-w-sm p-4 rounded-xl shadow-lg backdrop-blur-lg ${
+                toast.type === "success"
+                  ? "bg-green-500/90 text-white"
+                  : toast.type === "error"
+                  ? "bg-red-500/90 text-white"
+                  : "bg-blue-500/90 text-white"
+              }`}
             >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
-          </div>
-        </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  {toast.type === "success" && (
+                    <CheckCircle className="w-5 h-5" />
+                  )}
+                  {toast.type === "error" && (
+                    <X className="w-5 h-5" />
+                  )}
+                  {toast.type === "info" && (
+                    <Lightbulb className="w-5 h-5" />
+                  )}
+                </div>
+                <p className="text-sm font-medium flex-1">{toast.message}</p>
+              </div>
+              <button
+                onClick={() => dismissToast(toast.id)}
+                className="cursor-pointer ml-3 p-1 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        ))}
+        </AnimatePresence>
       </div>
 
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="lg:hidden bg-black/90 backdrop-blur-md border-t border-white/20">
-          <div className="px-4 pt-4 pb-6 space-y-2">
-            {[
-              { name: "Dashboard", view: "dashboard", icon: Home },
-              { name: "Analytics", view: "analytics", icon: BarChart },
-              { name: "Products", view: "products", icon: Package },
-              { name: "Insights", view: "insights", icon: Brain },
-              { name: "About", view: "about", icon: Info },
-            ].map((item) => (
-              <button
-                key={item.name}
-                onClick={() => navigateTo(item.view)}
-                className="flex items-center w-full text-gray-300 hover:text-white px-3 py-3 rounded-lg text-base font-medium hover:bg-white/10 transition-all duration-300 cursor-pointer"
-              >
-                <item.icon className="h-5 w-5 mr-3" />
-                {item.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-
-  const renderLandingPage = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      {/* Hero Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl"></div>
-        <div className="max-w-7xl mx-auto relative">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Transform Your Business With
-              <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                {" "}
-                AI-Driven Analytics
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Unlock the power of data-driven decision making with our
-              enterprise-grade platform. Combine powerful analytics with
-              inspirational insights to drive unprecedented growth.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
-              <button
-                onClick={() => navigateTo("dashboard")}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-12 py-4 rounded-xl text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center shadow-2xl cursor-pointer"
-              >
-                <Play className="mr-3 h-6 w-6" />
-                Get Started
-              </button>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-              {[
-                { value: "50K+", label: "Enterprise Clients" },
-                { value: "99.9%", label: "Uptime SLA" },
-                { value: "2.4B+", label: "Data Points Analyzed" },
-                { value: "150+", label: "Countries Served" },
-              ].map((stat, index) => (
-                <div key={index} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-white mb-2">
-                    {stat.value}
-                  </div>
-                  <div className="text-gray-400 text-sm">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-black/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Enterprise-Grade Features
-            </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Everything you need to make data-driven decisions at scale
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <BarChart3 className="h-8 w-8" />,
-                title: "Real-time Analytics",
-                description:
-                  "Monitor your business metrics in real-time with our advanced analytics engine. Get instant insights as your data changes.",
-              },
-              {
-                icon: <Shield className="h-8 w-8" />,
-                title: "Enterprise Security",
-                description:
-                  "Bank-grade security with SOC 2 compliance, end-to-end encryption, and advanced threat protection.",
-              },
-              {
-                icon: <Rocket className="h-8 w-8" />,
-                title: "AI-Powered Insights",
-                description:
-                  "Leverage machine learning algorithms to discover hidden patterns and predict future trends in your data.",
-              },
-              {
-                icon: <Globe className="h-8 w-8" />,
-                title: "Global Scale",
-                description:
-                  "Built to handle enterprise workloads with 99.9% uptime SLA and global content delivery network.",
-              },
-              {
-                icon: <Users className="h-8 w-8" />,
-                title: "Team Collaboration",
-                description:
-                  "Share insights across your organization with advanced permission controls and collaborative workspaces.",
-              },
-              {
-                icon: <Heart className="h-8 w-8" />,
-                title: "24/7 Support",
-                description:
-                  "Get expert support whenever you need it with our dedicated customer success team and priority support.",
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 transform hover:scale-105 group"
-              >
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <div className="text-white">{feature.icon}</div>
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-300 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Trusted by Industry Leaders
-            </h2>
-            <p className="text-xl text-gray-300">
-              See what our customers are saying
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                quote:
-                  "TechVision transformed how we analyze our data. The insights we get are incredible and the platform is intuitive.",
-                author: "Sarah Chen",
-                title: "CTO, GlobalTech Corp",
-                rating: 5,
-              },
-              {
-                quote:
-                  "The real-time analytics have given us a competitive edge. We can react to market changes instantly.",
-                author: "Michael Rodriguez",
-                title: "VP Analytics, Innovation Labs",
-                rating: 5,
-              },
-              {
-                quote:
-                  "Best investment we've made. The ROI was evident within the first quarter of implementation.",
-                author: "Emily Watson",
-                title: "Head of Data, FutureTech Inc",
-                rating: 5,
-              },
-            ].map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10"
-              >
-                <div className="flex mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-5 w-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
-                <blockquote className="text-gray-300 mb-6 text-lg leading-relaxed">
-                  "{testimonial.quote}"
-                </blockquote>
-                <div>
-                  <div className="font-semibold text-white">
-                    {testimonial.author}
-                  </div>
-                  <div className="text-purple-300">{testimonial.title}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600/20 to-purple-600/20">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-3xl p-12 border border-white/20 shadow-2xl">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Transform Your Data?
-            </h2>
-            <p className="text-xl text-blue-100 mb-10 leading-relaxed">
-              Join thousands of companies using TechVision to make smarter,
-              faster decisions. Start your free trial today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <button
-                onClick={() => navigateTo("dashboard")}
-                className="bg-white text-purple-600 px-10 py-4 rounded-xl text-lg font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 flex items-center justify-center shadow-lg cursor-pointer"
-              >
-                <CheckCircle className="mr-3 h-6 w-6" />
-                Get Started
-              </button>
-              <button className="border-2 border-white text-white px-10 py-4 rounded-xl text-lg font-semibold hover:bg-white hover:text-purple-600 transition-all duration-300 flex items-center justify-center cursor-pointer">
-                <Phone className="mr-3 h-6 w-6" />
-                Talk to Sales
-              </button>
-            </div>
-            <p className="text-blue-200 text-sm mt-6">
-              No credit card required • 14-day free trial • Cancel anytime
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="bg-black/40 backdrop-blur-md border-t border-white/20 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+      <footer className={`mt-12 ${cardClass} backdrop-blur-sm border-t`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center mb-6">
-                <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-white" />
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <span className="ml-3 text-2xl font-bold text-white">
-                  TechVision
-                </span>
+                <div>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    CreativeFlow
+                  </span>
+                  <div className="text-xs text-gray-500 font-medium">
+                    Professional Edition
+                  </div>
+                </div>
               </div>
-              <p className="text-gray-300 mb-6 max-w-md leading-relaxed">
-                Empowering businesses worldwide with intelligent analytics and
-                inspirational insights to drive innovation and sustainable
-                growth in the digital age.
+              <p
+                className={`${textSecondaryClass} mb-6 max-w-md leading-relaxed`}
+              >
+                Empowering creative professionals worldwide with AI-driven
+                prompt generation, advanced analytics, and workflow optimization
+                tools.
               </p>
-              <div className="flex gap-4 md:flex-row flex-col">
-                {["Twitter", "LinkedIn", "GitHub", "YouTube"].map((social) => (
-                  <a
-                    key={social}
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-300 text-lg cursor-pointer"
-                  >
-                    {social}
-                  </a>
-                ))}
+              <div className="flex space-x-4">
+                <a
+                  href="#"
+                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  F
+                </a>
+                <a
+                  href="#"
+                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-sky-400 to-sky-500 text-white rounded-xl hover:from-sky-500 hover:to-sky-600 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  T
+                </a>
+                <a
+                  href="#"
+                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  L
+                </a>
+                <a
+                  href="#"
+                  className="cursor-pointer w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl hover:from-pink-600 hover:to-pink-700 transition-all duration-300 flex items-center justify-center font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  I
+                </a>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-white mb-6">Product</h3>
-              <ul className="space-y-3">
-                {[
-                  "Dashboard",
-                  "Analytics",
-                  "Reports",
-                  "API",
-                  "Integrations",
-                  "Mobile App",
-                ].map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-white transition-colors duration-300 cursor-pointer"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ))}
+              <h4 className={`font-semibold ${textClass} mb-6`}>Product</h4>
+              <ul className={`space-y-3 ${textSecondaryClass}`}>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    API Access
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Enterprise
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Integrations
+                  </a>
+                </li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-white mb-6">Company</h3>
-              <ul className="space-y-3">
-                {[
-                  "About Us",
-                  "Careers",
-                  "Contact",
-                  "Support",
-                  "Privacy",
-                  "Terms",
-                ].map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-white transition-colors duration-300 cursor-pointer"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ))}
+              <h4 className={`font-semibold ${textClass} mb-6`}>Company</h4>
+              <ul className={`space-y-3 ${textSecondaryClass}`}>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Blog
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Press Kit
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="cursor-pointer hover:text-indigo-600 transition-colors"
+                  >
+                    Contact
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-white/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
-              © 2025 TechVision Analytics Inc. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-6 mt-4 md:mt-0">
-              <div className="flex items-center text-gray-400 text-sm">
-                <Shield className="h-4 w-4 mr-2" />
-                SOC 2 Certified
+          <div
+            className={`border-t ${
+              darkMode ? "border-gray-700" : "border-gray-200"
+            } pt-8 mt-12`}
+          >
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className={`text-sm ${textSecondaryClass} mb-4 md:mb-0`}>
+                © 2025 CreativeFlow Professional. All rights reserved.
               </div>
-              <div className="flex items-center text-gray-400 text-sm">
-                <Award className="h-4 w-4 mr-2" />
-                ISO 27001
+              <div className="flex space-x-6 text-sm">
+                <a
+                  href="#"
+                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
+                >
+                  Privacy Policy
+                </a>
+                <a
+                  href="#"
+                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
+                >
+                  Terms of Service
+                </a>
+                <a
+                  href="#"
+                  className={`cursor-pointer ${textSecondaryClass} hover:text-indigo-600 transition-colors`}
+                >
+                  Security
+                </a>
               </div>
             </div>
           </div>
         </div>
       </footer>
-    </div>
-  );
-
-  const renderDashboard = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      {/* Dashboard Header */}
-      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-black/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                Analytics Dashboard
-              </h1>
-              <p className="text-gray-300">
-                Monitor your business performance and market trends
-              </p>
-            </div>
-            <div className="flex items-center space-x-4 mt-4 md:mt-0">
-              <button
-                onClick={handleExport}
-                className="flex items-center px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-300 cursor-pointer"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </button>
-            </div>
-          </div>
-
-          {/* Key Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {filteredMetrics.map((metric, index) => (
-              <div
-                key={metric.name}
-                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                    {index === 0 && (
-                      <TrendingUp className="h-6 w-6 text-white" />
-                    )}
-                    {index === 1 && <Users className="h-6 w-6 text-white" />}
-                    {index === 2 && <Target className="h-6 w-6 text-white" />}
-                    {index === 3 && <Star className="h-6 w-6 text-white" />}
-                  </div>
-                  <div
-                    className={`flex items-center text-sm font-medium ${
-                      metric.trend === "up" ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    <ArrowUpRight className="h-4 w-4 mr-1" />
-                    {metric.change}%
-                  </div>
-                </div>
-                <h3 className="text-gray-300 text-sm font-medium mb-2">
-                  {metric.name}
-                </h3>
-                <p className="text-2xl font-bold text-white">
-                  {index === 0
-                    ? `$${metric.value}B`
-                    : index === 2
-                    ? `${metric.value}%`
-                    : index === 3
-                    ? `${metric.value}%`
-                    : `${metric.value}M`}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Inspirational Quote */}
-          <div className="mb-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white flex items-center">
-                  <Lightbulb className="mr-2 h-5 w-5" />
-                  Daily Inspiration
-                </h2>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={prevQuote}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-white" />
-                  </button>
-                  <button
-                    onClick={nextQuote}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer"
-                  >
-                    <ChevronRight className="h-5 w-5 text-white" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <blockquote className="text-xl md:text-2xl font-light text-white mb-4 leading-relaxed">
-                  "{quotes[currentQuote].quote}"
-                </blockquote>
-                <cite className="text-lg text-purple-300 font-medium">
-                  — {quotes[currentQuote].author}
-                </cite>
-                <div className="mt-4">
-                  <span className="inline-block bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full text-sm">
-                    {quotes[currentQuote].category}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-1 border border-white/10 inline-flex">
-              {["overview", "sales", "revenue", "market"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`md:px-8 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-300 capitalize cursor-pointer ${
-                    activeTab === tab
-                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
-                      : "text-gray-300 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tab Content */}
-          {getActiveTabContent()}
-
-          {/* Export Modal */}
-          {showExportModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 max-w-md w-full mx-4">
-                <h3 className="text-xl font-semibold text-white mb-6">
-                  Export Data
-                </h3>
-                <p className="text-gray-300 mb-6">
-                  Choose your preferred format to download the analytics data.
-                </p>
-                <div className="space-y-3 mb-6">
-                  <button
-                    onClick={() => exportData("json")}
-                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
-                  >
-                    <span className="text-white">JSON Format</span>
-                    <Download className="h-4 w-4 text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => exportData("csv")}
-                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
-                  >
-                    <span className="text-white">CSV Format</span>
-                    <Download className="h-4 w-4 text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => exportData("xlsx")}
-                    className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-300 cursor-pointer"
-                  >
-                    <span className="text-white">Excel Format</span>
-                    <Download className="h-4 w-4 text-gray-400" />
-                  </button>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowExportModal(false)}
-                    className="flex-1 px-4 py-2 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Filter Modal */}
-          {showFilterModal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 max-w-md w-full mx-4">
-                <h3 className="text-xl font-semibold text-white mb-6">
-                  Filter Data
-                </h3>
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Date Range
-                    </label>
-                    <select
-                      value={filters.dateRange}
-                      onChange={(e) =>
-                        setFilters({ ...filters, dateRange: e.target.value })
-                      }
-                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
-                    >
-                      <option value="last7days">Last 7 days</option>
-                      <option value="last30days">Last 30 days</option>
-                      <option value="last3months">Last 3 months</option>
-                      <option value="last12months">Last 12 months</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Product Category
-                    </label>
-                    <select
-                      value={filters.category}
-                      onChange={(e) =>
-                        setFilters({ ...filters, category: e.target.value })
-                      }
-                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
-                    >
-                      <option value="all">All Categories</option>
-                      <option value="smartphones">Smartphones</option>
-                      <option value="laptops">Laptops</option>
-                      <option value="monitors">Monitors</option>
-                      <option value="tablets">Tablets</option>
-                      <option value="accessories">Accessories</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">
-                      Region
-                    </label>
-                    <select
-                      value={filters.region}
-                      onChange={(e) =>
-                        setFilters({ ...filters, region: e.target.value })
-                      }
-                      className="w-full p-3 bg-white/5 border border-white/20 rounded-lg text-white"
-                    >
-                      <option value="global">Global</option>
-                      <option value="northamerica">North America</option>
-                      <option value="europe">Europe</option>
-                      <option value="asia">Asia Pacific</option>
-                      <option value="latam">Latin America</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowFilterModal(false)}
-                    className="flex-1 px-4 py-2 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-all duration-300 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={applyFilters}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 cursor-pointer"
-                  >
-                    Apply Filters
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderProducts = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">Our Products</h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Discover our comprehensive range of cutting-edge electronics
-              designed to enhance your digital experience
-            </p>
-          </div>
-
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white/8 rounded-lg border border-white/10 hover:border-white/20 transition-colors duration-200"
-              >
-                {/* Image Container */}
-                <div className="relative h-48 bg-white/5 rounded-t-lg overflow-hidden">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Status Badge */}
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        product.status === "trending"
-                          ? "bg-blue-500 text-white"
-                          : product.status === "new"
-                          ? "bg-green-500 text-white"
-                          : "bg-yellow-500 text-black"
-                      }`}
-                    >
-                      {product.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  {/* Category */}
-                  <p className="text-gray-400 text-xs font-medium mb-2 uppercase tracking-wider">
-                    {product.category}
-                  </p>
-                  
-                  {/* Product Name */}
-                  <h3 className="text-lg font-semibold text-white mb-3 leading-tight">
-                    {product.name}
-                  </h3>
-
-                  {/* Rating */}
-                  <div className="flex items-center mb-4">
-                    <div className="flex mr-3">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < Math.floor(product.rating)
-                              ? "text-yellow-400 fill-current"
-                              : "text-gray-600"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-gray-300 text-sm">
-                      {product.rating}
-                    </span>
-                  </div>
-
-                  {/* Price and Sales */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-white">
-                      ${product.price.toLocaleString()}
-                    </span>
-                    <span className="text-gray-400 text-sm">
-                      {product.sales.toLocaleString()} sold
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAnalytics = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Advanced Analytics
-            </h1>
-            <p className="text-xl text-gray-300">
-              Deep insights into your business performance
-            </p>
-          </div>
-
-          {/* Analytics Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Conversion Funnel
-              </h3>
-              <div className="space-y-4">
-                {[
-                  { stage: "Visitors", value: 10000, percentage: 100 },
-                  { stage: "Product Views", value: 3500, percentage: 35 },
-                  { stage: "Add to Cart", value: 1200, percentage: 12 },
-                  { stage: "Checkout", value: 450, percentage: 4.5 },
-                  { stage: "Purchase", value: 380, percentage: 3.8 },
-                ].map((stage, index) => (
-                  <div
-                    key={stage.stage}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
-                  >
-                    <span className="text-gray-300">{stage.stage}</span>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-32 bg-gray-700 rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full"
-                          style={{ width: `${stage.percentage}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-white font-medium w-16 text-right">
-                        {stage.value.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Top Performing Regions
-              </h3>
-              <div className="space-y-4">
-                {[
-                  {
-                    region: "North America",
-                    revenue: "$2.4M",
-                    growth: "+15.2%",
-                  },
-                  { region: "Europe", revenue: "$1.8M", growth: "+12.7%" },
-                  {
-                    region: "Asia Pacific",
-                    revenue: "$1.5M",
-                    growth: "+23.1%",
-                  },
-                  {
-                    region: "Latin America",
-                    revenue: "$0.9M",
-                    growth: "+8.9%",
-                  },
-                  { region: "Middle East", revenue: "$0.6M", growth: "+18.3%" },
-                ].map((region) => (
-                  <div
-                    key={region.region}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
-                  >
-                    <span className="text-gray-300">{region.region}</span>
-                    <div className="flex items-center space-x-4">
-                      <span className="text-white font-medium">
-                        {region.revenue}
-                      </span>
-                      <span className="text-green-400 text-sm">
-                        {region.growth}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderInsights = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Business Insights
-            </h1>
-            <p className="text-xl text-gray-300">
-              AI-powered recommendations and trends
-            </p>
-          </div>
-
-          {/* Insights Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Market Opportunity",
-                insight:
-                  "Wearables market shows 23% growth potential in Q2 2025",
-                impact: "High",
-                action: "Expand product line",
-              },
-              {
-                title: "Customer Behavior",
-                insight: "Mobile users spend 40% more time on product pages",
-                impact: "Medium",
-                action: "Optimize mobile UX",
-              },
-              {
-                title: "Seasonal Trend",
-                insight: "Gaming accessories peak during holiday season",
-                impact: "High",
-                action: "Increase inventory",
-              },
-              {
-                title: "Price Optimization",
-                insight: "Premium products have 15% higher margins",
-                impact: "Medium",
-                action: "Adjust pricing strategy",
-              },
-              {
-                title: "Geographic Expansion",
-                insight: "Southeast Asia shows untapped potential",
-                impact: "High",
-                action: "Market research",
-              },
-              {
-                title: "Competition Analysis",
-                insight: "Competitors lag 6 months in innovation cycle",
-                impact: "Medium",
-                action: "Accelerate R&D",
-              },
-              {
-                title: "Supply Chain Optimization",
-                insight: "30% reduction possible in logistics costs through automation",
-                impact: "High",
-                action: "Implement AI logistics",
-              },
-              {
-                title: "Customer Retention",
-                insight: "Loyalty programs show 85% higher retention rates",
-                impact: "Medium",
-                action: "Launch loyalty program",
-              },
-              {
-                title: "Sustainability Trend",
-                insight: "Eco-friendly products drive 40% more engagement",
-                impact: "High",
-                action: "Green product line",
-              },
-            ].map((insight, index) => (
-              <div
-                key={index}
-                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    {insight.title}
-                  </h3>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      insight.impact === "High"
-                        ? "bg-red-500/20 text-red-300"
-                        : "bg-yellow-500/20 text-yellow-300"
-                    }`}
-                  >
-                    {insight.impact} Impact
-                  </span>
-                </div>
-                <p className="text-gray-300 mb-4">{insight.insight}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-purple-300 text-sm font-medium">
-                    {insight.action}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAbout = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {renderNavigation()}
-
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              About TechVision
-            </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              We're on a mission to democratize data analytics and inspire
-              innovation across industries
-            </p>
-          </div>
-
-          {/* Company Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
-            {[
-              { number: "2018", label: "Founded" },
-              { number: "50K+", label: "Customers" },
-              { number: "150+", label: "Countries" },
-              { number: "500+", label: "Team Members" },
-            ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-2">
-                  {stat.number}
-                </div>
-                <div className="text-gray-400">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Mission & Vision */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
-              <h2 className="text-2xl font-bold text-white mb-4">
-                Our Mission
-              </h2>
-              <p className="text-gray-300 leading-relaxed">
-                To empower businesses of all sizes with intelligent analytics
-                tools that transform raw data into actionable insights, enabling
-                smarter decisions and sustainable growth in an increasingly
-                connected world.
-              </p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
-              <h2 className="text-2xl font-bold text-white mb-4">Our Vision</h2>
-              <p className="text-gray-300 leading-relaxed">
-                A future where every business decision is data-driven, where
-                inspiration meets intelligence, and where technology serves
-                humanity's greatest ambitions. We believe in building tools that
-                inspire as much as they inform.
-              </p>
-            </div>
-          </div>
-
-          {/* Team Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Leadership Team
-            </h2>
-            <p className="text-gray-300">
-              Meet the visionaries behind TechVision
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "Alex Chen",
-                role: "CEO & Co-Founder",
-                bio: "Former VP of Engineering at Google, PhD in Computer Science from MIT",
-              },
-              {
-                name: "Sarah Kim",
-                role: "CTO & Co-Founder",
-                bio: "Ex-Principal Engineer at Amazon, Expert in distributed systems and ML",
-              },
-              {
-                name: "Marcus Rodriguez",
-                role: "VP of Product",
-                bio: "Previously led product teams at Spotify and Airbnb, Stanford MBA",
-              },
-            ].map((member, index) => (
-              <div
-                key={index}
-                className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10 text-center"
-              >
-                <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <User className="h-10 w-10 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  {member.name}
-                </h3>
-                <p className="text-purple-300 mb-3">{member.role}</p>
-                <p className="text-gray-300 text-sm">{member.bio}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Main render logic
-  return (
-    <div className="font-['Roboto']">
-      {!currentView && renderLandingPage()}
-      {currentView === "dashboard" && renderDashboard()}
-      {currentView === "analytics" && renderAnalytics()}
-      {currentView === "products" && renderProducts()}
-      {currentView === "insights" && renderInsights()}
-      {currentView === "about" && renderAbout()}
-      {currentView === "landing" && renderLandingPage()}
-
-            <style jsx>{`
+      <style jsx>{`
         @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
       `}</style>
-
-    </div>
+    </motion.div>
   );
 };
 
-export default TechVisionApp;
-
-// Zod Schema
-export const Schema = {
-    "commentary": "This is a Next.js 13+ app that reloads automatically. Using the pages router. All components must be included one file.",
-    "template": "nextjs-developer",
-    "title": "Electronics Dashboard",
-    "description": "A dashboard interface that displays electronics product metrics and trends.",
-    "additional_dependencies": ["lucide-react", "recharts"],
-    "has_additional_dependencies": true,
-    "install_dependencies_command": "npm i lucide-react recharts",
-    "port": 3000,
-    "file_path": "pages/index.tsx",
-    "code": "<see code above>"
-}
+export default PromptJournal;
