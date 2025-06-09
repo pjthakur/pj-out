@@ -1,2447 +1,1094 @@
 "use client";
 
-import type React from "react";
-import {
-  useState,
-  useEffect,
-  createContext,
-  useContext,
-  useRef,
-  type FormEvent,
-} from "react";
-import Head from 'next/head'
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  Menu,
-  X,
-  Sun,
-  Moon,
-  Home,
-  Info,
-  Mail,
-  AlertTriangle,
-  Thermometer,
-  TreePine,
-  Droplets,
-  DollarSign,
-  Check,
-  ArrowRight,
-  Sparkles,
-  TrendingUp,
-  Globe,
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Activity, AlertCircle, Check, MapPin, Phone, Send, Truck, Users, Clock, RefreshCw, Sun, Moon, List, Eye, Shield } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Inter } from 'next/font/google';
+import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
 
-type ThemeType = "light" | "dark";
+type CallType = 'Emergency' | 'Non-Emergency' | 'Information';
 
-interface ThemeContextType {
-  theme: ThemeType;
-  toggleTheme: () => void;
-  colors: {
-    background: string;
-    foreground: string;
-    primary: string;
-    secondary: string;
-    accent: string;
-    muted: string;
-    border: string;
-    success: string;
-    warning: string;
-    danger: string;
-    card: string;
-    glass: string;
-    gradient: string;
-    gradientSecondary: string;
-  };
-}
+type Call = {
+  id: number;
+  type: CallType;
+  location: string;
+  description: string;
+  time: string;
+  status: 'Pending' | 'Acknowledged' | 'Dispatched' | 'Resolved';
+  priority?: string;
+  unitAssigned?: string;
+};
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+type Unit = {
+  id: string;
+  type: 'Ambulance' | 'Fire Truck' | 'Police Car';
+  status: 'Available' | 'Responding' | 'On Scene' | 'OutOfService';
+  location: string;
+  crew?: number;
+};
 
-const deforestationData = [
-  { year: "2010", area: 5.2 },
-  { year: "2012", area: 5.8 },
-  { year: "2014", area: 6.1 },
-  { year: "2016", area: 6.5 },
-  { year: "2018", area: 7.2 },
-  { year: "2020", area: 7.8 },
-  { year: "2022", area: 8.3 },
-  { year: "2023", area: 8.7 },
-  { year: "2024", area: 9.1 },
-  { year: "2025", area: 9.5 },
-];
-
-const glacierMeltingData = [
-  { year: "2010", volume: 100 },
-  { year: "2012", volume: 95 },
-  { year: "2014", volume: 89 },
-  { year: "2016", volume: 82 },
-  { year: "2018", volume: 74 },
-  { year: "2020", volume: 65 },
-  { year: "2022", volume: 55 },
-  { year: "2023", volume: 48 },
-  { year: "2024", volume: 42 },
-  { year: "2025", volume: 35 },
-];
-
-const temperatureData = [
-  { year: "2010", temperature: 14.5 },
-  { year: "2012", temperature: 14.6 },
-  { year: "2014", temperature: 14.7 },
-  { year: "2016", temperature: 14.9 },
-  { year: "2018", temperature: 15.1 },
-  { year: "2020", temperature: 15.3 },
-  { year: "2022", temperature: 15.5 },
-  { year: "2023", temperature: 15.7 },
-  { year: "2024", temperature: 15.9 },
-  { year: "2025", temperature: 16.1 },
-];
-
-const impactDistributionData = [
-  { name: "Deforestation", value: 35 },
-  { name: "Ocean Pollution", value: 25 },
-  { name: "Air Pollution", value: 20 },
-  { name: "Glacier Melting", value: 15 },
-  { name: "Other", value: 5 },
-];
-
-const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-
-const donationOptions = [
-  { id: 1, amount: 5, label: "$5" },
-  { id: 2, amount: 10, label: "$10" },
-  { id: 3, amount: 25, label: "$25" },
-  { id: 4, amount: 50, label: "$50" },
-  { id: 5, amount: 100, label: "$100" },
-  { id: 6, amount: 0, label: "Custom" },
-];
-
-interface ToastProps {
-  message: string;
-  type: "success" | "error" | "warning";
-  onClose: () => void;
-}
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}
-
-interface ContactFormData {
+type StatItem = {
   name: string;
-  email: string;
+  value: number;
+};
+
+type ActivityLogEntry = {
+  timestamp: string;
+  description: string;
+};
+
+// Toast notification type
+type ToastNotification = {
+  id: number;
   message: string;
-}
+  type: 'success' | 'error' | 'warning' | 'info';
+};
 
-interface DonationFormData {
-  name: string;
-  email: string;
-  amount: number;
-  customAmount?: number;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
-}
+const callData: Call[] = [
+  {
+    id: 1,
+    type: 'Emergency',
+    location: 'Central Park',
+    description: 'Smoke seen coming from a building',
+    time: '11:04:41 PM',
+    status: 'Pending',
+    priority: 'P4'
+  },
+  {
+    id: 2,
+    type: 'Non-Emergency',
+    location: '456 Oak Ave, Anytown',
+    description: 'Suspicious person loitering',
+    time: '11:04:27 PM',
+    status: 'Pending',
+    priority: 'P1'
+  },
+  {
+    id: 3,
+    type: 'Non-Emergency',
+    location: '654 Maple Dr, Anytown',
+    description: 'Traffic accident, multiple vehicles',
+    time: '11:04:11 PM',
+    status: 'Pending',
+    priority: 'P1'
+  },
+  {
+    id: 4,
+    type: 'Emergency',
+    location: '654 Maple Dr, Anytown',
+    description: 'Loud noise complaint',
+    time: '11:04:06 PM',
+    status: 'Pending',
+    priority: 'P5'
+  },
+];
 
-interface ToastContextType {
-  addToast: (message: string, type: "success" | "error" | "warning") => void;
-}
+const unitData: Unit[] = [
+  {
+    id: 'P101',
+    type: 'Police Car',
+    status: 'Available',
+    location: 'Station 1',
+    crew: 2
+  },
+  {
+    id: 'P102',
+    type: 'Police Car',
+    status: 'Available',
+    location: 'Station 1',
+    crew: 2
+  },
+  {
+    id: 'P103',
+    type: 'Police Car',
+    status: 'Available',
+    location: 'Station 2',
+    crew: 2
+  },
+  {
+    id: 'F201',
+    type: 'Fire Truck',
+    status: 'Available',
+    location: 'Station 3',
+    crew: 4
+  },
+  {
+    id: 'F202',
+    type: 'Fire Truck',
+    status: 'Responding',
+    location: 'En route to Downtown fire incident',
+    crew: 4
+  },
+  {
+    id: 'M301',
+    type: 'Ambulance',
+    status: 'OutOfService',
+    location: 'Hospital',
+    crew: 2
+  },
+  {
+    id: 'M302',
+    type: 'Ambulance',
+    status: 'Responding',
+    location: 'En route to Highway 101, Mile 15',
+    crew: 2
+  },
+];
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+const statusColors = {
+  Pending: 'bg-red-500',
+  Responded: 'bg-yellow-500',
+  Resolved: 'bg-green-500',
+};
 
-export default function Page() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "about" | "contact">(
-    "dashboard"
-  );
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<ThemeType>("light");
-  const [toasts, setToasts] = useState<
-    Array<{
-      id: number;
-      message: string;
-      type: "success" | "error" | "warning";
-    }>
-  >([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<{
-    title: string;
-    content: React.ReactNode;
-  }>({
-    title: "",
-    content: null,
-  });
+const unitStatusColors = {
+  Available: 'bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600',
+  Responding: 'bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:from-amber-500 hover:to-amber-600',
+  'On Scene': 'bg-gradient-to-r from-rose-400 to-rose-500 hover:from-rose-500 hover:to-rose-600',
+  OutOfService: 'bg-gradient-to-r from-slate-500 to-slate-600 text-white hover:from-slate-600 hover:to-slate-700'
+};
 
-  const themeColors = {
-    light: {
-      background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-      foreground: "#1e293b",
-      primary: "#6366f1",
-      secondary: "#10b981",
-      accent: "#8b5cf6",
-      muted: "#64748b",
-      border: "rgba(143, 146, 150, 0.8)",
-      success: "#22c55e",
-      warning: "#f59e0b",
-      danger: "#ef4444",
-      card: "rgba(255, 255, 255, 0.8)",
-      glass: "rgba(255, 255, 255, 0.80)",
-      gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-      gradientSecondary: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+const unitIcons = {
+  Ambulance: Truck,
+  'Fire Truck': Truck,
+  'Police Car': Users,
+};
+
+const Home = () => {
+  const [calls, setCalls] = useState<Call[]>(callData);
+  const [units, setUnits] = useState<Unit[]>(unitData);
+  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [activeMobileSection, setActiveMobileSection] = useState<'incidents' | 'details' | 'units'>('incidents');
+  
+  // Toast notifications state
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  
+  // Activity log data
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([
+    {
+      timestamp: "01:07:30 AM",
+      description: "New Police incident reported at 456 Oak Ave, Anytown. Priority: P3"
     },
-    dark: {
-      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-      foreground: "#f8fafc",
-      primary: "#818cf8",
-      secondary: "#34d399",
-      accent: "#a78bfa",
-      muted: "#64748b",
-      border: "rgba(51, 65, 85, 0.8)",
-      success: "#4ade80",
-      warning: "#fbbf24",
-      danger: "#f87171",
-      card: "rgba(30, 41, 59, 0.8)",
-      glass: "rgba(30, 41, 59, 0.80)",
-      gradient: "linear-gradient(135deg, #818cf8 0%, #a78bfa 100%)",
-      gradientSecondary: "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
+    {
+      timestamp: "01:06:55 AM",
+      description: "New Fire incident reported at City Hall. Priority: P5"
     },
-  };
+    {
+      timestamp: "01:05:57 AM",
+      description: "New Medical incident reported at 789 Pine Ln, Otherville. Priority: P1"
+    }
+  ]);
 
-  const colors = themeColors[currentTheme];
+  // Check if we're on mobile
+  const [isMobile, setIsMobile] = useState(false);
 
-  const themeContextValue: ThemeContextType = {
-    theme: currentTheme,
-    toggleTheme: () =>
-      setCurrentTheme(currentTheme === "light" ? "dark" : "light"),
-    colors,
-  };
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    // Check on mount
+    checkMobile();
+    
+    // Check on resize
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  const toastContextValue: ToastContextType = {
-    addToast: (message: string, type: "success" | "error" | "warning") => {
-      const id = Date.now();
-      setToasts((prev) => {
-        const updatedToasts = [...prev, { id, message, type }];
-        if (updatedToasts.length > 2) {
-          return updatedToasts.slice(-2);
-        }
-        return updatedToasts;
-      });
+  const addToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+
+    const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+
+    if (!toasts.some(toast => toast.message === message)) {
+      setToasts(prev => [...prev, { id: uniqueId, message, type }]);
 
       setTimeout(() => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
-      }, 5000);
-    },
+        setToasts(prev => prev.filter(toast => toast.id !== uniqueId));
+      }, 3000);
+    }
   };
 
-  const addToast = (message: string, type: "success" | "error" | "warning") => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 5000);
-  };
-
-  const openModal = (title: string, content: React.ReactNode) => {
-    setModalContent({ title, content });
-    setIsModalOpen(true);
-    document.body.style.overflow = "hidden";
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    document.body.style.overflow = "auto";
-  };
-
-  const handleDonationClick = () => {
-    const handleDonationSubmitWithToast = (data: DonationFormData) => {
-      handleDonationSubmit(data);
-      closeModal();
-    };
-
-    openModal(
-      "Make a Donation",
-      <DonationForm
-        onSubmit={handleDonationSubmitWithToast}
-        showToast={(message: string, type: "success" | "error" | "warning") =>
-          addToast(message, type)
-        }
-        onClose={closeModal}
-      />
-    );
-  };
-
-  const handleDonationSubmit = (data: DonationFormData) => {
-    console.log("Donation data:", data);
-    addToast(
-      `Thank you for your donation of $${data.customAmount || data.amount}!`,
-      "success"
-    );
-  };
-
-  const handleContactSubmit = (data: ContactFormData) => {
-    console.log("Contact form data:", data);
-    addToast("Your message has been sent successfully!", "success");
+  const addActivityLogEntry = (description: string) => {
+    const timestamp = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    });
+    
+    setActivityLog(prev => [
+      { timestamp, description },
+      ...prev
+    ]);
   };
 
   useEffect(() => {
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(currentTheme);
-    document.body.style.background = colors.background;
-    document.body.style.color = colors.foreground;
-  }, [currentTheme, colors]);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
-  const setActiveTabWithScroll = (tab: "dashboard" | "about" | "contact") => {
-    setActiveTab(tab);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const savedTheme = localStorage.getItem('themeMode');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    }
+
+    return () => clearInterval(timer);
+  }, []);
+
+
+  useEffect(() => {
+    localStorage.setItem('themeMode', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
   };
 
-  return (
-    <ThemeContext.Provider value={themeContextValue}>
-      <ToastContext.Provider value={toastContextValue}>
-      <Head>
-      <link
-          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-        <style>{`
-          .font-montserrat {
-            font-family: 'Montserrat', sans-serif;
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric'
+    }) + ' ' + date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
+
+  const handleCallClick = (call: Call) => {
+    setSelectedCall(call);
+
+    const formattedId = call.id.toString().substring(8, 13) || call.id.toString();
+    
+    addActivityLogEntry(`Incident ${formattedId} details viewed`);
+    addToast(`Viewing details for incident ${formattedId}`, 'info');
+    
+    // Auto-switch to details on mobile when incident is selected
+    if (isMobile) {
+      setActiveMobileSection('details');
+    }
+  };
+
+  const handleStatusUpdate = (callId: number, newStatus: 'Pending' | 'Acknowledged' | 'Dispatched' | 'Resolved') => {
+
+    let updatedCall: Call | null = null;
+    let assignedUnit: string | null = null;
+
+    // When dispatching, find an available unit of the correct type first
+    if (newStatus === 'Dispatched') {
+      const callToUpdate = calls.find(c => c.id === callId);
+      if (callToUpdate && !callToUpdate.unitAssigned) {
+        // Determine required unit type based on incident type
+        let requiredUnitType: 'Ambulance' | 'Fire Truck' | 'Police Car';
+        
+        if (callToUpdate.type === 'Emergency') {
+          requiredUnitType = 'Fire Truck'; // Fire incidents need fire trucks
+        } else if (callToUpdate.type === 'Non-Emergency') {
+          requiredUnitType = 'Police Car'; // Police incidents need police cars
+        } else {
+          requiredUnitType = 'Ambulance'; // Information/Medical incidents need ambulances
+        }
+        
+        const availableUnit = units.find(unit => 
+          unit.status === 'Available' && unit.type === requiredUnitType
+        );
+        
+        if (availableUnit) {
+          assignedUnit = availableUnit.id;
+          console.log(`Found available ${requiredUnitType}:`, availableUnit.id); // Debug log
+        } else {
+          console.log(`No available ${requiredUnitType} units found`); // Debug log
+        }
+      }
+    }
+
+    setCalls(calls.map(call => {
+      if (call.id === callId) {
+        let unitAssigned = call.unitAssigned;
+        
+        // Assign the unit we found earlier
+        if (newStatus === 'Dispatched' && assignedUnit) {
+          unitAssigned = assignedUnit;
+        }
+        
+        const updated = { 
+          ...call, 
+          status: newStatus, 
+          unitAssigned: unitAssigned
+        };
+        updatedCall = updated;
+        return updated;
+      }
+      return call;
+    }));
+
+    // Update unit status when dispatched
+    if (newStatus === 'Dispatched' && assignedUnit && updatedCall) {
+      console.log('Updating unit status for:', assignedUnit); // Debug log
+      
+      setUnits(prevUnits => {
+        console.log('Current units:', prevUnits.map(u => ({ id: u.id, status: u.status }))); // Debug log
+        return prevUnits.map(unit => {
+          if (unit.id === assignedUnit) {
+            console.log('Found unit to update:', unit.id); // Debug log
+            return { 
+              ...unit, 
+              status: 'Responding' as const,
+              location: `En route to ${updatedCall!.location}`
+            };
           }
-        `}</style>
-      </Head>
-        <div
-          className={`--font-montserrat min-h-screen relative overflow-hidden`}
-          style={{
-            background: colors.background,
-            color: colors.foreground,
-          }}
-        >
-          {/* Background decorative elements */}
-          <div className="fixed inset-0 overflow-hidden pointer-events-none">
-            <div
-              className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl"
-              style={{ background: colors.gradient }}
-            />
-            <div
-              className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-20 blur-3xl"
-              style={{ background: colors.gradientSecondary }}
-            />
-          </div>
+          return unit;
+        });
+      });
+      
+      addActivityLogEntry(`Unit ${assignedUnit} dispatched to incident`);
+      addToast(`Unit ${assignedUnit} dispatched`, 'warning');
+    }
 
-          <AnimatePresence>
-            {sidebarOpen && (
+    // Update unit status when resolved
+    if (newStatus === 'Resolved') {
+      const callToResolve = calls.find(c => c.id === callId);
+      if (callToResolve && callToResolve.unitAssigned) {
+        const unitId = callToResolve.unitAssigned;
+        
+        setUnits(prevUnits => prevUnits.map(unit => {
+          if (unit.id === unitId) {
+            return { 
+              ...unit, 
+              status: 'Available' as const,
+              location: unit.id.startsWith('P') ? 'Station 1' : 
+                       unit.id.startsWith('F') ? 'Station 3' : 'Hospital'
+            };
+          }
+          return unit;
+        }));
+        
+        addActivityLogEntry(`Unit ${unitId} returned to service`);
+        addToast(`Unit ${unitId} available`, 'success');
+      }
+    }
+
+    if (updatedCall && selectedCall && selectedCall.id === callId) {
+      setSelectedCall(updatedCall);
+    }
+
+    const formattedId = callId.toString().substring(8, 13) || callId.toString();
+
+    addActivityLogEntry(`Incident ${formattedId} status updated to ${newStatus}`);
+    addToast(`Incident ${formattedId} status updated to ${newStatus}`, 
+      newStatus === 'Resolved' ? 'success' : 
+      newStatus === 'Dispatched' ? 'warning' : 'info'
+    );
+  };
+
+
+  const toggleUnitStatus = (unitId: string) => {
+    setUnits(units.map(unit => {
+      if (unit.id === unitId) {
+        const newStatus = unit.status === 'OutOfService' ? 'Available' : 'OutOfService';
+
+        addActivityLogEntry(`Unit ${unitId} status changed to ${newStatus === 'OutOfService' ? 'Out of Service' : newStatus}`);
+        addToast(`Unit ${unitId} status changed to ${newStatus === 'OutOfService' ? 'Out of Service' : newStatus}`, 
+          newStatus === 'Available' ? 'success' : 'warning'
+        );
+        
+        return { ...unit, status: newStatus };
+      }
+      return unit;
+    }));
+  };
+
+
+  const incidentGenerationSetup = React.useRef(false);
+
+  useEffect(() => {
+
+    if (incidentGenerationSetup.current) return;
+    incidentGenerationSetup.current = true;
+
+    setCalls([]);
+    
+    let incidentTimer: NodeJS.Timeout;
+
+    incidentTimer = setInterval(() => {
+      setCalls(prevCalls => {
+
+        if (prevCalls.length >= 6) {
+          return prevCalls;
+        }
+
+        const newIncident = generateMockIncident();
+
+        const formattedId = newIncident.id.toString().substring(8, 13) || newIncident.id.toString();
+
+        const logMessage = `New ${newIncident.type} incident reported at ${newIncident.location}. Priority: ${newIncident.priority}`;
+
+        addActivityLogEntry(logMessage);
+
+        return [...prevCalls, newIncident];
+      });
+    }, 5000);
+
+    return () => {
+      if (incidentTimer) {
+        clearInterval(incidentTimer);
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only once
+
+  // Generate a mock incident with random data
+  const generateMockIncident = () => {
+    const mockLocations = [
+      "123 Main St, Cityville", 
+      "456 Oak Ave, Townsburg", 
+      "789 Pine Dr, Villageton",
+      "101 Maple Rd, Downtown",
+      "202 Cedar Ln, Uptown"
+    ];
+    
+    const mockDescriptions = [
+      "Traffic accident with injuries",
+      "Building fire reported",
+      "Medical emergency",
+      "Suspicious activity",
+      "Domestic disturbance"
+    ];
+    
+    const incidentTypes: CallType[] = ["Emergency", "Non-Emergency", "Information"];
+    const priorities = ["P1", "P2", "P3", "P4", "P5"];
+    
+    return {
+      id: Date.now(),
+      type: incidentTypes[Math.floor(Math.random() * incidentTypes.length)],
+      location: mockLocations[Math.floor(Math.random() * mockLocations.length)],
+      description: mockDescriptions[Math.floor(Math.random() * mockDescriptions.length)],
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+      status: 'Pending' as const,
+      priority: priorities[Math.floor(Math.random() * priorities.length)]
+    };
+  };
+
+  const renderIncidentDetails = () => {
+    if (!selectedCall)     return (
+      <div className="p-4">
+        <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-sm font-light text-center py-12`}>Select an incident to view details</div>
+      </div>
+    );
+
+    // Base64 encoded simple street map pattern
+    const streetMapBase64 = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIEJhY2tncm91bmQgLS0+CiAgPHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI0MDAiIGZpbGw9IiNlNmU2ZTYiLz4KCiAgPCEtLSBSb2FkcyAtLT4KICA8cGF0aCBkPSJNMCwyMDAgSDgwMCIgc3Ryb2tlPSIjZmZiZjAwIiBzdHJva2Utd2lkdGg9IjEwIi8+CiAgPHBhdGggZD0iTTAsMTAwIEg4MDAiIHN0cm9rZT0iI2ZmYmYwMCIgc3Ryb2tlLXdpZHRoPSI4Ii8+CiAgPHBhdGggZD0iTTAsMyBIODAwIiBzdHJva2U9IiNmZmJmMDAiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxwYXRoIGQ9Ik0wLDMwMCBIODAwIiBzdHJva2U9IiNmZmJmMDAiIHN0cm9rZS13aWR0aD0iOCIvPgogIDxwYXRoIGQ9Ik0wLDM5NSBIODA1IiBzdHJva2U9IiNmZmJmMDAiIHN0cm9rZS13aWR0aD0iNiIvPgogIAogIDxwYXRoIGQ9Ik0yMDAsMCBWNDAwIiBzdHJva2U9IiNmZmJmMDAiIHN0cm9rZS13aWR0aD0iOCIvPgogIDxwYXRoIGQ9Ik00MDAsMCBWNDAwIiBzdHJva2U9IiNmZmJmMDAiIHN0cm9rZS13aWR0aD0iMTAiLz4KICA8cGF0aCBkPSJNNjAwLDAgVjQwMCIgc3Ryb2tlPSIjZmZiZjAwIiBzdHJva2Utd2lkdGg9IjgiLz4KCiAgPCEtLSBSaXZlciAtLT4KICA8cGF0aCBkPSJNMCwzNTAgUTIwMCwzMDAgNDAwLDM1MCBUODAwLDMyMCIgc3Ryb2tlPSIjNTZjY2YyIiBzdHJva2Utd2lkdGg9IjIwIiBmaWxsPSJub25lIi8+CgogIDwhLS0gUGFya3MgLS0+CiAgPGNpcmNsZSBjeD0iMTAwIiBjeT0iMTAwIiByPSI0MCIgZmlsbD0iIzg1ZDQ3NSIvPgogIDxjaXJjbGUgY3g9IjUwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iIzg1ZDQ3NSIvPgogIDxjaXJjbGUgY3g9IjcwMCIgY3k9IjE1MCIgcj0iNTAiIGZpbGw9IiM4NWQ0NzUiLz4KICA8cmVjdCB4PSI2NTAiIHk9IjI1MCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSI5MCIgZmlsbD0iIzg1ZDQ3NSIvPgogIAogIDwhLS0gQnVpbGRpbmcgQmxvY2tzIC0tPgogIDxyZWN0IHg9IjMwIiB5PSIxNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSI4MCIgeT0iMTQwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHJlY3QgeD0iMzAiIHk9IjE5MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxyZWN0IHg9IjgwIiB5PSIxOTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSIxMzAiIHk9IjE0MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIAogIDxyZWN0IHg9IjI0MCIgeT0iNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSIyOTAiIHk9IjQwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHJlY3QgeD0iMjQwIiB5PSI0MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxyZWN0IHg9IjI0MCIgeT0iOTAiIHdpZHRoPSI5MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSIzNDAiIHk9IjQwIiB3aWR0aD0iNDAiIGhlaWdodD0iOTAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgCiAgPHJlY3QgeD0iMjQwIiB5PSIyNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSIyOTAiIHk9IjI0MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxyZWN0IHg9IjI0MCIgeT0iMjkwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHJlY3QgeD0iMjkwIiB5PSIyOTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSIzNDAiIHk9IjI0MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIAogIDxyZWN0IHg9IjQ0MCIgeT0iMTQwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHJlY3QgeD0iNDkwIiB5PSIxNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cmVjdCB4PSI0NDAiIHk9IjE5MCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZDBkMGQwIiBzdHJva2U9IiNiYmJiYmIiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxyZWN0IHg9IjQ5MCIgeT0iMTkwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNkMGQwZDAiIHN0cm9rZT0iI2JiYmJiYiIgc3Ryb2tlLXdpZHRoPSIxIi8+CiAgPHJlY3QgeD0iNTQwIiB5PSIxNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI5MCIgZmlsbD0iI2QwZDBkMCIgc3Ryb2tlPSIjYmJiYmJiIiBzdHJva2Utd2lkdGg9IjEiLz4KPC9zdmc+Cg==`;
+
+
+    const statusColorClass = selectedCall.status === 'Pending' 
+      ? 'bg-red-500'
+      : selectedCall.status === 'Acknowledged' 
+        ? 'bg-yellow-500'
+        : selectedCall.status === 'Dispatched'
+          ? 'bg-blue-500'
+          : 'bg-green-500';
+
+
+    const incidentId = selectedCall.id.toString().substring(8, 13) || 'bpgtn';
+
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className={`p-4`}
+      >
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4 gap-3">
+          <h3 className={`text-sm sm:text-base ${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium`}>Incident Details - ID: {incidentId}</h3>
+          
+          <div className="flex flex-col sm:flex-row gap-2">
+            {selectedCall.status === 'Pending' && (
               <>
-                {/* Mobile backdrop overlay */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setSidebarOpen(false)}
-                  className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden cursor-pointer"
-                />
-                
-                {/* Mobile sidebar */}
-                <motion.div
-                  initial={{ x: "-100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="fixed inset-y-0 left-0 z-50 w-72 backdrop-blur-xl border-r md:hidden"
-                  style={{
-                    background: colors.glass,
-                    borderColor: colors.border,
-                    backdropFilter: "blur(20px)",
-                  }}
-                >
-                <div
-                  className="flex items-center justify-between p-6 border-b"
-                  style={{ borderColor: colors.border }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: colors.gradient }}
-                    >
-                      <Globe size={20} color="white" />
-                    </div>
-                    <h2
-                      className="text-xl font-bold font-montserrat"
-                      style={{ color: colors.primary }}
-                    >
-                      EcoVision
-                    </h2>
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2 rounded-xl backdrop-blur-sm"
-                    style={{ background: colors.glass }}
-                  >
-                    <X size={20} style={{ color: colors.foreground }} />
-                  </motion.button>
-                </div>
-                <nav className="p-6">
-                  <ul className="space-y-3">
-                    {[
-                      { key: "dashboard", icon: Home, label: "Dashboard" },
-                      { key: "about", icon: Info, label: "About" },
-                      { key: "contact", icon: Mail, label: "Contact" },
-                    ].map(({ key, icon: Icon, label }) => (
-                      <li key={key}>
-                        <motion.button
-                          whileHover={{ scale: 1.02, x: 4 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            setActiveTabWithScroll(key as "dashboard" | "about" | "contact");
-                            setSidebarOpen(false);
-                          }}
-                          className="flex items-center w-full p-4 space-x-4 rounded-2xl transition-all duration-300 cursor-pointer"
-                          style={{
-                            background:
-                              activeTab === key
-                                ? colors.gradient
-                                : colors.glass,
-                            color:
-                              activeTab === key ? "white" : colors.foreground,
-                            backdropFilter: "blur(10px)",
-                          }}
-                        >
-                          <Icon size={20} />
-                          <span className="font-medium">{label}</span>
-                        </motion.button>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-
-          <header
-            className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl border-b"
-            style={{
-              background: colors.glass,
-              borderColor: colors.border,
-              backdropFilter: "blur(20px)",
-            }}
-          >
-            <div className="flex items-center p-4 relative">
-              {/* Left side - Logo and title */}
-              <div className="flex items-center space-x-4">
-                {/* Mobile menu button - only visible on mobile */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-3 rounded-2xl backdrop-blur-sm md:hidden cursor-pointer"
-                  style={{ background: colors.glass }}
-                >
-                  <Menu size={20} style={{ color: colors.foreground }} />
-                </motion.button>
-                
-                <div className="flex items-center space-x-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: colors.gradient }}
-                  >
-                    <Globe size={20} color="white" />
-                  </div>
-                  <h1
-                    className="text-xl font-bold font-montserrat bg-gradient-to-r bg-clip-text text-transparent"
-                    style={{ backgroundImage: colors.gradient }}
-                  >
-                    <span className="hidden sm:inline">EcoVision</span>
-                    <span className="sm:hidden">EcoVision</span>
-                  </h1>
-                </div>
-              </div>
-
-              {/* Center - Desktop navigation - only visible on desktop */}
-              <nav className="hidden md:flex items-center space-x-2 absolute left-1/2 transform -translate-x-1/2">
-                {[
-                  { key: "dashboard", icon: Home, label: "Dashboard" },
-                  { key: "about", icon: Info, label: "About" },
-                  { key: "contact", icon: Mail, label: "Contact" },
-                ].map(({ key, icon: Icon, label }) => (
-                  <motion.button
-                    key={key}
-                    whileHover={{ scale: 1.02, y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTabWithScroll(key as "dashboard" | "about" | "contact")}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-300 cursor-pointer"
-                    style={{
-                      background: activeTab === key ? colors.gradient : colors.glass,
-                      color: activeTab === key ? "white" : colors.foreground,
-                      backdropFilter: "blur(10px)",
-                    }}
-                  >
-                    <Icon size={18} />
-                    <span className="font-medium">{label}</span>
-                  </motion.button>
-                ))}
-              </nav>
-
-              {/* Right side - Theme toggle */}
-              <div className="ml-auto">
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 180 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={themeContextValue.toggleTheme}
-                  className="p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 cursor-pointer"
-                  style={{ background: colors.glass }}
-                >
-                  {currentTheme === "light" ? (
-                    <Moon size={20} style={{ color: colors.foreground }} />
-                  ) : (
-                    <Sun size={20} style={{ color: colors.foreground }} />
-                  )}
-                </motion.button>
-              </div>
-            </div>
-          </header>
-
-          <main className="container p-6 mx-auto relative z-10 pt-20">
-            {activeTab === "dashboard" && <Dashboard />}
-            {activeTab === "about" && <About />}
-            {activeTab === "contact" && (
-              <Contact onSubmit={handleContactSubmit} />
-            )}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="p-8 mt-12 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-              style={{
-                background: colors.glass,
-                borderColor: colors.border,
-                backdropFilter: "blur(20px)",
-              }}
-            >
-              <div className="absolute inset-0 opacity-10">
-                <div
-                  className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl"
-                  style={{ background: colors.gradientSecondary }}
-                />
-              </div>
-              <div className="flex flex-col items-center justify-between gap-6 md:flex-row relative z-10">
-                <div>
-                  <h2
-                    className="text-2xl font-bold font-montserrat mb-3 bg-gradient-to-r bg-clip-text text-transparent"
-                    style={{ backgroundImage: colors.gradientSecondary }}
-                  >
-                    Support Our Environmental Initiatives
-                  </h2>
-                  <p className="text-lg" style={{ color: colors.muted }}>
-                    Your donation helps us continue our work to protect the
-                    environment and combat climate change.
-                  </p>
-                </div>
-                <motion.button
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={handleDonationClick}
-                  className="px-8 py-4 font-semibold rounded-2xl shadow-lg transition-all duration-300 cursor-pointer"
-                  style={{
-                    background: colors.gradientSecondary,
-                    color: "white",
-                    boxShadow: "0 10px 30px rgba(16, 185, 129, 0.3)",
-                  }}
+                  onClick={() => handleStatusUpdate(selectedCall.id, 'Acknowledged')} 
+                  className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg cursor-pointer transition-all duration-200 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 hover:shadow-xl text-white font-medium text-sm"
                 >
-                  <span className="flex items-center space-x-2">
-                    <span>Donate Now</span>
-                    <DollarSign size={18} />
-                  </span>
+                  Acknowledge
                 </motion.button>
-              </div>
-            </motion.div>
-          </main>
-
-          {/* Footer */}
-          <footer
-            className="relative mt-20 backdrop-blur-xl border-t"
-            style={{
-              background: colors.glass,
-              borderColor: colors.border,
-              backdropFilter: "blur(20px)",
-            }}
-          >
-            <div className="absolute inset-0 opacity-5">
-              <div
-                className="absolute top-0 left-0 w-40 h-40 rounded-full blur-3xl"
-                style={{ background: colors.gradient }}
-              />
-              <div
-                className="absolute bottom-0 right-0 w-40 h-40 rounded-full blur-3xl"
-                style={{ background: colors.gradientSecondary }}
-              />
-            </div>
-            
-            <div className="container mx-auto px-6 py-12 relative z-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {/* Company Info */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    // Remove call from list
+                    setCalls(calls.filter(call => call.id !== selectedCall.id));
+                    setSelectedCall(null);
+                  }} 
+                  className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg cursor-pointer transition-all duration-200 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 hover:shadow-xl text-white font-medium text-sm"
                 >
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: colors.gradient }}
-                    >
-                      <Globe size={20} color="white" />
-                    </div>
-                    <h3
-                      className="text-xl font-bold font-montserrat bg-gradient-to-r bg-clip-text text-transparent"
-                      style={{ backgroundImage: colors.gradient }}
-                    >
-                      EcoVision
-                    </h3>
-                  </div>
-                  <p className="mb-4 leading-relaxed" style={{ color: colors.muted }}>
-                    Leading the way in environmental monitoring and sustainable solutions for a better tomorrow.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ background: colors.success }}
-                    />
-                    <span className="text-sm" style={{ color: colors.muted }}>
-                      Monitoring 24/7
-                    </span>
-                  </div>
-                </motion.div>
-
-                {/* Quick Links */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <h4 className="text-lg font-semibold font-montserrat mb-6">
-                    Quick Links
-                  </h4>
-                  <ul className="space-y-3">
-                    {['Dashboard', 'About Us', 'Contact', 'Donate'].map((link, index) => (
-                      <li key={link}>
-                        <motion.button
-                          whileHover={{ x: 4 }}
-                          onClick={() => {
-                            if (link === 'Dashboard') setActiveTabWithScroll('dashboard');
-                            if (link === 'About Us') setActiveTabWithScroll('about');
-                            if (link === 'Contact') setActiveTabWithScroll('contact');
-                            if (link === 'Donate') handleDonationClick();
-                          }}
-                          className="transition-colors duration-300 cursor-pointer hover:opacity-80"
-                          style={{ color: colors.muted }}
-                        >
-                          {link}
-                        </motion.button>
-                      </li>
-                    ))}
-                  </ul>
-                </motion.div>
-
-                {/* Resources */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <h4 className="text-lg font-semibold font-montserrat mb-6">
-                    Resources
-                  </h4>
-                  <ul className="space-y-3">
-                    {['Climate Reports', 'Research Papers', 'Data API', 'News & Updates'].map((resource) => (
-                      <li key={resource}>
-                        <motion.a
-                          href="#"
-                          whileHover={{ x: 4 }}
-                          className="transition-colors duration-300 cursor-pointer hover:opacity-80"
-                          style={{ color: colors.muted }}
-                        >
-                          {resource}
-                        </motion.a>
-                      </li>
-                    ))}
-                  </ul>
-                </motion.div>
-
-                {/* Contact Info */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <h4 className="text-lg font-semibold font-montserrat mb-6">
-                    Get in Touch
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <Mail size={16} style={{ color: colors.primary, marginTop: '2px' }} />
-                      <div>
-                        <p className="text-sm" style={{ color: colors.muted }}>
-                          hello@ecovision.org
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Globe size={16} style={{ color: colors.primary, marginTop: '2px' }} />
-                      <div>
-                        <p className="text-sm" style={{ color: colors.muted }}>
-                          San Francisco, CA
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Sparkles size={16} style={{ color: colors.primary, marginTop: '2px' }} />
-                      <div>
-                        <p className="text-sm" style={{ color: colors.muted }}>
-                          Making a difference since 2020
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Bottom Bar */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="flex flex-col md:flex-row items-center justify-between pt-8 mt-8 border-t"
-                style={{ borderColor: colors.border }}
-              >
-                <p className="text-sm mb-4 md:mb-0" style={{ color: colors.muted }}>
-                  © 2024 EcoVision. All rights reserved. Built for a sustainable future.
-                </p>
-                <div className="flex items-center space-x-6">
-                  <motion.a
-                    href="#"
-                    whileHover={{ y: -2 }}
-                    className="text-sm transition-colors duration-300 cursor-pointer hover:opacity-80"
-                    style={{ color: colors.muted }}
-                  >
-                    Privacy Policy
-                  </motion.a>
-                  <motion.a
-                    href="#"
-                    whileHover={{ y: -2 }}
-                    className="text-sm transition-colors duration-300 cursor-pointer hover:opacity-80"
-                    style={{ color: colors.muted }}
-                  >
-                    Terms of Service
-                  </motion.a>
-                  <motion.a
-                    href="#"
-                    whileHover={{ y: -2 }}
-                    className="text-sm transition-colors duration-300 cursor-pointer hover:opacity-80"
-                    style={{ color: colors.muted }}
-                  >
-                    Cookies
-                  </motion.a>
-                </div>
-              </motion.div>
-            </div>
-          </footer>
-
-          <div className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 md:max-w-md z-50 space-y-4">
-            <AnimatePresence>
-              {toasts.map((toast) => (
-                <Toast
-                  key={toast.id}
-                  message={toast.message}
-                  type={toast.type}
-                  onClose={() =>
-                    setToasts((prev) => prev.filter((t) => t.id !== toast.id))
-                  }
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-
-          <AnimatePresence>
-            {isModalOpen && (
-              <Modal
-                isOpen={isModalOpen}
-                onClose={closeModal}
-                title={modalContent.title}
-              >
-                {modalContent.content}
-              </Modal>
+                  Cancel Incident
+                </motion.button>
+              </>
             )}
-          </AnimatePresence>
+            
+            {selectedCall.status === 'Acknowledged' && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleStatusUpdate(selectedCall.id, 'Dispatched')} 
+                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg cursor-pointer transition-all duration-200 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-xl text-white font-medium text-sm"
+              >
+                Dispatch Units
+              </motion.button>
+            )}
+            
+            {selectedCall.status === 'Dispatched' && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleStatusUpdate(selectedCall.id, 'Resolved')} 
+                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg cursor-pointer transition-all duration-200 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 hover:shadow-xl text-white font-medium text-sm"
+              >
+                Resolve Incident
+              </motion.button>
+            )}
+            
+            {selectedCall.status === 'Resolved' && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium text-sm text-center"
+              >
+                Incident Resolved
+              </motion.div>
+            )}
+          </div>
         </div>
-      </ToastContext.Provider>
-    </ThemeContext.Provider>
-  );
-}
+        
+        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} p-3 mb-4`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col">
+              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Type</span>
+              <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm`}>
+                {selectedCall.type === 'Emergency' ? 'Fire' : 
+                 selectedCall.type === 'Non-Emergency' ? 'Police' : 'Information'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Status</span>
+              <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm`}>
+                {selectedCall.status}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Priority</span>
+              <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm`}>{selectedCall.priority}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Reported</span>
+              <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-mono text-sm`}>{selectedCall.time}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Location</span>
+              <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm`}>{selectedCall.location}</span>
+            </div>
+            {selectedCall.unitAssigned && (
+              <div className="flex flex-col">
+                <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Unit</span>
+                <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm`}>{selectedCall.unitAssigned}</span>
+              </div>
+            )}
+            {!selectedCall.unitAssigned && (
+              <div className="flex flex-col">
+                <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Caller</span>
+                <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm`}>John Smith (555-1234)</span>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col mt-3">
+            <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-bold uppercase tracking-widest mb-1`}>Description</span>
+            <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm`}>{selectedCall.description}</span>
+          </div>
+        </div>
+        
+        <div className="mt-4">
+          <h3 className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'} font-extralight mb-2 uppercase tracking-widest`}>
+            MAP VIEW
+          </h3>
+          <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs mb-2 font-mono uppercase tracking-wider`}>Location: {selectedCall.location}</div>
+          <div className={`h-64 lg:h-64 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'} overflow-hidden relative mb-4`}>
+            {/* Street Map Background (SVG-based) */}
+            <div className="absolute inset-0 bg-cover bg-center" style={{ 
+              backgroundImage: `url("${streetMapBase64}")`,
+              backgroundSize: 'cover'
+            }}>
+              {/* Incident Location Indicator */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="animate-ping absolute h-4 sm:h-5 w-4 sm:w-5 rounded-full bg-red-600 opacity-75"></div>
+                <div className="relative rounded-full h-3 sm:h-4 w-3 sm:w-4 bg-red-500"></div>
+              </div>
 
-function Dashboard() {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-  const { addToast } = useContext(ToastContext) as ToastContextType;
+              {selectedCall.status === 'Dispatched' && (
+                <>
+                  {/* Unit Markers */}
+                  <div className="absolute top-[45%] left-[58%] bg-blue-700 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md shadow-md">
+                    {selectedCall.unitAssigned || 'P101'}
+                  </div>
+                </>
+              )}
+
+              {/* Map Overlay Elements */}
+              <div className="absolute bottom-3 left-3 bg-gray-900 bg-opacity-70 p-1.5 sm:p-2 rounded text-white text-xs">
+                <div className="flex items-center space-x-1">
+                  <div className="w-10 sm:w-16 h-0.5 sm:h-1 bg-white"></div>
+                  <span className="text-[10px] sm:text-xs">1 mile</span>
+                </div>
+              </div>
+
+              <div className="absolute top-3 right-3 bg-gray-900 bg-opacity-70 p-1.5 sm:p-2 rounded">
+                <div className="w-6 sm:w-8 h-6 sm:h-8 relative">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-gray-400 text-[10px] sm:text-xs">N</span>
+                  </div>
+                  <div className="absolute top-1/2 left-1/2 w-0.5 h-3 sm:h-4 bg-red-500 transform -translate-x-1/2 -translate-y-full rotate-0 origin-bottom"></div>
+                  <div className="absolute top-1/2 left-1/2 w-0.5 h-2 sm:h-3 bg-white transform -translate-x-1/2 -translate-y-full rotate-90 origin-bottom opacity-70"></div>
+                  <div className="absolute top-1/2 left-1/2 w-0.5 h-2 sm:h-3 bg-white transform -translate-x-1/2 -translate-y-full rotate-180 origin-bottom opacity-70"></div>
+                  <div className="absolute top-1/2 left-1/2 w-0.5 h-2 sm:h-3 bg-white transform -translate-x-1/2 -translate-y-full rotate-270 origin-bottom opacity-70"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
 
   return (
-    <div className="space-y-12">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className={`h-screen ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col ${inter.className} antialiased overflow-hidden`}
+    >
+      {/* Toast Notification Container */}
+      <div className="fixed top-8 right-8 z-50 space-y-2 max-w-sm">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div 
+              key={toast.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={`${
+                toast.type === 'success' ? `bg-gradient-to-r from-emerald-500 to-emerald-600 text-white` :
+                toast.type === 'error' ? `bg-gradient-to-r from-rose-500 to-rose-600 text-white` :
+                toast.type === 'warning' ? `bg-gradient-to-r from-amber-500 to-amber-600 text-white` :
+                `bg-gradient-to-r from-sky-500 to-sky-600 text-white`
+              } px-6 py-3 rounded-lg shadow-lg`}
+            >
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05 }}
+                className="flex items-center space-x-3"
+              >
+                {toast.type === 'success' && <Check size={16} className="text-white" />}
+                {toast.type === 'error' && <AlertCircle size={16} className="text-white" />}
+                {toast.type === 'warning' && <AlertCircle size={16} className="text-white" />}
+                {toast.type === 'info' && <Activity size={16} className="text-white" />}
+                <p className="text-sm font-medium">{toast.message}</p>
+              </motion.div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      
+      <motion.header 
+        initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className={`${isDarkMode ? 'bg-gray-900' : 'bg-white'} py-2 px-3 sm:py-3 sm:px-4`}
       >
-        <div className="text-center mb-12">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl font-bold font-montserrat mb-4 bg-gradient-to-r bg-clip-text text-transparent"
-            style={{ backgroundImage: colors.gradient }}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+          <motion.h1 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className={`text-lg sm:text-xl lg:text-2xl font-light tracking-wide ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1 sm:mb-0`}
           >
-            Environmental Impact Overview
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-xl"
-            style={{ color: colors.muted }}
+            922 EMERGENCY RESPONSE CENTER
+          </motion.h1>
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center gap-2 sm:gap-3"
           >
-            Real-time data and insights on global environmental changes
-          </motion.p>
+            <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono`}>
+              {formatDate(currentTime)}
+            </div>
+            <motion.button 
+              whileHover={{ scale: 1.1, rotate: 180 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleTheme} 
+              className={`p-1.5 rounded-lg shadow-md cursor-pointer ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'} transition-all duration-200`}
+              aria-label="Toggle theme"
+            >
+              {isDarkMode ? (
+                <Sun size={14} className="text-yellow-400" />
+              ) : (
+                <Moon size={14} className="text-gray-700" />
+              )}
+            </motion.button>
+          </motion.div>
         </div>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {[
-            {
-              title: "Deforestation",
-              icon: TreePine,
-              data: deforestationData,
-              color: colors.secondary,
-              gradient: colors.gradientSecondary,
-              description: "Global forest loss has increased by 60% since 2010, with over 8.3 million hectares lost in 2022 alone.",
-              chartType: "area",
-              dataKey: "area",
-              unit: "Million Hectares"
-            },
-            {
-              title: "Glacier Melting",
-              icon: Droplets,
-              data: glacierMeltingData,
-              color: colors.primary,
-              gradient: colors.gradient,
-              description: "Glaciers have lost over 45% of their volume since 2010, contributing to rising sea levels worldwide.",
-              chartType: "line",
-              dataKey: "volume",
-              unit: "Volume Index"
-            },
-            {
-              title: "Global Temperature",
-              icon: Thermometer,
-              data: temperatureData,
-              color: colors.danger,
-              gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-              description: "Global average temperatures have risen by 1°C since pre-industrial times, with accelerating warming in recent years.",
-              chartType: "bar",
-              dataKey: "temperature",
-              unit: "°C"
-            }
-          ].map((item, index) => (
-            <motion.div
-              key={item.title}
+      </motion.header>
+      
+      {/* Mobile Section Selector */}
+      <div className="lg:hidden px-2 py-2">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="relative"
+        >
+          <motion.select
+            value={activeMobileSection}
+            onChange={(e) => setActiveMobileSection(e.target.value as 'incidents' | 'details' | 'units')}
+                          className={`w-full pl-10 pr-10 py-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} text-sm font-medium cursor-pointer appearance-none`}
+          >
+            <option value="incidents">Active Incidents ({calls.length})</option>
+            <option value="details">Incident Details{selectedCall ? ` - ${selectedCall.id.toString().substring(8, 13)}` : ' (Select incident first)'}</option>
+            <option value="units">Unit Status</option>
+          </motion.select>
+          
+          {/* Custom Icon Display */}
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+            {activeMobileSection === 'incidents' && <List size={16} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} />}
+            {activeMobileSection === 'details' && <Eye size={16} className={isDarkMode ? 'text-red-400' : 'text-red-600'} />}
+            {activeMobileSection === 'units' && <Shield size={16} className={isDarkMode ? 'text-green-400' : 'text-green-600'} />}
+          </div>
+          
+          {/* Dropdown Arrow */}
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+            <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </motion.div>
+      </div>
+      
+      <div className="flex flex-col lg:flex-row flex-1 gap-2 p-2 pb-4 min-h-0 items-stretch overflow-hidden">
+        {/* Left Panel - Active Incidents */}
+        <motion.div 
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className={`w-full lg:w-1/4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} flex flex-col ${
+            activeMobileSection === 'incidents' ? 'flex h-full' : 'hidden'
+          } lg:flex lg:max-h-none lg:min-h-0`}
+        >
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className={`p-2 bg-gradient-to-r from-slate-600 to-slate-700 flex-shrink-0`}
+          >
+            <h2 className="text-sm font-medium text-white">
+              Active Incidents ({calls.length})
+            </h2>
+          </motion.div>
+          <div className="overflow-y-auto flex-1 min-h-0 px-1">
+            <AnimatePresence>
+              {calls
+                .sort((a, b) => {
+                  // Define order of statuses
+                  const statusOrder = { 'Pending': 0, 'Acknowledged': 1, 'Dispatched': 2, 'Resolved': 3 };
+                  return statusOrder[a.status] - statusOrder[b.status];
+                })
+                .map((call, index) => (
+                <motion.div
+                  key={call.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -100 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`p-3 m-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 border ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} ${
+                    isDarkMode 
+                      ? `hover:bg-gray-750 hover:shadow-md ${selectedCall?.id === call.id ? 'bg-blue-900 border-blue-500 ring-2 ring-blue-500' : ''}` 
+                      : `hover:bg-gray-50 hover:shadow-md ${selectedCall?.id === call.id ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500' : ''}`
+                  }`}
+                  onClick={() => handleCallClick(call)}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <div className="flex items-center">
+                      <span className={`${
+                        call.type === 'Emergency' 
+                          ? (isDarkMode ? 'text-red-400' : 'text-red-600') 
+                          : (isDarkMode ? 'text-blue-400' : 'text-blue-600')
+                      } font-medium text-xs uppercase tracking-wide`}>
+                        {call.type === 'Emergency' ? 'Fire' : 'Police'} - {call.priority}
+                      </span>
+                    </div>
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider shadow-sm ${
+                        call.status === 'Pending' ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 
+                        call.status === 'Acknowledged' ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                        call.status === 'Dispatched' ? 'bg-gradient-to-r from-sky-400 to-sky-500' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                      }`}
+                    >
+                      {call.status}
+                    </motion.div>
+                  </div>
+                  <div className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium text-xs mb-1`}>{call.location}</div>
+                  <div className="flex justify-between items-center">
+                    <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono`}>
+                      {call.time}
+                    </div>
+                    <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs truncate max-w-[60%] text-right`}>
+                      {call.description.substring(0, 20)}{call.description.length > 20 ? '...' : ''}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {/* Activity Log Section within the same scrollable area */}
+            <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.02, y: -5 }}
-              className="p-6 rounded-3xl backdrop-blur-xl border relative overflow-hidden group"
-              style={{
-                background: colors.glass,
-                borderColor: colors.border,
-                backdropFilter: "blur(20px)",
-              }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              className="border-t-2 border-yellow-500 mt-2"
             >
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
-                <div
-                  className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl"
-                  style={{ background: item.gradient }}
-                />
+              <div className={`p-2 bg-gradient-to-r from-amber-500 to-amber-600 sticky top-0`}>
+                <h2 className="text-sm font-medium text-white">Activity Log</h2>
               </div>
-              <div className="relative z-10">
-                <div className="flex items-center mb-6 space-x-3">
-                  <div
-                    className="p-3 rounded-2xl"
-                    style={{ background: `${item.color}20` }}
-                  >
-                    <item.icon size={24} style={{ color: item.color }} />
-                  </div>
-                  <h3 className="text-xl font-bold font-montserrat">
-                    {item.title}
-                  </h3>
-                  <div className="ml-auto">
-                    <TrendingUp size={16} style={{ color: colors.muted }} />
-                  </div>
-                </div>
-                <div className="h-64 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {item.chartType === "area" ? (
-                      <AreaChart data={item.data}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke={colors.border}
-                          opacity={0.3}
-                        />
-                        <XAxis 
-                          dataKey="year" 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.foreground,
-                            borderRadius: "16px",
-                            border: "none",
-                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey={item.dataKey}
-                          stroke={item.color}
-                          fill={`url(#gradient-${index})`}
-                          strokeWidth={3}
-                          name={item.unit}
-                        />
-                        <defs>
-                          <linearGradient id={`gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={item.color} stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor={item.color} stopOpacity={0.05}/>
-                          </linearGradient>
-                        </defs>
-                      </AreaChart>
-                    ) : item.chartType === "line" ? (
-                      <LineChart data={item.data}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke={colors.border}
-                          opacity={0.3}
-                        />
-                        <XAxis 
-                          dataKey="year" 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.foreground,
-                            borderRadius: "16px",
-                            border: "none",
-                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey={item.dataKey}
-                          stroke={item.color}
-                          strokeWidth={3}
-                          dot={{ fill: item.color, strokeWidth: 2, r: 6 }}
-                          activeDot={{ r: 8, stroke: item.color, strokeWidth: 2 }}
-                          name={item.unit}
-                        />
-                      </LineChart>
-                    ) : (
-                      <BarChart data={item.data}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke={colors.border}
-                          opacity={0.3}
-                        />
-                        <XAxis 
-                          dataKey="year" 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke={colors.foreground}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.foreground,
-                            borderRadius: "16px",
-                            border: "none",
-                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        <Bar
-                          dataKey={item.dataKey}
-                          fill={item.color}
-                          name={item.unit}
-                          radius={[8, 8, 0, 0]}
-                        />
-                      </BarChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-sm leading-relaxed" style={{ color: colors.muted }}>
-                  {item.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Enhanced Impact Distribution Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: colors.glass,
-          borderColor: colors.border,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute top-0 left-0 w-40 h-40 rounded-full blur-3xl"
-            style={{ background: colors.gradient }}
-          />
-          <div
-            className="absolute bottom-0 right-0 w-40 h-40 rounded-full blur-3xl"
-            style={{ background: colors.gradientSecondary }}
-          />
-        </div>
-        <div className="relative z-10">
-          <h3
-            className="mb-8 text-2xl font-bold font-montserrat text-center bg-gradient-to-r bg-clip-text text-transparent"
-            style={{ backgroundImage: colors.gradient }}
-          >
-            Environmental Impact Distribution
-          </h3>
-          <div className="flex flex-col items-center justify-between gap-12 lg:flex-row">
-            <div className="w-full lg:w-1/2 h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={impactDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={120}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => {
-                      const screenWidth =
-                        typeof window !== "undefined" ? window.innerWidth : 0;
-                      return screenWidth < 768
-                        ? `${(percent * 100).toFixed(0)}%`
-                        : `${name} ${(percent * 100).toFixed(0)}%`;
-                    }}
-                  >
-                    {impactDistributionData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.foreground,
-                      borderRadius: "16px",
-                      border: "none",
-                      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-full lg:w-1/2">
-              <h4 className="mb-6 text-xl font-bold font-montserrat">
-                Key Findings
-              </h4>
-              <div className="space-y-4">
-                {impactDistributionData.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, x: 20 }}
+              <AnimatePresence>
+                {activityLog.map((entry, index) => (
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-start space-x-4 p-4 rounded-2xl backdrop-blur-sm"
-                    style={{ background: colors.glass }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className={`p-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
                   >
-                    <div
-                      className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
-                      style={{ backgroundColor: COLORS[index] }}
-                    />
-                    <div>
-                      <h5 className="font-semibold mb-1">{item.name} ({item.value}%)</h5>
-                      <p className="text-sm" style={{ color: colors.muted }}>
-                        {index === 0 && "Primarily in tropical regions, threatening biodiversity and climate stability."}
-                        {index === 1 && "Threatens marine ecosystems and coastal communities worldwide."}
-                        {index === 2 && "Contributes to respiratory diseases and accelerates climate change."}
-                        {index === 3 && "Leads to rising sea levels and habitat loss for polar species."}
-                        {index === 4 && "Including soil degradation, biodiversity loss, and other factors."}
-                      </p>
-                    </div>
+                    <div className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono mb-1`}>{entry.timestamp}</div>
+                    <div className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-xs`}>{entry.description}</div>
                   </motion.div>
                 ))}
-              </div>
-            </div>
+              </AnimatePresence>
+            </motion.div>
           </div>
-        </div>
-      </motion.div>
-
-      {/* Enhanced Critical Alert */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        className="p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}05 100%)`,
-          borderColor: colors.warning,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl"
-            style={{ backgroundColor: colors.warning }}
-          />
-        </div>
-        <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6 relative z-10">
-          <div
-            className="p-3 sm:p-4 rounded-2xl flex-shrink-0 self-center sm:self-start"
-            style={{ backgroundColor: `${colors.warning}20` }}
-          >
-            <AlertTriangle size={24} className="sm:w-8 sm:h-8" style={{ color: colors.warning }} />
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3
-              className="text-xl sm:text-2xl font-bold font-montserrat mb-3"
-              style={{ color: colors.warning }}
-            >
-              Critical Alert: Accelerating Environmental Degradation
-            </h3>
-            <p className="text-base sm:text-lg mb-6 leading-relaxed">
-              Recent data indicates that environmental degradation is
-              accelerating at an alarming rate. Without immediate action, we
-              risk irreversible damage to ecosystems worldwide.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() =>
-                  addToast(
-                    "Thank you for your interest! The detailed report will be sent to your email.",
-                    "success"
-                  )
-                }
-                className="w-full sm:w-auto px-6 py-3 font-semibold rounded-2xl transition-all duration-300 cursor-pointer"
-                style={{ 
-                  backgroundColor: colors.warning, 
-                  color: "white",
-                  boxShadow: "0 10px 30px rgba(245, 158, 11, 0.3)",
-                }}
-              >
-                View Detailed Report
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() =>
-                  addToast(
-                    "We appreciate your willingness to share! We'll follow up with you.",
-                    "success"
-                  )
-                }
-                className="w-full sm:w-auto px-6 py-3 font-semibold rounded-2xl backdrop-blur-sm transition-all duration-300 cursor-pointer"
-                style={{
-                  background: colors.glass,
-                  border: `2px solid ${colors.warning}`,
-                  color: colors.warning,
-                }}
-              >
-                Share Findings
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function About(): React.ReactElement {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-  const { addToast } = useContext(ToastContext) as ToastContextType;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-12"
-    >
-      <div className="text-center mb-12">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold font-montserrat mb-4 bg-gradient-to-r bg-clip-text text-transparent"
-          style={{ backgroundImage: colors.gradient }}
-        >
-          About Our Mission
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl"
-          style={{ color: colors.muted }}
-        >
-          Building a sustainable future through innovation and collaboration
-        </motion.p>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
-        className="p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: colors.glass,
-          borderColor: colors.border,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl"
-            style={{ background: colors.gradientSecondary }}
-          />
-        </div>
-        <div className="flex flex-col gap-8 lg:flex-row relative z-10">
-          <div className="lg:w-1/2">
-            <h3
-              className="mb-6 text-2xl font-bold font-montserrat bg-gradient-to-r bg-clip-text text-transparent"
-              style={{ backgroundImage: colors.gradientSecondary }}
-            >
-              Our Vision
-            </h3>
-            <p className="mb-6 text-lg leading-relaxed">
-              We envision a world where humanity lives in harmony with nature,
-              where ecosystems thrive, and where future generations inherit a
-              planet that is healthier than the one we inhabit today.
-            </p>
-            <p className="text-lg leading-relaxed">
-              Through data-driven insights, community engagement, and
-              sustainable solutions, we aim to reverse the trends of
-              environmental degradation and build a more resilient planet.
-            </p>
-          </div>
-          <div className="lg:w-1/2">
-            <div className="relative rounded-2xl overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80"
-                alt="Pristine forest landscape"
-                className="object-cover w-full h-80 rounded-2xl"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: colors.glass,
-          borderColor: colors.border,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl"
-            style={{ background: colors.gradient }}
-          />
-        </div>
-        <div className="relative z-10">
-          <h3
-            className="mb-8 text-2xl font-bold font-montserrat text-center bg-gradient-to-r bg-clip-text text-transparent"
-            style={{ backgroundImage: colors.gradientSecondary }}
-          >
-            Key Focus Areas
-          </h3>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "Forest Conservation",
-                color: colors.primary,
-                gradient: colors.gradient,
-                description: "Protecting existing forests and promoting reforestation efforts to combat climate change and preserve biodiversity."
-              },
-              {
-                title: "Climate Action",
-                color: colors.secondary,
-                gradient: colors.gradientSecondary,
-                description: "Advocating for policies that reduce greenhouse gas emissions and supporting communities in adapting to climate change impacts."
-              },
-              {
-                title: "Water Protection",
-                color: colors.accent,
-                gradient: "linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)",
-                description: "Safeguarding freshwater resources, reducing pollution, and ensuring equitable access to clean water for all communities."
-              }
-            ].map((item, index) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -5, transition: { duration: 0.2 } }}
-                className="p-6 rounded-2xl backdrop-blur-sm border relative overflow-hidden group"
-                style={{ 
-                  background: `linear-gradient(135deg, ${item.color}10 0%, ${item.color}05 100%)`,
-                  borderColor: `${item.color}30`
-                }}
-              >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
-                  <div
-                    className="absolute top-0 right-0 w-20 h-20 rounded-full blur-xl"
-                    style={{ background: item.gradient }}
-                  />
-                </div>
-                <div className="relative z-10">
-                  <h4
-                    className="mb-4 text-xl font-bold font-montserrat"
-                    style={{ color: item.color }}
-                  >
-                    {item.title}
-                  </h4>
-                  <p className="leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: colors.glass,
-          borderColor: colors.border,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute top-0 left-0 w-32 h-32 rounded-full blur-2xl"
-            style={{ background: colors.gradient }}
-          />
-          <div
-            className="absolute bottom-0 right-0 w-32 h-32 rounded-full blur-2xl"
-            style={{ background: colors.gradientSecondary }}
-          />
-        </div>
-        <div className="relative z-10">
-          <h3
-            className="mb-8 text-2xl font-bold font-montserrat text-center bg-gradient-to-r bg-clip-text text-transparent"
-            style={{ backgroundImage: colors.gradientSecondary }}
-          >
-            Our Impact
-          </h3>
-          <div className="space-y-8">
-            {[
-              {
-                icon: TreePine,
-                title: "5 Million Trees Planted",
-                description: "Our reforestation initiatives have helped restore degraded landscapes and create carbon sinks across three continents.",
-                color: colors.primary,
-                gradient: colors.gradient
-              },
-              {
-                icon: Droplets,
-                title: "Clean Water for 2 Million People",
-                description: "Our water conservation projects have improved access to clean water in vulnerable communities worldwide.",
-                color: colors.secondary,
-                gradient: colors.gradientSecondary
-              },
-              {
-                icon: Thermometer,
-                title: "500,000 Tons of CO₂ Offset",
-                description: "Through renewable energy projects and carbon capture initiatives, we've helped mitigate climate change impacts.",
-                color: colors.accent,
-                gradient: "linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)"
-              }
-            ].map((item, index) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                whileHover={{ scale: 1.02, x: 10, transition: { duration: 0.2 } }}
-                className="flex flex-col md:flex-row md:items-center gap-6 p-6 rounded-2xl backdrop-blur-sm"
-                style={{ background: colors.glass }}
-              >
-                <div
-                  className="flex items-center justify-center w-20 h-20 rounded-2xl md:shrink-0"
-                  style={{ background: `${item.color}20` }}
-                >
-                  <item.icon size={32} style={{ color: item.color }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-xl font-bold font-montserrat mb-2">
-                    {item.title}
-                  </h4>
-                  <p className="leading-relaxed" style={{ color: colors.muted }}>
-                    {item.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="p-8 rounded-3xl backdrop-blur-xl border relative overflow-hidden"
-        style={{
-          background: colors.glass,
-          borderColor: colors.border,
-          backdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl"
-            style={{ background: colors.gradient }}
-          />
-        </div>
-        <div className="flex flex-col gap-8 lg:flex-row relative z-10">
-          <div className="lg:w-1/2">
-            <div className="relative rounded-2xl overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80"
-                alt="Team working on environmental projects"
-                className="object-cover w-full h-80 rounded-2xl"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl" />
-            </div>
-          </div>
-          <div className="lg:w-1/2">
-            <h3
-              className="mb-6 text-2xl font-bold font-montserrat bg-gradient-to-r bg-clip-text text-transparent"
-              style={{ backgroundImage: colors.gradientSecondary }}
-            >
-              Join Our Community
-            </h3>
-            <p className="mb-6 text-lg leading-relaxed">
-              We believe that meaningful change happens when people come
-              together with a shared purpose. Our global community of
-              environmental advocates, scientists, policymakers, and concerned
-              citizens is working to create a more sustainable future.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() =>
-                addToast(
-                  "Thank you for your interest! We'll be in touch soon.",
-                  "success"
-                )
-              }
-              className="px-8 py-4 font-semibold rounded-2xl shadow-lg transition-all duration-300 cursor-pointer"
-              style={{ 
-                background: colors.gradient, 
-                color: "white",
-                boxShadow: "0 10px 30px rgba(99, 102, 241, 0.3)",
-              }}
-            >
-              <span className="flex items-center space-x-2">
-                <span>Get Involved</span>
-                <ArrowRight size={18} />
-              </span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function Contact({
-  onSubmit,
-}: {
-  onSubmit: (data: ContactFormData) => void;
-}): React.ReactElement {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-  const { addToast } = useContext(ToastContext) as ToastContextType;
-  const [formData, setFormData] = useState<ContactFormData>({
-    name: "",
-    email: "",
-    message: "",
-  });
-  const [errors, setErrors] = useState<Partial<ContactFormData>>({});
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [isSubscribing, setIsSubscribing] = useState(false);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof ContactFormData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Partial<ContactFormData> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (!formData.message.trim()) {
-      newErrors.message = "Message is required";
-    } else if (formData.message.length < 10) {
-      newErrors.message = "Message must be at least 10 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      onSubmit(formData);
-      setFormData({ name: "", email: "", message: "" });
-    }
-  };
-
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newsletterEmail.trim()) {
-      addToast("Please enter your email address", "error");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newsletterEmail)) {
-      addToast("Please enter a valid email address", "error");
-      return;
-    }
-
-    setIsSubscribing(true);
-
-    setTimeout(() => {
-      setIsSubscribing(false);
-      setNewsletterEmail("");
-      addToast("Thank you for subscribing to our newsletter!", "success");
-    }, 1500);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-8"
-    >
-      <h2
-        className="mb-6 text-2xl font-bold font-montserrat"
-        style={{ color: colors.primary }}
-      >
-        Contact Us
-      </h2>
-
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        <motion.div
-          whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-          className="p-6 rounded-lg shadow-md"
-          style={{
-            backgroundColor: colors.card,
-            border: `1px solid ${colors.border}`,
-          }}
-        >
-          <h3
-            className="mb-4 text-xl font-semibold font-montserrat"
-            style={{ color: colors.secondary }}
-          >
-            Get in Touch
-          </h3>
-          <p className="mb-6">
-            Have questions about our environmental initiatives or want to get
-            involved? We&apos;d love to hear from you. Fill out the form and our
-            team will respond as soon as possible.
-            Have questions about our environmental initiatives or want to get
-            involved? We&apos;d love to hear from you. Fill out the form and our
-            team will respond as soon as possible.
-            Have questions about our environmental initiatives or want to get
-            involved? We&apos;d love to hear from you. Fill out the form and our
-            team will respond as soon as possible.
-            Have questions about our environmental initiatives or want to get
-            involved? We&apos;d love to hear from you. Fill out the form and our
-            team will respond as soon as possible.
-            Have questions about our environmental initiatives or want to get
-            involved? We&apos;d love to hear from you. Fill out the form and our
-            team will respond as soon as possible.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block mb-2 font-medium">
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: `${colors.background}`,
-                  border: `1px solid ${
-                    errors.name ? colors.danger : colors.border
-                  }`,
-                  color: colors.foreground,
-                }}
-                placeholder="Your name"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                  {errors.name}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block mb-2 font-medium">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: `${colors.background}`,
-                  border: `1px solid ${
-                    errors.email ? colors.danger : colors.border
-                  }`,
-                  color: colors.foreground,
-                }}
-                placeholder="your.email@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="message" className="block mb-2 font-medium">
-                Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                rows={5}
-                className="w-full px-4 py-2 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: `${colors.background}`,
-                  border: `1px solid ${
-                    errors.message ? colors.danger : colors.border
-                  }`,
-                  color: colors.foreground,
-                }}
-                placeholder="Your message..."
-              />
-              {errors.message && (
-                <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                  {errors.message}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="px-6 py-3 font-semibold rounded-lg cursor-pointer"
-              style={{ backgroundColor: colors.primary, color: "#ffffff" }}
-            >
-              Send Message
-            </button>
-          </form>
         </motion.div>
-
-        <div className="space-y-6">
-          <motion.div
-            whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-            className="p-6 rounded-lg shadow-md"
-            style={{
-              backgroundColor: colors.card,
-              border: `1px solid ${colors.border}`,
-            }}
-          >
-            <h3
-              className="mb-4 text-xl font-semibold font-montserrat"
-              style={{ color: colors.secondary }}
-            >
-              Our Locations
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold">Headquarters</h4>
-                <p style={{ color: colors.muted }}>
-                  123 Environmental Way
-                  <br />
-                  San Francisco, CA 94107
-                  <br />
-                  United States
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold">European Office</h4>
-                <p style={{ color: colors.muted }}>
-                  45 Green Street
-                  <br />
-                  London, EC1V 9HX
-                  <br />
-                  United Kingdom
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold">Asia Pacific Office</h4>
-                <p style={{ color: colors.muted }}>
-                  78 Nature Boulevard
-                  <br />
-                  Singapore, 018956
-                  <br />
-                  Singapore
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-            className="p-6 rounded-lg shadow-md"
-            style={{
-              backgroundColor: colors.card,
-              border: `1px solid ${colors.border}`,
-            }}
-          >
-            <h3
-              className="mb-4 text-xl font-semibold font-montserrat"
-              style={{ color: colors.secondary }}
-            >
-              Connect With Us
-            </h3>
-            <p className="mb-4">
-              Follow our work and join the conversation on social media.
-            </p>
-            <div className="flex space-x-4">
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-300 backdrop-blur-sm"
-                style={{ 
-                  background: `${colors.primary}20`,
-                  color: colors.primary,
-                  border: `1px solid ${colors.primary}30`,
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                F
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-300 backdrop-blur-sm"
-                style={{ 
-                  background: `${colors.secondary}20`,
-                  color: colors.secondary,
-                  border: `1px solid ${colors.secondary}30`,
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                T
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-300 backdrop-blur-sm"
-                style={{ 
-                  background: `${colors.accent}20`,
-                  color: colors.accent,
-                  border: `1px solid ${colors.accent}30`,
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                I
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-300 backdrop-blur-sm"
-                style={{ 
-                  background: `${colors.muted}20`,
-                  color: colors.muted,
-                  border: `1px solid ${colors.muted}30`,
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                L
-              </motion.a>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-            className="p-6 rounded-lg shadow-md"
-            style={{
-              backgroundColor: `${colors.secondary}10`,
-              border: `1px solid ${colors.secondary}`,
-            }}
-          >
-            <h3
-              className="mb-4 text-xl font-semibold font-montserrat"
-              style={{ color: colors.secondary }}
-            >
-              Newsletter
-            </h3>
-            <p className="mb-4">
-              Subscribe to our newsletter to receive updates on our
-              environmental initiatives and impact.
-            </p>
-            <div className="flex">
-              <input
-                type="email"
-                placeholder="Your email address"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-l-lg cursor-pointer"
-                style={{
-                  backgroundColor: colors.background,
-                  border: `1px solid ${colors.border}`,
-                  borderRight: "none",
-                  color: colors.foreground,
-                }}
-              />
-              <button
-                onClick={handleNewsletterSubmit}
-                disabled={isSubscribing}
-                className="px-4 py-2 font-medium rounded-r-lg cursor-pointer disabled:opacity-50"
-                style={{ backgroundColor: colors.secondary, color: "#ffffff" }}
-              >
-                {isSubscribing ? "Subscribing..." : "Subscribe"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-interface DonationFormProps {
-  onSubmit: (data: DonationFormData) => void;
-  showToast: (message: string, type: "success" | "error" | "warning") => void;
-  onClose: () => void;
-}
-
-function DonationForm({
-  onSubmit,
-  showToast,
-  onClose
-}: DonationFormProps): React.ReactElement {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-  const [formData, setFormData] = useState<DonationFormData>({
-    name: "",
-    email: "",
-    amount: 10,
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-  });
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof DonationFormData, string>>
-  >({});
-  const [customAmount, setCustomAmount] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-
-    let validatedValue = value;
-
-    switch (name) {
-      case "cardNumber":
-        validatedValue = value
-          .replace(/\D/g, "")
-          .replace(/(\d{4})/g, "$1 ")
-          .trim();
-        break;
-      case "cvv":
-        validatedValue = value.replace(/\D/g, "").slice(0, 4);
-        break;
-      case "expiryDate":
-        const numericValue = value.replace(/\D/g, "");
-        if (numericValue.length <= 2) {
-          validatedValue = numericValue;
-        } else {
-          validatedValue = `${numericValue.slice(0, 2)}/${numericValue.slice(
-            2,
-            4
-          )}`;
-        }
-        break;
-      default:
-        break;
-    }
-
-    setFormData((prev) => ({ ...prev, [name]: validatedValue }));
-
-    if (errors[name as keyof DonationFormData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const handleAmountSelect = (amount: number) => {
-    setFormData((prev) => ({ ...prev, amount }));
-    setCustomAmount(amount === 0);
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof DonationFormData, string>> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (
-      customAmount &&
-      (!formData.customAmount || formData.customAmount <= 0)
-    ) {
-      newErrors.customAmount = "Please enter a valid amount";
-    }
-
-    if (!formData.cardNumber.trim()) {
-      newErrors.cardNumber = "Card number is required";
-    } else if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ""))) {
-      newErrors.cardNumber = "Please enter a valid 16-digit card number";
-    }
-
-    if (!formData.expiryDate.trim()) {
-      newErrors.expiryDate = "Expiry date is required";
-    } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(formData.expiryDate)) {
-      newErrors.expiryDate = "Please use MM/YY format";
-    }
-
-    if (!formData.cvv.trim()) {
-      newErrors.cvv = "CVV is required";
-    } else if (!/^\d{3,4}$/.test(formData.cvv)) {
-      newErrors.cvv = "Please enter a valid CVV";
-    }
-
-    if (formData.expiryDate) {
-      const [month, year] = formData.expiryDate.split("/");
-      const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
-      const today = new Date();
-
-      if (expiry < today) {
-        newErrors.expiryDate = "Card has expired";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const [month, year] = formData.expiryDate.split("/");
-      const expiry = new Date(2000 + parseInt(year), parseInt(month) - 1);
-      const today = new Date();
-
-      if (expiry < today) {
-        showToast("Card has expired. Please use a valid card.", "error");
-        return;
-      }
-
-      onSubmit(formData);
-    }
-  };
-
-  const handleClose = () => onClose();
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="mb-4 text-lg font-semibold font-montserrat">
-          Choose an Amount
-        </h3>
-        <div className="grid grid-cols-3 gap-3">
-          {donationOptions.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => handleAmountSelect(option.amount)}
-              className="px-4 py-2 text-center rounded-lg cursor-pointer"
-              style={{
-                backgroundColor:
-                  formData.amount === option.amount
-                    ? colors.primary
-                    : `${colors.muted}20`,
-                color:
-                  formData.amount === option.amount
-                    ? "#ffffff"
-                    : colors.foreground,
-                border: `1px solid ${
-                  formData.amount === option.amount
-                    ? colors.primary
-                    : colors.border
-                }`,
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {customAmount && (
-          <div className="mt-4">
-            <label htmlFor="customAmount" className="block mb-2 font-medium">
-              Custom Amount ($)
-            </label>
-            <input
-              type="number"
-              id="customAmount"
-              name="customAmount"
-              value={formData.customAmount || ""}
-              onChange={handleChange}
-              min="1"
-              step="1"
-              className="w-full px-4 py-2 rounded-lg cursor-pointer"
-              style={{
-                backgroundColor: colors.background,
-                border: `1px solid ${
-                  errors.customAmount ? colors.danger : colors.border
-                }`,
-                color: colors.foreground,
-              }}
-              placeholder="Enter amount"
-            />
-            {errors.customAmount && (
-              <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                {errors.customAmount}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label htmlFor="name" className="block mb-2 font-medium">
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full px-4 py-2 rounded-lg cursor-pointer"
-            style={{
-              backgroundColor: colors.background,
-              border: `1px solid ${
-                errors.name ? colors.danger : colors.border
-              }`,
-              color: colors.foreground,
-            }}
-            placeholder="Your name"
-          />
-          {errors.name && (
-            <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-              {errors.name}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="email" className="block mb-2 font-medium">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-2 rounded-lg cursor-pointer"
-            style={{
-              backgroundColor: colors.background,
-              border: `1px solid ${
-                errors.email ? colors.danger : colors.border
-              }`,
-              color: colors.foreground,
-            }}
-            placeholder="your.email@example.com"
-          />
-          {errors.email && (
-            <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-              {errors.email}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="mb-4 text-lg font-semibold font-montserrat">
-          Payment Information
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="cardNumber" className="block mb-2 font-medium">
-              Card Number
-            </label>
-            <input
-              type="text"
-              id="cardNumber"
-              name="cardNumber"
-              value={formData.cardNumber}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-lg cursor-pointer"
-              style={{
-                backgroundColor: colors.background,
-                border: `1px solid ${
-                  errors.cardNumber ? colors.danger : colors.border
-                }`,
-                color: colors.foreground,
-              }}
-              placeholder="1234 5678 9012 3456"
-              maxLength={19}
-            />
-            {errors.cardNumber && (
-              <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                {errors.cardNumber}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="expiryDate" className="block mb-2 font-medium">
-                Expiry Date
-              </label>
-              <input
-                type="text"
-                id="expiryDate"
-                name="expiryDate"
-                value={formData.expiryDate}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: colors.background,
-                  border: `1px solid ${
-                    errors.expiryDate ? colors.danger : colors.border
-                  }`,
-                  color: colors.foreground,
-                }}
-                placeholder="MM/YY"
-                maxLength={5}
-              />
-              {errors.expiryDate && (
-                <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                  {errors.expiryDate}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="cvv" className="block mb-2 font-medium">
-                CVV
-              </label>
-              <input
-                type="text"
-                id="cvv"
-                name="cvv"
-                value={formData.cvv}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg cursor-pointer"
-                style={{
-                  backgroundColor: colors.background,
-                  border: `1px solid ${
-                    errors.cvv ? colors.danger : colors.border
-                  }`,
-                  color: colors.foreground,
-                }}
-                placeholder="123"
-                maxLength={4}
-              />
-              {errors.cvv && (
-                <p className="mt-1 text-sm" style={{ color: colors.danger }}>
-                  {errors.cvv}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-4">
-        <button
-          type="button"
-          onClick={() => handleClose()}
-          className="px-4 py-2 font-medium rounded-lg cursor-pointer"
-          style={{
-            backgroundColor: "transparent",
-            border: `1px solid ${colors.border}`,
-            color: colors.foreground,
-          }}
+        
+        {/* Middle Panel - Incident Details */}
+        <motion.div 
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className={`w-full lg:w-1/2 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} flex flex-col ${
+            activeMobileSection === 'details' ? 'flex h-full' : 'hidden'
+          } lg:flex lg:min-h-0 lg:flex-1`}
         >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-6 py-2 font-medium rounded-lg cursor-pointer"
-          style={{ backgroundColor: colors.success, color: "#ffffff" }}
-        >
-          Complete Donation
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function Toast({ message, type, onClose }: ToastProps): React.ReactElement {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-
-  const toastColors = {
-    success: {
-      bg: colors.success,
-      gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-      icon: <Check size={20} color="#ffffff" />,
-    },
-    error: {
-      bg: colors.danger,
-      gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-      icon: <X size={20} color="#ffffff" />,
-    },
-    warning: {
-      bg: colors.warning,
-      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-      icon: <AlertTriangle size={20} color="#ffffff" />,
-    },
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.3 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-      whileHover={{ scale: 1.02 }}
-      className="flex items-center w-full p-4 md:p-6 space-x-3 md:space-x-4 rounded-2xl backdrop-blur-xl border shadow-2xl relative overflow-hidden"
-      style={{ 
-        background: colors.glass,
-        borderColor: toastColors[type].bg,
-        backdropFilter: "blur(20px)",
-      }}
-    >
-      <div className="absolute inset-0 opacity-10">
-        <div
-          className="absolute top-0 right-0 w-20 h-20 rounded-full blur-xl"
-          style={{ background: toastColors[type].gradient }}
-        />
-      </div>
-      <div 
-        className="flex-shrink-0 p-2 rounded-xl relative z-10"
-        style={{ background: toastColors[type].gradient }}
-      >
-        {toastColors[type].icon}
-      </div>
-      <div className="flex-1 text-sm md:text-base font-medium relative z-10" style={{ color: colors.foreground }}>
-        {message}
-      </div>
-      <motion.button 
-        onClick={onClose} 
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="flex-shrink-0 p-2 rounded-xl backdrop-blur-sm relative z-10 cursor-pointer"
-        style={{ background: colors.glass }}
-      >
-        <X size={18} style={{ color: colors.foreground }} />
-      </motion.button>
-    </motion.div>
-  );
-}
-
-function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-}: ModalProps): React.ReactElement {
-  const { colors } = useContext(ThemeContext) as ThemeContextType;
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-      onClose();
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/30"
-          style={{ 
-            backdropFilter: "blur(20px)",
-          }}
-          onClick={handleBackdropClick}
-        >
-          <motion.div
-            ref={modalRef}
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.9, y: 20, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-full max-w-4xl max-h-[90vh] overflow-auto rounded-3xl backdrop-blur-xl border shadow-2xl relative"
-            style={{ 
-              background: colors.glass,
-              borderColor: colors.border,
-              backdropFilter: "blur(20px)",
-            }}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className={`p-2 bg-gradient-to-r from-rose-500 to-rose-600 flex-shrink-0`}
           >
-            <div className="absolute inset-0 opacity-5">
-              <div
-                className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl"
-                style={{ background: colors.gradient }}
-              />
-              <div
-                className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl"
-                style={{ background: colors.gradientSecondary }}
-              />
-            </div>
-            <div
-              className="flex items-center justify-between p-8 border-b relative z-10"
-              style={{ borderColor: colors.border }}
-            >
-              <h3
-                className="text-2xl font-bold font-montserrat bg-gradient-to-r bg-clip-text text-transparent"
-                style={{ backgroundImage: colors.gradient }}
-              >
-                {title}
-              </h3>
-              <motion.button
-                onClick={onClose}
-                whileHover={{ scale: 1.1, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 cursor-pointer"
-                style={{ background: colors.glass }}
-              >
-                <X size={24} style={{ color: colors.foreground }} />
-              </motion.button>
-            </div>
-            <div className="p-8 relative z-10">{children}</div>
+            <h2 className="text-sm font-medium text-white">Incident Details</h2>
           </motion.div>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {renderIncidentDetails()}
+          </div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        
+        {/* Right Panel - Unit Status */}
+        <motion.div 
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className={`w-full lg:w-1/4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} flex flex-col ${
+            activeMobileSection === 'units' ? 'flex h-full' : 'hidden'
+          } lg:flex lg:max-h-none lg:min-h-0`}
+        >
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className={`p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 flex-shrink-0`}
+          >
+            <h2 className="text-sm font-medium text-white">Unit Status</h2>
+          </motion.div>
+          
+          <div className="overflow-y-auto flex-1 min-h-0">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.8 }}
+              className="p-2 space-y-2"
+            >
+              <h3 className="text-xs font-medium text-blue-500 uppercase tracking-wide">Police Units</h3>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {units.filter(unit => unit.type === 'Police Car').map((unit, index) => (
+                    <motion.div 
+                      key={unit.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                      className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} p-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 hover:bg-opacity-80 hover:shadow-md border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center">
+                          <div className={`w-6 h-6 rounded-md shadow-sm flex items-center justify-center mr-2 bg-gradient-to-br from-slate-500 to-slate-600`}>
+                            <Users size={12} className="text-white" />
+                          </div>
+                          <div>
+                            <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium block text-xs`}>{unit.id}</span>
+                            <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono`}>{unit.crew} crew</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs truncate flex-1 mr-2`}>{unit.location}</span>
+                        <motion.button 
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleUnitStatus(unit.id)}
+                          className={`px-2 py-1 rounded-md shadow-sm cursor-pointer text-white text-xs font-medium transition-all duration-200 hover:shadow-md ${unitStatusColors[unit.status]}`}
+                        >
+                          {unit.status === 'OutOfService' ? 'Out of Service' : 
+                           unit.status === 'Responding' ? 'Responding' :
+                           unit.status === 'On Scene' ? 'On Scene' : 'Available'}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+              
+              <h3 className="text-xs font-medium text-red-500 uppercase tracking-wide mt-4">Fire Units</h3>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {units.filter(unit => unit.type === 'Fire Truck').map((unit, index) => (
+                    <motion.div 
+                      key={unit.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 + 0.2 }}
+                      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                      className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} p-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 hover:bg-opacity-80 hover:shadow-md border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center">
+                          <div className={`w-6 h-6 rounded-md shadow-sm flex items-center justify-center mr-2 bg-gradient-to-br from-slate-500 to-slate-600`}>
+                            <Truck size={12} className="text-white" />
+                          </div>
+                          <div>
+                            <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium block text-xs`}>{unit.id}</span>
+                            <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono`}>{unit.crew} crew</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs truncate flex-1 mr-2`}>{unit.location}</span>
+                        <motion.button 
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleUnitStatus(unit.id)}
+                          className={`px-2 py-1 rounded-md shadow-sm cursor-pointer text-white text-xs font-medium transition-all duration-200 hover:shadow-md ${unitStatusColors[unit.status]}`}
+                        >
+                          {unit.status === 'OutOfService' ? 'Out of Service' : 
+                           unit.status === 'Responding' ? 'Responding' :
+                           unit.status === 'On Scene' ? 'On Scene' : 'Available'}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+              
+              <h3 className="text-xs font-medium text-green-500 uppercase tracking-wide mt-4">EMS Units</h3>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {units.filter(unit => unit.type === 'Ambulance').map((unit, index) => (
+                    <motion.div 
+                      key={unit.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 + 0.4 }}
+                      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                      className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} p-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 hover:bg-opacity-80 hover:shadow-md border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center">
+                          <div className={`w-6 h-6 rounded-md shadow-sm flex items-center justify-center mr-2 bg-gradient-to-br from-slate-500 to-slate-600`}>
+                            <Truck size={12} className="text-white" />
+                          </div>
+                          <div>
+                            <span className={`${isDarkMode ? 'text-white' : 'text-gray-900'} font-medium block text-xs`}>{unit.id}</span>
+                            <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs font-mono`}>{unit.crew} crew</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-xs truncate flex-1 mr-2`}>{unit.location}</span>
+                        <motion.button 
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleUnitStatus(unit.id)}
+                          className={`px-2 py-1 rounded-md shadow-sm cursor-pointer text-white text-xs font-medium transition-all duration-200 hover:shadow-md ${unitStatusColors[unit.status]}`}
+                        >
+                          {unit.status === 'OutOfService' ? 'Out of Service' : 
+                           unit.status === 'Responding' ? 'Responding' :
+                           unit.status === 'On Scene' ? 'On Scene' : 'Available'}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 }
+
+export default Home;
