@@ -1,2954 +1,3073 @@
-"use client"
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Head from 'next/head';
-import { Leaf, Handshake, Globe, Award, Sparkles, Zap } from 'lucide-react';
+"use client";
 
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  ChartBarIcon,
+  ClockIcon,
+  EyeIcon,
+  PlusIcon,
+  PlayIcon,
+  PauseIcon,
+  StopIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  DevicePhoneMobileIcon,
+  ComputerDesktopIcon,
+  ChevronDownIcon,
+  UserGroupIcon,
+  DocumentTextIcon,
+  CogIcon,
+  BellIcon,
+  PencilIcon,
+  TrashIcon,
+  DocumentDuplicateIcon,
+  ArrowDownTrayIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  ShareIcon,
+  StarIcon,
+  CalendarIcon,
+  ClipboardDocumentListIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
+interface Question {
+  id: string;
+  type: "multiple-choice" | "text" | "essay";
+  question: string;
+  options?: string[];
+  correctAnswer?: string | number;
+  points: number;
+}
+
+interface Test {
+  id: string;
+  title: string;
+  description: string;
+  duration: number;
+  questions: Question[];
+  createdAt: Date;
+  status: "draft" | "published" | "archived";
   category: string;
-  size?: string;
-  description?: string;
-  rating?: number;
-  reviews?: number;
-  badge?: string;
+  difficulty: "easy" | "medium" | "hard";
+  tags: string[];
 }
 
-interface CartItem extends Product {
-  quantity: number;
-  selectedSize?: string;
+interface TestSession {
+  id: string;
+  testId: string;
+  userId: string;
+  userName: string;
+  startTime: Date;
+  endTime?: Date;
+  answers: Record<string, any>;
+  score?: number;
+  violations: string[];
+  status: "in-progress" | "completed" | "paused" | "terminated";
+  timeSpent: number;
 }
 
-const PRODUCT_DATA: Product[] = [
-  {
-    id: 1,
-    name: 'Essential Hoodie',
-    price: 89.99,
-    originalPrice: 119.99,
-    image: 'https://i.ibb.co/wN8Dpb82/photo-1556821840-3a63f95609a7.jpg', 
-    category: 'Hoodies',
-    size: 'S-M-L-XL',
-    description: 'Minimalist cotton hoodie with clean lines and premium construction.',
-    rating: 4.8,
-    reviews: 124,
-    badge: 'Best Seller'
-  },
-  {
-    id: 2,
-    name: 'Classic Tee',
-    price: 24.99,
-    image: 'https://i.ibb.co/QF4HKVW1/photo-1521572163474-6864f9cf17ab.jpg', 
-    category: 'T-Shirts',
-    size: 'XS-S-M-L-XL',
-    description: 'Timeless t-shirt crafted from 100% organic cotton with perfect fit.',
-    rating: 4.6,
-    reviews: 89
-  },
-  {
-    id: 3,
-    name: 'Tailored Trousers',
-    price: 79.99,
-    originalPrice: 99.99,
-    image: 'https://i.ibb.co/C5mvqDK4/photo-1594633312681-425c7b97ccd1.jpg', 
-    category: 'Pants',
-    size: '28-30-32-34-36',
-    description: 'Modern tailored trousers with clean silhouette and premium fabric.',
-    rating: 4.7,
-    reviews: 156
-  },
-  {
-    id: 4,
-    name: 'Minimal Sneakers',
-    price: 129.99,
-    image: 'https://i.ibb.co/6pqnH5s/photo-1549298916-b41d501d3772.jpg', 
-    category: 'Footwear',
-    size: 'US 7-11',
-    description: 'Clean white sneakers with premium leather and minimalist design.',
-    rating: 4.9,
-    reviews: 203,
-    badge: 'New'
-  },
-  {
-    id: 5,
-    name: 'Wool Coat',
-    price: 249.99,
-    image: 'https://i.ibb.co/27hw72kW/photo-1539533018447-63fcce2678e3.jpg', 
-    category: 'Outerwear',
-    size: 'S-M-L-XL',
-    description: 'Elegant wool coat with timeless cut and luxurious finish.',
-    rating: 4.8,
-    reviews: 67
-  },
-  {
-    id: 6,
-    name: 'Silk Dress',
-    price: 159.99,
-    originalPrice: 199.99,
-    image: 'https://i.ibb.co/nsKf9zjf/photo-1595777457583-95e059d581b8.jpg', 
-    category: 'Dresses',
-    size: 'XS-S-M-L',
-    description: 'Flowing silk dress with modern silhouette and refined details.',
-    rating: 4.5,
-    reviews: 92
-  },
-  {
-    id: 7,
-    name: 'Denim Jacket',
-    price: 89.99,
-    image: 'https://i.ibb.co/XffsgQB1/photo-1551698618-1dfe5d97d256.jpg', 
-    category: 'Outerwear',
-    size: 'S-M-L-XL',
-    description: 'Classic denim jacket with modern fit and premium wash.',
-    rating: 4.6,
-    reviews: 78
-  },
-  {
-    id: 8,
-    name: 'Knit Sweater',
-    price: 69.99,
-    image: 'https://i.ibb.co/S7yf1scw/photo-1576566588028-4147f3842f27.jpg', 
-    category: 'Sweaters',
-    size: 'S-M-L-XL',
-    description: 'Cozy knit sweater perfect for layering and everyday wear.',
-    rating: 4.7,
-    reviews: 134
-  }
-];
+interface Toast {
+  id: string;
+  type: "success" | "error" | "warning" | "info";
+  message: string;
+  duration?: number;
+}
 
-const FEATURED_COLLECTIONS = [
-  {
-    id: 1,
-    title: 'ESSENTIALS',
-    description: 'Timeless pieces for everyday elegance',
-    image: 'https://i.ibb.co/spS3g5VX/photo-1441986300917-64674bd600d8.jpg'
-  },
-  {
-    id: 2,
-    title: 'MINIMALIST',
-    description: 'Clean lines and refined simplicity',
-    image: 'https://i.ibb.co/k2Pv7Z3r/photo-1469334031218-e382a71b716b.jpg'
-  }
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "instructor" | "student";
+  avatar: string;
+  totalTests: number;
+  avgScore: number;
+}
 
-const SECTION_VARIANTS = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.6,
-      ease: [0.22, 1, 0.36, 1]
-    }
-  }
-};
+const TestPro: React.FC = () => {
+  // UI State
+  const [activeView, setActiveView] = useState<
+    | "dashboard"
+    | "create"
+    | "test"
+    | "analytics"
+    | "settings"
+    | "users"
+    | "library"
+  >("dashboard");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(
+    "desktop"
+  );
+  const [showProctorModal, setShowProctorModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [editingTest, setEditingTest] = useState<Test | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isOnBreak, setIsOnBreak] = useState(false);
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
+  const [isClient, setisClient] = useState(false);
+  // Test Management State
+  const [tests, setTests] = useState<Test[]>([
+    {
+      id: "1",
+      title: "JavaScript Fundamentals",
+      description: "Test your knowledge of JavaScript basics",
+      duration: 45,
+      questions: [
+        {
+          id: "q1",
+          type: "multiple-choice",
+          question:
+            "What is the correct way to declare a variable in JavaScript?",
+          options: [
+            "var x = 5;",
+            "variable x = 5;",
+            "v x = 5;",
+            "declare x = 5;",
+          ],
+          correctAnswer: 0,
+          points: 1,
+        },
+        {
+          id: "q2",
+          type: "multiple-choice",
+          question:
+            "Which method is used to add an element to the end of an array?",
+          options: ["append()", "push()", "add()", "insert()"],
+          correctAnswer: 1,
+          points: 1,
+        },
+        {
+          id: "q3",
+          type: "text",
+          question: "What does 'DOM' stand for in web development?",
+          correctAnswer: "Document Object Model",
+          points: 2,
+        },
+      ],
+      createdAt: new Date("2024-01-15"),
+      status: "published",
+      category: "Programming",
+      difficulty: "medium",
+      tags: ["javascript", "fundamentals", "programming"],
+    },
+    {
+      id: "2",
+      title: "React Components",
+      description: "Advanced React component patterns and hooks",
+      duration: 60,
+      questions: [
+        {
+          id: "q4",
+          type: "multiple-choice",
+          question:
+            "Which hook is used to manage state in functional components?",
+          options: ["useEffect", "useState", "useContext", "useReducer"],
+          correctAnswer: 1,
+          points: 1,
+        },
+        {
+          id: "q5",
+          type: "essay",
+          question:
+            "Explain the difference between controlled and uncontrolled components in React.",
+          points: 5,
+        },
+      ],
+      createdAt: new Date("2024-01-20"),
+      status: "published", // Changed from "draft" to "published"
+      category: "Frontend",
+      difficulty: "hard",
+      tags: ["react", "components", "hooks"],
+    },
+  ]);
+  const [currentTest, setCurrentTest] = useState<Test | null>(null);
+  const [currentSession, setCurrentSession] = useState<TestSession | null>(
+    null
+  );
+  const [testSessions, setTestSessions] = useState<TestSession[]>([
+    {
+      id: "session1",
+      testId: "1",
+      userId: "user1",
+      userName: "Alice Johnson",
+      startTime: new Date("2024-01-16T10:00:00"),
+      endTime: new Date("2024-01-16T10:42:00"),
+      answers: {},
+      score: 85,
+      violations: [],
+      status: "completed",
+      timeSpent: 2520,
+    },
+    {
+      id: "session2",
+      testId: "1",
+      userId: "user2",
+      userName: "Bob Smith",
+      startTime: new Date("2024-01-17T14:30:00"),
+      endTime: new Date("2024-01-17T15:15:00"),
+      answers: {},
+      score: 92,
+      violations: ["Fullscreen exited"],
+      status: "completed",
+      timeSpent: 2700,
+    },
+    {
+      id: "session3",
+      testId: "2",
+      userId: "user3",
+      userName: "Carol Davis",
+      startTime: new Date("2024-01-18T09:00:00"),
+      endTime: new Date("2024-01-18T09:55:00"),
+      answers: {},
+      score: 78,
+      violations: [],
+      status: "completed",
+      timeSpent: 3300,
+    },
+    {
+      id: "session4",
+      testId: "1",
+      userId: "user1",
+      userName: "Alice Johnson",
+      startTime: new Date("2024-01-19T11:00:00"),
+      endTime: new Date("2024-01-19T11:38:00"),
+      answers: {},
+      score: 95,
+      violations: [],
+      status: "completed",
+      timeSpent: 2280,
+    },
+    {
+      id: "session5",
+      testId: "2",
+      userId: "user2",
+      userName: "Bob Smith",
+      startTime: new Date("2024-01-20T13:00:00"),
+      endTime: new Date("2024-01-20T13:52:00"),
+      answers: {},
+      score: 88,
+      violations: ["Tab switched"],
+      status: "completed",
+      timeSpent: 3120,
+    },
+  ]);
 
-const buttonVariants = {
-  hover: { 
-    scale: 1.05,
-    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-  },
-  tap: { scale: 0.95 }
-};
+  // Users State
+  const [users, setUsers] = useState<User[]>([
+    {
+      id: "user1",
+      name: "Alice Johnson",
+      email: "alice@company.com",
+      role: "student",
+      avatar:
+        "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face",
+      totalTests: 5,
+      avgScore: 87,
+    },
+    {
+      id: "user2",
+      name: "Bob Smith",
+      email: "bob@company.com",
+      role: "student",
+      avatar:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
+      totalTests: 3,
+      avgScore: 92,
+    },
+    {
+      id: "user3",
+      name: "Carol Davis",
+      email: "carol@company.com",
+      role: "instructor",
+      avatar:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
+      totalTests: 12,
+      avgScore: 95,
+    },
+  ]);
 
-const cardVariants = {
-  hover: { 
-    y: -8,
-    scale: 1.02,
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
-  }
-};
+  // Test Creation State
+  const [testForm, setTestForm] = useState({
+    title: "",
+    description: "",
+    duration: 60,
+    category: "",
+    difficulty: "medium" as "easy" | "medium" | "hard",
+    tags: [] as string[],
+    questions: [] as Question[],
+  });
+  const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({
+    type: "multiple-choice",
+    question: "",
+    options: ["", "", "", ""],
+    points: 1,
+    correctAnswer: undefined,
+  });
 
-const pageTransition = {
-  initial: { opacity: 0, y: 20 },
-  animate: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.5,
-      ease: [0.22, 1, 0.36, 1]
-    }
-  },
-  exit: {
-    opacity: 0,
-    y: -20,
-    transition: { duration: 0.4 }
-  }
-};
+  // Timer State
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [breaks, setBreaks] = useState<
+    { start: Date; end?: Date; reason: string }[]
+  >([]);
 
-const ShoppingApp = () => {
-  const [products] = useState<Product[]>(PRODUCT_DATA);
-  const [collections] = useState(FEATURED_COLLECTIONS);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(PRODUCT_DATA);
-  const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [totalItems, setTotalItems] = useState<number>(0);
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [showCart, setShowCart] = useState<boolean>(false);
-  const [showNotification, setShowNotification] = useState<boolean>(false);
-  const [notificationMessage, setNotificationMessage] = useState<string>('');
-  const [isMounted, setIsMounted] = useState<boolean>(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showQuickView, setShowQuickView] = useState<boolean>(false);
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [showCheckoutSuccessNotification, setShowCheckoutSuccessNotification] = useState<boolean>(false);
-  const [checkoutSuccessMessage, setCheckoutSuccessMessage] = useState<string>('');
-  const [favoriteItems, setFavoriteItems] = useState<number[]>([]);
-  const [showSubscribeNotification, setShowSubscribeNotification] = useState<boolean>(false);
-  const [subscribeMessage, setSubscribeMessage] = useState<string>('');
-  const [showFavorites, setShowFavorites] = useState<boolean>(false);
-  const [showFeatureNotification, setShowFeatureNotification] = useState<boolean>(false);
-  const [featureNotificationMessage, setFeatureNotificationMessage] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<string>('home');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  // Toast State
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  
-  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
-  const [contactErrors, setContactErrors] = useState({ name: '', email: '', message: '' });
+  // Form Validation State
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
-  
-  const [subscribeEmail, setSubscribeEmail] = useState('');
-  const [subscribeError, setSubscribeError] = useState('');
+  // Refs
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
-  const productsRef = useRef<HTMLDivElement>(null);
-  const allProductsSectionRef = useRef<HTMLDivElement>(null);
-  const contactRef = useRef<HTMLDivElement>(null);
-  const aboutRef = useRef<HTMLDivElement>(null);
-  
-  const categories = ['All', ...new Set(products.map(product => product.category))];
-  const featuredProducts = products.slice(0, 4);
-
-  const variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { 
-        duration: 0.5,
-        ease: [0.22, 1, 0.36, 1]
-      }
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { 
-        type: 'spring', 
-        stiffness: 100,
-        damping: 12
-      }
-    }
-  };
-
-  const filterProducts = (category: string, query: string = '') => {
-    setActiveCategory(category);
-    setSearchQuery(query);
-    
-    // Auto-switch to products page when search is performed
-    if (query.trim()) {
-      setCurrentPage('products');
-    }
-    
-    let filtered = [...products];
-    
-    if (category !== 'All') {
-      filtered = filtered.filter(product => product.category === category);
-    }
-    
-    if (query) {
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(query.toLowerCase()) || 
-        product.description?.toLowerCase().includes(query.toLowerCase()) ||
-        product.category.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-    
-    setFilteredProducts(filtered);
-  };
-
-  const addToCart = (product: Product, size?: string) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => 
-        item.id === product.id && item.selectedSize === size
-      );
-      
-      if (existingItem) {
-        return prevItems.map(item => 
-          item.id === product.id && item.selectedSize === size
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        );
-      } else {
-        return [...prevItems, { ...product, quantity: 1, selectedSize: size }];
-      }
-    });
-    
-    const sizeText = size ? ` (Size: ${size})` : '';
-    setNotificationMessage(`${product.name}${sizeText} added to cart!`);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  };
-
-  const removeFromCart = (productId: number, size?: string) => {
-    setCartItems(prevItems => 
-      prevItems.filter(item => !(item.id === productId && item.selectedSize === size))
-    );
-  };
-
-  const updateQuantity = (productId: number, newQuantity: number, size?: string) => {
-    if (newQuantity < 1) {
-      removeFromCart(productId, size);
-      return;
-    }
-    
-    setCartItems(prevItems => 
-      prevItems.map(item => 
-        item.id === productId && item.selectedSize === size
-          ? { ...item, quantity: newQuantity } 
-          : item
-      )
-    );
-  };
+  // Check if mobile view
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-    
-    const newTotalItems = cartItems.reduce((total, item) => total + item.quantity, 0);
-    const newTotalPrice = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-    
-    setTotalItems(newTotalItems);
-    setTotalPrice(newTotalPrice);
-  }, [cartItems]);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
-
-  // Prevent background scrolling when sidebars or modals are open
-  useEffect(() => {
-    if (showCart || showFavorites || showQuickView) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showCart, showFavorites, showQuickView]);
-
-  // Initialize filtered products on component mount
-  useEffect(() => {
-    setFilteredProducts(PRODUCT_DATA);
+    if (!isClient) setisClient(true);
   }, []);
 
-  const scrollToAllProducts = () => {
-    allProductsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToContact = () => {
-    contactRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToAbout = () => {
-    aboutRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const exploreCollection = (collectionTitle: string) => {
-    const categoryMap: { [key: string]: string } = {
-      'ESSENTIALS': 'T-Shirts',
-      'MINIMALIST': 'Outerwear'
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-    
-    const category = categoryMap[collectionTitle] || 'All';
-    filterProducts(category);
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Toast Management
+  const addToast = useCallback((toast: Omit<Toast, "id">) => {
+    const id = Date.now().toString();
+    const newToast = { ...toast, id };
+    setToasts((prev) => [...prev, newToast]);
+
     setTimeout(() => {
-      allProductsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 0);
-  };
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, toast.duration || 5000);
+  }, []);
 
-  const viewProductDetails = (product: Product) => {
-    setSelectedProduct(product);
-    setSelectedSize('');
-    setQuantity(1);
-    setShowQuickView(true);
-  };
+  // Close mobile menu function
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
 
-  const handleQuickViewAddToCart = () => {
-    if (selectedProduct && selectedSize) {
-      for (let i = 0; i < quantity; i++) {
-        addToCart(selectedProduct, selectedSize);
+  // Fullscreen Detection with User-Initiated Re-entry
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+
+      if (
+        currentSession &&
+        !isCurrentlyFullscreen &&
+        (currentSession.status === "in-progress" || isOnBreak)
+      ) {
+        // Log the violation
+        setCurrentSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                violations: [
+                  ...prev.violations,
+                  `Fullscreen exited at ${new Date().toISOString()}`,
+                ],
+              }
+            : null
+        );
+
+        // Pause the timer when fullscreen is exited
+        setIsTimerActive(false);
+
+        // Show warning modal that requires user action
+        setShowFullscreenWarning(true);
+
+        addToast({
+          type: "error",
+          message: "Test paused - Fullscreen mode required!",
+          duration: 5000,
+        });
       }
-      setShowQuickView(false);
-      setSelectedSize('');
-      setQuantity(1);
-    }
-  };
+    };
 
-  const toggleFavorite = (productId: number) => {
-    setFavoriteItems(prevFavorites => {
-      if (prevFavorites.includes(productId)) {
-        return prevFavorites.filter(id => id !== productId);
-      } else {
-        return [...prevFavorites, productId];
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [currentSession, addToast, isOnBreak]);
+  // Fullscreen Detection
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+
+      if (currentSession && !isCurrentlyFullscreen) {
+        // Log violation
+        setCurrentSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                violations: [
+                  ...prev.violations,
+                  `Fullscreen exited at ${new Date().toISOString()}`,
+                ],
+              }
+            : null
+        );
+
+        // Always pause and show blocking modal
+        setIsTimerActive(false);
+        setShowFullscreenWarning(true);
+
+        addToast({
+          type: "error",
+          message: "Test paused - Fullscreen mode required!",
+        });
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [currentSession, addToast]);
+
+  // Timer Management
+  useEffect(() => {
+    if (isTimerActive && timeRemaining > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            setIsTimerActive(false);
+            if (currentSession) {
+              endTestSession();
+            }
+            return 0;
+          }
+
+          // Warning alerts
+          if (prev === 300) {
+            // 5 minutes
+            addToast({
+              type: "warning",
+              message: "5 minutes remaining!",
+            });
+          } else if (prev === 60) {
+            // 1 minute
+            addToast({
+              type: "error",
+              message: "1 minute remaining!",
+            });
+          }
+
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isTimerActive, timeRemaining, currentSession]);
+
+  // Validation
+  const validateTestForm = useCallback(() => {
+    const errors: Record<string, string> = {};
+
+    if (!testForm.title.trim()) errors.title = "Title is required";
+    if (!testForm.description.trim())
+      errors.description = "Description is required";
+    if (testForm.duration < 1)
+      errors.duration = "Duration must be at least 1 minute";
+    if (!testForm.category.trim()) errors.category = "Category is required";
+    if (testForm.questions.length === 0)
+      errors.questions = "At least one question is required";
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [testForm]);
+
+  const validateQuestion = useCallback(() => {
+    const errors: Record<string, string> = {};
+
+    if (!currentQuestion.question?.trim())
+      errors.question = "Question text is required";
+    if (!currentQuestion.points || currentQuestion.points < 1)
+      errors.points = "Points must be at least 1";
+
+    if (currentQuestion.type === "multiple-choice") {
+      if (!currentQuestion.options?.some((opt) => opt.trim())) {
+        errors.options = "At least one option is required";
+      }
+      if (currentQuestion.correctAnswer === undefined || currentQuestion.correctAnswer === null) {
+        errors.correctAnswer = "Please select the correct answer";
+      }
+    }
+
+    if (currentQuestion.type === "text") {
+      if (!currentQuestion.correctAnswer || !(currentQuestion.correctAnswer as string).trim()) {
+        errors.correctAnswer = "Correct answer is required for text questions";
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [currentQuestion]);
+
+  // Test Management Functions
+  const createTest = useCallback(() => {
+    if (!validateTestForm()) return;
+
+    const newTest: Test = {
+      id: Date.now().toString(),
+      title: testForm.title,
+      description: testForm.description,
+      duration: testForm.duration,
+      category: testForm.category,
+      difficulty: testForm.difficulty,
+      tags: testForm.tags,
+      questions: testForm.questions,
+      createdAt: new Date(),
+      status: "draft",
+    };
+
+    setTests((prev) => [...prev, newTest]);
+    setTestForm({
+      title: "",
+      description: "",
+      duration: 60,
+      category: "",
+      difficulty: "medium",
+      tags: [],
+      questions: [],
+    });
+    addToast({ type: "success", message: "Test created successfully!" });
+    setActiveView("library");
+  }, [testForm, validateTestForm, addToast]);
+
+  const duplicateTest = useCallback(
+    (test: Test) => {
+      const duplicatedTest: Test = {
+        ...test,
+        id: Date.now().toString(),
+        title: `${test.title} (Copy)`,
+        status: "draft",
+        createdAt: new Date(),
+      };
+      setTests((prev) => [...prev, duplicatedTest]);
+      addToast({ type: "success", message: "Test duplicated successfully!" });
+    },
+    [addToast]
+  );
+
+  const deleteTest = useCallback(
+    (testId: string) => {
+      setTests((prev) => prev.filter((t) => t.id !== testId));
+      addToast({ type: "success", message: "Test deleted successfully!" });
+    },
+    [addToast]
+  );
+
+  const publishTest = useCallback(
+    (testId: string) => {
+      setTests((prev) =>
+        prev.map((t) =>
+          t.id === testId ? { ...t, status: "published" as const } : t
+        )
+      );
+      addToast({ type: "success", message: "Test published successfully!" });
+    },
+    [addToast]
+  );
+
+  const addQuestion = useCallback(() => {
+    if (!validateQuestion()) return;
+
+    const question: Question = {
+      id: Date.now().toString(),
+      type: currentQuestion.type!,
+      question: currentQuestion.question!,
+      options: currentQuestion.options,
+      correctAnswer: currentQuestion.correctAnswer,
+      points: currentQuestion.points!,
+    };
+
+    setTestForm((prev) => ({
+      ...prev,
+      questions: [...prev.questions, question],
+    }));
+
+    setCurrentQuestion({
+      type: "multiple-choice",
+      question: "",
+      options: ["", "", "", ""],
+      points: 1,
+      correctAnswer: undefined,
+    });
+
+    addToast({ type: "success", message: "Question added successfully!" });
+  }, [currentQuestion, validateQuestion, addToast]);
+
+  const editQuestion = useCallback(
+    (questionId: string) => {
+      const question = testForm.questions.find((q) => q.id === questionId);
+      if (question) {
+        setCurrentQuestion(question);
+        setTestForm((prev) => ({
+          ...prev,
+          questions: prev.questions.filter((q) => q.id !== questionId),
+        }));
+      }
+    },
+    [testForm.questions]
+  );
+
+  const removeQuestion = useCallback(
+    (questionId: string) => {
+      setTestForm((prev) => ({
+        ...prev,
+        questions: prev.questions.filter((q) => q.id !== questionId),
+      }));
+      addToast({ type: "success", message: "Question removed successfully!" });
+    },
+    [addToast]
+  );
+
+  const startTest = useCallback(
+    (test: Test) => {
+      setCurrentTest(test);
+      setTimeRemaining(test.duration * 60);
+
+      const session: TestSession = {
+        id: Date.now().toString(),
+        testId: test.id,
+        userId: "current-user",
+        userName: "Current User",
+        startTime: new Date(),
+        answers: {},
+        violations: [],
+        status: "in-progress",
+        timeSpent: 0,
+      };
+
+      setCurrentSession(session);
+      setIsTimerActive(true);
+      setActiveView("test");
+
+      // Enter fullscreen
+      if (fullscreenRef.current) {
+        fullscreenRef.current.requestFullscreen();
+      }
+
+      addToast({ type: "info", message: "Test started. Good luck!" });
+    },
+    [addToast]
+  );
+
+  const endTestSession = useCallback(() => {
+    if (!currentSession || !currentTest) return;
+
+    // Calculate the score
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    currentTest.questions.forEach((question) => {
+      totalPoints += question.points;
+      const userAnswer = currentSession.answers[question.id];
+
+      if (userAnswer !== undefined && userAnswer !== null) {
+        if (question.type === "multiple-choice") {
+          // For multiple choice, check if the selected option index matches
+          if (userAnswer === question.correctAnswer) {
+            earnedPoints += question.points;
+          }
+        } else if (question.type === "text") {
+          // For text questions, do case-insensitive comparison
+          const correctAnswer = (question.correctAnswer as string || "").toLowerCase().trim();
+          const givenAnswer = (userAnswer as string || "").toLowerCase().trim();
+          if (correctAnswer && givenAnswer === correctAnswer) {
+            earnedPoints += question.points;
+          }
+        }
+        // Note: Essay questions are not auto-graded, they would need manual review
       }
     });
-  };
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    let error = '';
-    if (!subscribeEmail.trim()) {
-      error = 'Email is required.';
-    } else if (!/\S+@\S+\.\S+/.test(subscribeEmail)) {
-      error = 'Email address is invalid.';
+    // Calculate percentage score
+    const percentageScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+
+    const completedSession: TestSession = {
+      ...currentSession,
+      endTime: new Date(),
+      status: "completed",
+      score: percentageScore,
+      timeSpent: currentTest ? currentTest.duration * 60 - timeRemaining : 0,
+    };
+
+    setTestSessions((prev) => [...prev, completedSession]);
+
+    // Reset all test-related state
+    setCurrentSession(null);
+    setCurrentTest(null);
+    setIsTimerActive(false);
+    setTimeRemaining(0);
+    setIsOnBreak(false);
+
+    // Clear any timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
 
-    if (error) {
-      setSubscribeError(error);
-      setShowSubscribeNotification(false); 
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+
+    setActiveView("dashboard");
+    addToast({ 
+      type: "success", 
+      message: `Test completed! Your score: ${percentageScore}% (${earnedPoints}/${totalPoints} points)` 
+    });
+  }, [currentSession, currentTest, timeRemaining, addToast]);
+
+  const takeBreak = useCallback(
+    (reason: string) => {
+      if (!currentSession) return;
+
+      setBreaks((prev) => [...prev, { start: new Date(), reason }]);
+      setIsTimerActive(false);
+      setIsOnBreak(true);
+      setShowProctorModal(false);
+
+      addToast({ type: "info", message: `Break started: ${reason}` });
+    },
+    [currentSession, addToast]
+  );
+  const resumeTest = useCallback(() => {
+    if (!currentSession || !isOnBreak) return;
+
+    setIsOnBreak(false);
+    setIsTimerActive(true);
+
+    // Update the last break entry with end time
+    setBreaks((prev) => {
+      const updated = [...prev];
+      if (updated.length > 0) {
+        updated[updated.length - 1].end = new Date();
+      }
+      return updated;
+    });
+
+    addToast({ type: "info", message: "Test resumed" });
+  }, [currentSession, isOnBreak, addToast]);
+  // Filtered tests
+  const filteredTests = useMemo(() => {
+    return tests.filter((test) => {
+      const matchesSearch =
+        test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        test.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        test.tags.some((tag) =>
+          tag.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      const matchesCategory =
+        filterCategory === "all" || test.category === filterCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [tests, searchQuery, filterCategory]);
+
+  // Analytics Data
+  const analyticsData = useMemo(() => {
+    const completedSessions = testSessions.filter(
+      (s) => s.status === "completed"
+    );
+    const categories = [...new Set(tests.map((t) => t.category))];
+
+    // Performance over time data
+    const performanceData = completedSessions
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+      .map((session, index) => ({
+        session: index + 1,
+        score: session.score || 0,
+        date: session.startTime.toLocaleDateString(),
+      }));
+
+    // Category performance data
+    const categoryData = categories.map((category) => {
+      const categoryTests = tests.filter((t) => t.category === category);
+      const categorySessions = completedSessions.filter((s) =>
+        categoryTests.some((t) => t.id === s.testId)
+      );
+      const avgScore =
+        categorySessions.length > 0
+          ? categorySessions.reduce((acc, s) => acc + (s.score || 0), 0) /
+            categorySessions.length
+          : 0;
+
+      return {
+        category,
+        avgScore: Math.round(avgScore),
+        sessions: categorySessions.length,
+      };
+    });
+
+    // Score distribution data
+    const scoreRanges = [
+      { range: "90-100", count: 0, color: "#10B981", name: "90-100" },
+      { range: "80-89", count: 0, color: "#3B82F6", name: "80-89" },
+      { range: "70-79", count: 0, color: "#F59E0B", name: "70-79" },
+      { range: "60-69", count: 0, color: "#EF4444", name: "60-69" },
+      { range: "Below 60", count: 0, color: "#6B7280", name: "Below 60" },
+    ];
+
+    completedSessions.forEach((session) => {
+      const score = session.score || 0;
+      if (score >= 90) scoreRanges[0].count++;
+      else if (score >= 80) scoreRanges[1].count++;
+      else if (score >= 70) scoreRanges[2].count++;
+      else if (score >= 60) scoreRanges[3].count++;
+      else scoreRanges[4].count++;
+    });
+
+    // Update names to include counts for legend
+    scoreRanges.forEach(range => {
+      range.name = `${range.range}: ${range.count}`;
+    });
+
+    return {
+      totalTests: tests.length,
+      totalSessions: testSessions.length,
+      totalUsers: users.length,
+      avgScore:
+        completedSessions.reduce((acc, s) => acc + (s.score || 0), 0) /
+          completedSessions.length || 0,
+      completionRate:
+        (completedSessions.length / testSessions.length) * 100 || 0,
+      categories,
+      recentActivity: testSessions.slice(-10).reverse(),
+      performanceData,
+      categoryData,
+      scoreDistribution: scoreRanges,
+    };
+  }, [tests, testSessions, users]);
+
+  // Format time helper
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  }, []);
+
+  // Close mobile menu when clicking outside
+  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setIsMobileMenuOpen(false);
+      setShowExportModal(false);
+    }
+  }, []);
+
+  // Handle proctor modal overlay click
+  const handleProctorOverlayClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setShowProctorModal(false);
+    }
+  }, []);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isMobileMenuOpen || showProctorModal || showExportModal) {
+      document.body.style.overflow = "hidden";
     } else {
-      setSubscribeError('');
-      
-    setSubscribeMessage('Successfully subscribed to our newsletter!');
-    setShowSubscribeNotification(true);
-    setTimeout(() => setShowSubscribeNotification(false), 4000);
-      setSubscribeEmail(''); 
-    }
-  };
-
-  const showComingSoonNotification = (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>, featureName: string) => {
-    event.preventDefault();
-    setFeatureNotificationMessage(`${featureName} feature is under development.`);
-    setShowFeatureNotification(true);
-    setTimeout(() => setShowFeatureNotification(false), 4000);
-  };
-
-  const validateContactForm = () => {
-    const errors = { name: '', email: '', message: '' };
-    let isValid = true;
-
-    if (!contactForm.name.trim()) {
-      errors.name = 'Name is required.';
-      isValid = false;
+      document.body.style.overflow = "unset";
     }
 
-    if (!contactForm.email.trim()) {
-      errors.email = 'Email is required.';
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(contactForm.email)) {
-      errors.email = 'Email address is invalid.';
-      isValid = false;
-    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileMenuOpen, showProctorModal, showExportModal]);
 
-    if (!contactForm.message.trim()) {
-      errors.message = 'Message is required.';
-      isValid = false;
-    }
+  const menuItems = [
+    { key: "dashboard", label: "Dashboard", icon: ChartBarIcon },
+    { key: "library", label: "Test Library", icon: DocumentTextIcon },
+    { key: "create", label: "Create Test", icon: PlusIcon },
+    { key: "analytics", label: "Analytics", icon: ChartBarIcon },
+  ];
 
-    setContactErrors(errors);
-    return isValid;
-  };
+  // Sparkline component for mobile
+  const Sparkline: React.FC<{ data: any[]; color: string }> = ({
+    data,
+    color,
+  }) => (
+    <div className="h-8 w-16 relative">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <Line
+            type="monotone"
+            dataKey="score"
+            stroke={color}
+            strokeWidth={2}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
 
-  const handleContactFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setContactForm(prev => ({ ...prev, [name]: value }));
-    
-    
-    if (contactErrors[name as keyof typeof contactErrors]) {
-      setContactErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateContactForm()) {
-      console.log('Form submitted successfully:', contactForm);
-      
-      
-      setNotificationMessage('Your message has been sent successfully!');
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 4000);
-
-      
-      setContactForm({ name: '', email: '', message: '' });
-      setContactErrors({ name: '', email: '', message: '' });
-    } else {
-      console.log('Form validation failed');
-      
-      
-      
-      
-    }
-  };
+  if (!isClient) {
+    return "";
+  }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
-      <Head>
-        <title>UrbanThreads | Premium Fashion</title>
-        <meta name="description" content="Elegant clothing store built with Next.js and TypeScript" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-0 right-0 w-[600px] h-[600px] rounded-full filter blur-3xl opacity-20 ${
-          isDarkMode ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600' : 'bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200'
-        }`}></div>
-        <div className={`absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full filter blur-3xl opacity-20 ${
-          isDarkMode ? 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600' : 'bg-gradient-to-tr from-blue-200 via-indigo-200 to-purple-200'
-        }`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full filter blur-3xl opacity-10 ${
-          isDarkMode ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600' : 'bg-gradient-to-r from-violet-200 via-purple-200 to-pink-200'
-        }`}></div>
-        
-        <div className={`absolute inset-0 pattern-dots opacity-30 ${isDarkMode ? '' : 'hidden'}`}></div>
+    <div
+      ref={fullscreenRef}
+      className="min-h-screen overflow-y-auto bg-gray-50 font-roboto"
+    >
+      {/* Toast Container */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`p-4 rounded-lg shadow-lg max-w-sm transition-all duration-300 ${
+              toast.type === "success"
+                ? "bg-green-500 text-white"
+                : toast.type === "error"
+                ? "bg-red-500 text-white"
+                : toast.type === "warning"
+                ? "bg-yellow-500 text-white"
+                : "bg-blue-500 text-white"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              {toast.type === "success" && (
+                <CheckCircleIcon className="h-5 w-5" />
+              )}
+              {toast.type === "error" && <XCircleIcon className="h-5 w-5" />}
+              {toast.type === "warning" && (
+                <ExclamationTriangleIcon className="h-5 w-5" />
+              )}
+              {toast.type === "info" && <BellIcon className="h-5 w-5" />}
+              <span className="font-medium">{toast.message}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <nav className={`fixed w-full backdrop-blur-xl z-50 border-b transition-all duration-300 ${
-        isDarkMode 
-          ? 'bg-gray-900/90 border-gray-700/50 shadow-lg shadow-gray-900/20' 
-          : 'bg-white/90 border-gray-200/50 shadow-lg shadow-gray-900/10'
-      }`}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="cursor-pointer"
-                whileHover={{ scale: 1.02 }}
-              onClick={() => {
-                setCurrentPage('home');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              >
-                <span className={`text-2xl font-bold tracking-tight text-gradient`}>UrbanThreads</span>
-              </motion.div>
-              
-            <div className="flex items-center">
-              <div className="hidden md:flex items-center space-x-6 mr-6"> 
-              <motion.button 
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setCurrentPage('home');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                className={`transition-all duration-200 font-medium cursor-pointer ${
-                    currentPage === 'home' 
-                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
-                      : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')
-                  }`}
-                >
-                  Home
-                </motion.button>
-                
-                <motion.button 
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setCurrentPage('about');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`transition-all duration-200 font-medium cursor-pointer ${
-                    currentPage === 'about' 
-                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
-                      : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')
-                  }`}
-                >
-                  About
-                </motion.button>
-                
-                <motion.button 
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setCurrentPage('products');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`transition-all duration-200 font-medium cursor-pointer ${
-                    currentPage === 'products' 
-                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
-                      : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')
-                  }`}
-                >
-                  Products
-                </motion.button>
-                
-                <motion.button 
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setCurrentPage('contact');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`transition-all duration-200 font-medium cursor-pointer ${
-                    currentPage === 'contact' 
-                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
-                      : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')
-                }`}
-              >
-                Contact
-              </motion.button>
-            </div>
-            
-              
-              <div className="hidden md:flex items-center space-x-4"> 
-                
-              <div className="hidden lg:flex items-center">
-                <div className={`relative ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  <input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      filterProducts(activeCategory, e.target.value);
-                    }}
-                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter' && searchQuery.trim()) {
-                        setCurrentPage('products');
-                        setIsMobileMenuOpen(false);
-                      }
-                    }}
-                    className={`w-full pl-10 pr-4 py-3 rounded-full border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                      isDarkMode 
-                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    }`}
-                  />
-                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+      {/* Navigation */}
+      {!isFullscreen && (
+        <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 flex items-center">
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
+                    <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="ml-3">
+                    <h1 className="text-xl font-bold text-gray-900">TestPro</h1>
+                    <p className="text-xs text-gray-500">
+                      Professional Testing Platform
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-                
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`p-3 rounded-full transition-all duration-200 cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-gray-800 text-yellow-400 hover:bg-gray-700' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {isDarkMode ? (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                  </svg>
-                )}
-              </motion.button>
-
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowFavorites(true)}
-                  className={`p-3 rounded-full transition-all duration-200 cursor-pointer relative ${
-                  isDarkMode 
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' 
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900'
-                  }`}
-                >
-                    <svg className="w-5 h-5" fill={favoriteItems.length > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    {favoriteItems.length > 0 && (
-                      <motion.span 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className={`absolute -top-1 -right-1 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold ${
-                          isDarkMode ? 'bg-pink-500' : 'bg-red-500'
-                        }`}
-                      >
-                        {favoriteItems.length}
-                      </motion.span>
-                  )}
-                </motion.button>
-
-                
-              <motion.div 
-                className="relative cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <motion.div
-                  onClick={() => setShowCart(true)}
-                    className={`p-3 rounded-full transition-all duration-200 cursor-pointer ${ 
-                    isDarkMode 
-                        ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                        : 'bg-gray-900 text-white hover:bg-gray-800 minimal-shadow hover:modern-shadow'
-                  }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 7a2 2 0 01-2 2H8a2 2 0 01-2-2L5 9z" />
-                  </svg>
-                </motion.div>
-                {totalItems > 0 && (
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className={`absolute -top-2 -right-2 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 ${
-                      isDarkMode 
-                        ? 'bg-red-500 border-gray-900' 
-                        : 'bg-red-500 border-white'
-                    }`}
-                  >
-                    {totalItems}
-                  </motion.span>
-                )}
-              </motion.div>
-              </div> 
-
-              
-              <div className="md:hidden flex items-center ml-auto"> 
-                <motion.button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`p-2 rounded-md transition-all duration-200 ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                  aria-label="Toggle menu"
-                  whileTap={{ scale: 0.90 }}
-                >
-                  {isMobileMenuOpen ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                    </svg>
-                  )}
-                </motion.button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className={`fixed top-20 left-0 right-0 z-40 shadow-lg md:hidden ${isDarkMode ? 'bg-gray-800 border-b border-gray-700' : 'bg-white border-b border-gray-200'}`}
-          >
-            <div className="px-6 py-6 space-y-1">
-
-              {[ 'Home', 'About', 'Products', 'Contact' ].map((item) => (
-                <motion.button
-                  key={item}
-                  onClick={() => {
-                    setCurrentPage(item.toLowerCase());
-                    setIsMobileMenuOpen(false); 
-                  }}
-                  className={`block w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors ${
-                    currentPage === item.toLowerCase()
-                      ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900')
-                      : (isDarkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900')
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {item}
-                </motion.button>
-              ))}
-
-              
-              <div className={`pt-4 mt-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                <motion.button
-                  onClick={() => {
-                    setIsDarkMode(!isDarkMode);
-                    
-                  }}
-                  className={`flex items-center w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors ${
-                    isDarkMode ? 'text-yellow-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {isDarkMode ? (
-                    <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
-                  )}
-                  Dark Mode
-                </motion.button>
-
-                <motion.button
-                  onClick={() => {
-                    setShowFavorites(true);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors relative ${
-                    isDarkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <svg className="w-5 h-5 mr-3" fill={favoriteItems.length > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                  Favorites
-                  {favoriteItems.length > 0 && (
-                    <span className={`ml-auto text-xs font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-pink-500 text-white' : 'bg-red-500 text-white'}`}>{favoriteItems.length}</span>
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => {
-                    setShowCart(true);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center w-full text-left px-3 py-3 rounded-md text-base font-medium transition-colors relative ${
-                    isDarkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 7a2 2 0 01-2 2H8a2 2 0 01-2-2L5 9z" /></svg>
-                  Cart
-                  {totalItems > 0 && (
-                    <span className={`ml-auto text-xs font-bold px-2 py-1 rounded-full ${isDarkMode ? 'bg-red-500 text-white' : 'bg-red-500 text-white'}`}>{totalItems}</span>
-                  )}
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="pt-16 md:pt-24">
-        
-        {currentPage === 'home' && (
-          <>
-            
-        <motion.section 
-          initial="hidden"
-          animate={isMounted ? "visible" : "hidden"}
-          variants={variants}
-          className={`relative min-h-screen flex items-center overflow-hidden transition-colors duration-300 ${
-            isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
-          }`}
-        >
-          
-          <div className="absolute inset-0 overflow-hidden">
-                <div className={`absolute top-0 right-0 w-[600px] h-[600px] rounded-full filter blur-3xl opacity-20 ${
-                  isDarkMode ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600' : 'bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200'
-            }`}></div>
-                <div className={`absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full filter blur-3xl opacity-20 ${
-                  isDarkMode ? 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600' : 'bg-gradient-to-tr from-blue-200 via-indigo-200 to-purple-200'
-            }`}></div>
-                <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full filter blur-3xl opacity-10 ${
-                  isDarkMode ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600' : 'bg-gradient-to-r from-violet-200 via-purple-200 to-pink-200'
-            }`}></div>
-                
-                <div className={`absolute inset-0 pattern-dots opacity-30 ${isDarkMode ? '' : 'hidden'}`}></div>
-          </div>
-          
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-32 flex flex-col lg:flex-row items-center gap-20 relative z-10">
-            <motion.div 
-              initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="lg:w-1/2 relative"
-                >
-                  <motion.div 
-                    className="relative"
-                    whileHover={{ scale: 1.02 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                  >
-                    <div className="relative">
-                      
-                      <div className={`absolute -top-4 -left-4 w-24 h-24 rounded-full filter blur-xl opacity-60 ${
-                        isDarkMode ? 'bg-purple-500' : 'bg-purple-200'
-                      }`}></div>
-                      <div className={`absolute -bottom-4 -right-4 w-32 h-32 rounded-full filter blur-xl opacity-60 ${
-                        isDarkMode ? 'bg-blue-500' : 'bg-blue-200'
-                      }`}></div>
-                      
-                      <img 
-                        src="https://i.ibb.co/1tg7V22y/photo-1515886657613-9f3515b0c78f.jpg" 
-                        alt="Minimalist fashion model" 
-                        className={`rounded-3xl max-h-[700px] w-auto mx-auto relative z-10 ${
-                          isDarkMode ? 'shadow-2xl shadow-gray-900/50' : 'shadow-2xl shadow-gray-900/20'
-                        }`}
-                      />
-                    </div>
-                  </motion.div>
-                </motion.div>
-                
-                <motion.div 
-                  initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="lg:w-1/2"
-            >
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="mb-12"
-              >
-                <motion.h1 
-                  className={`text-5xl md:text-6xl lg:text-7xl font-bold font-heading mb-8 leading-[0.9] tracking-tight ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                >
-                  Minimalist{' '}
-                  <span className="text-gradient">
-                    Fashion
-                  </span>
-                </motion.h1>
-                <motion.p 
-                  className={`text-xl mb-12 leading-relaxed max-w-lg font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.8 }}
-                >
-                  Curated collections that embody simplicity, quality, and timeless design for the modern wardrobe.
-                </motion.p>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 1 }}
-                className="flex flex-col sm:flex-row gap-6"
-              >
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={() => setCurrentPage('products')}
-                  className={`px-12 py-4 font-medium rounded-full transition-all duration-200 glow-effect cursor-pointer ${
-                    isDarkMode 
-                      ? 'bg-white hover:opacity-90 text-black' 
-                      : 'bg-gray-900 hover:bg-gray-800 text-white minimal-shadow hover:modern-shadow'
-                  }`}
-                >
-                  Explore Collection
-                </motion.button>
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                      onClick={() => setCurrentPage('about')}
-                  className={`px-12 py-4 font-medium rounded-full transition-all duration-200 cursor-pointer ${
-                    isDarkMode 
-                      ? 'border border-gray-600 hover:border-gray-500 text-gray-300 hover:bg-gray-800' 
-                      : 'border border-gray-300 hover:border-gray-400 text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Learn More
-                </motion.button>
-              </motion.div>
-            </motion.div>
-              </div>
-            
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 1.2 }}
-                className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center"
-            >
-              <motion.div 
-                  animate={{ y: [0, 10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <svg className={`w-8 h-8 mx-auto ${
-                    isDarkMode ? 'text-white/70' : 'text-gray-600/80'
-                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                </motion.div>
-              </motion.div>
-            </motion.section>
-
-            
-            <motion.section
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.3 }} 
-              variants={SECTION_VARIANTS}
-              className={`py-20 transition-colors duration-300 ${
-                isDarkMode ? '' : '' 
-              }`}
-            >
-              <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-                <motion.div
-                  variants={itemVariants}
-                  className="space-y-8"
-                >
-                  <motion.h2 
-                    className={`text-3xl md:text-4xl font-bold font-heading tracking-tight ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}
-                  >
-                    Crafted for the Modern Individual
-                  </motion.h2>
-                  <motion.p 
-                    className={`text-lg md:text-xl leading-relaxed font-light max-w-3xl mx-auto ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}
-                  >
-                    At UrbanThreads, we believe in the power of simplicity. Our carefully curated collection features 
-                    timeless pieces that transcend seasonal trends, focusing on quality craftsmanship, sustainable materials, 
-                    and designs that effortlessly complement your lifestyle.
-                  </motion.p>
-                  <motion.div 
-                    className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16"
-                    variants={containerVariants}
-                  >
-                    {[
-                      { 
-                        icon: <Award size={48} className="mb-4 mx-auto" />,
-                        title: "Premium Quality", 
-                        description: "Handpicked materials and meticulous craftsmanship in every piece" 
-                      },
-                      { 
-                        icon: <Sparkles size={48} className="mb-4 mx-auto" />,
-                        title: "Sustainable Fashion", 
-                        description: "Environmentally conscious production with ethical sourcing" 
-                      },
-                      { 
-                        icon: <Zap size={48} className="mb-4 mx-auto" />,
-                        title: "Timeless Design", 
-                        description: "Classic aesthetics that remain relevant season after season" 
-                      }
-                    ].map((feature, index) => (
-                      <motion.div
-                        key={index}
-                        variants={itemVariants}
-                        className={`p-6 rounded-2xl glass-morphism transition-all duration-300 hover:scale-105 ${
-                          isDarkMode
-                            ? 'bg-gray-800/70 backdrop-blur-lg border border-gray-700/50 shadow-lg hover:bg-gray-700/90'
-                            : 'bg-gray-100/85 backdrop-blur-lg border border-gray-300 shadow-lg hover:bg-gray-200/85'
-                        }`}
-                      >
-                        <div className={`mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{feature.icon}</div>
-                        <h3 className={`text-xl font-semibold font-heading mb-3 ${
-                          isDarkMode ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {feature.title}
-                        </h3>
-                        <p className={`text-sm leading-relaxed ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
-                          {feature.description}
-                        </p>
-                      </motion.div>
-                    ))}
-              </motion.div>
-            </motion.div>
-          </div>
-            </motion.section>
-
-            
-            <motion.section
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }} 
-              variants={containerVariants}
-              className={`py-24 transition-colors duration-300 ${
-                isDarkMode ? '' : '' 
-              }`}
-            >
-              <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                <motion.div variants={itemVariants} className="text-center mb-16">
-                  <h2 className={`text-4xl md:text-5xl font-bold font-heading tracking-tight mb-4 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    Featured Products
-                  </h2>
-                  <p className={`text-lg max-w-2xl mx-auto leading-relaxed font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>
-                    Discover our handpicked selection of must-have pieces that define contemporary style
-                  </p>
-                </motion.div>
-          
-          <motion.div 
-                  variants={containerVariants}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
-                >
-                  {featuredProducts.map((product, index) => (
-            <motion.div
-                      key={product.id}
-                      variants={itemVariants}
-                      className={`rounded-3xl overflow-hidden group relative cursor-pointer card-hover flex flex-col min-h-[500px] ${
-                        isDarkMode 
-                          ? 'bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 hover:border-gray-600/70' 
-                          : 'bg-white/80 backdrop-blur-sm border border-gray-200/50 hover:border-gray-300/70 minimal-shadow'
-                      }`}
-                      onClick={() => viewProductDetails(product)}
-                    >
-                      <div className="relative aspect-square overflow-hidden">
-                        {product.badge && (
-                          <div className="absolute top-3 left-3 z-10">
-                            <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                              product.badge === 'Best Seller' 
-                                ? (isDarkMode 
-                                    ? 'bg-gray-700 text-gray-200 border border-gray-500'
-                                    : 'bg-gray-800 text-white border border-gray-600')
-                                : (isDarkMode 
-                                    ? 'bg-gray-600 text-gray-300 border border-gray-500'
-                                    : 'bg-gray-200 text-gray-700 border border-gray-300')
-                            }`}>
-                              {product.badge}
-                            </span>
-                          </div>
-                        )}
-                        
-                        <div className="absolute top-4 right-4 z-10 transition-all duration-300">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 shadow-lg cursor-pointer ${
-                              favoriteItems.includes(product.id)
-                                ? (isDarkMode 
-                                    ? 'bg-red-500 text-white border border-red-400' 
-                                    : 'bg-red-500 text-white border border-red-400')
-                                : (isDarkMode 
-                                    ? 'bg-gray-900/80 text-white hover:bg-gray-800 border border-gray-700/50' 
-                                    : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500 border border-gray-200/50')
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(product.id);
-                            }}
-                          >
-                            <svg className="w-5 h-5" fill={favoriteItems.includes(product.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-                          </motion.button>
-                        </div>
-                        
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                  />
-                </div>
-                      
-                      <div className="p-6 flex flex-col flex-1">
-                        {/* Header Section */}
-                        <div className="mb-3">
-                          <h3 className={`text-lg font-semibold font-heading mb-2 tracking-tight ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>{product.name}</h3>
-                          <p className={`text-sm font-medium uppercase tracking-wider ${
-                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                          }`}>{product.category}</p>
-                        </div>
-                        
-                        {/* Price Section */}
-                        <div className="mb-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xl font-bold ${
-                              isDarkMode ? 'text-white' : 'text-gray-900'
-                            }`}>
-                              ${product.price.toFixed(2)}
-                            </span>
-                            {product.originalPrice && (
-                              <span className={`text-sm line-through ${
-                                isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                              }`}>
-                                ${product.originalPrice.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                          {/* Fixed height container for discount tag */}
-                          <div className="h-5 flex items-center">
-                            {product.originalPrice && (
-                              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                                isDarkMode 
-                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                                  : 'bg-red-50 text-red-600 border border-red-200'
-                              }`}>
-                                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Rating Section */}
-                        {product.rating && (
-                          <div className="flex items-center gap-1 justify-end mb-4">
-                            <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            <span className={`text-sm font-medium ${
-                              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                            }`}>
-                              {product.rating}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Spacer to push button to bottom */}
-                        <div className="flex-grow"></div>
-                        
-                        {/* Add to Cart Button - Always at bottom */}
-                        <motion.button
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const defaultSize = product.size?.split('-')[0];
-                            addToCart(product, defaultSize);
-                          }}
-                          className={`w-full px-4 py-3 font-semibold rounded-xl transition-all duration-200 text-sm cursor-pointer ${
-                            isDarkMode 
-                              ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl' 
-                              : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
+                <div className="absolute left-1/2 transform -translate-x-1/2 hidden lg:flex">
+                  <div className="hidden md:flex">
+                    <div className="flex items-center space-x-4">
+                      {menuItems.map(({ key, label, icon: Icon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setActiveView(key as any)}
+                          className={`cursor-pointer flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                            activeView === key
+                              ? "bg-blue-100 text-blue-700"
+                              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                           }`}
                         >
-                          Add to Cart
-                        </motion.button>
-                      </div>
-              </motion.div>
-                  ))}
-          </motion.div>
-
-                <motion.div variants={itemVariants} className="text-center">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => setCurrentPage('products')}
-                    className={`px-12 py-4 font-semibold rounded-full transition-all duration-200 cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl' 
-                        : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
-                    }`}
-                  >
-                    Explore All Products
-                  </motion.button>
-            </motion.div>
-          </div>
-        </motion.section>
-
-            
-            <motion.section 
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.2 }} 
-              variants={SECTION_VARIANTS}
-              className={`py-20 transition-colors duration-300 ${
-                isDarkMode ? '' : '' 
-              }`}
-            >
-              <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-                <motion.h2 
-                  variants={itemVariants}
-                  className={`text-3xl md:text-4xl font-bold font-heading mb-4 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}
-                >
-                  Stay Updated
-                </motion.h2>
-                <motion.p
-                  variants={itemVariants}
-                  className={`text-lg mb-8 max-w-2xl mx-auto ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}
-                >
-                  Subscribe to our newsletter and be the first to know about new collections, exclusive offers, and style tips.
-                </motion.p>
-                <motion.form
-                  variants={itemVariants}
-                  onSubmit={handleSubscribe}
-                  className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
-                  noValidate
-                >
-                  <div className="flex-1 relative">
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      required
-                      value={subscribeEmail}
-                      onChange={(e) => {
-                        setSubscribeEmail(e.target.value);
-                        if (subscribeError) setSubscribeError('');
-                      }}
-                      className={`w-full px-6 py-3 rounded-full border transition-all duration-200 focus:outline-none focus:ring-2 ${subscribeError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-indigo-500'} ${
-                        isDarkMode 
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                    />
-                    {subscribeError && (
-                      <p className="text-sm text-red-500 mt-1 absolute left-2 whitespace-nowrap">
-                        {subscribeError}
-                      </p>
-                    )}
+                          <Icon className="h-4 w-4 mr-2" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <motion.button
-                    type="submit"
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    className={`px-8 py-3 font-semibold rounded-full transition-all duration-200 cursor-pointer self-start ${
-                      isDarkMode 
-                        ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl' 
-                        : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
-                    }`}
-                  >
-                    Subscribe
-                  </motion.button>
-                </motion.form>
+                </div>
               </div>
-            </motion.section>
-          </>
-        )}
 
-        
-        {currentPage === 'about' && (
-        <motion.section 
-          initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={pageTransition}
-            className={`min-h-screen pt-24 pb-20 transition-colors duration-300 ${
-              isDarkMode ? 'bg-gray-900' : 'bg-white'
-            }`}
-          >
-            <div className="max-w-6xl mx-auto px-6 lg:px-8">
-              <motion.div variants={containerVariants} className="space-y-20">
-                <motion.div variants={itemVariants} className="text-center">
-                  <h1 className={`text-5xl md:text-6xl font-bold font-heading mb-6 tracking-tight ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    About UrbanThreads
-                  </h1>
-                  <p className={`text-xl leading-relaxed max-w-3xl mx-auto font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>
-                    We're redefining fashion through minimalist design, sustainable practices, and uncompromising quality.
-                  </p>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-16 items-center">
-                  <div>
-                    <h2 className={`text-3xl font-bold font-heading mb-6 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      Our Story
-                    </h2>
-                    <p className={`text-lg leading-relaxed mb-6 font-light ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      Founded in 2020, UrbanThreads emerged from a simple belief: fashion should be timeless, sustainable, and accessible. Our founders, frustrated with fast fashion's environmental impact and poor quality, set out to create a brand that prioritizes craftsmanship over trends.
-                    </p>
-                    <p className={`text-lg leading-relaxed font-light ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      Today, we partner with ethical manufacturers worldwide, using only sustainable materials and ensuring fair labor practices throughout our supply chain.
-                    </p>
-          </div>
-                  <div className="relative">
-                    <img 
-                      src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80&ixlib=rb-4.0.3" 
-                      alt="Our story" 
-                      className="rounded-3xl shadow-2xl"
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="grid md:grid-cols-3 gap-8">
-                  {[
-                    {
-                      title: "Sustainable Materials",
-                      description: "We source only organic, recycled, and renewable materials for all our products.",
-                      icon: <Leaf size={48} className="text-5xl mb-6 mx-auto" /> 
-                    },
-                    {
-                      title: "Ethical Production",
-                      description: "Fair wages, safe working conditions, and transparent supply chains are non-negotiable.",
-                      icon: <Handshake size={48} className="text-5xl mb-6 mx-auto" /> 
-                    },
-                    {
-                      title: "Carbon Neutral",
-                      description: "We offset 100% of our carbon footprint through verified environmental projects.",
-                      icon: <Globe size={48} className="text-5xl mb-6 mx-auto" /> 
-                    }
-                  ].map((value, index) => (
-          <motion.div 
-                      key={index}
-                      variants={itemVariants}
-                      className={`p-8 rounded-3xl text-center glass-morphism hover:scale-105 transition-all duration-300 ${
-                        isDarkMode
-                          ? 'bg-gray-800/70 backdrop-blur-lg border border-gray-700/50 shadow-lg hover:bg-gray-700/90'
-                          : 'bg-gray-100/85 backdrop-blur-lg border border-gray-300 shadow-lg hover:bg-gray-200/85'
-                      }`}
-                    >
-                      <div className={`mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value.icon}</div>
-                      <h3 className={`text-xl font-semibold font-heading mb-4 ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {value.title}
-                      </h3>
-                      <p className={`leading-relaxed font-light ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {value.description}
-                      </p>
-                    </motion.div>
-                  ))}
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="text-center">
-                  <h2 className={`text-3xl font-bold font-heading mb-8 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    Our Impact
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                    {[
-                      { number: "50K+", label: "Happy Customers" },
-                      { number: "1M+", label: "Trees Planted" },
-                      { number: "100%", label: "Carbon Neutral" }
-                    ].map((stat, index) => (
-            <motion.div
-                        key={index}
-                        variants={itemVariants}
-                        className="text-center"
+              <div className="hidden lg:block">
+                <div className="ml-4 flex items-center md:ml-6">
+                  {currentSession && (
+                    <div className="flex items-center space-x-4 mr-4">
+                      <div className="text-sm font-medium text-gray-700">
+                        Time: {formatTime(timeRemaining)}
+                      </div>
+                      <button
+                        onClick={() => setShowProctorModal(true)}
+                        className="cursor-pointer bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium"
                       >
-                        <div className={`text-4xl font-bold font-heading mb-2 text-gradient`}>
-                          {stat.number}
+                        Request Break
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <img
+                      className="h-8 w-8 rounded-full"
+                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
+                      alt="User"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      John Doe
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:hidden">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="cursor-pointer inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                >
+                  <span className="sr-only">Open main menu</span>
+                  {isMobileMenuOpen ? (
+                    <XMarkIcon className="block h-6 w-6" />
+                  ) : (
+                    <Bars3Icon className="block h-6 w-6" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile menu */}
+          <div className={`md:hidden ${isMobileMenuOpen ? "block" : "hidden"}`}>
+            <div className="fixed inset-0 z-50 flex">
+              <div
+                className="fixed inset-0 bg-gray-600 bg-opacity-75"
+                onClick={handleOverlayClick}
+              ></div>
+
+              <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+                {/* Enhanced close button with better positioning */}
+                <div className="absolute top-0 right-0 pt-4 pr-4">
+                  <button
+                    onClick={closeMobileMenu}
+                    className="text-gray-500 hover:text-gray-800 focus:outline-none"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
+                  <div className="flex-shrink-0 flex items-center px-4">
+                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
+                      <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="ml-3">
+                      <h1 className="text-lg font-bold text-gray-900">
+                        TestPro
+                      </h1>
+                      <p className="text-xs text-gray-500">
+                        Professional Testing
+                      </p>
+                    </div>
+                  </div>
+                  <nav className="mt-5 px-2 space-y-1">
+                    {menuItems.map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setActiveView(key as any);
+                          closeMobileMenu();
+                        }}
+                        className={`cursor-pointer group w-full flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors ${
+                          activeView === key
+                            ? "bg-blue-100 text-blue-700"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`}
+                      >
+                        <Icon className="mr-4 h-6 w-6" />
+                        {label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+
+                <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
+                  <div className="flex items-center">
+                    <img
+                      className="h-10 w-10 rounded-full"
+                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+                      alt="User"
+                    />
+                    <div className="ml-3">
+                      <p className="text-base font-medium text-gray-700">
+                        John Doe
+                      </p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Administrator
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {activeView === "dashboard" && (
+          <div className="px-4 py-6 sm:px-0">
+            <div className="mb-8">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                  Welcome to TestPro
+                </h1>
+                <p className="text-xl text-gray-600 mb-8">
+                  Enterprise-grade assessment platform for modern organizations
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg shadow-lg text-white">
+                  <div className="flex items-center">
+                    <DocumentTextIcon className="h-8 w-8" />
+                    <div className="ml-4">
+                      <p className="text-2xl font-semibold">
+                        {analyticsData.totalTests}
+                      </p>
+                      <p className="text-blue-100">Total Tests</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg shadow-lg text-white">
+                  <div className="flex items-center">
+                    <UserGroupIcon className="h-8 w-8" />
+                    <div className="ml-4">
+                      <p className="text-2xl font-semibold">
+                        {analyticsData.totalSessions}
+                      </p>
+                      <p className="text-green-100">Test Sessions</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg shadow-lg text-white">
+                  <div className="flex items-center">
+                    <ChartBarIcon className="h-8 w-8" />
+                    <div className="ml-4">
+                      <p className="text-2xl font-semibold">
+                        {analyticsData.avgScore.toFixed(1)}%
+                      </p>
+                      <p className="text-purple-100">Average Score</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg shadow-lg text-white">
+                  <div className="flex items-center">
+                    <CheckCircleIcon className="h-8 w-8" />
+                    <div className="ml-4">
+                      <p className="text-2xl font-semibold">
+                        {analyticsData.completionRate.toFixed(1)}%
+                      </p>
+                      <p className="text-orange-100">Completion Rate</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Quick Actions */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Quick Actions
+                  </h2>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setActiveView("create")}
+                      className="cursor-pointer w-full flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <PlusIcon className="h-5 w-5 text-blue-600 mr-3" />
+                      <span className="font-medium text-blue-600">
+                        Create New Test
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setActiveView("library")}
+                      className="cursor-pointer w-full flex items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                    >
+                      <DocumentTextIcon className="h-5 w-5 text-green-600 mr-3" />
+                      <span className="font-medium text-green-600">
+                        Browse Test Library
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setActiveView("analytics")}
+                      className="cursor-pointer w-full flex items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                    >
+                      <ChartBarIcon className="h-5 w-5 text-purple-600 mr-3" />
+                      <span className="font-medium text-purple-600">
+                        View Analytics
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Recent Activity
+                  </h2>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {analyticsData.recentActivity.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center p-3 border border-gray-200 rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            {session.userName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {session.startTime.toLocaleDateString()} at{" "}
+                            {session.startTime.toLocaleTimeString()}
+                          </p>
                         </div>
-                        <div className={`text-lg ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
-                          {stat.label}
+                        <div className="text-right">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              session.status === "completed"
+                                ? "bg-green-100 text-green-800"
+                                : session.status === "in-progress"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {session.status}
+                          </span>
+                          {session.score && (
+                            <p className="text-sm font-medium mt-1">
+                              {session.score}%
+                            </p>
+                          )}
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="text-center">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => setCurrentPage('home')}
-                    className={`px-12 py-4 font-semibold rounded-full transition-all duration-200 cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl' 
-                        : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
-                    }`}
-                  >
-                    Back to Home
-                  </motion.button>
-                </motion.div>
-              </motion.div>
-            </div>
-          </motion.section>
-        )}
-
-        
-        {currentPage === 'contact' && (
-          <motion.section
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={pageTransition}
-            className={`min-h-screen pt-24 pb-20 transition-colors duration-300 ${
-              isDarkMode ? 'bg-gray-900' : 'bg-white'
-            }`}
-          >
-            <div className="max-w-4xl mx-auto px-6 lg:px-8">
-              <motion.div variants={containerVariants} className="space-y-16">
-                <motion.div variants={itemVariants} className="text-center">
-                  <h1 className={`text-5xl md:text-6xl font-bold font-heading mb-6 tracking-tight ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    Contact Us
-                  </h1>
-                  <p className={`text-xl leading-relaxed max-w-2xl mx-auto font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>
-                    We'd love to hear from you. Get in touch with us for any questions, feedback, or just to say hello.
-                  </p>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-12">
-                  <div className={`p-8 rounded-3xl glass-morphism ${
-                    isDarkMode
-                      ? 'bg-gray-800/70 backdrop-blur-lg border border-gray-700/50 shadow-lg'
-                      : 'bg-gray-100/85 backdrop-blur-lg border border-gray-300 shadow-lg'
-                  }`}>
-                    <h3 className={`text-2xl font-bold font-heading mb-6 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      Get in Touch
-                    </h3>
-                <div className="space-y-6">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <svg className={`w-6 h-6 ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-                    </div>
-                        <div>
-                          <p className={`font-semibold ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>Phone</p>
-                          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>+1 (555) 123-4567</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <svg className={`w-6 h-6 ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                        <div>
-                          <p className={`font-semibold ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>Email</p>
-                          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>info@urbanthreads.com</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <svg className={`w-6 h-6 ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
-                        <div>
-                          <p className={`font-semibold ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>Address</p>
-                          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>123 Fashion Street, Style City, SC 98765</p>
                 </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`p-8 rounded-3xl glass-morphism ${
-                    isDarkMode
-                      ? 'bg-gray-800/70 backdrop-blur-lg border border-gray-700/50 shadow-lg'
-                      : 'bg-gray-100/85 backdrop-blur-lg border border-gray-300 shadow-lg'
-                  }`}>
-                    <h3 className={`text-2xl font-bold font-heading mb-6 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      Send Message
-                    </h3>
-                <form onSubmit={handleContactSubmit} className="space-y-6" noValidate> 
-                  <div>
-                    <input 
-                      type="text" 
-                      name="name" 
-                          placeholder="Your Name"
-                      value={contactForm.name} 
-                      onChange={handleContactFormChange} 
-                      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${contactErrors.name ? 'border-red-500 focus:ring-red-500' : 'focus:ring-indigo-500'} ${
-                            isDarkMode 
-                              ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                          }`}
-                    />
-                    {contactErrors.name && <p className="text-sm text-red-500 mt-1">{contactErrors.name}</p>} 
-                  </div>
-                  <div>
-                    <input 
-                      type="email" 
-                      name="email"
-                      placeholder="Your Email"
-                      value={contactForm.email}
-                      onChange={handleContactFormChange}
-                      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${contactErrors.email ? 'border-red-500 focus:ring-red-500' : 'focus:ring-indigo-500'} ${
-                        isDarkMode 
-                          ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                    />
-                    {contactErrors.email && (
-                      <div className="mb-4">
-                        <p className="text-sm text-red-500 mt-1">{contactErrors.email}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <textarea 
-                      rows={4} 
-                      name="message" 
-                          placeholder="Your Message"
-                      value={contactForm.message} 
-                      onChange={handleContactFormChange} 
-                      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${contactErrors.message ? 'border-red-500 focus:ring-red-500' : 'focus:ring-indigo-500'} resize-none ${
-                            isDarkMode 
-                              ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                          }`}
-                    ></textarea>
-                    {contactErrors.message && <p className="text-sm text-red-500 mt-1">{contactErrors.message}</p>} 
-                  </div>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    type="submit"
-                        className="w-full px-8 py-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-xl transition-all duration-300 shadow-xl cursor-pointer"
-                  >
-                    Send Message
-                  </motion.button>
-                </form>
-                  </div>
-            </motion.div>
-
-                <motion.div variants={itemVariants} className="text-center">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => setCurrentPage('home')}
-                    className={`px-12 py-4 font-semibold rounded-full transition-all duration-200 cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600' 
-                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
-                    }`}
-                  >
-                    Back to Home
-                  </motion.button>
-          </motion.div>
-              </motion.div>
-          </div>
-        </motion.section>
-        )}
-
-        
-        {currentPage === 'products' && (
-          <>
-            
-        <motion.section 
-          ref={productsRef}
-          initial="hidden"
-            animate="visible"
-            exit="hidden"
-          viewport={{ once: true, amount: 0.2 }} 
-          variants={containerVariants}
-          className={`pt-8 md:pt-16 pb-16 md:pb-32 relative overflow-hidden transition-colors duration-300 ${
-                isDarkMode ? '' : '' 
-          }`}
-        >
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-            {/* Hide Collections section when search is active */}
-            {!searchQuery && (
-              <>
-                <motion.h2 
-                  variants={itemVariants}
-                  className={`text-3xl md:text-4xl lg:text-5xl font-bold font-heading text-center mb-3 md:mb-4 tracking-tight ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}
-                >
-                  Collections
-                </motion.h2>
-                <motion.p
-                  variants={itemVariants}
-                  className={`text-center mb-12 md:mb-24 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}
-                >
-                  Carefully curated pieces that embody timeless design and modern simplicity
-                </motion.p>
-                
-                <div className="grid md:grid-cols-2 gap-12 mb-32">
-              {collections.map((collection, index) => (
-                <motion.div 
-                  key={collection.id}
-                  variants={itemVariants}
-                  className="relative overflow-hidden rounded-3xl group cursor-pointer card-hover"
-                >
-                  <div className="aspect-[4/5] relative">
-                    <img 
-                      src={collection.image} 
-                      alt={collection.title} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/30"></div>
-                  </div>
-                  <div className="absolute inset-0 flex flex-col justify-end p-8">
-                    <motion.h3 
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
-                      className="text-2xl font-bold font-heading text-white mb-2 tracking-tight"
-                    >
-                      {collection.title}
-                    </motion.h3>
-                    <motion.p 
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
-                      className="text-white/90 mb-6 font-light"
-                    >
-                      {collection.description}
-                    </motion.p>
-                    <motion.button
-                      variants={buttonVariants}
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={() => exploreCollection(collection.title)}
-                      className="px-8 py-4 bg-white/95 backdrop-blur-sm text-gray-900 font-semibold rounded-2xl transition-all duration-200 w-fit shadow-lg hover:shadow-xl border border-white/20 cursor-pointer"
-                    >
-                      Explore Collection
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-                </div>
-              </>
-            )}
-
-            <div ref={allProductsSectionRef} className="pt-8 md:pt-16"></div> 
-
-            <motion.h2 
-              variants={itemVariants}
-              className={`text-3xl md:text-4xl lg:text-5xl font-bold font-heading text-center mb-3 md:mb-4 tracking-tight ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}
-            >
-              {searchQuery ? 'Search Results' : 'Products'}
-            </motion.h2>
-            <motion.p
-              variants={itemVariants}
-              className={`text-center mb-12 md:mb-20 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-light ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}
-            >
-              Essential pieces designed for the modern lifestyle
-            </motion.p>
-
-            {/* Mobile Search Section */}
-            <motion.div 
-              variants={itemVariants}
-              className="block lg:hidden mb-8 px-4"
-            >
-              <div className={`relative ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    filterProducts(activeCategory, e.target.value);
-                  }}
-                  className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base ${
-                    isDarkMode 
-                      ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500' 
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'
-                  }`}
-                />
-                <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
               </div>
-            </motion.div>
-            
-            <motion.div 
-              variants={itemVariants}
-              className="flex flex-wrap justify-center gap-3 md:gap-4 mb-12 md:mb-20 px-4 md:px-0"
-            >
-              {categories.map((category) => (
-                <motion.button
-                  key={category}
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={() => filterProducts(category)}
-                  className={`px-4 md:px-6 py-2 md:py-3 rounded-full font-medium text-sm md:text-base transition-all duration-200 cursor-pointer ${
-                    activeCategory === category 
-                      ? (isDarkMode ? 'bg-white text-gray-900 shadow-lg' : 'bg-gray-900 text-white shadow-lg')
-                      : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
-                  }`}
-                >
-                  {category}
-                </motion.button>
-              ))}
-            </motion.div>
-            
-            {searchQuery && (
-              <motion.div 
-                variants={itemVariants}
-                className="text-center mb-8"
-              >
-                <p className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Showing results for: <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{searchQuery}</span>
-                </p>
-              </motion.div>
-            )}
-            
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={activeCategory + searchQuery}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                variants={containerVariants}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-0"
-              >
-                {filteredProducts.map((product) => (
-                                <motion.div
-                  key={product.id}
-                  variants={itemVariants}
-                  className={`rounded-3xl overflow-hidden group relative cursor-pointer card-hover flex flex-col min-h-[500px] md:min-h-[600px] ${
-                    isDarkMode 
-                      ? 'bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 hover:border-gray-600/70' 
-                      : 'bg-white/80 backdrop-blur-sm border border-gray-200/50 hover:border-gray-300/70 minimal-shadow'
-                  }`}
-                  onClick={() => viewProductDetails(product)}
-                >
-                  <div className="relative aspect-square overflow-hidden">
-                    
-                    {product.badge && (
-                      <div className="absolute top-3 left-3 z-10">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          product.badge === 'Best Seller' 
-                            ? (isDarkMode 
-                                ? 'bg-gray-700 text-gray-200 border border-gray-500'
-                                : 'bg-gray-800 text-white border border-gray-600')
-                            : (isDarkMode 
-                                ? 'bg-gray-600 text-gray-300 border border-gray-500'
-                                : 'bg-gray-200 text-gray-700 border border-gray-300')
-                        }`}>
-                          {product.badge}
-                        </span>
-                      </div>
-                    )}
-                    
-                    
-                    <div className="absolute top-4 right-4 z-10 transition-all duration-300">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className={`p-3 rounded-full backdrop-blur-md transition-all duration-200 shadow-lg cursor-pointer ${
-                          favoriteItems.includes(product.id)
-                            ? (isDarkMode 
-                                ? 'bg-red-500 text-white border border-red-400' 
-                                : 'bg-red-500 text-white border border-red-400')
-                            : (isDarkMode 
-                                ? 'bg-gray-900/80 text-white hover:bg-gray-800 border border-gray-700/50' 
-                                : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500 border border-gray-200/50')
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(product.id);
-                        }}
-                      >
-                        <svg className="w-5 h-5" fill={favoriteItems.includes(product.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                      </motion.button>
+            </div>
+          </div>
+        )}
+
+        {activeView === "library" && (
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">
+                    Test Library
+                  </h1>
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search tests..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
-                    
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                    />
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    >
+                      <option value="all">All Categories</option>
+                      {analyticsData.categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setShowExportModal(true)}
+                      className="cursor-pointer flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                      Export
+                    </button>
                   </div>
-                  
-                  <div className="p-4 md:p-8 flex flex-col flex-1">
-                    {/* Header Section */}
-                    <div className="mb-4">
-                      <h3 className={`text-xl font-semibold font-heading mb-2 tracking-tight ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>{product.name}</h3>
-                      <p className={`text-sm font-medium uppercase tracking-wider ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>{product.category}</p>
-                    </div>
-                    
-                    {/* Rating Section */}
-                    {product.rating && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              className={`w-4 h-4 ${
-                                i < Math.floor(product.rating!) 
-                                  ? 'text-yellow-400' 
-                                  : 'text-gray-300'
-                              }`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTests.map((test) => (
+                    <div
+                      key={test.id}
+                      className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-80 flex flex-col"
+                    >
+                      <div className="p-6 flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-3">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              test.status === "published"
+                                ? "bg-green-100 text-green-800"
+                                : test.status === "draft"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {test.status}
+                          </span>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              test.difficulty === "easy"
+                                ? "bg-blue-100 text-blue-800"
+                                : test.difficulty === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {test.difficulty}
+                          </span>
+                        </div>
+
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 overflow-hidden" style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {test.title}
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-3 flex-grow overflow-hidden" style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {test.description}
+                        </p>
+
+                        <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                          <span className="flex items-center">
+                            <ClockIcon className="h-4 w-4 mr-1" />
+                            {test.duration} min
+                          </span>
+                          <span className="flex items-center">
+                            <DocumentTextIcon className="h-4 w-4 mr-1" />
+                            {test.questions.length} questions
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1 mb-4 min-h-[28px]">
+                          {test.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
                             >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
+                              {tag}
+                            </span>
+                          ))}
+                          {test.tags.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                              +{test.tags.length - 3} more
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex space-x-2 mt-auto">
+                          <button
+                            onClick={() => startTest(test)}
+                            className="cursor-pointer flex-1 flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
+                          >
+                            <PlayIcon className="h-4 w-4 mr-1" />
+                            Start
+                          </button>
+
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => duplicateTest(test)}
+                              className="cursor-pointer p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+                              title="Duplicate"
+                            >
+                              <DocumentDuplicateIcon className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              onClick={() => deleteTest(test.id)}
+                              className="cursor-pointer p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-md transition-colors"
+                              title="Delete"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {filteredTests.length === 0 && (
+                  <div className="text-center py-12">
+                    <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No tests found
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {searchQuery || filterCategory !== "all"
+                        ? "Try adjusting your search or filter criteria."
+                        : "Get started by creating your first test."}
+                    </p>
+                    <button
+                      onClick={() => setActiveView("create")}
+                      className="cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Create Test
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeView === "create" && (
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Create New Test
+                  </h1>
+
+                  <div className="md:flex justify-start sm:justify-end hidden ">
+                    <button
+                      onClick={() =>
+                        setPreviewMode(
+                          previewMode === "desktop" ? "mobile" : "desktop"
+                        )
+                      }
+                      className="cursor-pointer flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {previewMode === "desktop" ? (
+                        <>
+                          <DevicePhoneMobileIcon className="h-4 w-4" />
+                          <span>Mobile View</span>
+                        </>
+                      ) : (
+                        <>
+                          <ComputerDesktopIcon className="h-4 w-4" />
+                          <span>Desktop View</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className={`${
+                  previewMode === "desktop"
+                    ? "grid grid-cols-1 lg:grid-cols-2"
+                    : ""
+                } min-h-screen`}
+              >
+                {/* Editor Panel */}
+                <div className="p-6 border-r border-gray-200 md:overflow-y-auto md:max-h-screen">
+                  <div className="space-y-6">
+                    {/* Test Info */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                        Test Information
+                      </h2>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Title *
+                          </label>
+                          <input
+                            type="text"
+                            value={testForm.title}
+                            onChange={(e) =>
+                              setTestForm((prev) => ({
+                                ...prev,
+                                title: e.target.value,
+                              }))
+                            }
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter test title"
+                          />
+                          {validationErrors.title && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.title}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description *
+                          </label>
+                          <textarea
+                            value={testForm.description}
+                            onChange={(e) =>
+                              setTestForm((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
+                            rows={3}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter test description"
+                          />
+                          {validationErrors.description && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Duration (minutes) *
+                            </label>
+                            <input
+                              type="number"
+                              value={testForm.duration}
+                              onChange={(e) =>
+                                setTestForm((prev) => ({
+                                  ...prev,
+                                  duration: parseInt(e.target.value) || 0,
+                                }))
+                              }
+                              min="1"
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {validationErrors.duration && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {validationErrors.duration}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Difficulty
+                            </label>
+                            <select
+                              value={testForm.difficulty}
+                              onChange={(e) =>
+                                setTestForm((prev) => ({
+                                  ...prev,
+                                  difficulty: e.target.value as any,
+                                }))
+                              }
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                              <option value="easy">Easy</option>
+                              <option value="medium">Medium</option>
+                              <option value="hard">Hard</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Category *
+                          </label>
+                          <input
+                            type="text"
+                            value={testForm.category}
+                            onChange={(e) =>
+                              setTestForm((prev) => ({
+                                ...prev,
+                                category: e.target.value,
+                              }))
+                            }
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Programming, Mathematics"
+                          />
+                          {validationErrors.category && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.category}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Question Builder */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                        Add Question
+                      </h2>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Question Type
+                          </label>
+                          <select
+                            value={currentQuestion.type}
+                            onChange={(e) =>
+                              setCurrentQuestion((prev) => ({
+                                ...prev,
+                                type: e.target.value as any,
+                              }))
+                            }
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          >
+                            <option value="multiple-choice">
+                              Multiple Choice
+                            </option>
+                            <option value="text">Short Text</option>
+                            <option value="essay">Essay</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Question *
+                          </label>
+                          <textarea
+                            value={currentQuestion.question}
+                            onChange={(e) =>
+                              setCurrentQuestion((prev) => ({
+                                ...prev,
+                                question: e.target.value,
+                              }))
+                            }
+                            rows={2}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your question"
+                          />
+                          {validationErrors.question && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.question}
+                            </p>
+                          )}
+                        </div>
+
+                        {currentQuestion.type === "multiple-choice" && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Options *
+                              </label>
+                              {currentQuestion.options?.map((option, index) => (
+                                <div key={index} className="flex items-center mb-2 space-x-2">
+                                  <input
+                                    type="radio"
+                                    name="correctAnswer"
+                                    value={index}
+                                    checked={currentQuestion.correctAnswer === index}
+                                    onChange={(e) => {
+                                      setCurrentQuestion((prev) => ({
+                                        ...prev,
+                                        correctAnswer: parseInt(e.target.value),
+                                      }));
+                                    }}
+                                    className="cursor-pointer"
+                                    title="Mark as correct answer"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={option}
+                                    onChange={(e) => {
+                                      const newOptions = [
+                                        ...(currentQuestion.options || []),
+                                      ];
+                                      newOptions[index] = e.target.value;
+                                      setCurrentQuestion((prev) => ({
+                                        ...prev,
+                                        options: newOptions,
+                                      }));
+                                    }}
+                                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder={`Option ${index + 1}`}
+                                  />
+                                </div>
+                              ))}
+                              <p className="text-xs text-gray-500 mt-1">
+                                ✓ Select the radio button next to the correct answer
+                              </p>
+                              {validationErrors.options && (
+                                <p className="mt-1 text-sm text-red-600">
+                                  {validationErrors.options}
+                                </p>
+                              )}
+                              {validationErrors.correctAnswer && (
+                                <p className="mt-1 text-sm text-red-600">
+                                  {validationErrors.correctAnswer}
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        {currentQuestion.type === "text" && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Correct Answer *
+                            </label>
+                            <input
+                              type="text"
+                              value={currentQuestion.correctAnswer as string || ""}
+                              onChange={(e) =>
+                                setCurrentQuestion((prev) => ({
+                                  ...prev,
+                                  correctAnswer: e.target.value,
+                                }))
+                              }
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter the correct answer"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              This will be used for automatic grading
+                            </p>
+                            {validationErrors.correctAnswer && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {validationErrors.correctAnswer}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Points *
+                          </label>
+                          <input
+                            type="number"
+                            value={currentQuestion.points}
+                            onChange={(e) =>
+                              setCurrentQuestion((prev) => ({
+                                ...prev,
+                                points: parseInt(e.target.value) || 1,
+                              }))
+                            }
+                            min="1"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          {validationErrors.points && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.points}
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={addQuestion}
+                          className="cursor-pointer w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                        >
+                          Add Question
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Questions List */}
+                    {testForm.questions.length > 0 && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                          Questions ({testForm.questions.length})
+                        </h2>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {testForm.questions.map((question, index) => (
+                            <div
+                              key={question.id}
+                              className="bg-white p-3 rounded border border-gray-200 "
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">
+                                    Q{index + 1}: {question.question}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {question.type} • {question.points} points
+                                  </p>
+                                </div>
+                                <div className="flex space-x-1 ml-2">
+                                  <button
+                                    onClick={() => editQuestion(question.id)}
+                                    className="cursor-pointer text-blue-600 hover:text-blue-800"
+                                    title="Edit"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => removeQuestion(question.id)}
+                                    className="cursor-pointer text-red-600 hover:text-red-800"
+                                    title="Remove"
+                                  >
+                                    <XMarkIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           ))}
                         </div>
-                        <span className={`text-sm ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          {product.rating} ({product.reviews})
-                        </span>
                       </div>
                     )}
-                    
-                    {/* Price Section */}
-                    <div className="mb-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`text-2xl font-bold ${
-                          isDarkMode ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          ${product.price.toFixed(2)}
-                        </span>
-                        {product.originalPrice && (
-                          <span className={`text-lg line-through ${
-                            isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                          }`}>
-                            ${product.originalPrice.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      {/* Fixed height container for discount tag */}
-                      <div className="h-6 flex items-center">
-                        {product.originalPrice && (
-                          <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
-                            isDarkMode 
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                              : 'bg-red-50 text-red-600 border border-red-200'
-                          }`}>
-                            {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                          </span>
-                        )}
-                      </div>
+
+                    <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+                      <button
+                        onClick={createTest}
+                        className="cursor-pointer flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        Create Test
+                      </button>
+                      <button
+                        onClick={() => setActiveView("library")}
+                        className="cursor-pointer flex-1 sm:flex-none px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                    
-                    {/* Info Section */}
-                    <div className="flex justify-between items-center mb-6">
-                      <div className="flex flex-col gap-2">
-                        <span className={`text-xs font-medium uppercase tracking-wider ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          Sizes Available
-                        </span>
-                        <span className={`text-sm px-4 py-2 rounded-xl font-medium ${
-                          isDarkMode ? 'text-gray-300 bg-gray-700/50 border border-gray-600/50' : 'text-gray-700 bg-gray-100/80 border border-gray-200/50'
-                        }`}>
-                          {product.size}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-1">
-                          <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          <span className={`text-lg font-bold ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {product.rating}
+                  </div>
+                </div>
+
+                {/* Preview Panel (Desktop Only) */}
+                {previewMode === "desktop" && (
+                  <div className="bg-gray-100 p-4 sm:p-6 overflow-y-auto max-h-screen md:block hidden">
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-lg mx-auto">
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                        Live Preview
+                      </h3>
+
+                      {testForm.title && (
+                        <div className="mb-4">
+                          <h4 className="text-base sm:text-lg font-semibold text-gray-800">
+                            {testForm.title}
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            {testForm.description}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                            <span>Duration: {testForm.duration} minutes</span>
+                            <span>Category: {testForm.category}</span>
+                            <span
+                              className={`px-2 py-1 rounded ${
+                                testForm.difficulty === "easy"
+                                  ? "bg-green-100 text-green-800"
+                                  : testForm.difficulty === "medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {testForm.difficulty}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {testForm.questions.length > 0 && (
+                        <div className="space-y-4">
+                          <h5 className="font-medium text-gray-700 text-sm sm:text-base">
+                            Sample Questions:
+                          </h5>
+
+                          {testForm.questions
+                            .slice(0, 2)
+                            .map((question, index) => (
+                              <div
+                                key={question.id}
+                                className="border border-gray-200 rounded p-3"
+                              >
+                                <p className="font-medium text-sm mb-2">
+                                  Q{index + 1}: {question.question}
+                                </p>
+
+                                {question.type === "multiple-choice" &&
+                                  question.options && (
+                                    <div className="space-y-1">
+                                      {question.options
+                                        .filter((opt) => opt.trim())
+                                        .map((option, optIndex) => (
+                                          <label
+                                            key={optIndex}
+                                            className="flex items-center text-xs"
+                                          >
+                                            <input
+                                              type="radio"
+                                              className="mr-2"
+                                              disabled
+                                            />
+                                            {option}
+                                          </label>
+                                        ))}
+                                    </div>
+                                  )}
+
+                                {question.type === "text" && (
+                                  <input
+                                    type="text"
+                                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+                                    disabled
+                                  />
+                                )}
+
+                                {question.type === "essay" && (
+                                  <textarea
+                                    rows={2}
+                                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+                                    disabled
+                                  />
+                                )}
+
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {question.points} points
+                                </p>
+                              </div>
+                            ))}
+
+                          {testForm.questions.length > 2 && (
+                            <p className="text-xs text-gray-500 text-center">
+                              ... and {testForm.questions.length - 2} more
+                              questions
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-gray-100 pt-2 flex md:hidden">
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-lg mx-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                      Live Preview
+                    </h3>
+
+                    {testForm.title && (
+                      <div className="mb-4">
+                        <h4 className="text-base sm:text-lg font-semibold text-gray-800">
+                          {testForm.title}
+                        </h4>
+                        <p className="text-gray-600 text-sm">
+                          {testForm.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                          <span>Duration: {testForm.duration} minutes</span>
+                          <span>Category: {testForm.category}</span>
+                          <span
+                            className={`px-2 py-1 rounded ${
+                              testForm.difficulty === "easy"
+                                ? "bg-green-100 text-green-800"
+                                : testForm.difficulty === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {testForm.difficulty}
                           </span>
                         </div>
-                        <span className={`text-xs ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          ({product.reviews} reviews)
-                        </span>
                       </div>
-                    </div>
-                    
-                    {/* Spacer to push button to bottom */}
-                    <div className="flex-grow"></div>
-                    
-                    {/* Add to Cart Button - Always at bottom */}
-                    <motion.button
-                      variants={buttonVariants}
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const defaultSize = product.size?.split('-')[0];
-                        addToCart(product, defaultSize);
-                      }}
-                      className={`w-full px-6 py-4 font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
-                        isDarkMode 
-                          ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl' 
-                          : 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
+                    )}
+
+                    {testForm.questions.length > 0 && (
+                      <div className="space-y-4">
+                        <h5 className="font-medium text-gray-700 text-sm sm:text-base">
+                          Sample Questions:
+                        </h5>
+
+                        {testForm.questions
+                          .slice(0, 2)
+                          .map((question, index) => (
+                            <div
+                              key={question.id}
+                              className="border border-gray-200 rounded p-3"
+                            >
+                              <p className="font-medium text-sm mb-2">
+                                Q{index + 1}: {question.question}
+                              </p>
+
+                              {question.type === "multiple-choice" &&
+                                question.options && (
+                                  <div className="space-y-1">
+                                    {question.options
+                                      .filter((opt) => opt.trim())
+                                      .map((option, optIndex) => (
+                                        <label
+                                          key={optIndex}
+                                          className="flex items-center text-xs"
+                                        >
+                                          <input
+                                            type="radio"
+                                            className="mr-2"
+                                            disabled
+                                          />
+                                          {option}
+                                        </label>
+                                      ))}
+                                  </div>
+                                )}
+
+                              {question.type === "text" && (
+                                <input
+                                  type="text"
+                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+                                  disabled
+                                />
+                              )}
+
+                              {question.type === "essay" && (
+                                <textarea
+                                  rows={2}
+                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+                                  disabled
+                                />
+                              )}
+
+                              <p className="text-xs text-gray-500 mt-1">
+                                {question.points} points
+                              </p>
+                            </div>
+                          ))}
+
+                        {testForm.questions.length > 2 && (
+                          <p className="text-xs text-gray-500 text-center">
+                            ... and {testForm.questions.length - 2} more
+                            questions
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeView === "test" && currentTest && currentSession && (
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+              {/* Test Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">
+                      {currentTest.title}
+                    </h1>
+                    <p className="text-sm text-gray-600">
+                      {currentTest.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div
+                      className={`text-lg font-semibold ${
+                        showFullscreenWarning
+                          ? "text-red-600"
+                          : isOnBreak
+                          ? "text-orange-600"
+                          : "text-blue-600"
                       }`}
                     >
-                      Add to Cart
-                    </motion.button>
+                      {showFullscreenWarning
+                        ? "PAUSED - FULLSCREEN REQUIRED"
+                        : isOnBreak
+                        ? "ON BREAK"
+                        : formatTime(timeRemaining)}
+                    </div>
+                    {!isFullscreen && !showFullscreenWarning && (
+                      <div className="text-sm text-red-600 font-medium">
+                        Not in fullscreen
+                      </div>
+                    )}
                   </div>
-                </motion.div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
-            
-            {filteredProducts.length === 0 && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-16"
-              >
-                <div className="mb-6">
-                  <svg className="w-24 h-24 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.562M15 6.306a7.962 7.962 0 00-6 0m6 0V4a2 2 0 00-2-2h-2a2 2 0 00-2 2v2.306" />
-                  </svg>
                 </div>
-                <p className="text-xl mb-6
-                ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}
-                ">No products found matching "{searchQuery}" in {activeCategory}.</p>
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={() => filterProducts('All', '')}
-                  className={`px-8 py-3 font-semibold rounded-xl cursor-pointer transition-all duration-200 ${
-                    isDarkMode
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                      : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  }`}
-                >
-                  Clear Search
-                </motion.button>
-              </motion.div>
-            )}
+              </div>
+
+              {/* Test Content */}
+              <div className=" p-4 md:p-6 overflow-y-auto max-h-screen">
+                <div className="max-w-4xl mx-auto">
+                  {currentTest.questions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No questions available
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        This test doesn't have any questions yet.
+                      </p>
+                      <button
+                        onClick={endTestSession}
+                        className="cursor-pointer bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Return to Dashboard
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {currentTest.questions.map((question, index) => (
+                        <div
+                          key={question.id}
+                          className="mb-8 p-6 border border-gray-200 rounded-lg"
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Question {index + 1}
+                            </h3>
+                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              {question.points} points
+                            </span>
+                          </div>
+
+                          <p className="text-gray-700 mb-4">
+                            {question.question}
+                          </p>
+
+                          {question.type === "multiple-choice" &&
+                            question.options && (
+                              <div className="space-y-2">
+                                {question.options
+                                  .filter((opt) => opt.trim())
+                                  .map((option, optIndex) => (
+                                    <label
+                                      key={optIndex}
+                                      className="flex items-center cursor-pointer"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`question-${question.id}`}
+                                        value={optIndex}
+                                        onChange={(e) => {
+                                          if (currentSession) {
+                                            setCurrentSession((prev) =>
+                                              prev
+                                                ? {
+                                                    ...prev,
+                                                    answers: {
+                                                      ...prev.answers,
+                                                      [question.id]: parseInt(
+                                                        e.target.value
+                                                      ),
+                                                    },
+                                                  }
+                                                : null
+                                            );
+                                          }
+                                        }}
+                                        className="mr-3"
+                                      />
+                                      <span className="text-gray-700">
+                                        {option}
+                                      </span>
+                                    </label>
+                                  ))}
+                              </div>
+                            )}
+
+                          {question.type === "text" && (
+                            <input
+                              type="text"
+                              onChange={(e) => {
+                                if (currentSession) {
+                                  setCurrentSession((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          answers: {
+                                            ...prev.answers,
+                                            [question.id]: e.target.value,
+                                          },
+                                        }
+                                      : null
+                                  );
+                                }
+                              }}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter your answer"
+                            />
+                          )}
+
+                          {question.type === "essay" && (
+                            <textarea
+                              rows={4}
+                              onChange={(e) => {
+                                if (currentSession) {
+                                  setCurrentSession((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          answers: {
+                                            ...prev.answers,
+                                            [question.id]: e.target.value,
+                                          },
+                                        }
+                                      : null
+                                  );
+                                }
+                              }}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter your essay response"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <div className="flex flex-col sm:flex-row justify-center sm:space-x-4 space-y-4 sm:space-y-0 mt-8">
+                    {isOnBreak ? (
+                      <button
+                        onClick={resumeTest}
+                        className="w-full sm:w-auto cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                      >
+                        Resume Test
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={endTestSession}
+                          className="w-full sm:w-auto cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                        >
+                          Submit Test
+                        </button>
+                        <button
+                          onClick={() => setShowProctorModal(true)}
+                          className="w-full sm:w-auto cursor-pointer bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition-colors"
+                        >
+                          Request Break
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </motion.section>
-          </>
+        )}
+
+        {activeView === "analytics" && (
+          <div className="px-4 py-6 sm:px-0 overflow-y-auto">
+            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Analytics Dashboard
+                </h1>
+              </div>
+
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <DocumentTextIcon className="h-8 w-8" />
+                        <div className="ml-4">
+                          <p className="text-2xl font-semibold">
+                            {analyticsData.totalTests}
+                          </p>
+                          <p className="text-blue-100">Total Tests</p>
+                        </div>
+                      </div>
+                      {isMobile && (
+                        <Sparkline
+                          data={analyticsData.performanceData}
+                          color="#ffffff"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <UserGroupIcon className="h-8 w-8" />
+                        <div className="ml-4">
+                          <p className="text-2xl font-semibold">
+                            {analyticsData.totalSessions}
+                          </p>
+                          <p className="text-green-100">Test Sessions</p>
+                        </div>
+                      </div>
+                      {isMobile && (
+                        <Sparkline
+                          data={analyticsData.performanceData}
+                          color="#ffffff"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <ChartBarIcon className="h-8 w-8" />
+                        <div className="ml-4">
+                          <p className="text-2xl font-semibold">
+                            {analyticsData.avgScore.toFixed(1)}%
+                          </p>
+                          <p className="text-purple-100">Average Score</p>
+                        </div>
+                      </div>
+                      {isMobile && (
+                        <Sparkline
+                          data={analyticsData.performanceData}
+                          color="#ffffff"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <CheckCircleIcon className="h-8 w-8" />
+                        <div className="ml-4">
+                          <p className="text-2xl font-semibold">
+                            {analyticsData.completionRate.toFixed(1)}%
+                          </p>
+                          <p className="text-orange-100">Completion Rate</p>
+                        </div>
+                      </div>
+                      {isMobile && (
+                        <Sparkline
+                          data={analyticsData.performanceData}
+                          color="#ffffff"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                  {/* Performance Over Time Chart */}
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Performance Over Time
+                    </h3>
+                    {isMobile ? (
+                      <div className="space-y-3">
+                        {analyticsData.performanceData
+                          .slice(-5)
+                          .map((item, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-white rounded"
+                            >
+                              <span className="text-sm font-medium">
+                                Session {item.session}
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                <Sparkline data={[item]} color="#3B82F6" />
+                                <span className="text-sm font-bold text-blue-600">
+                                  {item.score}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={analyticsData.performanceData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="session" />
+                            <YAxis domain={[0, 100]} />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="score"
+                              stroke="#3B82F6"
+                              strokeWidth={2}
+                              dot={{ fill: "#3B82F6" }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category Performance */}
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Performance by Category
+                    </h3>
+                    {isMobile ? (
+                      <div className="space-y-3">
+                        {analyticsData.categoryData.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-white rounded"
+                          >
+                            <span className="text-sm font-medium">
+                              {item.category}
+                            </span>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-green-600 h-2 rounded-full"
+                                  style={{ width: `${item.avgScore}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-bold">
+                                {item.avgScore}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analyticsData.categoryData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="category" />
+                            <YAxis domain={[0, 100]} />
+                            <Tooltip />
+                            <Bar dataKey="avgScore" fill="#10B981" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Score Distribution */}
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Score Distribution
+                    </h3>
+                    {isMobile ? (
+                      <div className="space-y-2">
+                        {analyticsData.scoreDistribution.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-white rounded"
+                          >
+                            <span className="text-sm">{item.range}</span>
+                            <div className="flex items-center space-x-2">
+                              <div
+                                className="w-3 h-3 rounded"
+                                style={{ backgroundColor: item.color }}
+                              ></div>
+                              <span className="text-sm font-medium">
+                                {item.count}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={analyticsData.scoreDistribution}
+                              cx="50%"
+                              cy="45%"
+                              outerRadius={70}
+                              dataKey="count"
+                              label={false}
+                            >
+                              {analyticsData.scoreDistribution.map(
+                                (entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                  />
+                                )
+                              )}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value, name, props) => [
+                                `${value} students`,
+                                props.payload.range
+                              ]}
+                            />
+                            <Legend 
+                              verticalAlign="bottom"
+                              height={60}
+                              formatter={(value) => value}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent Sessions */}
+                  <div className="bg-gray-50 p-6 rounded-lg h-[456px] flex flex-col">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Recent Test Sessions
+                    </h3>
+                    <div className="space-y-3 flex-1 overflow-y-auto">
+                      {analyticsData.recentActivity.map((session) => (
+                        <div
+                          key={session.id}
+                          className="bg-white p-3 rounded border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {session.userName}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {session.startTime.toLocaleDateString()} at{" "}
+                                {session.startTime.toLocaleTimeString()}
+                              </p>
+                              {session.violations.length > 0 && (
+                                <p className="text-xs text-red-600 flex items-center">
+                                  <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
+                                  {session.violations.length} violation(s)
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  session.status === "completed"
+                                    ? "bg-green-100 text-green-800"
+                                    : session.status === "in-progress"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {session.status}
+                              </span>
+                              {session.score && (
+                                <p className="text-sm font-medium mt-1">
+                                  {session.score}%
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {analyticsData.recentActivity.length === 0 && (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No sessions yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeView === "settings" && (
+          <div className="px-4 py-6 sm:px-0 overflow-y-auto">
+            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+              </div>
+
+              <div className="p-6">
+                <div className="max-w-2xl">
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Proctoring Settings
+                      </h3>
+                      <div className="space-y-4 pl-4 border-l-2 border-blue-200">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-blue-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Require fullscreen mode
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Force users to stay in fullscreen during tests
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-blue-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Track tab switching
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Log when users switch browser tabs
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-blue-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Enable break requests
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Allow users to request breaks during tests
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mr-3 h-4 w-4 text-blue-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Webcam monitoring
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Record user webcam during test sessions
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Time Management
+                      </h3>
+                      <div className="space-y-4 pl-4 border-l-2 border-green-200">
+                        <div className="flex items-center space-x-4">
+                          <label className="text-gray-700 font-medium">
+                            Warning alert at:
+                          </label>
+                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <option>5 minutes remaining</option>
+                            <option>10 minutes remaining</option>
+                            <option>15 minutes remaining</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <label className="text-gray-700 font-medium">
+                            Final warning at:
+                          </label>
+                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <option>1 minute remaining</option>
+                            <option>2 minutes remaining</option>
+                            <option>30 seconds remaining</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <label className="text-gray-700 font-medium">
+                            Auto-submit after time:
+                          </label>
+                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <option>Immediately</option>
+                            <option>30 seconds grace</option>
+                            <option>1 minute grace</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Security
+                      </h3>
+                      <div className="space-y-4 pl-4 border-l-2 border-red-200">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-red-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Disable right-click during test
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Prevent copy/paste and context menus
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-red-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Disable keyboard shortcuts
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Block common shortcuts like Ctrl+C, Ctrl+V
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mr-3 h-4 w-4 text-red-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Randomize question order
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Show questions in random order for each user
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mr-3 h-4 w-4 text-red-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Randomize answer options
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Shuffle multiple choice options
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Notifications
+                      </h3>
+                      <div className="space-y-4 pl-4 border-l-2 border-purple-200">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked
+                            className="mr-3 h-4 w-4 text-purple-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Email test completion reports
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Send summary emails when tests are completed
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mr-3 h-4 w-4 text-purple-600 rounded"
+                          />
+                          <div>
+                            <span className="text-gray-700 font-medium">
+                              Real-time violation alerts
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              Immediate notifications for proctoring violations
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-gray-200">
+                      <button
+                        onClick={() =>
+                          addToast({
+                            type: "success",
+                            message: "Settings saved successfully!",
+                          })
+                        }
+                        className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Save Settings
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 
-      
-      <footer className={`transition-colors duration-300 ${
-        isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-      } border-t`}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            
-            <div className="lg:col-span-1">
-              <div className="mb-6">
-                <span className="text-2xl font-bold tracking-tight text-gradient">UrbanThreads</span>
-              </div>
-              <p className={`text-sm leading-relaxed mb-6 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Curating minimalist fashion for the modern lifestyle. Quality pieces that embody simplicity and timeless design.
-              </p>
-              <div className="flex space-x-4">
-                {[
-                  { name: 'F', href: '#' },
-                  { name: 'T', href: '#' },
-                  { name: 'I', href: '#' },
-                  { name: 'Y', href: '#' }
-                ].map((social) => (
-                  <motion.a
-                    key={social.name}
-                    href={social.href}
-                    whileHover={{ scale: 1.1, y: -2 }}
-                    whileTap={{ scale: 0.9 }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-200 cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                    }`}
-                  >
-                    {social.name}
-                  </motion.a>
-                ))}
-              </div>
-            </div>
-
-            
-            <div>
-              <h3 className={`text-lg font-semibold mb-6 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>Shop</h3>
-              <ul className="space-y-4">
-                {['New Arrivals', 'Best Sellers', 'Sale', 'Collections', 'Gift Cards'].map((item) => (
-                  <li key={item}>
-                    <motion.a
-                      href="#"
-                      whileHover={{ x: 4 }}
-                      className={`text-sm transition-all duration-200 cursor-pointer ${
-                        isDarkMode 
-                          ? 'text-gray-400 hover:text-white' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {item}
-                    </motion.a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            
-            <div>
-              <h3 className={`text-lg font-semibold mb-6 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>Customer Care</h3>
-              <ul className="space-y-4">
-                {['Contact Us', 'Size Guide', 'Shipping & Returns', 'FAQ', 'Track Your Order'].map((item) => (
-                  <li key={item}>
-                    <motion.a
-                      href="#"
-                      whileHover={{ x: 4 }}
-                      className={`text-sm transition-all duration-200 cursor-pointer ${
-                        isDarkMode 
-                          ? 'text-gray-400 hover:text-white' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {item}
-                    </motion.a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            
-            <div>
-              <h3 className={`text-lg font-semibold mb-6 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>Company</h3>
-              <ul className="space-y-4">
-                {['About Us', 'Careers', 'Press', 'Sustainability', 'Privacy Policy'].map((item) => (
-                  <li key={item}>
-                    <motion.a
-                      href="#"
-                      whileHover={{ x: 4 }}
-                      className={`text-sm transition-all duration-200 cursor-pointer ${
-                        isDarkMode 
-                          ? 'text-gray-400 hover:text-white' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {item}
-                    </motion.a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          
-          <div className={`mt-12 pt-8 border-t flex flex-col md:flex-row justify-between items-center ${
-            isDarkMode ? 'border-gray-800' : 'border-gray-200'
-          }`}>
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <p className={`text-sm ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                © 2024 UrbanThreads. All rights reserved.
-              </p>
-
-            </div>
-          </div>
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-4 mt-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm text-gray-600">© {new Date().getFullYear()} TestPro - Professional Testing Platform. All rights reserved.</p>
         </div>
       </footer>
 
-      <AnimatePresence>
-        {showCart && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            onClick={() => setShowCart(false)}
-          >
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              className={`absolute top-0 right-0 h-full w-full sm:w-[500px] lg:w-[600px] border-l shadow-2xl overflow-hidden flex flex-col ${
-                isDarkMode 
-                  ? 'bg-gray-900 border-gray-700' 
-                  : 'bg-white border-gray-200'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className={`flex items-center justify-between p-6 border-b ${
-                isDarkMode 
-                  ? 'border-gray-700 bg-gray-800' 
-                  : 'border-gray-200 bg-gray-50'
-              }`}>
-                <h2 className={`text-2xl font-bold font-heading ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>Your Cart</h2>
-                                  <motion.button
-                    whileHover={{ scale: 1.1, rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setShowCart(false)}
-                    className={`p-2 rounded-full transition-all duration-300 cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                    }`}
-                  >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </motion.button>
-              </div>
-              
-              {cartItems.length === 0 ? (
-                <div className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${
-                  isDarkMode ? 'bg-gray-800' : 'bg-gray-50'
-                }`}>
-                                      <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.2 }}
-                      className={`p-6 rounded-full mb-6 ${
-                        isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                      }`}
-                    >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </motion.div>
-                                      <h3 className={`text-xl font-bold mb-2 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Your cart is empty</h3>
-                    <p className={`mb-6 ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                    }`}>Add some items to get started</p>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => {
-                      setShowCart(false);
-                      setCurrentPage('products');
-                    }}
-                    className={`px-8 py-3 font-bold rounded-2xl transition-all duration-300 shadow-xl cursor-pointer ${ 
-                      isDarkMode
-                        ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
-                    }`}
-                  >
-                    Continue Shopping
-                  </motion.button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 overflow-y-auto p-6 cart-scrollbar">
-                    <div className="space-y-6">
-                      {cartItems.map((item) => (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.3 }}
-                          className={`flex gap-4 border-b pb-6 last:border-b-0 p-4 rounded-2xl mb-4 shadow-sm ${
-                            isDarkMode 
-                              ? 'border-gray-700 bg-gray-800' 
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="relative">
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              className="w-24 h-24 object-cover rounded-2xl shadow-md" 
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className={`font-bold font-heading text-lg ${
-                              isDarkMode ? 'text-white' : 'text-gray-900'
-                            }`}>{item.name}</h3>
-                            {item.selectedSize && (
-                              <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                                isDarkMode ? 'text-gray-500' : 'text-gray-500'
-                              }`}>Size: {item.selectedSize}</p>
-                            )}
-                            <p className={`text-sm mb-3 ${
-                              isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                            }`}>${item.price.toFixed(2)} x {item.quantity}</p>
-                            <div className="flex items-center gap-3">
-                                                              <div className={`flex items-center gap-2 rounded-xl p-1 ${
-                                  isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                                }`}>
-                                <motion.button
-                                  variants={buttonVariants}
-                                  whileHover="hover"
-                                  whileTap="tap"
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize)}
-                                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors font-bold cursor-pointer ${
-                                    isDarkMode 
-                                      ? 'text-gray-300 hover:bg-gray-600' 
-                                      : 'text-gray-700 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  −
-                                </motion.button>
-                                <span className={`w-8 text-center font-bold ${
-                                  isDarkMode ? 'text-white' : 'text-gray-900'
-                                }`}>{item.quantity}</span>
-                                <motion.button
-                                  variants={buttonVariants}
-                                  whileHover="hover"
-                                  whileTap="tap"
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize)}
-                                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors font-bold cursor-pointer ${
-                                    isDarkMode 
-                                      ? 'text-gray-300 hover:bg-gray-600' 
-                                      : 'text-gray-700 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  +
-                                </motion.button>
-                              </div>
-                              <motion.button
-                                variants={buttonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={() => removeFromCart(item.id, item.selectedSize)}
-                                className={`ml-auto p-2 rounded-xl transition-all duration-300 cursor-pointer ${
-                                  isDarkMode 
-                                    ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300' 
-                                    : 'bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700'
-                                }`}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </motion.button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className={`p-6 border-t ${
-                    isDarkMode 
-                      ? 'border-gray-700 bg-gray-800' 
-                      : 'border-gray-200 bg-gray-50'
-                  }`}>
-                    <div className="space-y-4 mb-6">
-                                              <div className="flex justify-between">
-                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal:</span>
-                          <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${totalPrice.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Shipping:</span>
-                          <span className="font-bold text-green-600">Free</span>
-                        </div>
-                        <div className={`h-px ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                        <div className="flex justify-between text-xl font-bold">
-                          <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>Total:</span>
-                          <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>${totalPrice.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    <div className="space-y-3">
-                      <motion.button
-                        variants={buttonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => {
-                          
-                          setShowCart(false);
-                          setCartItems([]);
-                          setCheckoutSuccessMessage('Checkout Successful! Your order is being processed.');
-                          setShowCheckoutSuccessNotification(true);
-                          setTimeout(() => setShowCheckoutSuccessNotification(false), 5000);
-                        }}
-                        className={`w-full px-6 py-4 font-bold text-lg rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer border-2 ${
-                          isDarkMode 
-                            ? 'bg-white text-gray-900 border-white hover:bg-gray-100 hover:text-gray-800 shadow-white/20' 
-                            : 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:border-gray-800 shadow-gray-900/30'
-                        }`}
-                      >
-                        Proceed to Checkout
-                      </motion.button>
-                      <motion.button
-                        variants={buttonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => setShowCart(false)}
-                        className={`w-full px-6 py-3 border-2 font-semibold rounded-2xl transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg ${
-                          isDarkMode 
-                            ? 'border-gray-400 hover:bg-gray-700 text-gray-200 hover:text-white hover:border-gray-300' 
-                            : 'border-gray-400 hover:bg-gray-100 text-gray-700 hover:text-gray-900 hover:border-gray-500'
-                        }`}
-                      >
-                        Continue Shopping
-                      </motion.button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Proctor Modal */}
+      {showProctorModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setShowProctorModal(false)} // ✅ Close on outside click
+        >
+          {/* Modern Blurry Backdrop */}
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
 
-      <AnimatePresence>
-        {showNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-6 right-6 bg-white border border-gray-200 text-gray-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 max-w-sm z-100"
+          {/* Modal */}
+          <div
+            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-full max-w-lg border border-white/20"
+            onClick={(e) => e.stopPropagation()} // ✅ Prevent inner click from closing
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="p-2 bg-green-100 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </motion.div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-900">{notificationMessage}</p>
-              <p className="text-sm text-gray-600">Item added successfully</p>
+            <div className="flex items-center space-x-3 mb-4">
+              <ClockIcon className="h-6 w-6 text-yellow-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Request Break
+              </h3>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {showCheckoutSuccessNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-20 right-6 bg-white border border-gray-200 text-gray-900 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 max-w-sm"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="p-2 bg-blue-100 rounded-full" 
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /> 
-              </svg>
-            </motion.div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-900">{checkoutSuccessMessage}</p>
-              <p className="text-sm text-gray-600">Thank you for your purchase!</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <p className="text-sm text-gray-500 mb-4">
+              Select the reason for your break request. Your test timer will be
+              paused:
+            </p>
 
-      <AnimatePresence>
-        {showSubscribeNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className={`fixed bottom-6 left-6 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 max-w-sm ${
-              isDarkMode 
-                ? 'bg-gray-800 border border-gray-700 text-white' 
-                : 'bg-white border border-gray-200 text-gray-900'
-            }`}
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="p-2 bg-purple-100 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </motion.div>
-            <div className="flex-1">
-              <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{subscribeMessage}</p>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Welcome to our community!</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showQuickView && selectedProduct && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowQuickView(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 25 }}
-              className={`rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto premium-shadow ${
-                isDarkMode ? 'bg-gray-800' : 'bg-white'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex flex-col md:flex-row">
-                <div className="md:w-1/2 relative">
-                  <img 
-                    src={selectedProduct?.image} 
-                    alt={selectedProduct?.name} 
-                    className="w-full h-full object-cover rounded-l-3xl md:rounded-r-none rounded-r-3xl md:rounded-br-none" 
-                  />
-                </div>
-                <div className="md:w-1/2 p-8">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h2 className={`text-2xl font-bold font-heading mb-2 tracking-tight ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>{selectedProduct?.name}</h2>
-                      <p className={`text-sm font-light ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>{selectedProduct?.category}</p>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowQuickView(false)}
-                      className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${
-                        isDarkMode 
-                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </motion.button>
-                  </div>
-                  
-                  <p className={`text-3xl font-bold mb-6 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>${selectedProduct?.price?.toFixed(2)}</p> 
-                  
-                  <p className={`mb-8 leading-relaxed font-light ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>{selectedProduct?.description}</p> 
-                  
-                  <div className="mb-8">
-                    <h3 className={`text-lg font-semibold mb-4 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Size</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {selectedProduct?.size?.split('-').map(size => ( 
-                        <motion.button
-                          key={size}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setSelectedSize(size)}
-                          className={`px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
-                            selectedSize === size 
-                              ? (isDarkMode ? 'bg-white text-gray-900' : 'bg-gray-900 text-white')
-                              : (isDarkMode 
-                                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
-                          }`}
-                        >
-                          {size}
-                        </motion.button>
-                      ))}
-                    </div>
-                    {!selectedSize && (
-                      <p className="text-red-500 text-sm mt-2 font-light">Please select a size</p>
-                    )}
-                  </div>
-
-                  <div className="mb-8">
-                    <h3 className={`text-lg font-semibold mb-4 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Quantity</h3>
-                    <div className="flex items-center gap-4">
-                      <div className={`flex items-center rounded-xl ${
-                        isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                      }`}>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className={`p-3 rounded-l-xl transition-colors cursor-pointer ${
-                            isDarkMode 
-                              ? 'text-gray-300 hover:bg-gray-600' 
-                              : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                          </svg>
-                        </motion.button>
-                        <span className={`px-6 py-3 font-semibold min-w-[60px] text-center ${
-                          isDarkMode ? 'text-white' : 'text-gray-900'
-                        }`}>{quantity}</span>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setQuantity(quantity + 1)}
-                          className={`p-3 rounded-r-xl transition-colors cursor-pointer ${
-                            isDarkMode 
-                              ? 'text-gray-300 hover:bg-gray-600' 
-                              : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                        </motion.button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4 mb-8">
-                    <motion.button
-                      variants={buttonVariants}
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={handleQuickViewAddToCart}
-                      disabled={!selectedSize}
-                      className={`flex-1 px-8 py-4 font-semibold rounded-2xl transition-all duration-200 ${
-                        selectedSize 
-                          ? (isDarkMode 
-                              ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl cursor-pointer' 
-                              : 'bg-gray-900 hover:bg-gray-800 text-white minimal-shadow hover:modern-shadow cursor-pointer')
-                          : (isDarkMode 
-                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-                              : 'bg-gray-200 text-gray-400 cursor-not-allowed')
-                      }`}
-                    >
-                      Add to Cart • ${(selectedProduct?.price * quantity).toFixed(2)} 
-                    </motion.button>
-                  </div>
-                  
-                  <div className={`border-t pt-6 ${
-                    isDarkMode ? 'border-gray-600' : 'border-gray-200'
-                  }`}>
-                    <h3 className={`text-lg font-semibold mb-4 ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Details</h3>
-                    <ul className={`space-y-3 font-light ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      <li className="flex items-center gap-3">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isDarkMode ? 'bg-gray-500' : 'bg-gray-400'
-                        }`}></div>
-                        Premium quality materials
-                      </li>
-                      <li className="flex items-center gap-3">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isDarkMode ? 'bg-gray-500' : 'bg-gray-400'
-                        }`}></div>
-                        Sustainable production
-                      </li>
-                      <li className="flex items-center gap-3">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isDarkMode ? 'bg-gray-500' : 'bg-gray-400'
-                        }`}></div>
-                        Machine washable
-                      </li>
-                      <li className="flex items-center gap-3">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isDarkMode ? 'bg-gray-500' : 'bg-gray-400'
-                        }`}></div>
-                        Free shipping & returns
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showFavorites && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            onClick={() => setShowFavorites(false)}
-          >
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              className={`absolute top-0 right-0 h-full w-full sm:w-[500px] lg:w-[600px] border-l shadow-2xl overflow-hidden flex flex-col ${
-                isDarkMode 
-                  ? 'bg-gray-900 border-gray-700' 
-                  : 'bg-white border-gray-200'
-              }`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className={`flex items-center justify-between p-6 border-b ${
-                isDarkMode 
-                  ? 'border-gray-700 bg-gray-800' 
-                  : 'border-gray-200 bg-gray-50'
-              }`}>
-                <h2 className={`text-2xl font-bold font-heading ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>Your Favorites</h2>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setShowFavorites(false)}
-                  className={`p-2 rounded-full transition-all duration-300 cursor-pointer ${
-                    isDarkMode 
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
+            <div className="space-y-2">
+              {[
+                "Bathroom break",
+                "Technical issue",
+                "Medical emergency",
+                "Network connectivity problem",
+                "Other",
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    takeBreak(reason);
+                  }}
+                  className="cursor-pointer w-full text-left px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </motion.button>
-              </div>
-              
-              {favoriteItems.length === 0 ? (
-                <div className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${
-                  isDarkMode ? 'bg-gray-800' : 'bg-gray-50'
-                }`}>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', delay: 0.2 }}
-                    className={`p-6 rounded-full mb-6 ${
-                      isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                    }`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </motion.div>
-                  <h3 className={`text-xl font-bold mb-2 ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>No favorites yet</h3>
-                  <p className={`mb-6 ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Add some items to your wishlist</p>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => {
-                      setShowFavorites(false);
-                      setCurrentPage('products');
-                    }}
-                    className={`px-8 py-3 font-bold rounded-2xl transition-all duration-300 shadow-xl cursor-pointer ${ 
-                      isDarkMode
-                        ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
-                    }`}
-                  >
-                    Browse Products
-                  </motion.button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 overflow-y-auto p-6 cart-scrollbar">
-                    <div className="space-y-6">
-                      {products.filter(product => favoriteItems.includes(product.id)).map((item) => (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.3 }}
-                          className={`flex gap-4 border-b pb-6 last:border-b-0 p-4 rounded-2xl mb-4 shadow-sm ${
-                            isDarkMode 
-                              ? 'border-gray-700 bg-gray-800' 
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="relative">
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              className="w-24 h-24 object-cover rounded-2xl shadow-md" 
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className={`font-bold font-heading text-lg ${
-                              isDarkMode ? 'text-white' : 'text-gray-900'
-                            }`}>{item.name}</h3>
-                            <p className={`text-sm mb-3 ${
-                              isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                            }`}>${item.price.toFixed(2)}</p>
-                            <div className="flex items-center gap-3">
-                              <motion.button
-                                variants={buttonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={() => {
-                                  const defaultSize = item.size?.split('-')[0];
-                                  addToCart(item, defaultSize);
-                                  toggleFavorite(item.id); // Remove from favorites when added to cart
-                                }}
-                                className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 cursor-pointer ${
-                                  isDarkMode 
-                                    ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                                    : 'bg-gray-900 text-white hover:bg-gray-800'
-                                }`}
-                              >
-                                Add to Cart
-                              </motion.button>
-                              <motion.button
-                                variants={buttonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={() => toggleFavorite(item.id)}
-                                className={`ml-auto p-2 rounded-xl transition-all duration-300 cursor-pointer ${
-                                  isDarkMode 
-                                    ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300' 
-                                    : 'bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700'
-                                }`}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                              </motion.button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className={`p-6 border-t ${
-                    isDarkMode 
-                      ? 'border-gray-700 bg-gray-800' 
-                      : 'border-gray-200 bg-gray-50'
-                  }`}>
-                    <div className="space-y-3">
-                      <motion.button
-                        variants={buttonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => {
-                          
-                          products
-                            .filter(product => favoriteItems.includes(product.id))
-                            .forEach(product => {
-                              const defaultSize = product.size?.split('-')[0];
-                              addToCart(product, defaultSize);
-                            });
-                          // Clear all favorites after adding to cart
-                          setFavoriteItems([]);
-                          setShowFavorites(false);
-                        }}
-                        className={`w-full px-6 py-4 font-bold text-lg rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer border-2 ${
-                          isDarkMode 
-                            ? 'bg-white text-gray-900 border-white hover:bg-gray-100 hover:text-gray-800 shadow-white/20' 
-                            : 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:border-gray-800 shadow-gray-900/30'
-                        }`}
-                      >
-                        Add All to Cart
-                      </motion.button>
-                      <motion.button
-                        variants={buttonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        onClick={() => setShowFavorites(false)}
-                        className={`w-full px-6 py-3 border-2 font-semibold rounded-2xl transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg ${
-                          isDarkMode 
-                            ? 'border-gray-400 hover:bg-gray-700 text-gray-200 hover:text-white hover:border-gray-300' 
-                            : 'border-gray-400 hover:bg-gray-100 text-gray-700 hover:text-gray-900 hover:border-gray-500'
-                        }`}
-                      >
-                        Continue Shopping
-                      </motion.button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      
-      <AnimatePresence>
-        {showFeatureNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 max-w-sm ${
-              isDarkMode 
-                ? 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300' 
-                : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-            }`}
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="p-2 bg-yellow-400/30 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </motion.div>
-            <div className="flex-1">
-              <p className="font-bold">{featureNotificationMessage}</p>
-              <p className="text-sm">This feature is coming soon!</p>
+                  {reason}
+                </button>
+              ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            <div className="mt-6 text-right">
+              <button
+                onClick={() => setShowProctorModal(false)}
+                className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setShowExportModal(false)} // ✅ Close on outside click
+        >
+          {/* Modern Blurry Backdrop */}
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
+
+          {/* Modal Content */}
+          <div
+            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-full max-w-lg border border-white/20"
+            onClick={(e) => e.stopPropagation()} // ✅ Prevent close on inner click
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <ArrowDownTrayIcon className="h-6 w-6 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Export Data
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Choose what data you'd like to export:
+            </p>
+
+            {[
+              { id: "tests", label: "Test Definitions", desc: "All test data" },
+              {
+                id: "sessions",
+                label: "Test Sessions",
+                desc: "Session results",
+              },
+              { id: "users", label: "User Data", desc: "User info & stats" },
+              {
+                id: "analytics",
+                label: "Analytics Report",
+                desc: "Charts & metrics",
+              },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  addToast({
+                    type: "success",
+                    message: `${item.label} exported!`,
+                  });
+                  setShowExportModal(false);
+                }}
+                className="cursor-pointer w-full text-left px-4 py-3 mb-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <div className="font-medium text-gray-900">{item.label}</div>
+                <div className="text-sm text-gray-500">{item.desc}</div>
+              </button>
+            ))}
+
+            <div className="mt-4 text-right">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Warning Modal */}
+      {showFullscreenWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop that blocks interaction with background */}
+          <div
+            className="absolute inset-0 bg-red-600 bg-opacity-90"
+            style={{ pointerEvents: "auto" }}
+          ></div>
+
+          {/* Modal - Make sure it's clickable */}
+          <div
+            className="relative z-10 bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center"
+            style={{ pointerEvents: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-6">
+              <ExclamationTriangleIcon className="h-16 w-16 text-red-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center justify-center">
+                <ExclamationTriangleIcon className="h-6 w-6 mr-2" />
+                Test Paused
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Fullscreen mode is required during the test. Your timer has been
+                paused.
+              </p>
+              <p className="text-sm text-red-600 font-medium">
+                Click the button below to return to fullscreen and resume your
+                test.
+              </p>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (fullscreenRef.current) {
+                  fullscreenRef.current
+                    .requestFullscreen()
+                    .then(() => {
+                      setShowFullscreenWarning(false);
+                      // Resume timer only if not on break
+                      if (!isOnBreak && currentSession) {
+                        setIsTimerActive(true);
+                      }
+                      addToast({
+                        type: "success",
+                        message: "Test resumed in fullscreen mode",
+                      });
+                    })
+                    .catch((err) => {
+                      console.error("Fullscreen failed:", err);
+                      addToast({
+                        type: "error",
+                        message:
+                          "Unable to enter fullscreen. Please try again or contact support.",
+                        duration: 5000,
+                      });
+                    });
+                }
+              }}
+              className="cursor-pointer bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg focus:outline-none focus:ring-4 focus:ring-red-300 flex items-center justify-center"
+              type="button"
+            >
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
+              Return to Fullscreen & Resume Test
+            </button>
+
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+              <p className="text-xs text-yellow-800">
+                <strong>Note:</strong> This violation has been recorded in your
+                test session.
+              </p>
+            </div>
+
+            <div className="mt-3 text-xs text-gray-500 flex items-center justify-center">
+              <BellIcon className="h-3 w-3 mr-1" />
+              <strong>Tip:</strong> Press F11 on most browsers to enter
+              fullscreen mode
+            </div>
+          </div>
+        </div>
+      )}
+      {isOnBreak && !showFullscreenWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-yellow-600/20 backdrop-blur-sm"></div>
+
+          <div
+            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-8 w-full max-w-md text-center border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ClockIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              You're on a break
+            </h3>
+            <p className="text-gray-600 mb-6">
+              The test timer is paused. Click below to resume when you're ready.
+            </p>
+
+            <button
+              onClick={resumeTest}
+              className="cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg focus:outline-none focus:ring-4 focus:ring-green-300 flex items-center justify-center"
+            >
+              <CheckCircleIcon className="h-5 w-5 mr-2" />
+              Resume Test
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ShoppingApp;
+export default TestPro;
