@@ -1,3073 +1,1067 @@
-"use client";
+"use client"
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, CheckCircle, HelpCircle, Edit3, Trophy, Zap, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast, { Toaster } from 'react-hot-toast';
+import confetti from 'canvas-confetti'; // Added Trophy and Zap icons
 
-import React, {
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  useRef,
-} from "react";
-import {
-  ChartBarIcon,
-  ClockIcon,
-  EyeIcon,
-  PlusIcon,
-  PlayIcon,
-  PauseIcon,
-  StopIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationTriangleIcon,
-  Bars3Icon,
-  XMarkIcon,
-  DevicePhoneMobileIcon,
-  ComputerDesktopIcon,
-  ChevronDownIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  CogIcon,
-  BellIcon,
-  PencilIcon,
-  TrashIcon,
-  DocumentDuplicateIcon,
-  ArrowDownTrayIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  EyeSlashIcon,
-  LockClosedIcon,
-  ShareIcon,
-  StarIcon,
-  CalendarIcon,
-  ClipboardDocumentListIcon,
-  ArrowPathIcon,
-} from "@heroicons/react/24/outline";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+// --- Types ---
+type Board = (number | null)[][];
+type Cell = { row: number; col: number };
+type Difficulty = "easy" | "medium" | "hard"; // Added Difficulty type
 
-interface Question {
-  id: string;
-  type: "multiple-choice" | "text" | "essay";
-  question: string;
-  options?: string[];
-  correctAnswer?: string | number;
-  points: number;
-}
+// --- Sudoku Logic ---
+const EMPTY_CELL = 0; // Using 0 for empty cells internally for easier logic
 
-interface Test {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  questions: Question[];
-  createdAt: Date;
-  status: "draft" | "published" | "archived";
-  category: string;
-  difficulty: "easy" | "medium" | "hard";
-  tags: string[];
-}
+// Puzzles organized by difficulty
+const puzzlesByDifficulty: Record<Difficulty, Board[]> = {
+  easy: [
+    [
+      [0, 0, 0, 2, 6, 0, 7, 0, 1],
+      [6, 8, 0, 0, 7, 0, 0, 9, 0],
+      [1, 9, 0, 0, 0, 4, 5, 0, 0],
+      [8, 2, 0, 1, 0, 0, 0, 4, 0],
+      [0, 0, 4, 6, 0, 2, 9, 0, 0],
+      [0, 5, 0, 0, 0, 3, 0, 2, 8],
+      [0, 0, 9, 3, 0, 0, 0, 7, 4],
+      [0, 4, 0, 0, 5, 0, 0, 3, 6],
+      [7, 0, 3, 0, 1, 8, 0, 0, 0],
+    ],
+    // Add more easy puzzles if desired
+  ],
+  medium: [ // Original samplePuzzles are now under 'medium'
+    [
+      [5, 3, 0, 0, 7, 0, 0, 0, 0],
+      [6, 0, 0, 1, 9, 5, 0, 0, 0],
+      [0, 9, 8, 0, 0, 0, 0, 6, 0],
+      [8, 0, 0, 0, 6, 0, 0, 0, 3],
+      [4, 0, 0, 8, 0, 3, 0, 0, 1],
+      [7, 0, 0, 0, 2, 0, 0, 0, 6],
+      [0, 6, 0, 0, 0, 0, 2, 8, 0],
+      [0, 0, 0, 4, 1, 9, 0, 0, 5],
+      [0, 0, 0, 0, 8, 0, 0, 7, 9],
+    ],
+    [
+      [0, 0, 3, 0, 2, 0, 6, 0, 0],
+      [9, 0, 0, 3, 0, 5, 0, 0, 1],
+      [0, 0, 1, 8, 0, 6, 4, 0, 0],
+      [0, 0, 8, 1, 0, 2, 9, 0, 0],
+      [7, 0, 0, 0, 0, 0, 0, 0, 8],
+      [0, 0, 6, 7, 0, 8, 2, 0, 0],
+      [0, 0, 2, 6, 0, 9, 5, 0, 0],
+      [8, 0, 0, 2, 0, 3, 0, 0, 9],
+      [0, 0, 5, 0, 1, 0, 3, 0, 0],
+    ],
+    [
+      [1, 0, 0, 4, 8, 9, 0, 0, 6],
+      [7, 3, 0, 0, 0, 0, 0, 4, 0],
+      [0, 0, 0, 0, 0, 1, 2, 9, 5],
+      [0, 0, 7, 1, 2, 0, 6, 0, 0],
+      [5, 0, 0, 7, 0, 3, 0, 0, 8],
+      [0, 0, 6, 0, 9, 5, 7, 0, 0],
+      [9, 1, 4, 6, 0, 0, 0, 0, 0],
+      [0, 2, 0, 0, 0, 0, 0, 3, 7],
+      [8, 0, 0, 5, 1, 2, 0, 0, 4],
+    ],
+  ],
+  hard: [
+    [ // Example of a harder puzzle
+      [8, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 3, 6, 0, 0, 0, 0, 0],
+      [0, 7, 0, 0, 9, 0, 2, 0, 0],
+      [0, 5, 0, 0, 0, 7, 0, 0, 0],
+      [0, 0, 0, 0, 4, 5, 7, 0, 0],
+      [0, 0, 0, 1, 0, 0, 0, 3, 0],
+      [0, 0, 1, 0, 0, 0, 0, 6, 8],
+      [0, 0, 8, 5, 0, 0, 0, 1, 0],
+      [0, 9, 0, 0, 0, 0, 4, 0, 0],
+    ],
+    // Add more hard puzzles if desired
+  ],
+};
 
-interface TestSession {
-  id: string;
-  testId: string;
-  userId: string;
-  userName: string;
-  startTime: Date;
-  endTime?: Date;
-  answers: Record<string, any>;
-  score?: number;
-  violations: string[];
-  status: "in-progress" | "completed" | "paused" | "terminated";
-  timeSpent: number;
-}
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 
-interface Toast {
-  id: string;
-  type: "success" | "error" | "warning" | "info";
-  message: string;
-  duration?: number;
-}
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "instructor" | "student";
-  avatar: string;
-  totalTests: number;
-  avgScore: number;
-}
+const copyBoard = (board: Board): Board => board.map(row => [...row]);
 
-const TestPro: React.FC = () => {
-  // UI State
-  const [activeView, setActiveView] = useState<
-    | "dashboard"
-    | "create"
-    | "test"
-    | "analytics"
-    | "settings"
-    | "users"
-    | "library"
-  >("dashboard");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(
-    "desktop"
-  );
-  const [showProctorModal, setShowProctorModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [editingTest, setEditingTest] = useState<Test | null>(null);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [isOnBreak, setIsOnBreak] = useState(false);
-  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
-  const [isClient, setisClient] = useState(false);
-  // Test Management State
-  const [tests, setTests] = useState<Test[]>([
-    {
-      id: "1",
-      title: "JavaScript Fundamentals",
-      description: "Test your knowledge of JavaScript basics",
-      duration: 45,
-      questions: [
-        {
-          id: "q1",
-          type: "multiple-choice",
-          question:
-            "What is the correct way to declare a variable in JavaScript?",
-          options: [
-            "var x = 5;",
-            "variable x = 5;",
-            "v x = 5;",
-            "declare x = 5;",
-          ],
-          correctAnswer: 0,
-          points: 1,
-        },
-        {
-          id: "q2",
-          type: "multiple-choice",
-          question:
-            "Which method is used to add an element to the end of an array?",
-          options: ["append()", "push()", "add()", "insert()"],
-          correctAnswer: 1,
-          points: 1,
-        },
-        {
-          id: "q3",
-          type: "text",
-          question: "What does 'DOM' stand for in web development?",
-          correctAnswer: "Document Object Model",
-          points: 2,
-        },
-      ],
-      createdAt: new Date("2024-01-15"),
-      status: "published",
-      category: "Programming",
-      difficulty: "medium",
-      tags: ["javascript", "fundamentals", "programming"],
-    },
-    {
-      id: "2",
-      title: "React Components",
-      description: "Advanced React component patterns and hooks",
-      duration: 60,
-      questions: [
-        {
-          id: "q4",
-          type: "multiple-choice",
-          question:
-            "Which hook is used to manage state in functional components?",
-          options: ["useEffect", "useState", "useContext", "useReducer"],
-          correctAnswer: 1,
-          points: 1,
-        },
-        {
-          id: "q5",
-          type: "essay",
-          question:
-            "Explain the difference between controlled and uncontrolled components in React.",
-          points: 5,
-        },
-      ],
-      createdAt: new Date("2024-01-20"),
-      status: "published", // Changed from "draft" to "published"
-      category: "Frontend",
-      difficulty: "hard",
-      tags: ["react", "components", "hooks"],
-    },
-  ]);
-  const [currentTest, setCurrentTest] = useState<Test | null>(null);
-  const [currentSession, setCurrentSession] = useState<TestSession | null>(
-    null
-  );
-  const [testSessions, setTestSessions] = useState<TestSession[]>([
-    {
-      id: "session1",
-      testId: "1",
-      userId: "user1",
-      userName: "Alice Johnson",
-      startTime: new Date("2024-01-16T10:00:00"),
-      endTime: new Date("2024-01-16T10:42:00"),
-      answers: {},
-      score: 85,
-      violations: [],
-      status: "completed",
-      timeSpent: 2520,
-    },
-    {
-      id: "session2",
-      testId: "1",
-      userId: "user2",
-      userName: "Bob Smith",
-      startTime: new Date("2024-01-17T14:30:00"),
-      endTime: new Date("2024-01-17T15:15:00"),
-      answers: {},
-      score: 92,
-      violations: ["Fullscreen exited"],
-      status: "completed",
-      timeSpent: 2700,
-    },
-    {
-      id: "session3",
-      testId: "2",
-      userId: "user3",
-      userName: "Carol Davis",
-      startTime: new Date("2024-01-18T09:00:00"),
-      endTime: new Date("2024-01-18T09:55:00"),
-      answers: {},
-      score: 78,
-      violations: [],
-      status: "completed",
-      timeSpent: 3300,
-    },
-    {
-      id: "session4",
-      testId: "1",
-      userId: "user1",
-      userName: "Alice Johnson",
-      startTime: new Date("2024-01-19T11:00:00"),
-      endTime: new Date("2024-01-19T11:38:00"),
-      answers: {},
-      score: 95,
-      violations: [],
-      status: "completed",
-      timeSpent: 2280,
-    },
-    {
-      id: "session5",
-      testId: "2",
-      userId: "user2",
-      userName: "Bob Smith",
-      startTime: new Date("2024-01-20T13:00:00"),
-      endTime: new Date("2024-01-20T13:52:00"),
-      answers: {},
-      score: 88,
-      violations: ["Tab switched"],
-      status: "completed",
-      timeSpent: 3120,
-    },
-  ]);
+const isValid = (board: Board, row: number, col: number, num: number): boolean => {
+  if (num === EMPTY_CELL) return true; // Allowing to clear a cell
 
-  // Users State
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "user1",
-      name: "Alice Johnson",
-      email: "alice@company.com",
-      role: "student",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face",
-      totalTests: 5,
-      avgScore: 87,
-    },
-    {
-      id: "user2",
-      name: "Bob Smith",
-      email: "bob@company.com",
-      role: "student",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-      totalTests: 3,
-      avgScore: 92,
-    },
-    {
-      id: "user3",
-      name: "Carol Davis",
-      email: "carol@company.com",
-      role: "instructor",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      totalTests: 12,
-      avgScore: 95,
-    },
-  ]);
+  // Check row
+  for (let c = 0; c < 9; c++) {
+    if (board[row][c] === num && c !== col) return false;
+  }
+  // Check column
+  for (let r = 0; r < 9; r++) {
+    if (board[r][col] === num && r !== row) return false;
+  }
+  // Check 3x3 subgrid
+  const startRow = Math.floor(row / 3) * 3;
+  const startCol = Math.floor(col / 3) * 3;
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      if (board[startRow + r][startCol + c] === num && (startRow + r !== row || startCol + c !== col)) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
 
-  // Test Creation State
-  const [testForm, setTestForm] = useState({
-    title: "",
-    description: "",
-    duration: 60,
-    category: "",
-    difficulty: "medium" as "easy" | "medium" | "hard",
-    tags: [] as string[],
-    questions: [] as Question[],
-  });
-  const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({
-    type: "multiple-choice",
-    question: "",
-    options: ["", "", "", ""],
-    points: 1,
-    correctAnswer: undefined,
-  });
+const findEmpty = (board: Board): Cell | null => {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (board[r][c] === EMPTY_CELL) return { row: r, col: c };
+    }
+  }
+  return null;
+};
 
-  // Timer State
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [breaks, setBreaks] = useState<
-    { start: Date; end?: Date; reason: string }[]
-  >([]);
+const solveSudoku = (board: Board): Board | null => {
+  const boardCopy = copyBoard(board);
 
-  // Toast State
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  function solve(): boolean {
+    const emptyCell = findEmpty(boardCopy);
+    if (!emptyCell) return true; // Solved
 
-  // Form Validation State
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
+    const { row, col } = emptyCell;
+    for (let num = 1; num <= 9; num++) {
+      if (isValid(boardCopy, row, col, num)) {
+        boardCopy[row][col] = num;
+        if (solve()) return true;
+        boardCopy[row][col] = EMPTY_CELL; // Backtrack
+      }
+    }
+    return false;
+  }
 
-  // Refs
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const fullscreenRef = useRef<HTMLDivElement>(null);
+  if (solve()) return boardCopy;
+  return null; // No solution
+};
 
-  // Check if mobile view
-  const [isMobile, setIsMobile] = useState(false);
+const checkSolution = (currentBoard: Board): { isSolved: boolean; errors: Cell[] } => {
+  const errors: Cell[] = [];
+  let isFull = true;
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const val = currentBoard[r][c];
+      if (val === EMPTY_CELL) {
+        isFull = false; // Not full, so not solved yet
+      } else if (!isValid(currentBoard, r, c, val as number)) {
+        errors.push({ row: r, col: c });
+      }
+    }
+  }
+  return { isSolved: isFull && errors.length === 0, errors };
+};
 
-  useEffect(() => {
-    if (!isClient) setisClient(true);
-  }, []);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+// --- React Component ---
+const Index: React.FC = () => {
+  const [gameStarted, setGameStarted] = useState<boolean>(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('medium');
+  const [initialBoard, setInitialBoard] = useState<Board>(() => copyBoard(puzzlesByDifficulty['medium'][0]));
+  const [currentBoard, setCurrentBoard] = useState<Board>(() => copyBoard(puzzlesByDifficulty['medium'][0]));
+  const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
+  const [errors, setErrors] = useState<Cell[]>([]);
+  const [highlightedNumber, setHighlightedNumber] = useState<number | null>(null);
+  const [isSolved, setIsSolved] = useState<boolean>(false);
+  const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  // Celebration function for when puzzle is solved
+  const triggerCelebration = useCallback(() => {
+    // Multiple confetti bursts with different colors and patterns
+    const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+    
+    // First burst - from center
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: colors
+    });
 
-  // Toast Management
-  const addToast = useCallback((toast: Omit<Toast, "id">) => {
-    const id = Date.now().toString();
-    const newToast = { ...toast, id };
-    setToasts((prev) => [...prev, newToast]);
-
+    // Second burst - from left
     setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, toast.duration || 5000);
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.8 },
+        colors: colors
+      });
+    }, 250);
+
+    // Third burst - from right
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.8 },
+        colors: colors
+      });
+    }, 500);
+
+    // Final burst - stars from top
+    setTimeout(() => {
+      confetti({
+        particleCount: 30,
+        spread: 360,
+        startVelocity: 30,
+        decay: 0.9,
+        scalar: 1.2,
+        shapes: ['star'],
+        colors: ['#FFD700', '#FFA500', '#FF6347'],
+        origin: { y: 0.2 }
+      });
+    }, 750);
   }, []);
 
-  // Close mobile menu function
-  const closeMobileMenu = useCallback(() => {
-    setIsMobileMenuOpen(false);
+  // Renamed and updated startNewGame to handle difficulties
+  const startNewGameWithDifficulty = useCallback((difficulty: Difficulty) => {
+    setSelectedDifficulty(difficulty);
+    const puzzlesForDifficulty = puzzlesByDifficulty[difficulty];
+    const newPuzzleIndex = Math.floor(Math.random() * puzzlesForDifficulty.length);
+    const newPuzzle = copyBoard(puzzlesForDifficulty[newPuzzleIndex]);
+    
+    setInitialBoard(newPuzzle);
+    setCurrentBoard(copyBoard(newPuzzle));
+    setSelectedCell(null);
+    setErrors([]);
+    toast.success(`New ${difficulty} game started!`, {
+      icon: '🎮',
+      duration: 3000,
+    });
+    
+    // Show keyboard shortcuts tip after a delay
+    setTimeout(() => {
+      toast.success('💡 Tip: Use keyboard numbers (1-9) and arrow keys for faster play!', {
+        icon: '⌨️',
+        duration: 4000,
+      });
+    }, 2000);
+    setIsSolved(false);
+    setHighlightedNumber(null);
+    setGameStarted(true);
   }, []);
 
-  // Fullscreen Detection with User-Initiated Re-entry
+  const handleNewGame = () => {
+    setGameStarted(false);
+    setSelectedCell(null);
+    setErrors([]);
+    setIsSolved(false);
+    setHighlightedNumber(null);
+  };
+
+  const toggleInfoModal = () => {
+    setShowInfoModal(!showInfoModal);
+  };
+
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(isCurrentlyFullscreen);
-
-      if (
-        currentSession &&
-        !isCurrentlyFullscreen &&
-        (currentSession.status === "in-progress" || isOnBreak)
-      ) {
-        // Log the violation
-        setCurrentSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                violations: [
-                  ...prev.violations,
-                  `Fullscreen exited at ${new Date().toISOString()}`,
-                ],
-              }
-            : null
-        );
-
-        // Pause the timer when fullscreen is exited
-        setIsTimerActive(false);
-
-        // Show warning modal that requires user action
-        setShowFullscreenWarning(true);
-
-        addToast({
-          type: "error",
-          message: "Test paused - Fullscreen mode required!",
-          duration: 5000,
-        });
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [currentSession, addToast, isOnBreak]);
-  // Fullscreen Detection
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(isCurrentlyFullscreen);
-
-      if (currentSession && !isCurrentlyFullscreen) {
-        // Log violation
-        setCurrentSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                violations: [
-                  ...prev.violations,
-                  `Fullscreen exited at ${new Date().toISOString()}`,
-                ],
-              }
-            : null
-        );
-
-        // Always pause and show blocking modal
-        setIsTimerActive(false);
-        setShowFullscreenWarning(true);
-
-        addToast({
-          type: "error",
-          message: "Test paused - Fullscreen mode required!",
-        });
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [currentSession, addToast]);
-
-  // Timer Management
-  useEffect(() => {
-    if (isTimerActive && timeRemaining > 0) {
-      timerRef.current = setTimeout(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setIsTimerActive(false);
-            if (currentSession) {
-              endTestSession();
-            }
-            return 0;
-          }
-
-          // Warning alerts
-          if (prev === 300) {
-            // 5 minutes
-            addToast({
-              type: "warning",
-              message: "5 minutes remaining!",
-            });
-          } else if (prev === 60) {
-            // 1 minute
-            addToast({
-              type: "error",
-              message: "1 minute remaining!",
-            });
-          }
-
-          return prev - 1;
-        });
-      }, 1000);
+    if (showInfoModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
-
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      document.body.style.overflow = 'unset';
     };
-  }, [isTimerActive, timeRemaining, currentSession]);
+  }, [showInfoModal]);
 
-  // Validation
-  const validateTestForm = useCallback(() => {
-    const errors: Record<string, string> = {};
+  // Keyboard navigation and input
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle keyboard if modal is open or game not started
+      if (showInfoModal || !gameStarted) return;
 
-    if (!testForm.title.trim()) errors.title = "Title is required";
-    if (!testForm.description.trim())
-      errors.description = "Description is required";
-    if (testForm.duration < 1)
-      errors.duration = "Duration must be at least 1 minute";
-    if (!testForm.category.trim()) errors.category = "Category is required";
-    if (testForm.questions.length === 0)
-      errors.questions = "At least one question is required";
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [testForm]);
-
-  const validateQuestion = useCallback(() => {
-    const errors: Record<string, string> = {};
-
-    if (!currentQuestion.question?.trim())
-      errors.question = "Question text is required";
-    if (!currentQuestion.points || currentQuestion.points < 1)
-      errors.points = "Points must be at least 1";
-
-    if (currentQuestion.type === "multiple-choice") {
-      if (!currentQuestion.options?.some((opt) => opt.trim())) {
-        errors.options = "At least one option is required";
+      const key = event.key;
+      
+      // Number input (1-9)
+      if (/^[1-9]$/.test(key)) {
+        event.preventDefault();
+        const num = parseInt(key);
+        handleNumberInput(num);
+        return;
       }
-      if (currentQuestion.correctAnswer === undefined || currentQuestion.correctAnswer === null) {
-        errors.correctAnswer = "Please select the correct answer";
+      
+      // Clear cell (Backspace, Delete, or 0)
+      if (key === 'Backspace' || key === 'Delete' || key === '0') {
+        event.preventDefault();
+        handleNumberInput(null);
+        return;
       }
+      
+      // Arrow key navigation
+      if (selectedCell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+        event.preventDefault();
+        const { row, col } = selectedCell;
+        let newRow = row;
+        let newCol = col;
+        
+        switch (key) {
+          case 'ArrowUp':
+            newRow = Math.max(0, row - 1);
+            break;
+          case 'ArrowDown':
+            newRow = Math.min(8, row + 1);
+            break;
+          case 'ArrowLeft':
+            newCol = Math.max(0, col - 1);
+            break;
+          case 'ArrowRight':
+            newCol = Math.min(8, col + 1);
+            break;
+        }
+        
+        // Move to the new cell
+        setSelectedCell({ row: newRow, col: newCol });
+        setHighlightedNumber(currentBoard[newRow][newCol] === EMPTY_CELL ? null : currentBoard[newRow][newCol]);
+        return;
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+     }, [selectedCell, showInfoModal, gameStarted, currentBoard]);
+
+
+
+  const handleCellClick = (row: number, col: number) => {
+    if (initialBoard[row][col] !== EMPTY_CELL) { 
+      setSelectedCell(null); 
+      setHighlightedNumber(currentBoard[row][col]);
+      return;
+    }
+    setSelectedCell({ row, col });
+    setHighlightedNumber(currentBoard[row][col] === EMPTY_CELL ? null : currentBoard[row][col]);
+  };
+
+  const handleNumberInput = (num: number | null) => {
+    if (!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL) return;
+
+    const { row, col } = selectedCell;
+    const newBoard = copyBoard(currentBoard);
+    const valToSet = num === null ? EMPTY_CELL : num;
+    newBoard[row][col] = valToSet;
+    setCurrentBoard(newBoard);
+
+    const cellIsValid = isValid(newBoard, row, col, valToSet);
+    const currentErrors = errors.filter(e => !(e.row === row && e.col === col));
+    if (!cellIsValid && valToSet !== EMPTY_CELL) {
+      setErrors([...currentErrors, { row, col }]);
+    } else {
+      setErrors(currentErrors);
+    }
+    setHighlightedNumber(valToSet === EMPTY_CELL ? null : valToSet);
+    
+    if (valToSet !== EMPTY_CELL && cellIsValid) {
+        const solutionCheck = checkSolution(newBoard);
+        if (solutionCheck.isSolved) {
+            toast.success("🎉 Congratulations! Puzzle Solved! 🎉", {
+              icon: '🏆',
+              duration: 5000,
+            });
+            setIsSolved(true);
+            setErrors([]);
+            // Trigger celebration confetti
+            setTimeout(() => triggerCelebration(), 500);
+        } else {
+            setIsSolved(false);
+        }
+    } else if (valToSet === EMPTY_CELL) { 
+        setIsSolved(false);
+    }
+  };
+  
+  const handleReset = () => {
+    setCurrentBoard(copyBoard(initialBoard));
+    setSelectedCell(null);
+    setErrors([]);
+    toast.success('Board reset to initial state.', {
+      icon: '🔄',
+      duration: 2000,
+    });
+    setIsSolved(false);
+    setHighlightedNumber(null);
+  };
+
+  const handleCheck = () => {
+    const { isSolved: solved, errors: validationErrors } = checkSolution(currentBoard);
+    setErrors(validationErrors);
+    if (solved) {
+      toast.success("🎉 Congratulations! Puzzle Solved! 🎉", {
+        icon: '🏆',
+        duration: 5000,
+      });
+      setIsSolved(true);
+      // Trigger celebration confetti
+      setTimeout(() => triggerCelebration(), 500);
+    } else if (validationErrors.length > 0) {
+      toast.error(`Found ${validationErrors.length} error(s). Keep trying!`, {
+        icon: '❌',
+        duration: 3000,
+      });
+      setIsSolved(false);
+    } else {
+      const isEmpty = findEmpty(currentBoard);
+      if (isEmpty) {
+        toast.success("Board is valid so far, but not complete yet.", {
+          icon: '✅',
+          duration: 2000,
+        });
+      } else {
+        toast.error("Board is full and valid, but checkSolution didn't mark as solved.", {
+          icon: '⚠️',
+          duration: 3000,
+        });
+      }
+      setIsSolved(false);
+    }
+  };
+
+  const handleHint = () => {
+    if (isSolved) {
+      toast.error("Puzzle is already solved!", {
+        icon: '🏆',
+        duration: 2000,
+      });
+      return;
+    }
+    const emptyCell = findEmpty(currentBoard);
+    if (!emptyCell) {
+      toast.error("No empty cells left for a hint.", {
+        icon: '🚫',
+        duration: 2000,
+      });
+      return;
     }
 
-    if (currentQuestion.type === "text") {
-      if (!currentQuestion.correctAnswer || !(currentQuestion.correctAnswer as string).trim()) {
-        errors.correctAnswer = "Correct answer is required for text questions";
-      }
-    }
+    const solution = solveSudoku(currentBoard);
+    if (solution) {
+      let hintApplied = false;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (currentBoard[r][c] === EMPTY_CELL && solution[r][c] !== EMPTY_CELL) {
+            const newBoard = copyBoard(currentBoard);
+            newBoard[r][c] = solution[r][c];
+            setCurrentBoard(newBoard);
+            setSelectedCell({ row: r, col: c }); 
+            setHighlightedNumber(solution[r][c]);
+            
+            setErrors(prevErrors => prevErrors.filter(e => !(e.row === r && e.col === c)));
+            
+            toast.success(`💡 Hint applied for cell (${r + 1}, ${c + 1}).`, {
+              icon: '💡',
+              duration: 3000,
+            });
+            hintApplied = true;
 
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [currentQuestion]);
-
-  // Test Management Functions
-  const createTest = useCallback(() => {
-    if (!validateTestForm()) return;
-
-    const newTest: Test = {
-      id: Date.now().toString(),
-      title: testForm.title,
-      description: testForm.description,
-      duration: testForm.duration,
-      category: testForm.category,
-      difficulty: testForm.difficulty,
-      tags: testForm.tags,
-      questions: testForm.questions,
-      createdAt: new Date(),
-      status: "draft",
-    };
-
-    setTests((prev) => [...prev, newTest]);
-    setTestForm({
-      title: "",
-      description: "",
-      duration: 60,
-      category: "",
-      difficulty: "medium",
-      tags: [],
-      questions: [],
-    });
-    addToast({ type: "success", message: "Test created successfully!" });
-    setActiveView("library");
-  }, [testForm, validateTestForm, addToast]);
-
-  const duplicateTest = useCallback(
-    (test: Test) => {
-      const duplicatedTest: Test = {
-        ...test,
-        id: Date.now().toString(),
-        title: `${test.title} (Copy)`,
-        status: "draft",
-        createdAt: new Date(),
-      };
-      setTests((prev) => [...prev, duplicatedTest]);
-      addToast({ type: "success", message: "Test duplicated successfully!" });
-    },
-    [addToast]
-  );
-
-  const deleteTest = useCallback(
-    (testId: string) => {
-      setTests((prev) => prev.filter((t) => t.id !== testId));
-      addToast({ type: "success", message: "Test deleted successfully!" });
-    },
-    [addToast]
-  );
-
-  const publishTest = useCallback(
-    (testId: string) => {
-      setTests((prev) =>
-        prev.map((t) =>
-          t.id === testId ? { ...t, status: "published" as const } : t
-        )
-      );
-      addToast({ type: "success", message: "Test published successfully!" });
-    },
-    [addToast]
-  );
-
-  const addQuestion = useCallback(() => {
-    if (!validateQuestion()) return;
-
-    const question: Question = {
-      id: Date.now().toString(),
-      type: currentQuestion.type!,
-      question: currentQuestion.question!,
-      options: currentQuestion.options,
-      correctAnswer: currentQuestion.correctAnswer,
-      points: currentQuestion.points!,
-    };
-
-    setTestForm((prev) => ({
-      ...prev,
-      questions: [...prev.questions, question],
-    }));
-
-    setCurrentQuestion({
-      type: "multiple-choice",
-      question: "",
-      options: ["", "", "", ""],
-      points: 1,
-      correctAnswer: undefined,
-    });
-
-    addToast({ type: "success", message: "Question added successfully!" });
-  }, [currentQuestion, validateQuestion, addToast]);
-
-  const editQuestion = useCallback(
-    (questionId: string) => {
-      const question = testForm.questions.find((q) => q.id === questionId);
-      if (question) {
-        setCurrentQuestion(question);
-        setTestForm((prev) => ({
-          ...prev,
-          questions: prev.questions.filter((q) => q.id !== questionId),
-        }));
-      }
-    },
-    [testForm.questions]
-  );
-
-  const removeQuestion = useCallback(
-    (questionId: string) => {
-      setTestForm((prev) => ({
-        ...prev,
-        questions: prev.questions.filter((q) => q.id !== questionId),
-      }));
-      addToast({ type: "success", message: "Question removed successfully!" });
-    },
-    [addToast]
-  );
-
-  const startTest = useCallback(
-    (test: Test) => {
-      setCurrentTest(test);
-      setTimeRemaining(test.duration * 60);
-
-      const session: TestSession = {
-        id: Date.now().toString(),
-        testId: test.id,
-        userId: "current-user",
-        userName: "Current User",
-        startTime: new Date(),
-        answers: {},
-        violations: [],
-        status: "in-progress",
-        timeSpent: 0,
-      };
-
-      setCurrentSession(session);
-      setIsTimerActive(true);
-      setActiveView("test");
-
-      // Enter fullscreen
-      if (fullscreenRef.current) {
-        fullscreenRef.current.requestFullscreen();
-      }
-
-      addToast({ type: "info", message: "Test started. Good luck!" });
-    },
-    [addToast]
-  );
-
-  const endTestSession = useCallback(() => {
-    if (!currentSession || !currentTest) return;
-
-    // Calculate the score
-    let totalPoints = 0;
-    let earnedPoints = 0;
-
-    currentTest.questions.forEach((question) => {
-      totalPoints += question.points;
-      const userAnswer = currentSession.answers[question.id];
-
-      if (userAnswer !== undefined && userAnswer !== null) {
-        if (question.type === "multiple-choice") {
-          // For multiple choice, check if the selected option index matches
-          if (userAnswer === question.correctAnswer) {
-            earnedPoints += question.points;
-          }
-        } else if (question.type === "text") {
-          // For text questions, do case-insensitive comparison
-          const correctAnswer = (question.correctAnswer as string || "").toLowerCase().trim();
-          const givenAnswer = (userAnswer as string || "").toLowerCase().trim();
-          if (correctAnswer && givenAnswer === correctAnswer) {
-            earnedPoints += question.points;
+            const solutionCheck = checkSolution(newBoard);
+            if (solutionCheck.isSolved) {
+                toast.success("🎉 Congratulations! Puzzle Solved with a hint! 🎉", {
+                  icon: '🏆',
+                  duration: 5000,
+                });
+                setIsSolved(true);
+                // Trigger celebration confetti
+                setTimeout(() => triggerCelebration(), 500);
+            }
+            break;
           }
         }
-        // Note: Essay questions are not auto-graded, they would need manual review
+        if (hintApplied) break;
       }
-    });
-
-    // Calculate percentage score
-    const percentageScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-
-    const completedSession: TestSession = {
-      ...currentSession,
-      endTime: new Date(),
-      status: "completed",
-      score: percentageScore,
-      timeSpent: currentTest ? currentTest.duration * 60 - timeRemaining : 0,
-    };
-
-    setTestSessions((prev) => [...prev, completedSession]);
-
-    // Reset all test-related state
-    setCurrentSession(null);
-    setCurrentTest(null);
-    setIsTimerActive(false);
-    setTimeRemaining(0);
-    setIsOnBreak(false);
-
-    // Clear any timer
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    // Exit fullscreen
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    }
-
-    setActiveView("dashboard");
-    addToast({ 
-      type: "success", 
-      message: `Test completed! Your score: ${percentageScore}% (${earnedPoints}/${totalPoints} points)` 
-    });
-  }, [currentSession, currentTest, timeRemaining, addToast]);
-
-  const takeBreak = useCallback(
-    (reason: string) => {
-      if (!currentSession) return;
-
-      setBreaks((prev) => [...prev, { start: new Date(), reason }]);
-      setIsTimerActive(false);
-      setIsOnBreak(true);
-      setShowProctorModal(false);
-
-      addToast({ type: "info", message: `Break started: ${reason}` });
-    },
-    [currentSession, addToast]
-  );
-  const resumeTest = useCallback(() => {
-    if (!currentSession || !isOnBreak) return;
-
-    setIsOnBreak(false);
-    setIsTimerActive(true);
-
-    // Update the last break entry with end time
-    setBreaks((prev) => {
-      const updated = [...prev];
-      if (updated.length > 0) {
-        updated[updated.length - 1].end = new Date();
+      if (!hintApplied) {
+         toast.error("Could not find a simple hint. Try checking your existing numbers.", {
+           icon: '🤔',
+           duration: 3000,
+         });
       }
-      return updated;
-    });
-
-    addToast({ type: "info", message: "Test resumed" });
-  }, [currentSession, isOnBreak, addToast]);
-  // Filtered tests
-  const filteredTests = useMemo(() => {
-    return tests.filter((test) => {
-      const matchesSearch =
-        test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        test.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        test.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      const matchesCategory =
-        filterCategory === "all" || test.category === filterCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [tests, searchQuery, filterCategory]);
-
-  // Analytics Data
-  const analyticsData = useMemo(() => {
-    const completedSessions = testSessions.filter(
-      (s) => s.status === "completed"
-    );
-    const categories = [...new Set(tests.map((t) => t.category))];
-
-    // Performance over time data
-    const performanceData = completedSessions
-      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
-      .map((session, index) => ({
-        session: index + 1,
-        score: session.score || 0,
-        date: session.startTime.toLocaleDateString(),
-      }));
-
-    // Category performance data
-    const categoryData = categories.map((category) => {
-      const categoryTests = tests.filter((t) => t.category === category);
-      const categorySessions = completedSessions.filter((s) =>
-        categoryTests.some((t) => t.id === s.testId)
-      );
-      const avgScore =
-        categorySessions.length > 0
-          ? categorySessions.reduce((acc, s) => acc + (s.score || 0), 0) /
-            categorySessions.length
-          : 0;
-
-      return {
-        category,
-        avgScore: Math.round(avgScore),
-        sessions: categorySessions.length,
-      };
-    });
-
-    // Score distribution data
-    const scoreRanges = [
-      { range: "90-100", count: 0, color: "#10B981", name: "90-100" },
-      { range: "80-89", count: 0, color: "#3B82F6", name: "80-89" },
-      { range: "70-79", count: 0, color: "#F59E0B", name: "70-79" },
-      { range: "60-69", count: 0, color: "#EF4444", name: "60-69" },
-      { range: "Below 60", count: 0, color: "#6B7280", name: "Below 60" },
-    ];
-
-    completedSessions.forEach((session) => {
-      const score = session.score || 0;
-      if (score >= 90) scoreRanges[0].count++;
-      else if (score >= 80) scoreRanges[1].count++;
-      else if (score >= 70) scoreRanges[2].count++;
-      else if (score >= 60) scoreRanges[3].count++;
-      else scoreRanges[4].count++;
-    });
-
-    // Update names to include counts for legend
-    scoreRanges.forEach(range => {
-      range.name = `${range.range}: ${range.count}`;
-    });
-
-    return {
-      totalTests: tests.length,
-      totalSessions: testSessions.length,
-      totalUsers: users.length,
-      avgScore:
-        completedSessions.reduce((acc, s) => acc + (s.score || 0), 0) /
-          completedSessions.length || 0,
-      completionRate:
-        (completedSessions.length / testSessions.length) * 100 || 0,
-      categories,
-      recentActivity: testSessions.slice(-10).reverse(),
-      performanceData,
-      categoryData,
-      scoreDistribution: scoreRanges,
-    };
-  }, [tests, testSessions, users]);
-
-  // Format time helper
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  }, []);
-
-  // Close mobile menu when clicking outside
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      setIsMobileMenuOpen(false);
-      setShowExportModal(false);
-    }
-  }, []);
-
-  // Handle proctor modal overlay click
-  const handleProctorOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      setShowProctorModal(false);
-    }
-  }, []);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isMobileMenuOpen || showProctorModal || showExportModal) {
-      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "unset";
+      toast.error("Could not find a hint. The puzzle might be in an unsolvable state.", {
+        icon: '⚠️',
+        duration: 3000,
+      });
+    }
+  };
+
+  const getCellClasses = (row: number, col: number, val: number | null): string => {
+    let classes = "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-3xl font-bold cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 ";
+    
+    // Calculate 3x3 box position for alternating background
+    const boxRow = Math.floor(row / 3);
+    const boxCol = Math.floor(col / 3);
+    const isAlternateBox = (boxRow + boxCol) % 2 === 1;
+    
+    // Base background with subtle alternating pattern for 3x3 boxes
+    if (isAlternateBox) {
+      classes += "bg-gradient-to-br from-slate-800/90 to-slate-900/90 hover:from-slate-700 hover:to-slate-800 shadow-lg ";
+    } else {
+      classes += "bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 shadow-lg ";
     }
 
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isMobileMenuOpen, showProctorModal, showExportModal]);
+    // Enhanced borders with better visual hierarchy for mobile and desktop
+    const mainBorderColor = "border-purple-400"; 
+    const lightBorderColor = "border-slate-600"; 
 
-  const menuItems = [
-    { key: "dashboard", label: "Dashboard", icon: ChartBarIcon },
-    { key: "library", label: "Test Library", icon: DocumentTextIcon },
-    { key: "create", label: "Create Test", icon: PlusIcon },
-    { key: "analytics", label: "Analytics", icon: ChartBarIcon },
-  ];
+    // Main 3x3 grid borders - thicker on mobile for better visibility
+    if (col === 2 || col === 5) classes += `border-r-4 sm:border-r-6 ${mainBorderColor} `; 
+    else if (col !== 8) classes += `border-r border-r-2 ${lightBorderColor} `;
+    
+    if (row === 2 || row === 5) classes += `border-b-4 sm:border-b-6 ${mainBorderColor} `; 
+    else if (row !== 8) classes += `border-b border-b-2 ${lightBorderColor} `;
+    
+    // Outer borders - always thick
+    if (col === 0) classes += `border-l-4 sm:border-l-6 ${mainBorderColor} `;
+    if (row === 0) classes += `border-t-4 sm:border-t-6 ${mainBorderColor} `;
+    if (col === 8) classes += `border-r-4 sm:border-r-6 ${mainBorderColor} `;
+    if (row === 8) classes += `border-b-4 sm:border-b-6 ${mainBorderColor} `;
 
-  // Sparkline component for mobile
-  const Sparkline: React.FC<{ data: any[]; color: string }> = ({
-    data,
-    color,
-  }) => (
-    <div className="h-8 w-16 relative">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <Line
-            type="monotone"
-            dataKey="score"
-            stroke={color}
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+    const isSelected = selectedCell?.row === row && selectedCell?.col === col;
+    const isFixed = initialBoard[row][col] !== EMPTY_CELL;
+    const isError = errors.some(e => e.row === row && e.col === col);
+    const isInHighlightedRegion = selectedCell && (selectedCell.row === row || selectedCell.col === col || (Math.floor(selectedCell.row / 3) === Math.floor(row / 3) && Math.floor(selectedCell.col / 3) === Math.floor(col / 3)));
 
-  if (!isClient) {
-    return "";
+    if (isFixed) {
+      classes += "text-purple-200 font-black text-shadow ";
+    } else {
+      classes += "text-cyan-400 font-bold ";
+    }
+
+    if (isSelected) {
+      classes += "ring-4 ring-purple-400 ring-inset scale-110 z-10 bg-gradient-to-br from-purple-600 to-purple-700 shadow-2xl ";
+    } else if (isInHighlightedRegion) {
+      classes += "bg-gradient-to-br from-slate-700 to-slate-800 ";
+    }
+    
+    if (highlightedNumber && val === highlightedNumber && val !== EMPTY_CELL) {
+      classes += isSelected ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white " : "bg-gradient-to-br from-purple-500/60 to-purple-600/60 text-white ";
+    }
+    
+    if (isError && val !== EMPTY_CELL) {
+      classes += "text-red-400 font-black animate-pulse bg-gradient-to-br from-red-900/50 to-red-800/50 ";
+    }
+    
+    if (isSolved) {
+        classes += "text-green-300 animate-pulse ";
+    }
+
+    return classes;
+  };
+
+  if (!gameStarted) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-purple-300 p-4 selection:bg-purple-500 selection:text-white"
+      >
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800&display=swap');
+            
+            .game-title {
+              font-family: 'Orbitron', monospace;
+              text-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
+              letter-spacing: 0.1em;
+            }
+            
+            .game-ui {
+              font-family: 'Exo 2', sans-serif;
+            }
+            
+            .animate-float {
+              animation: float 3s ease-in-out infinite;
+            }
+            
+            @keyframes float {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-10px); }
+            }
+          `
+        }} />
+
+        <motion.div 
+          className="text-center mb-12"
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          <motion.h1 
+            className="game-title text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight"
+            animate={{ 
+              y: [-10, 0, -10],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{ 
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            SUDOKU
+          </motion.h1>
+          <motion.div 
+            className="flex items-center justify-center gap-3 mb-4"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <motion.div
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Trophy className="text-yellow-400" size={32} />
+            </motion.div>
+            <h2 className="game-ui text-3xl sm:text-4xl font-bold text-purple-300 tracking-wider">
+              CHALLENGE
+            </h2>
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <Zap className="text-cyan-400" size={32} />
+            </motion.div>
+          </motion.div>
+          <motion.div 
+            className="w-48 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 mx-auto rounded-full mb-8"
+            initial={{ width: 0 }}
+            animate={{ width: 192 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+          ></motion.div>
+        </motion.div>
+
+        <motion.div 
+          className="text-center"
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1 }}
+        >
+          <motion.h3 
+            className="game-ui text-2xl sm:text-3xl font-bold text-purple-300 mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+          >
+            Choose Difficulty Level
+          </motion.h3>
+          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6">
+            {DIFFICULTIES.map((diff, index) => (
+              <motion.button
+                key={diff}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 1.4 + index * 0.1 }}
+                whileHover={{ 
+                  scale: 1.05,
+                  boxShadow: "0 20px 40px rgba(168, 85, 247, 0.3)"
+                }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => startNewGameWithDifficulty(diff)}
+                className="game-ui px-8 py-4 sm:px-10 sm:py-5 bg-gradient-to-r from-slate-700 to-slate-800 text-purple-300 hover:from-purple-600 hover:to-purple-700 hover:text-white rounded-xl font-bold transition-all duration-300 text-xl sm:text-2xl shadow-lg border border-purple-500/30 hover:border-purple-400 cursor-pointer"
+              >
+                {diff.charAt(0).toUpperCase() + diff.slice(1)}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    );
   }
 
   return (
-    <div
-      ref={fullscreenRef}
-      className="min-h-screen overflow-y-auto bg-gray-50 font-roboto"
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-purple-300 p-4 selection:bg-purple-500 selection:text-white"
     >
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`p-4 rounded-lg shadow-lg max-w-sm transition-all duration-300 ${
-              toast.type === "success"
-                ? "bg-green-500 text-white"
-                : toast.type === "error"
-                ? "bg-red-500 text-white"
-                : toast.type === "warning"
-                ? "bg-yellow-500 text-white"
-                : "bg-blue-500 text-white"
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              {toast.type === "success" && (
-                <CheckCircleIcon className="h-5 w-5" />
-              )}
-              {toast.type === "error" && <XCircleIcon className="h-5 w-5" />}
-              {toast.type === "warning" && (
-                <ExclamationTriangleIcon className="h-5 w-5" />
-              )}
-              {toast.type === "info" && <BellIcon className="h-5 w-5" />}
-              <span className="font-medium">{toast.message}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Navigation */}
-      {!isFullscreen && (
-        <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 flex items-center">
-                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                    <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
-                  </div>
-                  <div className="ml-3">
-                    <h1 className="text-xl font-bold text-gray-900">TestPro</h1>
-                    <p className="text-xs text-gray-500">
-                      Professional Testing Platform
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute left-1/2 transform -translate-x-1/2 hidden lg:flex">
-                  <div className="hidden md:flex">
-                    <div className="flex items-center space-x-4">
-                      {menuItems.map(({ key, label, icon: Icon }) => (
-                        <button
-                          key={key}
-                          onClick={() => setActiveView(key as any)}
-                          className={`cursor-pointer flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                            activeView === key
-                              ? "bg-blue-100 text-blue-700"
-                              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <Icon className="h-4 w-4 mr-2" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="hidden lg:block">
-                <div className="ml-4 flex items-center md:ml-6">
-                  {currentSession && (
-                    <div className="flex items-center space-x-4 mr-4">
-                      <div className="text-sm font-medium text-gray-700">
-                        Time: {formatTime(timeRemaining)}
-                      </div>
-                      <button
-                        onClick={() => setShowProctorModal(true)}
-                        className="cursor-pointer bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium"
-                      >
-                        Request Break
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <img
-                      className="h-8 w-8 rounded-full"
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
-                      alt="User"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      John Doe
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:hidden">
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="cursor-pointer inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-                >
-                  <span className="sr-only">Open main menu</span>
-                  {isMobileMenuOpen ? (
-                    <XMarkIcon className="block h-6 w-6" />
-                  ) : (
-                    <Bars3Icon className="block h-6 w-6" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile menu */}
-          <div className={`md:hidden ${isMobileMenuOpen ? "block" : "hidden"}`}>
-            <div className="fixed inset-0 z-50 flex">
-              <div
-                className="fixed inset-0 bg-gray-600 bg-opacity-75"
-                onClick={handleOverlayClick}
-              ></div>
-
-              <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
-                {/* Enhanced close button with better positioning */}
-                <div className="absolute top-0 right-0 pt-4 pr-4">
-                  <button
-                    onClick={closeMobileMenu}
-                    className="text-gray-500 hover:text-gray-800 focus:outline-none"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-
-                <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-                  <div className="flex-shrink-0 flex items-center px-4">
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                      <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="ml-3">
-                      <h1 className="text-lg font-bold text-gray-900">
-                        TestPro
-                      </h1>
-                      <p className="text-xs text-gray-500">
-                        Professional Testing
-                      </p>
-                    </div>
-                  </div>
-                  <nav className="mt-5 px-2 space-y-1">
-                    {menuItems.map(({ key, label, icon: Icon }) => (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setActiveView(key as any);
-                          closeMobileMenu();
-                        }}
-                        className={`cursor-pointer group w-full flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors ${
-                          activeView === key
-                            ? "bg-blue-100 text-blue-700"
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                        }`}
-                      >
-                        <Icon className="mr-4 h-6 w-6" />
-                        {label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-
-                <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-                  <div className="flex items-center">
-                    <img
-                      className="h-10 w-10 rounded-full"
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-                      alt="User"
-                    />
-                    <div className="ml-3">
-                      <p className="text-base font-medium text-gray-700">
-                        John Doe
-                      </p>
-                      <p className="text-sm font-medium text-gray-500">
-                        Administrator
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </nav>
-      )}
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {activeView === "dashboard" && (
-          <div className="px-4 py-6 sm:px-0">
-            <div className="mb-8">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                  Welcome to TestPro
-                </h1>
-                <p className="text-xl text-gray-600 mb-8">
-                  Enterprise-grade assessment platform for modern organizations
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg shadow-lg text-white">
-                  <div className="flex items-center">
-                    <DocumentTextIcon className="h-8 w-8" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-semibold">
-                        {analyticsData.totalTests}
-                      </p>
-                      <p className="text-blue-100">Total Tests</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg shadow-lg text-white">
-                  <div className="flex items-center">
-                    <UserGroupIcon className="h-8 w-8" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-semibold">
-                        {analyticsData.totalSessions}
-                      </p>
-                      <p className="text-green-100">Test Sessions</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg shadow-lg text-white">
-                  <div className="flex items-center">
-                    <ChartBarIcon className="h-8 w-8" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-semibold">
-                        {analyticsData.avgScore.toFixed(1)}%
-                      </p>
-                      <p className="text-purple-100">Average Score</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg shadow-lg text-white">
-                  <div className="flex items-center">
-                    <CheckCircleIcon className="h-8 w-8" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-semibold">
-                        {analyticsData.completionRate.toFixed(1)}%
-                      </p>
-                      <p className="text-orange-100">Completion Rate</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">
-                    Quick Actions
-                  </h2>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setActiveView("create")}
-                      className="cursor-pointer w-full flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                    >
-                      <PlusIcon className="h-5 w-5 text-blue-600 mr-3" />
-                      <span className="font-medium text-blue-600">
-                        Create New Test
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setActiveView("library")}
-                      className="cursor-pointer w-full flex items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                    >
-                      <DocumentTextIcon className="h-5 w-5 text-green-600 mr-3" />
-                      <span className="font-medium text-green-600">
-                        Browse Test Library
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setActiveView("analytics")}
-                      className="cursor-pointer w-full flex items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                    >
-                      <ChartBarIcon className="h-5 w-5 text-purple-600 mr-3" />
-                      <span className="font-medium text-purple-600">
-                        View Analytics
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">
-                    Recent Activity
-                  </h2>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {analyticsData.recentActivity.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex items-center p-3 border border-gray-200 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">
-                            {session.userName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {session.startTime.toLocaleDateString()} at{" "}
-                            {session.startTime.toLocaleTimeString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              session.status === "completed"
-                                ? "bg-green-100 text-green-800"
-                                : session.status === "in-progress"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {session.status}
-                          </span>
-                          {session.score && (
-                            <p className="text-sm font-medium mt-1">
-                              {session.score}%
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === "library" && (
-          <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">
-                    Test Library
-                  </h1>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search tests..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <select
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                    >
-                      <option value="all">All Categories</option>
-                      {analyticsData.categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => setShowExportModal(true)}
-                      className="cursor-pointer flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                      Export
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTests.map((test) => (
-                    <div
-                      key={test.id}
-                      className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow h-80 flex flex-col"
-                    >
-                      <div className="p-6 flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-3">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              test.status === "published"
-                                ? "bg-green-100 text-green-800"
-                                : test.status === "draft"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {test.status}
-                          </span>
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              test.difficulty === "easy"
-                                ? "bg-blue-100 text-blue-800"
-                                : test.difficulty === "medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {test.difficulty}
-                          </span>
-                        </div>
-
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2 overflow-hidden" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {test.title}
-                        </h3>
-                        <p className="text-gray-600 text-sm mb-3 flex-grow overflow-hidden" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {test.description}
-                        </p>
-
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                          <span className="flex items-center">
-                            <ClockIcon className="h-4 w-4 mr-1" />
-                            {test.duration} min
-                          </span>
-                          <span className="flex items-center">
-                            <DocumentTextIcon className="h-4 w-4 mr-1" />
-                            {test.questions.length} questions
-                          </span>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-4 min-h-[28px]">
-                          {test.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {test.tags.length > 3 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                              +{test.tags.length - 3} more
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex space-x-2 mt-auto">
-                          <button
-                            onClick={() => startTest(test)}
-                            className="cursor-pointer flex-1 flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
-                          >
-                            <PlayIcon className="h-4 w-4 mr-1" />
-                            Start
-                          </button>
-
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => duplicateTest(test)}
-                              className="cursor-pointer p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-                              title="Duplicate"
-                            >
-                              <DocumentDuplicateIcon className="h-4 w-4" />
-                            </button>
-
-                            <button
-                              onClick={() => deleteTest(test.id)}
-                              className="cursor-pointer p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-md transition-colors"
-                              title="Delete"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {filteredTests.length === 0 && (
-                  <div className="text-center py-12">
-                    <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No tests found
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      {searchQuery || filterCategory !== "all"
-                        ? "Try adjusting your search or filter criteria."
-                        : "Get started by creating your first test."}
-                    </p>
-                    <button
-                      onClick={() => setActiveView("create")}
-                      className="cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Create Test
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === "create" && (
-          <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Create New Test
-                  </h1>
-
-                  <div className="md:flex justify-start sm:justify-end hidden ">
-                    <button
-                      onClick={() =>
-                        setPreviewMode(
-                          previewMode === "desktop" ? "mobile" : "desktop"
-                        )
-                      }
-                      className="cursor-pointer flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      {previewMode === "desktop" ? (
-                        <>
-                          <DevicePhoneMobileIcon className="h-4 w-4" />
-                          <span>Mobile View</span>
-                        </>
-                      ) : (
-                        <>
-                          <ComputerDesktopIcon className="h-4 w-4" />
-                          <span>Desktop View</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`${
-                  previewMode === "desktop"
-                    ? "grid grid-cols-1 lg:grid-cols-2"
-                    : ""
-                } min-h-screen`}
-              >
-                {/* Editor Panel */}
-                <div className="p-6 border-r border-gray-200 md:overflow-y-auto md:max-h-screen">
-                  <div className="space-y-6">
-                    {/* Test Info */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                        Test Information
-                      </h2>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Title *
-                          </label>
-                          <input
-                            type="text"
-                            value={testForm.title}
-                            onChange={(e) =>
-                              setTestForm((prev) => ({
-                                ...prev,
-                                title: e.target.value,
-                              }))
-                            }
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter test title"
-                          />
-                          {validationErrors.title && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.title}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description *
-                          </label>
-                          <textarea
-                            value={testForm.description}
-                            onChange={(e) =>
-                              setTestForm((prev) => ({
-                                ...prev,
-                                description: e.target.value,
-                              }))
-                            }
-                            rows={3}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter test description"
-                          />
-                          {validationErrors.description && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Duration (minutes) *
-                            </label>
-                            <input
-                              type="number"
-                              value={testForm.duration}
-                              onChange={(e) =>
-                                setTestForm((prev) => ({
-                                  ...prev,
-                                  duration: parseInt(e.target.value) || 0,
-                                }))
-                              }
-                              min="1"
-                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            {validationErrors.duration && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {validationErrors.duration}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Difficulty
-                            </label>
-                            <select
-                              value={testForm.difficulty}
-                              onChange={(e) =>
-                                setTestForm((prev) => ({
-                                  ...prev,
-                                  difficulty: e.target.value as any,
-                                }))
-                              }
-                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                            >
-                              <option value="easy">Easy</option>
-                              <option value="medium">Medium</option>
-                              <option value="hard">Hard</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Category *
-                          </label>
-                          <input
-                            type="text"
-                            value={testForm.category}
-                            onChange={(e) =>
-                              setTestForm((prev) => ({
-                                ...prev,
-                                category: e.target.value,
-                              }))
-                            }
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g., Programming, Mathematics"
-                          />
-                          {validationErrors.category && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.category}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Question Builder */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                        Add Question
-                      </h2>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Question Type
-                          </label>
-                          <select
-                            value={currentQuestion.type}
-                            onChange={(e) =>
-                              setCurrentQuestion((prev) => ({
-                                ...prev,
-                                type: e.target.value as any,
-                              }))
-                            }
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          >
-                            <option value="multiple-choice">
-                              Multiple Choice
-                            </option>
-                            <option value="text">Short Text</option>
-                            <option value="essay">Essay</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Question *
-                          </label>
-                          <textarea
-                            value={currentQuestion.question}
-                            onChange={(e) =>
-                              setCurrentQuestion((prev) => ({
-                                ...prev,
-                                question: e.target.value,
-                              }))
-                            }
-                            rows={2}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter your question"
-                          />
-                          {validationErrors.question && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.question}
-                            </p>
-                          )}
-                        </div>
-
-                        {currentQuestion.type === "multiple-choice" && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Options *
-                              </label>
-                              {currentQuestion.options?.map((option, index) => (
-                                <div key={index} className="flex items-center mb-2 space-x-2">
-                                  <input
-                                    type="radio"
-                                    name="correctAnswer"
-                                    value={index}
-                                    checked={currentQuestion.correctAnswer === index}
-                                    onChange={(e) => {
-                                      setCurrentQuestion((prev) => ({
-                                        ...prev,
-                                        correctAnswer: parseInt(e.target.value),
-                                      }));
-                                    }}
-                                    className="cursor-pointer"
-                                    title="Mark as correct answer"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={option}
-                                    onChange={(e) => {
-                                      const newOptions = [
-                                        ...(currentQuestion.options || []),
-                                      ];
-                                      newOptions[index] = e.target.value;
-                                      setCurrentQuestion((prev) => ({
-                                        ...prev,
-                                        options: newOptions,
-                                      }));
-                                    }}
-                                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder={`Option ${index + 1}`}
-                                  />
-                                </div>
-                              ))}
-                              <p className="text-xs text-gray-500 mt-1">
-                                ✓ Select the radio button next to the correct answer
-                              </p>
-                              {validationErrors.options && (
-                                <p className="mt-1 text-sm text-red-600">
-                                  {validationErrors.options}
-                                </p>
-                              )}
-                              {validationErrors.correctAnswer && (
-                                <p className="mt-1 text-sm text-red-600">
-                                  {validationErrors.correctAnswer}
-                                </p>
-                              )}
-                            </div>
-                          </>
-                        )}
-
-                        {currentQuestion.type === "text" && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Correct Answer *
-                            </label>
-                            <input
-                              type="text"
-                              value={currentQuestion.correctAnswer as string || ""}
-                              onChange={(e) =>
-                                setCurrentQuestion((prev) => ({
-                                  ...prev,
-                                  correctAnswer: e.target.value,
-                                }))
-                              }
-                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter the correct answer"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              This will be used for automatic grading
-                            </p>
-                            {validationErrors.correctAnswer && (
-                              <p className="mt-1 text-sm text-red-600">
-                                {validationErrors.correctAnswer}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Points *
-                          </label>
-                          <input
-                            type="number"
-                            value={currentQuestion.points}
-                            onChange={(e) =>
-                              setCurrentQuestion((prev) => ({
-                                ...prev,
-                                points: parseInt(e.target.value) || 1,
-                              }))
-                            }
-                            min="1"
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          {validationErrors.points && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {validationErrors.points}
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={addQuestion}
-                          className="cursor-pointer w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                        >
-                          Add Question
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Questions List */}
-                    {testForm.questions.length > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                          Questions ({testForm.questions.length})
-                        </h2>
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {testForm.questions.map((question, index) => (
-                            <div
-                              key={question.id}
-                              className="bg-white p-3 rounded border border-gray-200 "
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm">
-                                    Q{index + 1}: {question.question}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {question.type} • {question.points} points
-                                  </p>
-                                </div>
-                                <div className="flex space-x-1 ml-2">
-                                  <button
-                                    onClick={() => editQuestion(question.id)}
-                                    className="cursor-pointer text-blue-600 hover:text-blue-800"
-                                    title="Edit"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => removeQuestion(question.id)}
-                                    className="cursor-pointer text-red-600 hover:text-red-800"
-                                    title="Remove"
-                                  >
-                                    <XMarkIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
-                      <button
-                        onClick={createTest}
-                        className="cursor-pointer flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-semibold"
-                      >
-                        Create Test
-                      </button>
-                      <button
-                        onClick={() => setActiveView("library")}
-                        className="cursor-pointer flex-1 sm:flex-none px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preview Panel (Desktop Only) */}
-                {previewMode === "desktop" && (
-                  <div className="bg-gray-100 p-4 sm:p-6 overflow-y-auto max-h-screen md:block hidden">
-                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-lg mx-auto">
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                        Live Preview
-                      </h3>
-
-                      {testForm.title && (
-                        <div className="mb-4">
-                          <h4 className="text-base sm:text-lg font-semibold text-gray-800">
-                            {testForm.title}
-                          </h4>
-                          <p className="text-gray-600 text-sm">
-                            {testForm.description}
-                          </p>
-                          <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
-                            <span>Duration: {testForm.duration} minutes</span>
-                            <span>Category: {testForm.category}</span>
-                            <span
-                              className={`px-2 py-1 rounded ${
-                                testForm.difficulty === "easy"
-                                  ? "bg-green-100 text-green-800"
-                                  : testForm.difficulty === "medium"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {testForm.difficulty}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {testForm.questions.length > 0 && (
-                        <div className="space-y-4">
-                          <h5 className="font-medium text-gray-700 text-sm sm:text-base">
-                            Sample Questions:
-                          </h5>
-
-                          {testForm.questions
-                            .slice(0, 2)
-                            .map((question, index) => (
-                              <div
-                                key={question.id}
-                                className="border border-gray-200 rounded p-3"
-                              >
-                                <p className="font-medium text-sm mb-2">
-                                  Q{index + 1}: {question.question}
-                                </p>
-
-                                {question.type === "multiple-choice" &&
-                                  question.options && (
-                                    <div className="space-y-1">
-                                      {question.options
-                                        .filter((opt) => opt.trim())
-                                        .map((option, optIndex) => (
-                                          <label
-                                            key={optIndex}
-                                            className="flex items-center text-xs"
-                                          >
-                                            <input
-                                              type="radio"
-                                              className="mr-2"
-                                              disabled
-                                            />
-                                            {option}
-                                          </label>
-                                        ))}
-                                    </div>
-                                  )}
-
-                                {question.type === "text" && (
-                                  <input
-                                    type="text"
-                                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                                    disabled
-                                  />
-                                )}
-
-                                {question.type === "essay" && (
-                                  <textarea
-                                    rows={2}
-                                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                                    disabled
-                                  />
-                                )}
-
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {question.points} points
-                                </p>
-                              </div>
-                            ))}
-
-                          {testForm.questions.length > 2 && (
-                            <p className="text-xs text-gray-500 text-center">
-                              ... and {testForm.questions.length - 2} more
-                              questions
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-gray-100 pt-2 flex md:hidden">
-                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 w-full max-w-lg mx-auto">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                      Live Preview
-                    </h3>
-
-                    {testForm.title && (
-                      <div className="mb-4">
-                        <h4 className="text-base sm:text-lg font-semibold text-gray-800">
-                          {testForm.title}
-                        </h4>
-                        <p className="text-gray-600 text-sm">
-                          {testForm.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
-                          <span>Duration: {testForm.duration} minutes</span>
-                          <span>Category: {testForm.category}</span>
-                          <span
-                            className={`px-2 py-1 rounded ${
-                              testForm.difficulty === "easy"
-                                ? "bg-green-100 text-green-800"
-                                : testForm.difficulty === "medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {testForm.difficulty}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {testForm.questions.length > 0 && (
-                      <div className="space-y-4">
-                        <h5 className="font-medium text-gray-700 text-sm sm:text-base">
-                          Sample Questions:
-                        </h5>
-
-                        {testForm.questions
-                          .slice(0, 2)
-                          .map((question, index) => (
-                            <div
-                              key={question.id}
-                              className="border border-gray-200 rounded p-3"
-                            >
-                              <p className="font-medium text-sm mb-2">
-                                Q{index + 1}: {question.question}
-                              </p>
-
-                              {question.type === "multiple-choice" &&
-                                question.options && (
-                                  <div className="space-y-1">
-                                    {question.options
-                                      .filter((opt) => opt.trim())
-                                      .map((option, optIndex) => (
-                                        <label
-                                          key={optIndex}
-                                          className="flex items-center text-xs"
-                                        >
-                                          <input
-                                            type="radio"
-                                            className="mr-2"
-                                            disabled
-                                          />
-                                          {option}
-                                        </label>
-                                      ))}
-                                  </div>
-                                )}
-
-                              {question.type === "text" && (
-                                <input
-                                  type="text"
-                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                                  disabled
-                                />
-                              )}
-
-                              {question.type === "essay" && (
-                                <textarea
-                                  rows={2}
-                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                                  disabled
-                                />
-                              )}
-
-                              <p className="text-xs text-gray-500 mt-1">
-                                {question.points} points
-                              </p>
-                            </div>
-                          ))}
-
-                        {testForm.questions.length > 2 && (
-                          <p className="text-xs text-gray-500 text-center">
-                            ... and {testForm.questions.length - 2} more
-                            questions
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === "test" && currentTest && currentSession && (
-          <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-              {/* Test Header */}
-              <div className="px-6 py-4 border-b border-gray-200 bg-blue-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900">
-                      {currentTest.title}
-                    </h1>
-                    <p className="text-sm text-gray-600">
-                      {currentTest.description}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div
-                      className={`text-lg font-semibold ${
-                        showFullscreenWarning
-                          ? "text-red-600"
-                          : isOnBreak
-                          ? "text-orange-600"
-                          : "text-blue-600"
-                      }`}
-                    >
-                      {showFullscreenWarning
-                        ? "PAUSED - FULLSCREEN REQUIRED"
-                        : isOnBreak
-                        ? "ON BREAK"
-                        : formatTime(timeRemaining)}
-                    </div>
-                    {!isFullscreen && !showFullscreenWarning && (
-                      <div className="text-sm text-red-600 font-medium">
-                        Not in fullscreen
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Test Content */}
-              <div className=" p-4 md:p-6 overflow-y-auto max-h-screen">
-                <div className="max-w-4xl mx-auto">
-                  {currentTest.questions.length === 0 ? (
-                    <div className="text-center py-12">
-                      <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        No questions available
-                      </h3>
-                      <p className="text-gray-600 mb-4">
-                        This test doesn't have any questions yet.
-                      </p>
-                      <button
-                        onClick={endTestSession}
-                        className="cursor-pointer bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        Return to Dashboard
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {currentTest.questions.map((question, index) => (
-                        <div
-                          key={question.id}
-                          className="mb-8 p-6 border border-gray-200 rounded-lg"
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              Question {index + 1}
-                            </h3>
-                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              {question.points} points
-                            </span>
-                          </div>
-
-                          <p className="text-gray-700 mb-4">
-                            {question.question}
-                          </p>
-
-                          {question.type === "multiple-choice" &&
-                            question.options && (
-                              <div className="space-y-2">
-                                {question.options
-                                  .filter((opt) => opt.trim())
-                                  .map((option, optIndex) => (
-                                    <label
-                                      key={optIndex}
-                                      className="flex items-center cursor-pointer"
-                                    >
-                                      <input
-                                        type="radio"
-                                        name={`question-${question.id}`}
-                                        value={optIndex}
-                                        onChange={(e) => {
-                                          if (currentSession) {
-                                            setCurrentSession((prev) =>
-                                              prev
-                                                ? {
-                                                    ...prev,
-                                                    answers: {
-                                                      ...prev.answers,
-                                                      [question.id]: parseInt(
-                                                        e.target.value
-                                                      ),
-                                                    },
-                                                  }
-                                                : null
-                                            );
-                                          }
-                                        }}
-                                        className="mr-3"
-                                      />
-                                      <span className="text-gray-700">
-                                        {option}
-                                      </span>
-                                    </label>
-                                  ))}
-                              </div>
-                            )}
-
-                          {question.type === "text" && (
-                            <input
-                              type="text"
-                              onChange={(e) => {
-                                if (currentSession) {
-                                  setCurrentSession((prev) =>
-                                    prev
-                                      ? {
-                                          ...prev,
-                                          answers: {
-                                            ...prev.answers,
-                                            [question.id]: e.target.value,
-                                          },
-                                        }
-                                      : null
-                                  );
-                                }
-                              }}
-                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter your answer"
-                            />
-                          )}
-
-                          {question.type === "essay" && (
-                            <textarea
-                              rows={4}
-                              onChange={(e) => {
-                                if (currentSession) {
-                                  setCurrentSession((prev) =>
-                                    prev
-                                      ? {
-                                          ...prev,
-                                          answers: {
-                                            ...prev.answers,
-                                            [question.id]: e.target.value,
-                                          },
-                                        }
-                                      : null
-                                  );
-                                }
-                              }}
-                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter your essay response"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </>
-                  )}
-                  <div className="flex flex-col sm:flex-row justify-center sm:space-x-4 space-y-4 sm:space-y-0 mt-8">
-                    {isOnBreak ? (
-                      <button
-                        onClick={resumeTest}
-                        className="w-full sm:w-auto cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-                      >
-                        Resume Test
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={endTestSession}
-                          className="w-full sm:w-auto cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-                        >
-                          Submit Test
-                        </button>
-                        <button
-                          onClick={() => setShowProctorModal(true)}
-                          className="w-full sm:w-auto cursor-pointer bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition-colors"
-                        >
-                          Request Break
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === "analytics" && (
-          <div className="px-4 py-6 sm:px-0 overflow-y-auto">
-            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Analytics Dashboard
-                </h1>
-              </div>
-
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <DocumentTextIcon className="h-8 w-8" />
-                        <div className="ml-4">
-                          <p className="text-2xl font-semibold">
-                            {analyticsData.totalTests}
-                          </p>
-                          <p className="text-blue-100">Total Tests</p>
-                        </div>
-                      </div>
-                      {isMobile && (
-                        <Sparkline
-                          data={analyticsData.performanceData}
-                          color="#ffffff"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <UserGroupIcon className="h-8 w-8" />
-                        <div className="ml-4">
-                          <p className="text-2xl font-semibold">
-                            {analyticsData.totalSessions}
-                          </p>
-                          <p className="text-green-100">Test Sessions</p>
-                        </div>
-                      </div>
-                      {isMobile && (
-                        <Sparkline
-                          data={analyticsData.performanceData}
-                          color="#ffffff"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <ChartBarIcon className="h-8 w-8" />
-                        <div className="ml-4">
-                          <p className="text-2xl font-semibold">
-                            {analyticsData.avgScore.toFixed(1)}%
-                          </p>
-                          <p className="text-purple-100">Average Score</p>
-                        </div>
-                      </div>
-                      {isMobile && (
-                        <Sparkline
-                          data={analyticsData.performanceData}
-                          color="#ffffff"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <CheckCircleIcon className="h-8 w-8" />
-                        <div className="ml-4">
-                          <p className="text-2xl font-semibold">
-                            {analyticsData.completionRate.toFixed(1)}%
-                          </p>
-                          <p className="text-orange-100">Completion Rate</p>
-                        </div>
-                      </div>
-                      {isMobile && (
-                        <Sparkline
-                          data={analyticsData.performanceData}
-                          color="#ffffff"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                  {/* Performance Over Time Chart */}
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Performance Over Time
-                    </h3>
-                    {isMobile ? (
-                      <div className="space-y-3">
-                        {analyticsData.performanceData
-                          .slice(-5)
-                          .map((item, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 bg-white rounded"
-                            >
-                              <span className="text-sm font-medium">
-                                Session {item.session}
-                              </span>
-                              <div className="flex items-center space-x-2">
-                                <Sparkline data={[item]} color="#3B82F6" />
-                                <span className="text-sm font-bold text-blue-600">
-                                  {item.score}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={analyticsData.performanceData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="session" />
-                            <YAxis domain={[0, 100]} />
-                            <Tooltip />
-                            <Line
-                              type="monotone"
-                              dataKey="score"
-                              stroke="#3B82F6"
-                              strokeWidth={2}
-                              dot={{ fill: "#3B82F6" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Category Performance */}
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Performance by Category
-                    </h3>
-                    {isMobile ? (
-                      <div className="space-y-3">
-                        {analyticsData.categoryData.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-white rounded"
-                          >
-                            <span className="text-sm font-medium">
-                              {item.category}
-                            </span>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-green-600 h-2 rounded-full"
-                                  style={{ width: `${item.avgScore}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-bold">
-                                {item.avgScore}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analyticsData.categoryData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="category" />
-                            <YAxis domain={[0, 100]} />
-                            <Tooltip />
-                            <Bar dataKey="avgScore" fill="#10B981" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Score Distribution */}
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Score Distribution
-                    </h3>
-                    {isMobile ? (
-                      <div className="space-y-2">
-                        {analyticsData.scoreDistribution.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 bg-white rounded"
-                          >
-                            <span className="text-sm">{item.range}</span>
-                            <div className="flex items-center space-x-2">
-                              <div
-                                className="w-3 h-3 rounded"
-                                style={{ backgroundColor: item.color }}
-                              ></div>
-                              <span className="text-sm font-medium">
-                                {item.count}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={analyticsData.scoreDistribution}
-                              cx="50%"
-                              cy="45%"
-                              outerRadius={70}
-                              dataKey="count"
-                              label={false}
-                            >
-                              {analyticsData.scoreDistribution.map(
-                                (entry, index) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.color}
-                                  />
-                                )
-                              )}
-                            </Pie>
-                            <Tooltip 
-                              formatter={(value, name, props) => [
-                                `${value} students`,
-                                props.payload.range
-                              ]}
-                            />
-                            <Legend 
-                              verticalAlign="bottom"
-                              height={60}
-                              formatter={(value) => value}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Recent Sessions */}
-                  <div className="bg-gray-50 p-6 rounded-lg h-[456px] flex flex-col">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Recent Test Sessions
-                    </h3>
-                    <div className="space-y-3 flex-1 overflow-y-auto">
-                      {analyticsData.recentActivity.map((session) => (
-                        <div
-                          key={session.id}
-                          className="bg-white p-3 rounded border border-gray-200"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">
-                                {session.userName}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {session.startTime.toLocaleDateString()} at{" "}
-                                {session.startTime.toLocaleTimeString()}
-                              </p>
-                              {session.violations.length > 0 && (
-                                <p className="text-xs text-red-600 flex items-center">
-                                  <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
-                                  {session.violations.length} violation(s)
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  session.status === "completed"
-                                    ? "bg-green-100 text-green-800"
-                                    : session.status === "in-progress"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {session.status}
-                              </span>
-                              {session.score && (
-                                <p className="text-sm font-medium mt-1">
-                                  {session.score}%
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {analyticsData.recentActivity.length === 0 && (
-                        <div className="text-center py-8">
-                          <p className="text-gray-500">No sessions yet</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === "settings" && (
-          <div className="px-4 py-6 sm:px-0 overflow-y-auto">
-            <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-              </div>
-
-              <div className="p-6">
-                <div className="max-w-2xl">
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Proctoring Settings
-                      </h3>
-                      <div className="space-y-4 pl-4 border-l-2 border-blue-200">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-blue-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Require fullscreen mode
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Force users to stay in fullscreen during tests
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-blue-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Track tab switching
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Log when users switch browser tabs
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-blue-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Enable break requests
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Allow users to request breaks during tests
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mr-3 h-4 w-4 text-blue-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Webcam monitoring
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Record user webcam during test sessions
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Time Management
-                      </h3>
-                      <div className="space-y-4 pl-4 border-l-2 border-green-200">
-                        <div className="flex items-center space-x-4">
-                          <label className="text-gray-700 font-medium">
-                            Warning alert at:
-                          </label>
-                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                            <option>5 minutes remaining</option>
-                            <option>10 minutes remaining</option>
-                            <option>15 minutes remaining</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <label className="text-gray-700 font-medium">
-                            Final warning at:
-                          </label>
-                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                            <option>1 minute remaining</option>
-                            <option>2 minutes remaining</option>
-                            <option>30 seconds remaining</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <label className="text-gray-700 font-medium">
-                            Auto-submit after time:
-                          </label>
-                          <select className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                            <option>Immediately</option>
-                            <option>30 seconds grace</option>
-                            <option>1 minute grace</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Security
-                      </h3>
-                      <div className="space-y-4 pl-4 border-l-2 border-red-200">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-red-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Disable right-click during test
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Prevent copy/paste and context menus
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-red-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Disable keyboard shortcuts
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Block common shortcuts like Ctrl+C, Ctrl+V
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mr-3 h-4 w-4 text-red-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Randomize question order
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Show questions in random order for each user
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mr-3 h-4 w-4 text-red-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Randomize answer options
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Shuffle multiple choice options
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Notifications
-                      </h3>
-                      <div className="space-y-4 pl-4 border-l-2 border-purple-200">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="mr-3 h-4 w-4 text-purple-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Email test completion reports
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Send summary emails when tests are completed
-                            </p>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mr-3 h-4 w-4 text-purple-600 rounded"
-                          />
-                          <div>
-                            <span className="text-gray-700 font-medium">
-                              Real-time violation alerts
-                            </span>
-                            <p className="text-sm text-gray-500">
-                              Immediate notifications for proctoring violations
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="pt-6 border-t border-gray-200">
-                      <button
-                        onClick={() =>
-                          addToast({
-                            type: "success",
-                            message: "Settings saved successfully!",
-                          })
-                        }
-                        className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        Save Settings
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm text-gray-600">© {new Date().getFullYear()} TestPro - Professional Testing Platform. All rights reserved.</p>
-        </div>
-      </footer>
-
-      {/* Proctor Modal */}
-      {showProctorModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setShowProctorModal(false)} // ✅ Close on outside click
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800&display=swap');
+          
+          .game-title {
+            font-family: 'Orbitron', monospace;
+            text-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
+            letter-spacing: 0.1em;
+          }
+          
+          .game-ui {
+            font-family: 'Exo 2', sans-serif;
+          }
+          
+          .text-shadow {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+          }
+          
+          .glow-effect {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+          }
+          
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+          
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+          }
+        `
+      }} />
+
+      {/* Mobile Header */}
+      <motion.div 
+        className="lg:hidden flex items-center justify-between mb-6 px-2"
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.div
+          initial={{ x: -30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
         >
-          {/* Modern Blurry Backdrop */}
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
+          <h1 className="game-title text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight">
+            SUDOKU
+          </h1>
+          <motion.div 
+            className="w-16 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full mt-1"
+            initial={{ width: 0 }}
+            animate={{ width: 64 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          ></motion.div>
+        </motion.div>
+        
+        <motion.button
+          initial={{ x: 30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={toggleInfoModal}
+          className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 rounded-full shadow-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 cursor-pointer"
+          aria-label="Show game instructions"
+        >
+          <Info size={20} />
+        </motion.button>
+      </motion.div>
 
-          {/* Modal */}
-          <div
-            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-full max-w-lg border border-white/20"
-            onClick={(e) => e.stopPropagation()} // ✅ Prevent inner click from closing
-          >
-            <div className="flex items-center space-x-3 mb-4">
-              <ClockIcon className="h-6 w-6 text-yellow-600" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Request Break
-              </h3>
-            </div>
+      {/* Desktop Header */}
+      <motion.div 
+        className="hidden lg:block text-center mb-6"
+        initial={{ y: -30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.h1 
+          className="game-title text-3xl sm:text-4xl md:text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight"
+          animate={{ 
+            y: [-5, 0, -5],
+            scale: [1, 1.01, 1]
+          }}
+          transition={{ 
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          SUDOKU
+        </motion.h1>
+        <motion.div 
+          className="w-24 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 mx-auto rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: 96 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        ></motion.div>
+      </motion.div>
 
-            <p className="text-sm text-gray-500 mb-4">
-              Select the reason for your break request. Your test timer will be
-              paused:
-            </p>
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto">
+        <motion.div 
+          className="flex flex-col space-y-4 lg:space-y-8 lg:w-2/5 order-2 lg:order-1"
+          initial={{ x: -50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
 
-            <div className="space-y-2">
-              {[
-                "Bathroom break",
-                "Technical issue",
-                "Medical emergency",
-                "Network connectivity problem",
-                "Other",
-              ].map((reason) => (
-                <button
-                  key={reason}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    takeBreak(reason);
-                  }}
-                  className="cursor-pointer w-full text-left px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
 
-            <div className="mt-6 text-right">
-              <button
-                onClick={() => setShowProctorModal(false)}
-                className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
+          <div className="hidden lg:block bg-gradient-to-br from-purple-800/30 to-purple-900/30 border border-purple-400/30 rounded-xl p-4 lg:p-6">
+            <h3 className="game-ui text-lg lg:text-xl font-bold text-purple-300 mb-3 lg:mb-4 text-center">
+              How to Play
+            </h3>
+            <div className="space-y-2 lg:space-y-3 text-xs lg:text-sm text-purple-200 game-ui">
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">1.</span>
+                <span>Click on an empty cell to select it</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">2.</span>
+                <span>Use number keys (1-9) or number pad to enter digits</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">3.</span>
+                <span>Press Backspace/Delete to clear a cell</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">4.</span>
+                <span>Use arrow keys to navigate between cells</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">5.</span>
+                <span>Fill each row, column, and 3×3 box with numbers 1-9</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-cyan-400 font-bold">6.</span>
+                <span>No number can repeat in the same row, column, or box</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Export Modal */}
-      {showExportModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setShowExportModal(false)} // ✅ Close on outside click
-        >
-          {/* Modern Blurry Backdrop */}
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
-
-          {/* Modal Content */}
-          <div
-            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-6 w-full max-w-lg border border-white/20"
-            onClick={(e) => e.stopPropagation()} // ✅ Prevent close on inner click
-          >
-            <div className="flex items-center space-x-3 mb-4">
-              <ArrowDownTrayIcon className="h-6 w-6 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Export Data
-              </h3>
-            </div>
-
-            <p className="text-sm text-gray-500 mb-4">
-              Choose what data you'd like to export:
-            </p>
-
-            {[
-              { id: "tests", label: "Test Definitions", desc: "All test data" },
-              {
-                id: "sessions",
-                label: "Test Sessions",
-                desc: "Session results",
-              },
-              { id: "users", label: "User Data", desc: "User info & stats" },
-              {
-                id: "analytics",
-                label: "Analytics Report",
-                desc: "Charts & metrics",
-              },
-            ].map((item) => (
+          <div className="grid grid-cols-5 gap-3 lg:gap-6 max-w-sm lg:max-w-full mx-auto">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button
-                key={item.id}
-                onClick={() => {
-                  addToast({
-                    type: "success",
-                    message: `${item.label} exported!`,
-                  });
-                  setShowExportModal(false);
-                }}
-                className="cursor-pointer w-full text-left px-4 py-3 mb-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                key={num}
+                onClick={() => handleNumberInput(num)}
+                onMouseEnter={() => setHighlightedNumber(num)}
+                onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
+                disabled={!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL || isSolved}
+                className={`game-ui w-12 h-12 lg:w-20 lg:h-20 text-xl lg:text-3xl font-black rounded-xl transition-all duration-200 ease-in-out transform hover:scale-110 cursor-pointer
+                            bg-gradient-to-br from-slate-700 to-slate-800 text-cyan-400 hover:from-purple-600 hover:to-purple-700 hover:text-white 
+                            focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-75 shadow-lg
+                            disabled:from-gray-800 disabled:to-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed disabled:transform-none
+                            ${highlightedNumber === num ? 'from-purple-500 to-purple-600 text-white shadow-purple-500/50 shadow-lg' : ''}`}
               >
-                <div className="font-medium text-gray-900">{item.label}</div>
-                <div className="text-sm text-gray-500">{item.desc}</div>
+                {num}
               </button>
             ))}
+            <button
+              onClick={() => handleNumberInput(null)}
+              onMouseEnter={() => setHighlightedNumber(null)}
+              onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
+              disabled={!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL || isSolved}
+              className="game-ui w-12 h-12 lg:w-20 lg:h-20 flex items-center justify-center rounded-xl transition-all duration-200 ease-in-out transform hover:scale-110 cursor-pointer
+                          bg-gradient-to-br from-slate-700 to-slate-800 text-cyan-400 hover:from-yellow-600 hover:to-yellow-700 hover:text-white 
+                          focus:outline-none focus:ring-4 focus:ring-yellow-500 focus:ring-opacity-75 shadow-lg
+                          disabled:from-gray-800 disabled:to-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed disabled:transform-none"
+              aria-label="Erase number"
+            >
+              <Edit3 size={28} className="lg:w-8 lg:h-8" />
+            </button>
+          </div>
 
-            <div className="mt-4 text-right">
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="cursor-pointer px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+          <div className="grid grid-cols-2 gap-3 lg:gap-4">
+            <button
+              onClick={handleNewGame}
+              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-800 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 text-sm lg:text-base cursor-pointer"
+            >
+              <RefreshCw size={18} /> New Game
+            </button>
+            <button
+              onClick={handleReset}
+              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl font-bold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 text-sm lg:text-base cursor-pointer"
+            >
+              <RefreshCw size={18} /> Reset
+            </button>
+            <button
+              onClick={handleCheck}
+              disabled={isSolved}
+              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none text-sm lg:text-base cursor-pointer"
+            >
+              <CheckCircle size={18} /> Check
+            </button>
+            <button
+              onClick={handleHint}
+              disabled={isSolved}
+              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none text-sm lg:text-base cursor-pointer"
+            >
+              <HelpCircle size={18} /> Hint
+            </button>
+          </div>
+
+        </motion.div>
+
+        <motion.div 
+          className="flex justify-center lg:w-3/5 order-1 lg:order-2"
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <motion.div 
+            className="grid grid-cols-9 gap-0 shadow-2xl rounded-xl overflow-hidden border-4 sm:border-6 border-purple-400 glow-effect bg-gradient-to-br from-slate-800 to-slate-900 p-1 sm:p-2"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            style={{
+              filter: 'drop-shadow(0 0 15px rgba(168, 85, 247, 0.4))'
+            }}
+          >
+            {currentBoard.map((rowVals, rowIndex) =>
+              rowVals.map((val, colIndex) => (
+                <motion.div
+                  key={`${rowIndex}-${colIndex}`}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ 
+                    duration: 0.3, 
+                    delay: 0.8 + (rowIndex * 9 + colIndex) * 0.01 
+                  }}
+                  whileHover={{ scale: 1.1, zIndex: 10 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={getCellClasses(rowIndex, colIndex, val)}
+                  onClick={() => handleCellClick(rowIndex, colIndex)}
+                  onMouseEnter={() => { if (val !== EMPTY_CELL) setHighlightedNumber(val); }}
+                  onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
+                >
+                  <AnimatePresence mode="wait">
+                    {val !== EMPTY_CELL && (
+                      <motion.span
+                        key={val}
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {val}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ))
+            )}
+          </motion.div>
+        </motion.div>
+      </div>
+
+      <AnimatePresence>
+        {showInfoModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={toggleInfoModal}
+          >
+            <motion.div 
+              className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.div 
+                className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 p-4 rounded-t-2xl flex justify-between items-center"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
               >
-                Cancel
-              </button>
+                <h3 className="game-ui text-xl font-bold text-white">How to Play</h3>
+                <motion.button
+                  onClick={toggleInfoModal}
+                  className="text-white hover:text-purple-200 transition-colors p-1 cursor-pointer"
+                  aria-label="Close instructions"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X size={24} />
+                </motion.button>
+              </motion.div>
+            <div className="p-6">
+              <div className="space-y-4 text-sm text-purple-200 game-ui">
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">1.</span>
+                  <span>Click on an empty cell to select it</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">2.</span>
+                  <span>Use number keys (1-9) or number pad to enter digits</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">3.</span>
+                  <span>Press Backspace/Delete to clear a cell</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">4.</span>
+                  <span>Use arrow keys to navigate between cells</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">5.</span>
+                  <span>Fill each row, column, and 3×3 box with numbers 1-9</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-cyan-400 font-bold text-lg">6.</span>
+                  <span>No number can repeat in the same row, column, or box</span>
+                </div>
+                <div className="mt-6 p-4 bg-purple-900/30 rounded-xl border border-purple-500/30">
+                  <p className="text-cyan-300 font-semibold mb-2">💡 Tips:</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• Start with cells that have fewer possibilities</li>
+                    <li>• Look for numbers that can only go in one place</li>
+                    <li>• Use the hint button if you get stuck</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-          </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      <footer className="mt-8 text-center text-sm text-gray-400 game-ui">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="w-8 h-0.5 bg-gradient-to-r from-transparent to-purple-500"></div>
+          <span className="text-purple-400 font-semibold">Built with Lovable</span>
+          <div className="w-8 h-0.5 bg-gradient-to-l from-transparent to-purple-500"></div>
         </div>
-      )}
+        <p>Current Date: {new Date().toLocaleDateString()}</p>
+      </footer>
 
-      {/* Fullscreen Warning Modal */}
-      {showFullscreenWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop that blocks interaction with background */}
-          <div
-            className="absolute inset-0 bg-red-600 bg-opacity-90"
-            style={{ pointerEvents: "auto" }}
-          ></div>
-
-          {/* Modal - Make sure it's clickable */}
-          <div
-            className="relative z-10 bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center"
-            style={{ pointerEvents: "auto" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-6">
-              <ExclamationTriangleIcon className="h-16 w-16 text-red-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center justify-center">
-                <ExclamationTriangleIcon className="h-6 w-6 mr-2" />
-                Test Paused
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Fullscreen mode is required during the test. Your timer has been
-                paused.
-              </p>
-              <p className="text-sm text-red-600 font-medium">
-                Click the button below to return to fullscreen and resume your
-                test.
-              </p>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (fullscreenRef.current) {
-                  fullscreenRef.current
-                    .requestFullscreen()
-                    .then(() => {
-                      setShowFullscreenWarning(false);
-                      // Resume timer only if not on break
-                      if (!isOnBreak && currentSession) {
-                        setIsTimerActive(true);
-                      }
-                      addToast({
-                        type: "success",
-                        message: "Test resumed in fullscreen mode",
-                      });
-                    })
-                    .catch((err) => {
-                      console.error("Fullscreen failed:", err);
-                      addToast({
-                        type: "error",
-                        message:
-                          "Unable to enter fullscreen. Please try again or contact support.",
-                        duration: 5000,
-                      });
-                    });
-                }
-              }}
-              className="cursor-pointer bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg focus:outline-none focus:ring-4 focus:ring-red-300 flex items-center justify-center"
-              type="button"
-            >
-              <ArrowPathIcon className="h-5 w-5 mr-2" />
-              Return to Fullscreen & Resume Test
-            </button>
-
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <strong>Note:</strong> This violation has been recorded in your
-                test session.
-              </p>
-            </div>
-
-            <div className="mt-3 text-xs text-gray-500 flex items-center justify-center">
-              <BellIcon className="h-3 w-3 mr-1" />
-              <strong>Tip:</strong> Press F11 on most browsers to enter
-              fullscreen mode
-            </div>
-          </div>
-        </div>
-      )}
-      {isOnBreak && !showFullscreenWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-yellow-600/20 backdrop-blur-sm"></div>
-
-          <div
-            className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-8 w-full max-w-md text-center border border-white/20"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ClockIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              You're on a break
-            </h3>
-            <p className="text-gray-600 mb-6">
-              The test timer is paused. Click below to resume when you're ready.
-            </p>
-
-            <button
-              onClick={resumeTest}
-              className="cursor-pointer bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg focus:outline-none focus:ring-4 focus:ring-green-300 flex items-center justify-center"
-            >
-              <CheckCircleIcon className="h-5 w-5 mr-2" />
-              Resume Test
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        gutter={8}
+        containerClassName=""
+        containerStyle={{
+          top: 20,
+          right: 20,
+        }}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+            color: '#e879f9',
+            border: '1px solid #8b5cf6',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '600',
+            fontFamily: "'Exo 2', sans-serif",
+            boxShadow: '0 10px 25px rgba(139, 92, 246, 0.3)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#ffffff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+          },
+        }}
+      />
+    </motion.div>
   );
 };
 
-export default TestPro;
+export default Index;
