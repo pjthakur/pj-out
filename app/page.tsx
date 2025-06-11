@@ -1,1254 +1,2354 @@
-"use client"
-import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, CheckCircle, HelpCircle, Edit3, Trophy, Zap, Info, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast, { Toaster } from 'react-hot-toast';
-import confetti from 'canvas-confetti'; // Added Trophy and Zap icons
+"use client";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  SunIcon,
+  MoonIcon,
+  Bars3Icon,
+  XMarkIcon,
+  CloudIcon,
+  ChartBarIcon,
+  ShieldCheckIcon,
+  CpuChipIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  RocketLaunchIcon,
+  StarIcon,
+  BoltIcon,
+  GlobeAltIcon,
+  CogIcon,
+  CalendarIcon,
+  UserGroupIcon,
+  TrophyIcon,
+  DocumentTextIcon,
+  CurrencyDollarIcon,
+  PhoneIcon,
+} from "@heroicons/react/24/outline";
 
-// --- Types ---
-type Board = (number | null)[][];
-type Cell = { row: number; col: number };
-type Difficulty = "easy" | "medium" | "hard"; // Added Difficulty type
+interface PricingTier {
+  name: string;
+  description: string;
+  pricePerGB: number;
+  minStorage: number;
+  maxStorage: number;
+  features: string[];
+  caseStudy: {
+    company: string;
+    industry: string;
+    savings: string;
+    description: string;
+    image: string;
+    fullStory: {
+      challenge: string;
+      solution: string;
+      results: string[];
+      testimonial: {
+        quote: string;
+        author: string;
+        title: string;
+      };
+      metrics: {
+        label: string;
+        value: string;
+        description: string;
+      }[];
+    };
+  };
+}
 
-// --- Sudoku Logic ---
-const EMPTY_CELL = 0; // Using 0 for empty cells internally for easier logic
+interface ToastMessage {
+  id: string;
+  type: "success" | "error" | "info" | "warning";
+  message: string;
+}
 
-// Puzzles organized by difficulty
-const puzzlesByDifficulty: Record<Difficulty, Board[]> = {
-  easy: [
-    [
-      [0, 0, 0, 2, 6, 0, 7, 0, 1],
-      [6, 8, 0, 0, 7, 0, 0, 9, 0],
-      [1, 9, 0, 0, 0, 4, 5, 0, 0],
-      [8, 2, 0, 1, 0, 0, 0, 4, 0],
-      [0, 0, 4, 6, 0, 2, 9, 0, 0],
-      [0, 5, 0, 0, 0, 3, 0, 2, 8],
-      [0, 0, 9, 3, 0, 0, 0, 7, 4],
-      [0, 4, 0, 0, 5, 0, 0, 3, 6],
-      [7, 0, 3, 0, 1, 8, 0, 0, 0],
-    ],
-    // Add more easy puzzles if desired
-  ],
-  medium: [ // Original samplePuzzles are now under 'medium'
-    [
-      [5, 3, 0, 0, 7, 0, 0, 0, 0],
-      [6, 0, 0, 1, 9, 5, 0, 0, 0],
-      [0, 9, 8, 0, 0, 0, 0, 6, 0],
-      [8, 0, 0, 0, 6, 0, 0, 0, 3],
-      [4, 0, 0, 8, 0, 3, 0, 0, 1],
-      [7, 0, 0, 0, 2, 0, 0, 0, 6],
-      [0, 6, 0, 0, 0, 0, 2, 8, 0],
-      [0, 0, 0, 4, 1, 9, 0, 0, 5],
-      [0, 0, 0, 0, 8, 0, 0, 7, 9],
-    ],
-    [
-      [0, 0, 3, 0, 2, 0, 6, 0, 0],
-      [9, 0, 0, 3, 0, 5, 0, 0, 1],
-      [0, 0, 1, 8, 0, 6, 4, 0, 0],
-      [0, 0, 8, 1, 0, 2, 9, 0, 0],
-      [7, 0, 0, 0, 0, 0, 0, 0, 8],
-      [0, 0, 6, 7, 0, 8, 2, 0, 0],
-      [0, 0, 2, 6, 0, 9, 5, 0, 0],
-      [8, 0, 0, 2, 0, 3, 0, 0, 9],
-      [0, 0, 5, 0, 1, 0, 3, 0, 0],
-    ],
-    [
-      [1, 0, 0, 4, 8, 9, 0, 0, 6],
-      [7, 3, 0, 0, 0, 0, 0, 4, 0],
-      [0, 0, 0, 0, 0, 1, 2, 9, 5],
-      [0, 0, 7, 1, 2, 0, 6, 0, 0],
-      [5, 0, 0, 7, 0, 3, 0, 0, 8],
-      [0, 0, 6, 0, 9, 5, 7, 0, 0],
-      [9, 1, 4, 6, 0, 0, 0, 0, 0],
-      [0, 2, 0, 0, 0, 0, 0, 3, 7],
-      [8, 0, 0, 5, 1, 2, 0, 0, 4],
-    ],
-  ],
-  hard: [
-    [ // Example of a harder puzzle
-      [8, 0, 0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 3, 6, 0, 0, 0, 0, 0],
-      [0, 7, 0, 0, 9, 0, 2, 0, 0],
-      [0, 5, 0, 0, 0, 7, 0, 0, 0],
-      [0, 0, 0, 0, 4, 5, 7, 0, 0],
-      [0, 0, 0, 1, 0, 0, 0, 3, 0],
-      [0, 0, 1, 0, 0, 0, 0, 6, 8],
-      [0, 0, 8, 5, 0, 0, 0, 1, 0],
-      [0, 9, 0, 0, 0, 0, 4, 0, 0],
-    ],
-    // Add more hard puzzles if desired
-  ],
-};
-
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
-const MAX_HINTS = 5; // Maximum hints allowed per game
-
-
-const copyBoard = (board: Board): Board => board.map(row => [...row]);
-
-const isValid = (board: Board, row: number, col: number, num: number): boolean => {
-  if (num === EMPTY_CELL) return true; // Allowing to clear a cell
-
-  // Check row
-  for (let c = 0; c < 9; c++) {
-    if (board[row][c] === num && c !== col) return false;
-  }
-  // Check column
-  for (let r = 0; r < 9; r++) {
-    if (board[r][col] === num && r !== row) return false;
-  }
-  // Check 3x3 subgrid
-  const startRow = Math.floor(row / 3) * 3;
-  const startCol = Math.floor(col / 3) * 3;
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      if (board[startRow + r][startCol + c] === num && (startRow + r !== row || startCol + c !== col)) {
-        return false;
+const CloudVault: React.FC = () => {
+  // Independent state management to prevent re-renders
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("cloudvault-theme");
+      if (savedTheme) {
+        return savedTheme === "dark";
       }
-    }
-  }
-  return true;
-};
-
-const findEmpty = (board: Board): Cell | null => {
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (board[r][c] === EMPTY_CELL) return { row: r, col: c };
-    }
-  }
-  return null;
-};
-
-const solveSudoku = (board: Board): Board | null => {
-  const boardCopy = copyBoard(board);
-
-  function solve(): boolean {
-    const emptyCell = findEmpty(boardCopy);
-    if (!emptyCell) return true; // Solved
-
-    const { row, col } = emptyCell;
-    for (let num = 1; num <= 9; num++) {
-      if (isValid(boardCopy, row, col, num)) {
-        boardCopy[row][col] = num;
-        if (solve()) return true;
-        boardCopy[row][col] = EMPTY_CELL; // Backtrack
-      }
+      // Check system preference if no saved preference
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
     return false;
-  }
+  });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedStorage, setSelectedStorage] = useState(1000);
+  const [billingModel, setBillingModel] = useState<"pay-as-go" | "prepay">(
+    "pay-as-go"
+  );
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [scrollY, setScrollY] = useState(0);
+  const [showCaseStudyModal, setShowCaseStudyModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClient, setisClient] = useState(false);
+  // Pricing tiers data
+  const pricingTiers: PricingTier[] = useMemo(
+    () => [
+      {
+        name: "Starter",
+        description: "Perfect for small teams and startups",
+        pricePerGB: 0.025,
+        minStorage: 1,
+        maxStorage: 1000,
+        features: [
+          "99.9% Uptime SLA",
+          "Basic Support",
+          "Standard Encryption",
+          "API Access",
+          "Dashboard Analytics",
+        ],
+        caseStudy: {
+          company: "TechStart Inc.",
+          industry: "Software Development",
+          savings: "40%",
+          description:
+            "Reduced infrastructure costs while scaling from 10 to 100 employees with seamless data management",
+          image:
+            "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=400&fit=crop&auto=format",
+          fullStory: {
+            challenge:
+              "TechStart Inc. was struggling with exponentially growing storage costs as their development team expanded. Their previous solution charged premium rates for peak usage, making budgeting unpredictable.",
+            solution:
+              "By implementing CloudVault Pro's Starter tier with usage-based pricing, TechStart gained predictable costs and automatic scaling. The pay-as-you-go model eliminated overpayment during low-usage periods.",
+            results: [
+              "Reduced monthly storage costs by 40%",
+              "Eliminated surprise bills during traffic spikes",
+              "Improved deployment speed by 60%",
+              "Zero downtime during scaling events",
+            ],
+            testimonial: {
+              quote:
+                "CloudVault Pro transformed our cost structure. We went from unpredictable bills to clear, usage-based pricing that scales with our growth.",
+              author: "Sarah Chen",
+              title: "CTO, TechStart Inc.",
+            },
+            metrics: [
+              {
+                label: "Cost Reduction",
+                value: "40%",
+                description: "Monthly savings compared to previous solution",
+              },
+              {
+                label: "Team Growth",
+                value: "900%",
+                description: "Scaled from 10 to 100 employees seamlessly",
+              },
+              {
+                label: "Deployment Speed",
+                value: "60%",
+                description: "Faster deployment and development cycles",
+              },
+            ],
+          },
+        },
+      },
+      {
+        name: "Professional",
+        description: "Ideal for growing businesses",
+        pricePerGB: 0.02,
+        minStorage: 1000,
+        maxStorage: 10000,
+        features: [
+          "99.95% Uptime SLA",
+          "Priority Support",
+          "Advanced Encryption",
+          "Full API Access",
+          "Advanced Analytics",
+          "Team Collaboration",
+        ],
+        caseStudy: {
+          company: "GrowthCorp Ltd.",
+          industry: "E-commerce",
+          savings: "55%",
+          description:
+            "Optimized storage costs during peak shopping seasons with intelligent auto-scaling and predictive analytics",
+          image:
+            "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop&auto=format",
+          fullStory: {
+            challenge:
+              "GrowthCorp faced massive storage spikes during holiday seasons, leading to performance issues and costly over-provisioning. Manual scaling was slow and error-prone.",
+            solution:
+              "CloudVault Pro's Professional tier provided intelligent auto-scaling and predictive analytics. The system automatically adjusted capacity based on traffic patterns and seasonal trends.",
+            results: [
+              "Achieved 55% cost reduction during peak seasons",
+              "Eliminated manual scaling interventions",
+              "Improved site performance during Black Friday",
+              "Gained real-time insights into usage patterns",
+            ],
+            testimonial: {
+              quote:
+                "The auto-scaling feature saved us during our biggest Black Friday ever. What used to be a nightmare is now completely automated.",
+              author: "Michael Rodriguez",
+              title: "Head of Infrastructure, GrowthCorp Ltd.",
+            },
+            metrics: [
+              {
+                label: "Peak Season Savings",
+                value: "55%",
+                description: "Cost reduction during high-traffic periods",
+              },
+              {
+                label: "Auto-scaling Events",
+                value: "2,500+",
+                description: "Automatic capacity adjustments in Q4",
+              },
+              {
+                label: "Performance Improvement",
+                value: "45%",
+                description: "Faster page load times during peaks",
+              },
+            ],
+          },
+        },
+      },
+      {
+        name: "Enterprise",
+        description: "Built for large-scale operations",
+        pricePerGB: 0.015,
+        minStorage: 10000,
+        maxStorage: 100000,
+        features: [
+          "99.99% Uptime SLA",
+          "24/7 Dedicated Support",
+          "Military-Grade Encryption",
+          "Complete API Suite",
+          "AI-Powered Analytics",
+          "Custom Integrations",
+          "White-label Options",
+        ],
+        caseStudy: {
+          company: "MegaCorp Industries",
+          industry: "Manufacturing",
+          savings: "65%",
+          description:
+            "Achieved global data synchronization with 99.99% reliability across 50+ locations while maintaining compliance",
+          image:
+            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop&auto=format",
+          fullStory: {
+            challenge:
+              "MegaCorp needed to synchronize critical manufacturing data across 50+ global facilities while maintaining strict compliance requirements. Their legacy system was expensive and unreliable.",
+            solution:
+              "CloudVault Pro's Enterprise tier delivered military-grade security, global CDN, and real-time synchronization. Custom integrations ensured seamless connectivity with existing manufacturing systems.",
+            results: [
+              "Reduced global infrastructure costs by 65%",
+              "Achieved 99.99% uptime across all facilities",
+              "Accelerated data sync from hours to seconds",
+              "Maintained 100% compliance across all regions",
+            ],
+            testimonial: {
+              quote:
+                "CloudVault Pro enabled our global digital transformation. We now have real-time visibility across all our manufacturing operations worldwide.",
+              author: "Dr. Emma Thompson",
+              title: "Chief Digital Officer, MegaCorp Industries",
+            },
+            metrics: [
+              {
+                label: "Global Cost Savings",
+                value: "65%",
+                description: "Infrastructure cost reduction worldwide",
+              },
+              {
+                label: "Facility Coverage",
+                value: "50+",
+                description: "Manufacturing locations synchronized",
+              },
+              {
+                label: "Sync Speed",
+                value: "99.9%",
+                description: "Faster than previous solution",
+              },
+            ],
+          },
+        },
+      },
+    ],
+    []
+  );
 
-  if (solve()) return boardCopy;
-  return null; // No solution
-};
-
-const checkSolution = (currentBoard: Board): { isSolved: boolean; errors: Cell[] } => {
-  const errors: Cell[] = [];
-  let isFull = true;
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const val = currentBoard[r][c];
-      if (val === EMPTY_CELL) {
-        isFull = false; // Not full, so not solved yet
-      } else if (!isValid(currentBoard, r, c, val as number)) {
-        errors.push({ row: r, col: c });
-      }
-    }
-  }
-  return { isSolved: isFull && errors.length === 0, errors };
-};
-
-
-// --- React Component ---
-const Index: React.FC = () => {
-  const [gameStarted, setGameStarted] = useState<boolean>(false);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('medium');
-  const [initialBoard, setInitialBoard] = useState<Board>(() => copyBoard(puzzlesByDifficulty['medium'][0]));
-  const [currentBoard, setCurrentBoard] = useState<Board>(() => copyBoard(puzzlesByDifficulty['medium'][0]));
-  const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
-  const [errors, setErrors] = useState<Cell[]>([]);
-  const [highlightedNumber, setHighlightedNumber] = useState<number | null>(null);
-  const [isSolved, setIsSolved] = useState<boolean>(false);
-  const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
-  const [hintsUsed, setHintsUsed] = useState<number>(0);
-  const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false);
-  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
-  const [gameEndTime, setGameEndTime] = useState<number | null>(null);
-  const [gameDuration, setGameDuration] = useState<number>(0);
-
-  // Celebration function for when puzzle is solved
-  const triggerCelebration = useCallback(() => {
-    // Multiple confetti bursts with different colors and patterns
-    const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
-    
-    // First burst - from center
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: colors
-    });
-
-    // Second burst - from left
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.8 },
-        colors: colors
-      });
-    }, 250);
-
-    // Third burst - from right
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.8 },
-        colors: colors
-      });
-    }, 500);
-
-    // Final burst - stars from top
-    setTimeout(() => {
-      confetti({
-        particleCount: 30,
-        spread: 360,
-        startVelocity: 30,
-        decay: 0.9,
-        scalar: 1.2,
-        shapes: ['star'],
-        colors: ['#FFD700', '#FFA500', '#FF6347'],
-        origin: { y: 0.2 }
-      });
-    }, 750);
-  }, []);
-
-  // Renamed and updated startNewGame to handle difficulties
-  const startNewGameWithDifficulty = useCallback((difficulty: Difficulty) => {
-    setSelectedDifficulty(difficulty);
-    const puzzlesForDifficulty = puzzlesByDifficulty[difficulty];
-    const newPuzzleIndex = Math.floor(Math.random() * puzzlesForDifficulty.length);
-    const newPuzzle = copyBoard(puzzlesForDifficulty[newPuzzleIndex]);
-    
-    setInitialBoard(newPuzzle);
-    setCurrentBoard(copyBoard(newPuzzle));
-    setSelectedCell(null);
-    setErrors([]);
-    setHintsUsed(0); // Reset hint counter
-    setShowCompletionModal(false);
-    setGameStartTime(Date.now()); // Start timing the game
-    setGameEndTime(null);
-    setGameDuration(0);
-    
-    toast.success(`New ${difficulty} game started!`, {
-      icon: '🎮',
-      duration: 3000,
-    });
-    
-    // Show keyboard shortcuts tip after a delay
-    setTimeout(() => {
-      toast.success('💡 Tip: Use keyboard numbers (1-9) and arrow keys for faster play!', {
-        icon: '⌨️',
-        duration: 4000,
-      });
-    }, 2000);
-    setIsSolved(false);
-    setHighlightedNumber(null);
-    setGameStarted(true);
-  }, []);
-
-  const handleNewGame = () => {
-    setGameStarted(false);
-    setSelectedCell(null);
-    setErrors([]);
-    setIsSolved(false);
-    setHighlightedNumber(null);
-    setHintsUsed(0); // Reset hint counter
-    setShowCompletionModal(false);
-    setGameStartTime(null);
-    setGameEndTime(null);
-    setGameDuration(0);
-  };
-
-  const toggleInfoModal = () => {
-    setShowInfoModal(!showInfoModal);
-  };
-
-  // Helper function to format time duration
-  const formatTime = (milliseconds: number): string => {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // Handle game completion
-  const handleGameCompletion = useCallback(() => {
-    if (gameStartTime) {
-      const endTime = Date.now();
-      const duration = endTime - gameStartTime;
-      setGameEndTime(endTime);
-      setGameDuration(duration);
-    }
-    setIsSolved(true);
-    setErrors([]);
-    setShowCompletionModal(true);
-    // Trigger celebration confetti
-    setTimeout(() => triggerCelebration(), 500);
-  }, [gameStartTime, triggerCelebration]);
-
-  useEffect(() => {
-    if (showInfoModal || showCompletionModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showInfoModal, showCompletionModal]);
-
-  // Keyboard navigation and input
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't handle keyboard if modal is open or game not started
-      if (showInfoModal || showCompletionModal || !gameStarted) return;
-
-      const key = event.key;
-      
-      // Number input (1-9)
-      if (/^[1-9]$/.test(key)) {
-        event.preventDefault();
-        const num = parseInt(key);
-        handleNumberInput(num);
-        return;
-      }
-      
-      // Clear cell (Backspace, Delete, or 0)
-      if (key === 'Backspace' || key === 'Delete' || key === '0') {
-        event.preventDefault();
-        handleNumberInput(null);
-        return;
-      }
-      
-      // Arrow key navigation
-      if (selectedCell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-        event.preventDefault();
-        const { row, col } = selectedCell;
-        let newRow = row;
-        let newCol = col;
-        
-        switch (key) {
-          case 'ArrowUp':
-            newRow = Math.max(0, row - 1);
-            break;
-          case 'ArrowDown':
-            newRow = Math.min(8, row + 1);
-            break;
-          case 'ArrowLeft':
-            newCol = Math.max(0, col - 1);
-            break;
-          case 'ArrowRight':
-            newCol = Math.min(8, col + 1);
-            break;
-        }
-        
-        // Move to the new cell
-        setSelectedCell({ row: newRow, col: newCol });
-        setHighlightedNumber(currentBoard[newRow][newCol] === EMPTY_CELL ? null : currentBoard[newRow][newCol]);
-        return;
-      }
-    };
-
-    // Add event listener
-    document.addEventListener('keydown', handleKeyDown);
-    
-    // Cleanup
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-     }, [selectedCell, showInfoModal, showCompletionModal, gameStarted, currentBoard]);
-
-
-
-  const handleCellClick = (row: number, col: number) => {
-    if (initialBoard[row][col] !== EMPTY_CELL) { 
-      setSelectedCell(null); 
-      setHighlightedNumber(currentBoard[row][col]);
-      return;
-    }
-    setSelectedCell({ row, col });
-    setHighlightedNumber(currentBoard[row][col] === EMPTY_CELL ? null : currentBoard[row][col]);
-  };
-
-  const handleNumberInput = (num: number | null) => {
-    if (!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL) return;
-
-    const { row, col } = selectedCell;
-    const newBoard = copyBoard(currentBoard);
-    const valToSet = num === null ? EMPTY_CELL : num;
-    newBoard[row][col] = valToSet;
-    setCurrentBoard(newBoard);
-
-    const cellIsValid = isValid(newBoard, row, col, valToSet);
-    const currentErrors = errors.filter(e => !(e.row === row && e.col === col));
-    if (!cellIsValid && valToSet !== EMPTY_CELL) {
-      setErrors([...currentErrors, { row, col }]);
-    } else {
-      setErrors(currentErrors);
-    }
-    setHighlightedNumber(valToSet === EMPTY_CELL ? null : valToSet);
-    
-    if (valToSet !== EMPTY_CELL && cellIsValid) {
-        const solutionCheck = checkSolution(newBoard);
-        if (solutionCheck.isSolved) {
-            handleGameCompletion();
-        } else {
-            setIsSolved(false);
-        }
-    } else if (valToSet === EMPTY_CELL) { 
-        setIsSolved(false);
-    }
-  };
-  
-  const handleReset = () => {
-    setCurrentBoard(copyBoard(initialBoard));
-    setSelectedCell(null);
-    setErrors([]);
-    setHintsUsed(0); // Reset hint counter on reset
-    setShowCompletionModal(false);
-    setGameStartTime(Date.now()); // Restart timing
-    setGameEndTime(null);
-    setGameDuration(0);
-    toast.success('Board reset to initial state.', {
-      icon: '🔄',
-      duration: 2000,
-    });
-    setIsSolved(false);
-    setHighlightedNumber(null);
-  };
-
-  const handleCheck = () => {
-    const { isSolved: solved, errors: validationErrors } = checkSolution(currentBoard);
-    setErrors(validationErrors);
-    if (solved) {
-      handleGameCompletion();
-    } else if (validationErrors.length > 0) {
-      toast.error(`Found ${validationErrors.length} error(s). Keep trying!`, {
-        icon: '❌',
-        duration: 3000,
-      });
-      setIsSolved(false);
-    } else {
-      const isEmpty = findEmpty(currentBoard);
-      if (isEmpty) {
-        toast.success("Board is valid so far, but not complete yet.", {
-          icon: '✅',
-          duration: 2000,
-        });
-      } else {
-        toast.error("Board is full and valid, but checkSolution didn't mark as solved.", {
-          icon: '⚠️',
-          duration: 3000,
-        });
-      }
-      setIsSolved(false);
-    }
-  };
-
-  const handleHint = () => {
-    if (isSolved) {
-      toast.error("Puzzle is already solved!", {
-        icon: '🏆',
-        duration: 2000,
-      });
-      return;
-    }
-    
-    if (hintsUsed >= MAX_HINTS) {
-      toast.error(`Maximum of ${MAX_HINTS} hints allowed per game!`, {
-        icon: '🚫',
-        duration: 3000,
-      });
-      return;
-    }
-    
-    const emptyCell = findEmpty(currentBoard);
-    if (!emptyCell) {
-      toast.error("No empty cells left for a hint.", {
-        icon: '🚫',
-        duration: 2000,
-      });
-      return;
-    }
-
-    const solution = solveSudoku(currentBoard);
-    if (solution) {
-      let hintApplied = false;
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (currentBoard[r][c] === EMPTY_CELL && solution[r][c] !== EMPTY_CELL) {
-            const newBoard = copyBoard(currentBoard);
-            newBoard[r][c] = solution[r][c];
-            setCurrentBoard(newBoard);
-            setSelectedCell({ row: r, col: c }); 
-            setHighlightedNumber(solution[r][c]);
-            
-            setErrors(prevErrors => prevErrors.filter(e => !(e.row === r && e.col === c)));
-            
-            // Increment hint counter
-            const newHintCount = hintsUsed + 1;
-            setHintsUsed(newHintCount);
-            
-            const remainingHints = MAX_HINTS - newHintCount;
-            const hintMessage = remainingHints > 0 
-              ? `💡 Hint applied for cell (${r + 1}, ${c + 1}). ${remainingHints} hint${remainingHints > 1 ? 's' : ''} remaining.`
-              : `💡 Hint applied for cell (${r + 1}, ${c + 1}). No more hints available!`;
-            
-            toast.success(hintMessage, {
-              icon: '💡',
-              duration: 3000,
-            });
-            hintApplied = true;
-
-            const solutionCheck = checkSolution(newBoard);
-            if (solutionCheck.isSolved) {
-                handleGameCompletion();
-            }
-            break;
-          }
-        }
-        if (hintApplied) break;
-      }
-      if (!hintApplied) {
-         toast.error("Could not find a simple hint. Try checking your existing numbers.", {
-           icon: '🤔',
-           duration: 3000,
-         });
-      }
-    } else {
-      toast.error("Could not find a hint. The puzzle might be in an unsolvable state.", {
-        icon: '⚠️',
-        duration: 3000,
-      });
-    }
-  };
-
-  const getCellClasses = (row: number, col: number, val: number | null): string => {
-    let classes = "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-3xl font-bold cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 ";
-    
-    // Calculate 3x3 box position for alternating background
-    const boxRow = Math.floor(row / 3);
-    const boxCol = Math.floor(col / 3);
-    const isAlternateBox = (boxRow + boxCol) % 2 === 1;
-    
-    // Darker backgrounds for maximum contrast
-    if (isAlternateBox) {
-      classes += "bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 shadow-lg ";
-    } else {
-      classes += "bg-gradient-to-br from-slate-900 to-black hover:from-slate-800 hover:to-slate-900 shadow-lg ";
-    }
-
-    const isSelected = selectedCell?.row === row && selectedCell?.col === col;
-    
-    // Enhanced borders with better visual hierarchy for mobile and desktop
-    const mainBorderColor = "border-purple-400"; 
-    const lightBorderColor = "border-slate-500"; 
-
-    // Apply grid borders only if not selected (selected cell has its own border)
-    if (!isSelected) {
-      // Main 3x3 grid borders - thicker on mobile for better visibility
-      if (col === 2 || col === 5) classes += `border-r-4 sm:border-r-6 ${mainBorderColor} `; 
-      else if (col !== 8) classes += `border-r border-r-2 ${lightBorderColor} `;
-      
-      if (row === 2 || row === 5) classes += `border-b-4 sm:border-b-6 ${mainBorderColor} `; 
-      else if (row !== 8) classes += `border-b border-b-2 ${lightBorderColor} `;
-      
-      // Outer borders - always thick
-      if (col === 0) classes += `border-l-4 sm:border-l-6 ${mainBorderColor} `;
-      if (row === 0) classes += `border-t-4 sm:border-t-6 ${mainBorderColor} `;
-      if (col === 8) classes += `border-r-4 sm:border-r-6 ${mainBorderColor} `;
-      if (row === 8) classes += `border-b-4 sm:border-b-6 ${mainBorderColor} `;
-    }
-
-    const isFixed = initialBoard[row][col] !== EMPTY_CELL;
-    const isError = errors.some(e => e.row === row && e.col === col);
-    const isInHighlightedRegion = selectedCell && (selectedCell.row === row || selectedCell.col === col || (Math.floor(selectedCell.row / 3) === Math.floor(row / 3) && Math.floor(selectedCell.col / 3) === Math.floor(col / 3)));
-
-    // Enhanced text colors for maximum contrast
-    if (isFixed) {
-      classes += "text-white font-black drop-shadow-2xl ";
-      // Add text stroke for even better contrast
-      classes += "filter drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] ";
-    } else {
-      classes += "text-cyan-100 font-bold drop-shadow-xl ";
-      // Add text stroke for user input numbers
-      classes += "filter drop-shadow-[0_0_6px_rgba(0,0,0,0.7)] ";
-    }
-
-    if (isSelected) {
-      classes += "relative z-10 bg-gradient-to-br from-purple-600 to-purple-700 shadow-2xl ";
-      // Add a proper border instead of ring to avoid overlap issues
-      classes += "border-4 border-purple-300 ";
-    } else if (isInHighlightedRegion) {
-      classes += "bg-gradient-to-br from-slate-600 to-slate-700 ";
-    }
-    
-    if (highlightedNumber && val === highlightedNumber && val !== EMPTY_CELL) {
-      classes += isSelected ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white " : "bg-gradient-to-br from-purple-500/70 to-purple-600/70 text-white ";
-    }
-    
-    if (isError && val !== EMPTY_CELL) {
-      classes += "text-red-100 font-black animate-pulse bg-gradient-to-br from-red-900/70 to-red-800/70 ring-2 ring-red-400/60 ";
-      classes += "filter drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] ";
-    }
-    
-    if (isSolved) {
-        classes += "text-green-100 animate-pulse ";
-        classes += "filter drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] ";
-    }
-
-    return classes;
-  };
-
-  if (!gameStarted) {
+  // Calculate current tier based on selected storage
+  const currentTier = useMemo(() => {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-purple-300 p-4 selection:bg-purple-500 selection:text-white"
-      >
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800&display=swap');
-            
-            .game-title {
-              font-family: 'Orbitron', monospace;
-              text-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
-              letter-spacing: 0.1em;
-            }
-            
-            .game-ui {
-              font-family: 'Exo 2', sans-serif;
-            }
-            
-            .animate-float {
-              animation: float 3s ease-in-out infinite;
-            }
-            
-            @keyframes float {
-              0%, 100% { transform: translateY(0px); }
-              50% { transform: translateY(-10px); }
-            }
-          `
-        }} />
-
-        <motion.div 
-          className="text-center mb-12"
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <motion.h1 
-            className="game-title text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight"
-            animate={{ 
-              y: [-10, 0, -10],
-              scale: [1, 1.02, 1]
-            }}
-            transition={{ 
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          >
-            SUDOKU
-          </motion.h1>
-          <motion.div 
-            className="flex items-center justify-center gap-3 mb-4"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <Trophy className="text-yellow-400" size={32} />
-            </motion.div>
-            <h2 className="game-ui text-3xl sm:text-4xl font-bold text-purple-300 tracking-wider">
-              CHALLENGE
-            </h2>
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <Zap className="text-cyan-400" size={32} />
-            </motion.div>
-          </motion.div>
-          <motion.div 
-            className="w-48 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 mx-auto rounded-full mb-8"
-            initial={{ width: 0 }}
-            animate={{ width: 192 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-          ></motion.div>
-        </motion.div>
-
-        <motion.div 
-          className="text-center"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
-          <motion.h3 
-            className="game-ui text-2xl sm:text-3xl font-bold text-purple-300 mb-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2 }}
-          >
-            Choose Difficulty Level
-          </motion.h3>
-          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6">
-            {DIFFICULTIES.map((diff, index) => (
-              <motion.button
-                key={diff}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 1.4 + index * 0.1 }}
-                whileHover={{ 
-                  scale: 1.05,
-                  boxShadow: "0 20px 40px rgba(168, 85, 247, 0.3)"
-                }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => startNewGameWithDifficulty(diff)}
-                className="game-ui px-8 py-4 sm:px-10 sm:py-5 bg-gradient-to-r from-slate-700 to-slate-800 text-purple-300 hover:from-purple-600 hover:to-purple-700 hover:text-white rounded-xl font-bold transition-all duration-300 text-xl sm:text-2xl shadow-lg border border-purple-500/30 hover:border-purple-400 cursor-pointer"
-              >
-                {diff.charAt(0).toUpperCase() + diff.slice(1)}
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-      </motion.div>
+      pricingTiers.find(
+        (tier) =>
+          selectedStorage >= tier.minStorage &&
+          selectedStorage <= tier.maxStorage
+      ) || pricingTiers[0]
     );
+  }, [selectedStorage, pricingTiers]);
+
+  // Calculate pricing
+  const pricing = useMemo(() => {
+    const basePrice = selectedStorage * currentTier.pricePerGB;
+    const discount = billingModel === "prepay" ? 0.15 : 0;
+    const discountedPrice = basePrice * (1 - discount);
+
+    return {
+      basePrice,
+      discount,
+      discountedPrice,
+      annualPrice: discountedPrice * 12,
+      savings: basePrice - discountedPrice,
+    };
+  }, [selectedStorage, currentTier, billingModel]);
+
+  useEffect(() => {
+    if (!isClient) {
+      setisClient(true);
+    }
+  }, []);
+
+  // Scroll handler for floating panel
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cloudvault-theme", isDark ? "dark" : "light");
+
+      // Optional: Also set data attribute on html element for other styling needs
+      document.documentElement.setAttribute(
+        "data-theme",
+        isDark ? "dark" : "light"
+      );
+    }
+  }, [isDark]);
+  // Prevent body scroll when mobile menu or modal is open
+  useEffect(() => {
+    if (isMobileMenuOpen || showCaseStudyModal || showEmailModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileMenuOpen, showCaseStudyModal, showEmailModal]);
+
+  // Smooth scroll to section
+  const scrollToSection = useCallback((sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const headerOffset = 100;
+      const elementPosition = element.offsetTop;
+      const offsetPosition = elementPosition - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    }
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  // Toast management
+  const addToast = useCallback(
+    (type: ToastMessage["type"], message: string) => {
+      const id = Math.random().toString(36).substr(2, 9);
+      setToasts((prev) => [...prev, { id, type, message }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, 4000);
+    },
+    []
+  );
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  // Handle storage slider change with calculation simulation
+  const handleStorageChange = useCallback((value: number) => {
+    setIsCalculating(true);
+    setSelectedStorage(value);
+    setTimeout(() => setIsCalculating(false), 300);
+  }, []);
+
+  // Handle billing model change
+  const handleBillingModelChange = useCallback(
+    (model: "pay-as-go" | "prepay") => {
+      setBillingModel(model);
+      addToast(
+        "info",
+        `Switched to ${model === "prepay" ? "Prepay" : "Pay-as-you-go"} model`
+      );
+    },
+    [addToast]
+  );
+
+  // Handle theme toggle
+  const toggleTheme = useCallback(() => {
+    setIsDark((prev) => {
+      const newTheme = !prev;
+      //   addToast("success", `Switched to ${newTheme ? "dark" : "light"} theme`);
+      return newTheme;
+    });
+  }, [addToast]);
+
+  const resetToSystemTheme = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cloudvault-theme");
+      const systemPrefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      setIsDark(systemPrefersDark);
+      addToast("info", "Theme reset to system preference");
+    }
+  }, [addToast]);
+  // Close mobile menu when clicking outside
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  // Email validation
+  const validateEmail = useCallback((email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      return "Email is required";
+    }
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return "";
+  }, []);
+
+  // Handle email modal
+  const openEmailModal = useCallback(() => {
+    setShowEmailModal(true);
+    setEmail("");
+    setEmailError("");
+  }, []);
+
+  const closeEmailModal = useCallback(() => {
+    setShowEmailModal(false);
+    setEmail("");
+    setEmailError("");
+    setIsSubmitting(false);
+  }, []);
+
+  // Handle email submission
+  const handleEmailSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      const error = validateEmail(email);
+      if (error) {
+        setEmailError(error);
+        return;
+      }
+
+      setIsSubmitting(true);
+      setEmailError("");
+
+      // Simulate API call
+      setTimeout(() => {
+        closeEmailModal();
+        addToast(
+          "success",
+          `Welcome aboard! We've sent setup instructions to ${email}`
+        );
+
+        setTimeout(() => {
+          addToast(
+            "info",
+            "Check your email for your free trial activation link"
+          );
+        }, 2000);
+
+        setTimeout(() => {
+          addToast(
+            "info",
+            `Your ${currentTier.name} plan is being prepared...`
+          );
+        }, 4000);
+
+        setIsSubmitting(false);
+      }, 1500);
+    },
+    [email, validateEmail, closeEmailModal, addToast, currentTier.name]
+  );
+
+  // Handle start plan action
+  const handleStartPlan = useCallback(() => {
+    openEmailModal();
+  }, [openEmailModal]);
+
+  // Handle case study modal
+  const openCaseStudyModal = useCallback(() => {
+    setShowCaseStudyModal(true);
+  }, []);
+
+  const closeCaseStudyModal = useCallback(() => {
+    setShowCaseStudyModal(false);
+  }, []);
+
+  // Get capacity percentage for animation
+  const capacityPercentage = useMemo(() => {
+    const maxCapacity = currentTier.maxStorage;
+    return Math.min((selectedStorage / maxCapacity) * 100, 100);
+  }, [selectedStorage, currentTier.maxStorage]);
+
+  if (!isClient) {
+    return "";
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-purple-300 p-4 selection:bg-purple-500 selection:text-white"
+    <div
+      className={`min-h-screen font-sans transition-all duration-300 ${
+        isDark
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100"
+          : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"
+      }`}
     >
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700;800&display=swap');
-          
-          .game-title {
-            font-family: 'Orbitron', monospace;
-            text-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
-            letter-spacing: 0.1em;
-          }
-          
-          .game-ui {
-            font-family: 'Exo 2', sans-serif;
-          }
-          
-          .text-shadow {
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-          }
-          
-          .glow-effect {
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
-          }
-          
-          .animate-float {
-            animation: float 3s ease-in-out infinite;
-          }
-          
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-          }
-        `
-      }} />
-
-      {/* Mobile Header */}
-      <motion.div 
-        className="lg:hidden flex items-center justify-between mb-6 px-2"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
-      >
-        <motion.div
-          initial={{ x: -30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <h1 className="game-title text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight">
-            SUDOKU
-          </h1>
-          <motion.div 
-            className="w-16 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full mt-1"
-            initial={{ width: 0 }}
-            animate={{ width: 64 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          ></motion.div>
-        </motion.div>
-        
-        <motion.button
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleInfoModal}
-          className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 rounded-full shadow-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 cursor-pointer"
-          aria-label="Show game instructions"
-        >
-          <Info size={20} />
-        </motion.button>
-      </motion.div>
-
-      {/* Desktop Header */}
-      <motion.div 
-        className="hidden lg:block text-center mb-6"
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
-      >
-        <motion.h1 
-          className="game-title text-3xl sm:text-4xl md:text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 leading-tight"
-          animate={{ 
-            y: [-5, 0, -5],
-            scale: [1, 1.01, 1]
-          }}
-          transition={{ 
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          SUDOKU
-        </motion.h1>
-        <motion.div 
-          className="w-24 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 mx-auto rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: 96 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        ></motion.div>
-      </motion.div>
-
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto">
-        <motion.div 
-          className="flex flex-col space-y-4 lg:space-y-8 lg:w-2/5 order-2 lg:order-1"
-          initial={{ x: -50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-
-
-          <div className="hidden lg:block bg-gradient-to-br from-purple-800/30 to-purple-900/30 border border-purple-400/30 rounded-xl p-4 lg:p-6">
-            <h3 className="game-ui text-lg lg:text-xl font-bold text-purple-300 mb-3 lg:mb-4 text-center">
-              How to Play
-            </h3>
-            <div className="space-y-2 lg:space-y-3 text-xs lg:text-sm text-purple-200 game-ui">
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">1.</span>
-                <span>Click on an empty cell to select it</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">2.</span>
-                <span>Use number keys (1-9) or number pad to enter digits</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">3.</span>
-                <span>Press Backspace/Delete to clear a cell</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">4.</span>
-                <span>Use arrow keys to navigate between cells</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">5.</span>
-                <span>Fill each row, column, and 3×3 box with numbers 1-9</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">6.</span>
-                <span>No number can repeat in the same row, column, or box</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-5 gap-3 lg:gap-6 max-w-sm lg:max-w-full mx-auto">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-              <button
-                key={num}
-                onClick={() => handleNumberInput(num)}
-                onMouseEnter={() => setHighlightedNumber(num)}
-                onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
-                disabled={!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL || isSolved}
-                className={`game-ui w-12 h-12 lg:w-20 lg:h-20 text-xl lg:text-3xl font-black rounded-xl transition-all duration-200 ease-in-out transform hover:scale-110 cursor-pointer
-                            bg-gradient-to-br from-slate-700 to-slate-800 text-cyan-400 hover:from-purple-600 hover:to-purple-700 hover:text-white 
-                            focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-75 shadow-lg
-                            disabled:from-gray-800 disabled:to-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed disabled:transform-none
-                            ${highlightedNumber === num ? 'from-purple-500 to-purple-600 text-white shadow-purple-500/50 shadow-lg' : ''}`}
-              >
-                {num}
-              </button>
-            ))}
-            <button
-              onClick={() => handleNumberInput(null)}
-              onMouseEnter={() => setHighlightedNumber(null)}
-              onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
-              disabled={!selectedCell || initialBoard[selectedCell.row][selectedCell.col] !== EMPTY_CELL || isSolved}
-              className="game-ui w-12 h-12 lg:w-20 lg:h-20 flex items-center justify-center rounded-xl transition-all duration-200 ease-in-out transform hover:scale-110 cursor-pointer
-                          bg-gradient-to-br from-slate-700 to-slate-800 text-cyan-400 hover:from-yellow-600 hover:to-yellow-700 hover:text-white 
-                          focus:outline-none focus:ring-4 focus:ring-yellow-500 focus:ring-opacity-75 shadow-lg
-                          disabled:from-gray-800 disabled:to-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed disabled:transform-none"
-              aria-label="Erase number"
-            >
-              <Edit3 size={28} className="lg:w-8 lg:h-8" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 lg:gap-4">
-            <button
-              onClick={handleNewGame}
-              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-800 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 text-sm lg:text-base cursor-pointer"
-            >
-              <RefreshCw size={18} /> New Game
-            </button>
-            <button
-              onClick={handleReset}
-              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl font-bold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 text-sm lg:text-base cursor-pointer"
-            >
-              <RefreshCw size={18} /> Reset
-            </button>
-            <button
-              onClick={handleCheck}
-              disabled={isSolved}
-              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none text-sm lg:text-base cursor-pointer"
-            >
-              <CheckCircle size={18} /> Check
-            </button>
-            <button
-              onClick={handleHint}
-              disabled={isSolved || hintsUsed >= MAX_HINTS}
-              className="game-ui px-4 py-3 lg:px-6 lg:py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none text-sm lg:text-base cursor-pointer"
-            >
-              <HelpCircle size={18} /> 
-              {hintsUsed >= MAX_HINTS ? 'No Hints Left' : `Hint (${MAX_HINTS - hintsUsed} left)`}
-            </button>
-          </div>
-
-        </motion.div>
-
-        <motion.div 
-          className="flex justify-center lg:w-3/5 order-1 lg:order-2"
-          initial={{ x: 50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <motion.div 
-            className="grid grid-cols-9 gap-0 shadow-2xl rounded-xl overflow-hidden border-4 sm:border-6 border-purple-400 glow-effect bg-gradient-to-br from-slate-800 to-slate-900 p-1 sm:p-2"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            style={{
-              filter: 'drop-shadow(0 0 15px rgba(168, 85, 247, 0.4))'
-            }}
-          >
-            {currentBoard.map((rowVals, rowIndex) =>
-              rowVals.map((val, colIndex) => (
-                <motion.div
-                  key={`${rowIndex}-${colIndex}`}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ 
-                    duration: 0.3, 
-                    delay: 0.8 + (rowIndex * 9 + colIndex) * 0.01 
-                  }}
-                  whileHover={{ scale: 1.1, zIndex: 10 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={getCellClasses(rowIndex, colIndex, val)}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  onMouseEnter={() => { if (val !== EMPTY_CELL) setHighlightedNumber(val); }}
-                  onMouseLeave={() => { if (selectedCell) { setHighlightedNumber(currentBoard[selectedCell.row][selectedCell.col] === EMPTY_CELL ? null : currentBoard[selectedCell.row][selectedCell.col]) } else {setHighlightedNumber(null)} }}
-                >
-                  <AnimatePresence mode="wait">
-                    {val !== EMPTY_CELL && (
-                      <motion.span
-                        key={val}
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.5 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {val}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              ))
-            )}
-          </motion.div>
-        </motion.div>
+      {/* Background Pattern */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div
+          className={`absolute inset-0 ${
+            isDark
+              ? "bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(147,51,234,0.1),transparent_50%)]"
+              : "bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(147,51,234,0.05),transparent_50%)]"
+          }`}
+        />
       </div>
 
-      <AnimatePresence>
-        {showInfoModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 cursor-pointer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            onClick={toggleInfoModal}
+      {/* Email Signup Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeEmailModal}
+          />
+          <div
+            className={`relative w-full max-w-md rounded-2xl ${
+              isDark
+                ? "bg-gray-900 border border-gray-700"
+                : "bg-white border border-gray-200"
+            } shadow-2xl p-2 sm:p-8 mx-4`}
           >
-            <motion.div 
-              className="bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto"
-              initial={{ opacity: 0, scale: 0.8, y: 50 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 50 }}
-              transition={{ duration: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <motion.div 
-                className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 p-4 rounded-t-2xl flex justify-between items-center"
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
+            {/* Modal Header */}
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <RocketLaunchIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+                Start Your Free Trial
+              </h2>
+              <p
+                className={`text-sm sm:text-base ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
               >
-                <h3 className="game-ui text-xl font-bold text-white">How to Play</h3>
-                <motion.button
-                  onClick={toggleInfoModal}
-                  className="text-white hover:text-purple-200 transition-colors p-1 cursor-pointer"
-                  aria-label="Close instructions"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                Get started with {currentTier.name} plan today
+              </p>
+            </div>
+
+            {/* Email Form */}
+            <form
+              onSubmit={handleEmailSubmit}
+              className="space-y-4 sm:space-y-6"
+            >
+              <div>
+                <label
+                  htmlFor="email"
+                  className={`block text-sm font-medium mb-2 ${
+                    isDark ? "text-gray-200" : "text-gray-700"
+                  }`}
                 >
-                  <X size={24} />
-                </motion.button>
-              </motion.div>
-            <div className="p-6">
-              <div className="space-y-4 text-sm text-purple-200 game-ui">
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">1.</span>
-                  <span>Click on an empty cell to select it</span>
+                  Work Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError("");
+                  }}
+                  placeholder="you@company.com"
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 text-base ${
+                    emailError
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      : isDark
+                      ? "border-gray-600 bg-gray-800 text-gray-100 focus:border-blue-500 focus:ring-blue-500/20"
+                      : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/20"
+                  } focus:outline-none focus:ring-4`}
+                  disabled={isSubmitting}
+                />
+                {emailError && (
+                  <p className="mt-2 text-sm text-red-500 flex items-center">
+                    <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                    {emailError}
+                  </p>
+                )}
+              </div>
+
+              {/* Benefits */}
+              <div
+                className={`p-4 rounded-xl ${
+                  isDark
+                    ? "bg-gray-800/50 border border-gray-700"
+                    : "bg-blue-50 border border-blue-200"
+                }`}
+              >
+                <h4 className="font-semibold mb-3 flex items-center text-sm sm:text-base">
+                  <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
+                  What you'll get:
+                </h4>
+                <ul
+                  className={`space-y-2 text-sm ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
+                  <li className="flex items-center">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3 flex-shrink-0" />
+                    14-day free trial with full access
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3 flex-shrink-0" />
+                    {selectedStorage.toLocaleString()} GB storage included
+                  </li>
+                </ul>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full py-3 sm:py-4 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 ${
+                  isSubmitting
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-lg"
+                } text-white cursor-pointer`}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    Creating your account...
+                  </div>
+                ) : (
+                  `Start ${currentTier.name} Free Trial`
+                )}
+              </button>
+
+              {/* Cancel Button */}
+              <button
+                type="button"
+                onClick={closeEmailModal}
+                disabled={isSubmitting}
+                className={`w-full py-3 rounded-xl font-medium transition-all duration-300 cursor-pointer ${
+                  isDark
+                    ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Case Study Modal */}
+      {showCaseStudyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 lg:p-6">
+          {/* Enhanced Backdrop */}
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-md"
+            onClick={closeCaseStudyModal}
+          />
+          
+          {/* Modal Container with improved animations */}
+          <div
+            className={`relative w-full max-w-6xl max-h-[95vh] rounded-2xl sm:rounded-3xl overflow-hidden ${
+              isDark
+                ? "bg-gray-900/95 border border-gray-700/50 shadow-2xl shadow-black/40"
+                : "bg-white/95 border border-gray-200/50 shadow-2xl shadow-black/20"
+            } backdrop-blur-xl transform transition-all duration-300 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-8`}
+          >
+            {/* Enhanced Modal Header with better gradient */}
+            <div className="sticky top-0 z-10 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                      <TrophyIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    </div>
+                    <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold truncate">
+                      {currentTier.caseStudy.company}
+                    </h2>
+                  </div>
+                  <p className="text-sm sm:text-lg lg:text-xl opacity-90 font-medium">
+                    {currentTier.caseStudy.industry}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">2.</span>
-                  <span>Use number keys (1-9) or number pad to enter digits</span>
+                <button
+                  onClick={closeCaseStudyModal}
+                  className="flex-shrink-0 p-2 sm:p-3 rounded-xl hover:bg-white/20 transition-all duration-200 cursor-pointer group"
+                >
+                  <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-90 transition-transform duration-200" />
+                </button>
+              </div>
+            </div>
+
+            {/* Enhanced Modal Content with better scroll */}
+            <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent max-h-[calc(95vh-120px)]">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 lg:space-y-10">
+                {/* Hero Image and Overview */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
+                  {/* Enhanced Hero Image */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+                    <img
+                      src={currentTier.caseStudy.image}
+                      alt={currentTier.caseStudy.company}
+                      className="relative w-full h-56 sm:h-72 lg:h-80 object-cover rounded-2xl shadow-2xl group-hover:scale-[1.02] transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl" />
+                    <div className="absolute bottom-4 left-4 text-white">
+                      <div className="flex items-center space-x-1">
+                        {[...Array(5)].map((_, i) => (
+                          <StarIcon
+                            key={i}
+                            className="w-4 h-4 text-yellow-400 fill-current"
+                          />
+                        ))}
+                        <span className="ml-2 font-medium text-sm">5.0 rating</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Company Info */}
+                  <div className="space-y-6">
+                    {/* Tier Badge */}
+                    <div>
+                      <span
+                        className={`inline-flex items-center px-4 py-3 rounded-2xl text-sm sm:text-base font-bold shadow-xl ${
+                          currentTier.name === "Starter"
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                            : currentTier.name === "Professional"
+                            ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                            : "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                        } hover:scale-105 transition-transform duration-200`}
+                      >
+                        <TrophyIcon className="w-5 h-5 mr-2" />
+                        {currentTier.name} Success Story
+                      </span>
+                    </div>
+
+                    {/* Company Details */}
+                    <div className="space-y-4">
+                      <div className={`flex items-center p-4 rounded-xl ${
+                        isDark ? "bg-gray-800/50 border border-gray-700/50" : "bg-gray-50/80 border border-gray-200/50"
+                      } backdrop-blur-sm`}>
+                        <div className="p-2 bg-blue-500/20 rounded-lg mr-4">
+                          <CalendarIcon className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm">Implementation Time</div>
+                          <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                            6 months
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`flex items-center p-4 rounded-xl ${
+                        isDark ? "bg-gray-800/50 border border-gray-700/50" : "bg-gray-50/80 border border-gray-200/50"
+                      } backdrop-blur-sm`}>
+                        <div className="p-2 bg-green-500/20 rounded-lg mr-4">
+                          <UserGroupIcon className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm">Team Size</div>
+                          <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                            50-500 employees
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`flex items-center p-4 rounded-xl ${
+                        isDark ? "bg-gray-800/50 border border-gray-700/50" : "bg-gray-50/80 border border-gray-200/50"
+                      } backdrop-blur-sm`}>
+                        <div className="p-2 bg-purple-500/20 rounded-lg mr-4">
+                          <ShieldCheckIcon className="w-5 h-5 text-purple-500" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm">Industry</div>
+                          <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+                            {currentTier.caseStudy.industry}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">3.</span>
-                  <span>Press Backspace/Delete to clear a cell</span>
+
+                {/* Enhanced Key Metrics */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                      <ChartBarIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Key Results
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {currentTier.caseStudy.fullStory.metrics.map(
+                      (metric, index) => (
+                        <div
+                          key={index}
+                          className={`group relative p-6 sm:p-8 rounded-2xl text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${
+                            isDark
+                              ? "bg-gray-800/70 border border-gray-700/50 hover:border-blue-500/50 backdrop-blur-sm"
+                              : "bg-white/80 border border-gray-200/50 hover:border-blue-500/50 backdrop-blur-sm shadow-lg"
+                          }`}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <div className="relative">
+                            <div className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+                              {metric.value}
+                            </div>
+                            <div className="font-bold text-lg mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+                              {metric.label}
+                            </div>
+                            <div
+                              className={`text-sm leading-relaxed ${
+                                isDark ? "text-gray-400" : "text-gray-600"
+                              }`}
+                            >
+                              {metric.description}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">4.</span>
-                  <span>Use arrow keys to navigate between cells</span>
+
+                {/* Enhanced Challenge Section */}
+                <div className={`p-6 sm:p-8 rounded-2xl border-l-4 border-l-red-500 ${
+                  isDark ? "bg-red-900/20 border border-red-800/30" : "bg-red-50/80 border border-red-200/50"
+                } backdrop-blur-sm`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-red-500/20 rounded-xl">
+                      <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      The Challenge
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-base sm:text-lg leading-relaxed ${
+                      isDark ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    {currentTier.caseStudy.fullStory.challenge}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">5.</span>
-                  <span>Fill each row, column, and 3×3 box with numbers 1-9</span>
+
+                {/* Enhanced Solution Section */}
+                <div className={`p-6 sm:p-8 rounded-2xl border-l-4 border-l-blue-500 ${
+                  isDark ? "bg-blue-900/20 border border-blue-800/30" : "bg-blue-50/80 border border-blue-200/50"
+                } backdrop-blur-sm`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-blue-500/20 rounded-xl">
+                      <CogIcon className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      The Solution
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-base sm:text-lg leading-relaxed ${
+                      isDark ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    {currentTier.caseStudy.fullStory.solution}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-cyan-400 font-bold text-lg">6.</span>
-                  <span>No number can repeat in the same row, column, or box</span>
+
+                {/* Enhanced Results Section */}
+                <div className={`p-6 sm:p-8 rounded-2xl border-l-4 border-l-green-500 ${
+                  isDark ? "bg-green-900/20 border border-green-800/30" : "bg-green-50/80 border border-green-200/50"
+                } backdrop-blur-sm`}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-green-500/20 rounded-xl">
+                      <CheckCircleIcon className="w-6 h-6 text-green-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      The Results
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {currentTier.caseStudy.fullStory.results.map(
+                      (result, index) => (
+                        <div key={index} className="flex items-start group">
+                          <div className="flex-shrink-0 w-6 h-6 mt-0.5 mr-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                            <CheckCircleIcon className="w-4 h-4 text-white" />
+                          </div>
+                          <span
+                            className={`text-base leading-relaxed group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200 ${
+                              isDark ? "text-gray-200" : "text-gray-700"
+                            }`}
+                          >
+                            {result}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
-                <div className="mt-6 p-4 bg-purple-900/30 rounded-xl border border-purple-500/30">
-                  <p className="text-cyan-300 font-semibold mb-2">💡 Tips:</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• Start with cells that have fewer possibilities</li>
-                    <li>• Look for numbers that can only go in one place</li>
-                    <li>• Use the hint button if you get stuck</li>
-                  </ul>
+
+                              {/* Enhanced Testimonial */}
+                <div
+                  className={`relative p-8 sm:p-10 rounded-2xl overflow-hidden ${
+                    isDark
+                      ? "bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700/50"
+                      : "bg-gradient-to-br from-blue-50/80 to-purple-50/80 border border-blue-200/50"
+                  } backdrop-blur-sm shadow-2xl`}
+                >
+                  {/* Decorative background elements */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-2xl" />
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-yellow-500/10 to-orange-500/10 rounded-full blur-xl" />
+                  
+                  <div className="relative">
+                    {/* Rating Stars */}
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="flex items-center gap-1 p-3 bg-yellow-500/20 rounded-2xl backdrop-blur-sm">
+                        {[...Array(5)].map((_, i) => (
+                          <StarIcon
+                            key={i}
+                            className="w-5 h-5 text-yellow-500 fill-current hover:scale-110 transition-transform duration-200"
+                          />
+                        ))}
+                        <span className="ml-2 font-bold text-yellow-600 dark:text-yellow-400">5.0</span>
+                      </div>
+                    </div>
+
+                    {/* Quote */}
+                    <div className="text-center mb-8">
+                      <div className="text-4xl sm:text-5xl text-blue-500/30 mb-4">"</div>
+                      <blockquote className="text-lg sm:text-xl lg:text-2xl font-medium italic leading-relaxed mb-4">
+                        {currentTier.caseStudy.fullStory.testimonial.quote}
+                      </blockquote>
+                      <div className="text-4xl sm:text-5xl text-blue-500/30 rotate-180">"</div>
+                    </div>
+
+                    {/* Author */}
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="relative">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-xl">
+                          {currentTier.caseStudy.fullStory.testimonial.author
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full border-2 border-white flex items-center justify-center">
+                          <CheckCircleIcon className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-lg">
+                          {currentTier.caseStudy.fullStory.testimonial.author}
+                        </div>
+                        <div
+                          className={`text-sm font-medium ${
+                            isDark ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
+                          {currentTier.caseStudy.fullStory.testimonial.title}
+                        </div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">
+                          Verified Customer
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </div>
+      )}
 
-      {/* Completion Modal */}
-      <AnimatePresence>
-        {showCompletionModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+      {/* Toast Container */}
+      <div className="fixed top-20 right-4 z-200 space-y-2 max-w-[270px]  sm:max-w-sm">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-start p-3 sm:p-4 rounded-xl shadow-2xl backdrop-blur-md transform transition-all duration-300 ${
+              isDark
+                ? "bg-gray-800/90 border border-gray-700 text-gray-100"
+                : "bg-white/90 border border-gray-200 text-gray-900"
+            } ${
+              toast.type === "success"
+                ? "border-l-4 border-l-green-500"
+                : toast.type === "error"
+                ? "border-l-4 border-l-red-500"
+                : toast.type === "warning"
+                ? "border-l-4 border-l-yellow-500"
+                : "border-l-4 border-l-blue-500"
+            }`}
           >
-            <motion.div 
-              className="bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-purple-500 rounded-2xl max-w-md w-full"
-              initial={{ opacity: 0, scale: 0.8, y: 50 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 50 }}
-              transition={{ duration: 0.3 }}
+            <div className="flex items-start flex-1">
+              <div className="flex-shrink-0 mr-2">
+                {toast.type === "success" && (
+                  <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                )}
+                {toast.type === "error" && (
+                  <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />
+                )}
+                {toast.type === "warning" && (
+                  <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />
+                )}
+                {toast.type === "info" && (
+                  <InformationCircleIcon className="w-5 h-5 text-blue-500" />
+                )}
+              </div>
+              <span className="text-sm font-medium leading-relaxed">
+                {toast.message}
+              </span>
+            </div>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className={`ml-2 transition-colors cursor-pointer flex-shrink-0 ${
+                isDark
+                  ? "text-gray-400 hover:text-gray-200"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
             >
-              <motion.div 
-                className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 rounded-t-2xl text-center"
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Navigation */}
+      <nav
+        className={`fixed w-full z-50 transition-all duration-300 ${
+          scrollY > 50
+            ? isDark
+              ? "bg-gray-900/95 backdrop-blur-xl shadow-2xl border-b border-gray-800"
+              : "bg-white/95 backdrop-blur-xl shadow-2xl border-b border-gray-200"
+            : isDark
+            ? "bg-gray-900/80 backdrop-blur-sm"
+            : "bg-white/80 backdrop-blur-sm"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 sm:h-20">
+            {/* Logo */}
+            <div
+              className="flex items-center group cursor-pointer"
+              onClick={() => scrollToSection("hero")}
+            >
+              <div className="relative">
+                <CloudIcon className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 transition-transform duration-300 group-hover:scale-110" />
+                <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full animate-pulse" />
+              </div>
+              <span className="ml-2 sm:ml-3 text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                <span className="hidden sm:inline">CloudVault Pro</span>
+                <span className="sm:hidden">CloudVault</span>
+              </span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center space-x-8">
+              <button
+                onClick={() => scrollToSection("pricing")}
+                className={`hover:text-blue-500 transition-all duration-300 font-medium cursor-pointer relative group ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
               >
-                <motion.div
-                  animate={{ 
-                    rotate: [0, 10, -10, 0],
-                    scale: [1, 1.1, 1]
-                  }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="inline-block mb-2"
+                Pricing
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 group-hover:w-full" />
+              </button>
+              <button
+                onClick={() => scrollToSection("case-studies")}
+                className={`hover:text-blue-500 transition-all duration-300 font-medium cursor-pointer relative group ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
+                Success Stories
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 group-hover:w-full" />
+              </button>
+              <button
+                onClick={() => scrollToSection("features")}
+                className={`hover:text-blue-500 transition-all duration-300 font-medium cursor-pointer relative group ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
+                Features
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 group-hover:w-full" />
+              </button>
+              <button
+                onClick={() => scrollToSection("contact")}
+                className={`hover:text-blue-500 transition-all duration-300 font-medium cursor-pointer relative group ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
+                Contact
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 group-hover:w-full" />
+              </button>
+              <button
+                onClick={toggleTheme}
+                className={`p-2 sm:p-3 rounded-xl transition-all duration-300 cursor-pointer ${
+                  isDark
+                    ? "hover:bg-gray-800 text-gray-200 hover:text-white"
+                    : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {isDark ? (
+                  <SunIcon className="w-5 h-5" />
+                ) : (
+                  <MoonIcon className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                onClick={handleStartPlan}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer font-medium text-sm sm:text-base"
+              >
+                Get Started
+              </button>
+            </div>
+
+            {/* Mobile Controls */}
+            <div className="lg:hidden flex items-center space-x-2">
+              <button
+                onClick={toggleTheme}
+                className={`p-2 sm:p-3 rounded-xl transition-all duration-300 cursor-pointer ${
+                  isDark
+                    ? "hover:bg-gray-800 text-gray-200"
+                    : "hover:bg-gray-100 text-gray-600"
+                }`}
+              >
+                {isDark ? (
+                  <SunIcon className="w-5 h-5" />
+                ) : (
+                  <MoonIcon className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className={`p-2 sm:p-3 rounded-xl transition-all duration-300 cursor-pointer ${
+                  isDark
+                    ? "hover:bg-gray-800 text-gray-200"
+                    : "hover:bg-gray-100 text-gray-600"
+                }`}
+              >
+                <Bars3Icon className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Modern Mobile Navigation */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[60] lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={closeMobileMenu}
+            />
+            <div
+              className={`absolute inset-x-0 top-0 ${
+                isDark ? "bg-gray-900/95" : "bg-white/95"
+              } backdrop-blur-xl shadow-2xl`}
+            >
+              {/* Mobile Header */}
+              <div
+                className={`flex justify-between items-center p-4 sm:p-6 border-b ${
+                  isDark ? "border-gray-700" : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center">
+                  <CloudIcon className="w-8 h-8 text-blue-500 mr-3" />
+                  <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    CloudVault Pro
+                  </span>
+                </div>
+                <button
+                  onClick={closeMobileMenu}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    isDark
+                      ? "hover:bg-gray-800 text-gray-200"
+                      : "hover:bg-gray-100 text-gray-600"
+                  }`}
                 >
-                  <Trophy className="text-yellow-400" size={48} />
-                </motion.div>
-                <h3 className="game-ui text-2xl font-black text-white mb-2">🎉 Congratulations! 🎉</h3>
-                <p className="game-ui text-purple-200 font-semibold">Puzzle Completed!</p>
-              </motion.div>
-              
-              <div className="p-6">
-                <div className="space-y-4">
-                  <motion.div 
-                    className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-purple-400/30 rounded-xl p-4 text-center"
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  >
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-2xl">⏱️</span>
-                      <h4 className="game-ui text-lg font-bold text-purple-300">Time Taken</h4>
-                    </div>
-                    <div className="text-3xl font-black text-cyan-300 game-ui">
-                      {formatTime(gameDuration)}
-                    </div>
-                  </motion.div>
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
 
-                  <motion.div 
-                    className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-purple-400/30 rounded-xl p-4 text-center"
-                    initial={{ x: 20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.3 }}
+              {/* Mobile Navigation Items */}
+              <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <button
+                    onClick={() => scrollToSection("pricing")}
+                    className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 cursor-pointer ${
+                      isDark
+                        ? "hover:bg-gray-800 text-gray-200"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
                   >
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <HelpCircle size={20} className="text-blue-400" />
-                      <h4 className="game-ui text-lg font-bold text-purple-300">Hints Used</h4>
-                    </div>
-                    <div className="text-3xl font-black text-cyan-300 game-ui">
-                      {hintsUsed} / {MAX_HINTS}
-                    </div>
-                    <div className="text-sm text-purple-400 mt-1">
-                      {hintsUsed === 0 ? 'Perfect! No hints needed!' : 
-                       hintsUsed === 1 ? '1 hint used' : 
-                       `${hintsUsed} hints used`}
-                    </div>
-                  </motion.div>
+                    <CurrencyDollarIcon className="w-8 h-8 text-blue-500 mb-2" />
+                    <span className="font-medium text-sm">Pricing</span>
+                  </button>
 
-                  <motion.div 
-                    className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-purple-400/30 rounded-xl p-4 text-center"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.4 }}
+                  <button
+                    onClick={() => scrollToSection("features")}
+                    className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 cursor-pointer ${
+                      isDark
+                        ? "hover:bg-gray-800 text-gray-200"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
                   >
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-2xl">🎯</span>
-                      <h4 className="game-ui text-lg font-bold text-purple-300">Difficulty</h4>
-                    </div>
-                    <div className="text-xl font-bold text-cyan-300 game-ui capitalize">
-                      {selectedDifficulty}
-                    </div>
-                  </motion.div>
+                    <BoltIcon className="w-8 h-8 text-purple-500 mb-2" />
+                    <span className="font-medium text-sm">Features</span>
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("case-studies")}
+                    className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 cursor-pointer ${
+                      isDark
+                        ? "hover:bg-gray-800 text-gray-200"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <TrophyIcon className="w-8 h-8 text-green-500 mb-2" />
+                    <span className="font-medium text-sm">Case Studies</span>
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("contact")}
+                    className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 cursor-pointer ${
+                      isDark
+                        ? "hover:bg-gray-800 text-gray-200"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <PhoneIcon className="w-8 h-8 text-cyan-500 mb-2" />
+                    <span className="font-medium text-sm">Contact</span>
+                  </button>
                 </div>
 
-                <motion.div 
-                  className="mt-6 flex gap-3"
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.5 }}
+                {/* Call to Action */}
+                <button
+                  onClick={handleStartPlan}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 cursor-pointer font-semibold text-lg shadow-lg"
                 >
-                  <motion.button
-                    onClick={() => {
-                      setShowCompletionModal(false);
-                      handleNewGame();
-                    }}
-                    className="game-ui flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-800 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <RefreshCw size={18} /> New Game
-                  </motion.button>
-                  <motion.button
-                    onClick={() => {
-                      setShowCompletionModal(false);
-                      startNewGameWithDifficulty(selectedDifficulty);
-                    }}
-                    className="game-ui flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:from-green-700 hover:to-green-800 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Trophy size={18} /> Same Level
-                  </motion.button>
-                </motion.div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  Start Free Trial
+                </button>
 
-      <footer className="mt-8 text-center text-sm text-gray-400 game-ui">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-8 h-0.5 bg-gradient-to-r from-transparent to-purple-500"></div>
-          <span className="text-purple-400 font-semibold">Built with Lovable</span>
-          <div className="w-8 h-0.5 bg-gradient-to-l from-transparent to-purple-500"></div>
+                {/* Quick Stats */}
+                <div className="mt-6 grid grid-cols-3 gap-4 text-center">
+                  <div
+                    className={`p-3 rounded-xl ${
+                      isDark ? "bg-gray-800/50" : "bg-gray-50"
+                    }`}
+                  >
+                    <div className="text-lg font-bold text-blue-500">10K+</div>
+                    <div
+                      className={`text-xs ${
+                        isDark ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      Companies
+                    </div>
+                  </div>
+                  <div
+                    className={`p-3 rounded-xl ${
+                      isDark ? "bg-gray-800/50" : "bg-gray-50"
+                    }`}
+                  >
+                    <div className="text-lg font-bold text-green-500">
+                      99.99%
+                    </div>
+                    <div
+                      className={`text-xs ${
+                        isDark ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      Uptime
+                    </div>
+                  </div>
+                  <div
+                    className={`p-3 rounded-xl ${
+                      isDark ? "bg-gray-800/50" : "bg-gray-50"
+                    }`}
+                  >
+                    <div className="text-lg font-bold text-purple-500">
+                      24/7
+                    </div>
+                    <div
+                      className={`text-xs ${
+                        isDark ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      Support
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero Section */}
+      <section
+        id="hero"
+        className="pt-24 sm:pt-32 lg:pt-40 pb-16 sm:pb-24 lg:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative"
+      >
+        <div className="text-center">
+          <div className="flex justify-center mb-6 sm:mb-8">
+            <div
+              className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-full ${
+                isDark
+                  ? "bg-gray-800/50 border border-gray-700"
+                  : "bg-white/50 border border-gray-200"
+              } backdrop-blur-sm`}
+            >
+              <RocketLaunchIcon className="w-4 h-4 text-blue-500" />
+              <span
+                className={`text-xs sm:text-sm font-medium ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
+                Trusted by 10,000+ companies worldwide
+              </span>
+            </div>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 sm:mb-8 leading-tight">
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+              Enterprise Cloud
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent">
+              Storage Reimagined
+            </span>
+          </h1>
+
+          <p
+            className={`text-lg sm:text-xl md:text-2xl mb-8 sm:mb-12 max-w-4xl mx-auto leading-relaxed px-4 ${
+              isDark ? "text-gray-300" : "text-gray-600"
+            }`}
+          >
+            Revolutionary usage-based pricing with enterprise-grade security,
+            <br className="hidden sm:block" />
+            transparent costs, and infinite scalability for modern businesses
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center px-4">
+            <button
+              onClick={handleStartPlan}
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-xl sm:rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25 cursor-pointer text-base sm:text-lg font-medium flex items-center w-full sm:w-auto justify-center"
+            >
+              <RocketLaunchIcon className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+              Start Free Trial
+            </button>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-12 sm:mt-16 flex flex-wrap justify-center items-center gap-6 sm:gap-8   px-4">
+            <div className="flex items-center">
+              <StarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mr-1" />
+              <span
+                className={`text-xs sm:text-sm ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                4.9/5 Rating
+              </span>
+            </div>
+            <div className="flex items-center">
+              <ShieldCheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 mr-1" />
+              <span
+                className={`text-xs sm:text-sm ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                SOC 2 Certified
+              </span>
+            </div>
+            <div className="flex items-center">
+              <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 mr-1" />
+              <span
+                className={`text-xs sm:text-sm ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                Global CDN
+              </span>
+            </div>
+          </div>
         </div>
-        <p>Current Date: {new Date().toLocaleDateString()}</p>
+      </section>
+
+      {/* Pricing Calculator Section */}
+      <section
+        id="pricing"
+        className="py-16 sm:py-16 lg:py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative"
+      >
+        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Calculate Your Perfect Plan
+            </span>
+          </h2>
+          <p
+            className={`text-lg sm:text-xl ${
+              isDark ? "text-gray-300" : "text-gray-600"
+            }`}
+          >
+            Transparent pricing that scales with your growth
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
+          {/* Storage Slider */}
+          <div
+            className={`p-6 sm:p-8 lg:p-10 rounded-xl sm:rounded-2xl backdrop-blur-sm ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl"
+            }`}
+          >
+            <h3 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 flex items-center">
+              <CogIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500 mr-3" />
+              Storage Configuration
+            </h3>
+
+            {/* Current Tier Badge */}
+            <div className="mb-6 sm:mb-8">
+              <span
+                className={`inline-flex items-center px-3 sm:px-4 py-2 rounded-xl sm:rounded-xl text-base sm:text-lg font-bold ${
+                  currentTier.name === "Starter"
+                    ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                    : currentTier.name === "Professional"
+                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                    : "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                } shadow-lg`}
+              >
+                {currentTier.name} Tier
+              </span>
+            </div>
+
+            {/* Storage Amount Display */}
+            <div className="mb-8 sm:mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between mb-4 space-y-2 sm:space-y-0">
+                <span
+                  className={`text-base sm:text-lg font-medium ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
+                  Storage Amount
+                </span>
+                <div className="text-left sm:text-right">
+                  <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    {selectedStorage.toLocaleString()}
+                  </span>
+                  <span
+                    className={`text-lg sm:text-xl ml-2 ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    GB
+                  </span>
+                </div>
+              </div>
+
+              {/* Capacity Meter */}
+              <div
+                className={`w-full h-3 sm:h-4 rounded-full overflow-hidden ${
+                  isDark ? "bg-gray-700" : "bg-gray-200"
+                }`}
+              >
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-700 ease-out relative"
+                  style={{ width: `${capacityPercentage}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                </div>
+              </div>
+              <div
+                className={`flex justify-between text-xs sm:text-sm mt-2 ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                <span>{currentTier.minStorage} GB</span>
+                <span>{currentTier.maxStorage.toLocaleString()} GB</span>
+              </div>
+            </div>
+
+            {/* Storage Slider */}
+            <div className="mb-8 sm:mb-10">
+              <input
+                type="range"
+                min={1}
+                max={100000}
+                value={selectedStorage}
+                onChange={(e) => handleStorageChange(Number(e.target.value))}
+                className="w-full h-2 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #8b5cf6 ${
+                    (selectedStorage / 100000) * 100
+                  }%, ${isDark ? "#374151" : "#e5e7eb"} ${
+                    (selectedStorage / 100000) * 100
+                  }%, ${isDark ? "#374151" : "#e5e7eb"} 100%)`,
+                }}
+              />
+            </div>
+
+            {/* Billing Model Toggle */}
+            <div className="mb-8 sm:mb-10">
+              <h4 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center">
+                <BoltIcon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 mr-2" />
+                Billing Model
+              </h4>
+              <div
+                className={`flex rounded-xl sm:rounded-xl p-1 sm:p-2 ${
+                  isDark ? "bg-gray-700/50" : "bg-gray-100"
+                }`}
+              >
+                <button
+                  onClick={() => handleBillingModelChange("pay-as-go")}
+                  className={`flex-1 py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-all duration-300 cursor-pointer font-medium text-sm sm:text-base ${
+                    billingModel === "pay-as-go"
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
+                      : isDark
+                      ? "text-gray-300 hover:text-white hover:bg-gray-600/50"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                  }`}
+                >
+                  Pay-as-you-go
+                </button>
+                <button
+                  onClick={() => handleBillingModelChange("prepay")}
+                  className={`flex-1 py-3 sm:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-all duration-300 cursor-pointer font-medium relative text-sm sm:text-base ${
+                    billingModel === "prepay"
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
+                      : isDark
+                      ? "text-gray-300 hover:text-white hover:bg-gray-600/50"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                  }`}
+                >
+                  Prepay
+                  <span className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
+                    15% OFF
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tier Features */}
+            <div>
+              <h4 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center">
+                <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 mr-2" />
+                Included Features
+              </h4>
+              <div className="space-y-3 sm:space-y-4">
+                {currentTier.features.map((feature, index) => (
+                  <div key={index} className="flex items-center group">
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-3 sm:mr-4 group-hover:scale-150 transition-transform duration-300 flex-shrink-0" />
+                    <span
+                      className={`font-medium text-sm sm:text-base ${
+                        isDark ? "text-gray-200" : "text-gray-700"
+                      }`}
+                    >
+                      {feature}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Price Breakdown */}
+          <div
+            className={`p-6 sm:p-8 lg:p-10 rounded-xl sm:rounded-2xl backdrop-blur-sm h-fit lg:sticky lg:top-28 ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl"
+            }`}
+          >
+            <h3 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 flex items-center">
+              <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 mr-3" />
+              Price Breakdown
+            </h3>
+
+            {isCalculating ? (
+              <div className="space-y-6 sm:space-y-8">
+                {/* Base Price Skeleton */}
+                <div
+                  className={`flex justify-between items-center pb-4 sm:pb-6 border-b ${
+                    isDark ? "border-gray-700" : "border-gray-200"
+                  }`}
+                >
+                  <div
+                    className={`h-4 sm:h-5 w-48 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                  <div
+                    className={`h-5 sm:h-6 w-20 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
+
+                {/* Prepay Discount Skeleton (always show for consistent height) */}
+                <div
+                  className={`flex justify-between items-center pb-4 sm:pb-6 border-b ${
+                    isDark ? "border-gray-700" : "border-gray-200"
+                  }`}
+                >
+                  <div
+                    className={`h-4 sm:h-5 w-44 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                  <div
+                    className={`h-5 sm:h-6 w-24 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
+
+                {/* Monthly Total Skeleton */}
+                <div
+                  className={`p-4 sm:p-6 rounded-xl ${
+                    isDark
+                      ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-700/30"
+                      : "bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200"
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div
+                      className={`h-6 sm:h-7 w-32 rounded-lg animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                    <div
+                      className={`h-6 sm:h-7 w-28 rounded-lg animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Annual Total Skeleton */}
+                <div className="flex justify-between items-center">
+                  <div
+                    className={`h-5 sm:h-6 w-28 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                  <div
+                    className={`h-5 sm:h-6 w-24 rounded-lg animate-pulse ${
+                      isDark ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
+
+                {/* Pricing Details Skeleton */}
+                <div
+                  className={`p-4 sm:p-6 rounded-xl ${
+                    isDark
+                      ? "bg-blue-900/20 border border-blue-700/30"
+                      : "bg-blue-50 border border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-2 sm:mb-3">
+                    <div
+                      className={`h-5 sm:h-6 w-5 sm:w-6 mr-2 rounded animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                    <div
+                      className={`h-4 sm:h-5 w-32 rounded-lg animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div
+                      className={`h-4 w-full rounded-lg animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                    <div
+                      className={`h-4 w-3/4 rounded-lg animate-pulse ${
+                        isDark ? "bg-gray-700" : "bg-gray-300"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Button Skeleton */}
+                <div
+                  className={`w-full h-12 sm:h-14 rounded-xl animate-pulse ${
+                    isDark ? "bg-gray-700" : "bg-gray-200"
+                  }`}
+                />
+              </div>
+            ) : (
+              <div className="space-y-6 sm:space-y-8">
+                {/* Monthly Cost */}
+                <div
+                  className={`flex justify-between items-center pb-4 sm:pb-6 border-b ${
+                    isDark ? "border-gray-700" : "border-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`text-base sm:text-lg ${
+                      isDark ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    Base Price ({selectedStorage.toLocaleString()} GB)
+                  </span>
+                  <span className="text-lg sm:text-xl font-bold">
+                    ${pricing.basePrice.toFixed(2)}
+                  </span>
+                </div>
+
+                {billingModel === "prepay" && (
+                  <div
+                    className={`flex justify-between items-center pb-4 sm:pb-6 border-b ${
+                      isDark ? "border-gray-700" : "border-gray-200"
+                    }`}
+                  >
+                    <span className="text-base sm:text-lg text-green-500 font-medium">
+                      Prepay Discount (15%)
+                    </span>
+                    <span className="text-lg sm:text-xl font-bold text-green-500">
+                      -${pricing.savings.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                <div
+                  className={`p-4 sm:p-6 rounded-xl sm:rounded-xl ${
+                    isDark
+                      ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-700/30"
+                      : "bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200"
+                  }`}
+                >
+                  <div className="flex justify-between items-center text-xl sm:text-2xl font-bold">
+                    <span>Monthly Total</span>
+                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      ${pricing.discountedPrice.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-lg sm:text-xl">
+                  <span className={isDark ? "text-gray-300" : "text-gray-600"}>
+                    Annual Total
+                  </span>
+                  <span className="font-bold">
+                    ${pricing.annualPrice.toFixed(2)}
+                  </span>
+                </div>
+
+                <div
+                  className={`p-4 sm:p-6 rounded-xl sm:rounded-xl ${
+                    isDark
+                      ? "bg-blue-900/20 border border-blue-700/30"
+                      : "bg-blue-50 border border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-2 sm:mb-3">
+                    <InformationCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 mr-2" />
+                    <span className="font-bold text-blue-600 dark:text-blue-400 text-sm sm:text-base">
+                      Pricing Details
+                    </span>
+                  </div>
+                  <p
+                    className={`text-sm sm:text-base ${
+                      isDark ? "text-blue-300" : "text-blue-700"
+                    }`}
+                  >
+                    ${currentTier.pricePerGB.toFixed(3)} per GB •{" "}
+                    {currentTier.description}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleStartPlan}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 sm:py-5 rounded-xl sm:rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25 cursor-pointer text-base sm:text-lg font-bold"
+                >
+                  Start Using {currentTier.name} Plan
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Case Studies Section */}
+      <section
+        id="case-studies"
+        className={`py-16 sm:py-24 lg:py-16 px-4 sm:px-6 lg:px-8 ${
+          isDark ? "bg-gray-800/30" : "bg-gray-50/50"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Success Stories
+              </span>
+            </h2>
+            <p
+              className={`text-lg sm:text-xl ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              Real companies achieving extraordinary results
+            </p>
+          </div>
+
+          <div
+            className={`p-6 sm:p-8 lg:p-12 rounded-xl sm:rounded-2xl backdrop-blur-sm ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl"
+            }`}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+              <div className="order-2 lg:order-1">
+                <div className="mb-4 sm:mb-6">
+                  <span
+                    className={`inline-flex items-center px-3 sm:px-4 py-2 rounded-xl sm:rounded-xl text-xs sm:text-sm font-bold ${
+                      currentTier.name === "Starter"
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                        : currentTier.name === "Professional"
+                        ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                        : "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                    } shadow-lg`}
+                  >
+                    {currentTier.name} Tier Success Story
+                  </span>
+                </div>
+
+                <h3 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">
+                  {currentTier.caseStudy.company}
+                </h3>
+                <p
+                  className={`text-lg sm:text-xl mb-6 sm:mb-8 ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
+                  {currentTier.caseStudy.industry}
+                </p>
+
+                <div className="mb-6 sm:mb-8">
+                  <div className="flex items-center mb-3 sm:mb-4">
+                    <div className="relative">
+                      <ChartBarIcon className="w-10 h-10 sm:w-12 sm:h-12 text-green-500 mr-3 sm:mr-4" />
+                      <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-pulse" />
+                    </div>
+                    <div>
+                      <span className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
+                        {currentTier.caseStudy.savings}
+                      </span>
+                      <span
+                        className={`text-lg sm:text-xl ml-2 sm:ml-3 ${
+                          isDark ? "text-gray-300" : "text-gray-600"
+                        }`}
+                      >
+                        cost reduction
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <p
+                  className={`text-base sm:text-lg mb-6 sm:mb-8 leading-relaxed ${
+                    isDark ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
+                  {currentTier.caseStudy.description}
+                </p>
+
+                <button
+                  onClick={openCaseStudyModal}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-xl cursor-pointer font-medium flex items-center text-sm sm:text-base"
+                >
+                  <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Read Full Case Study →
+                </button>
+              </div>
+
+              <div className="order-1 lg:order-2">
+                <div className="relative">
+                  <img
+                    src={currentTier.caseStudy.image}
+                    alt={currentTier.caseStudy.company}
+                    className="w-full h-64 sm:h-80 object-cover rounded-xl sm:rounded-xl shadow-2xl"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl sm:rounded-xl" />
+                  <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 text-white">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      {[...Array(5)].map((_, i) => (
+                        <StarIcon
+                          key={i}
+                          className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400"
+                        />
+                      ))}
+                      <span className="ml-1 sm:ml-2 font-medium text-sm sm:text-base">
+                        5.0 rating
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section
+        id="features"
+        className="py-16 sm:py-24 lg:py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+      >
+        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
+            <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              Enterprise-Grade Features
+            </span>
+          </h2>
+          <p
+            className={`text-lg sm:text-xl ${
+              isDark ? "text-gray-300" : "text-gray-600"
+            }`}
+          >
+            Everything you need to scale securely and efficiently
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div
+            className={`group p-6 sm:p-8 lg:p-10 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 sm:hover:-translate-y-4 cursor-pointer ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl hover:shadow-blue-500/20"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl hover:shadow-blue-500/20"
+            }`}
+          >
+            <div className="relative mb-6 sm:mb-8">
+              <ShieldCheckIcon className="w-12 h-12 sm:w-16 sm:h-16 text-blue-500 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
+              Military-Grade Security
+            </h3>
+            <p
+              className={`text-base sm:text-lg leading-relaxed ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              AES-256 encryption, SOC 2 Type II compliance, zero-trust
+              architecture, and advanced threat protection
+            </p>
+          </div>
+
+          <div
+            className={`group p-6 sm:p-8 lg:p-10 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 sm:hover:-translate-y-4 cursor-pointer ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl hover:shadow-purple-500/20"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl hover:shadow-purple-500/20"
+            }`}
+          >
+            <div className="relative mb-6 sm:mb-8">
+              <CpuChipIcon className="w-12 h-12 sm:w-16 sm:h-16 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
+              Intelligent Auto-Scaling
+            </h3>
+            <p
+              className={`text-base sm:text-lg leading-relaxed ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              AI-powered auto-scaling that predicts demand patterns and
+              optimizes storage allocation in real-time
+            </p>
+          </div>
+
+          <div
+            className={`group p-6 sm:p-8 lg:p-10 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 sm:hover:-translate-y-4 cursor-pointer md:col-span-2 lg:col-span-1 ${
+              isDark
+                ? "bg-gray-800/50 border border-gray-700/50 shadow-2xl hover:shadow-green-500/20"
+                : "bg-white/70 border border-gray-200/50 shadow-2xl hover:shadow-green-500/20"
+            }`}
+          >
+            <div className="relative mb-6 sm:mb-8">
+              <ChartBarIcon className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
+              Advanced Analytics
+            </h3>
+            <p
+              className={`text-base sm:text-lg leading-relaxed ${
+                isDark ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
+              Real-time insights, predictive analytics, cost optimization
+              recommendations, and custom dashboards
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section
+        id="contact"
+        className="py-16 sm:py-24 lg:py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/40" />
+
+        <div className="relative max-w-4xl mx-auto text-center text-white">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 sm:mb-8">
+            Ready to Transform Your Storage?
+          </h2>
+          <p className="text-lg sm:text-xl md:text-2xl mb-8 sm:mb-12 opacity-90 leading-relaxed">
+            Join 10,000+ companies already saving with CloudVault Pro's
+            intelligent storage solutions
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center">
+            <button
+              onClick={handleStartPlan}
+              className="group bg-white text-blue-600 px-8 sm:px-10 py-4 sm:py-5 rounded-xl sm:rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-2xl cursor-pointer text-base sm:text-lg font-bold flex items-center w-full sm:w-auto justify-center"
+            >
+              <RocketLaunchIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 group-hover:animate-bounce" />
+              Start Free Trial
+            </button>
+          </div>
+
+          <div className="mt-8 sm:mt-12 flex flex-wrap justify-center items-center gap-4 sm:gap-6 lg:gap-8 text-white/80">
+            <div className="flex items-center">
+              <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span className="text-sm sm:text-base">No setup fees</span>
+            </div>
+            <div className="flex items-center">
+              <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span className="text-sm sm:text-base">Cancel anytime</span>
+            </div>
+            <div className="flex items-center">
+              <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span className="text-sm sm:text-base">24/7 support</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer
+        className={`py-8 px-4 sm:px-6 lg:px-8 ${
+          isDark
+            ? "bg-gray-900 border-t border-gray-800"
+            : "bg-gray-50 border-t border-gray-200"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12">
+            <div className="sm:col-span-2">
+              <div className="flex items-center mb-4 sm:mb-6">
+                <CloudIcon className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 mr-2 sm:mr-3" />
+                <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  CloudVault Pro
+                </span>
+              </div>
+              <p
+                className={`text-base sm:text-lg mb-4 sm:mb-6 ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
+                Enterprise cloud storage that scales with your business. Trusted
+                by companies worldwide for secure, reliable, and cost-effective
+                data management.
+              </p>
+              <div className="flex space-x-3 sm:space-x-4">
+                <a
+                  href="#"
+                  className={`p-2 sm:p-3 rounded-xl cursor-pointer transition-colors ${
+                    isDark
+                      ? "bg-gray-800 hover:bg-gray-700"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 sm:p-3 rounded-xl cursor-pointer transition-colors ${
+                    isDark
+                      ? "bg-gray-800 hover:bg-gray-700"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  <ShieldCheckIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </a>
+                <a
+                  href="#"
+                  className={`p-2 sm:p-3 rounded-xl cursor-pointer transition-colors ${
+                    isDark
+                      ? "bg-gray-800 hover:bg-gray-700"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  <BoltIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-base sm:text-lg mb-4 sm:mb-6">
+                Product
+              </h3>
+              <ul
+                className={`space-y-3 sm:space-y-4 text-sm sm:text-base ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
+                <li>
+                  <button
+                    onClick={() => scrollToSection("features")}
+                    className="hover:text-blue-500 transition-colors cursor-pointer text-left"
+                  >
+                    Features
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection("pricing")}
+                    className="hover:text-blue-500 transition-colors cursor-pointer text-left"
+                  >
+                    Pricing
+                  </button>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Security
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    API
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Integrations
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-base sm:text-lg mb-4 sm:mb-6">
+                Company
+              </h3>
+              <ul
+                className={`space-y-3 sm:space-y-4 text-sm sm:text-base ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Blog
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Press
+                  </a>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection("contact")}
+                    className="hover:text-blue-500 transition-colors cursor-pointer text-left"
+                  >
+                    Contact
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-base sm:text-lg mb-4 sm:mb-6">
+                Support
+              </h3>
+              <ul
+                className={`space-y-3 sm:space-y-4 text-sm sm:text-base ${
+                  isDark ? "text-gray-300" : "text-gray-600"
+                }`}
+              >
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Help Center
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Status Page
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Community
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
+                  >
+                    Partners
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div
+            className={`border-t mt-12 sm:mt-16 pt-6 sm:pt-8 ${
+              isDark ? "border-gray-800" : "border-gray-200"
+            }`}
+          >
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <p
+                className={`text-sm sm:text-base ${
+                  isDark ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                &copy; 2024 CloudVault Pro. All rights reserved.
+              </p>
+              <div
+                className={`flex flex-wrap justify-center md:justify-end space-x-4 sm:space-x-6 text-sm sm:text-base ${
+                  isDark ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                <a
+                  href="#"
+                  className="hover:text-blue-500 transition-colors cursor-pointer"
+                >
+                  Privacy Policy
+                </a>
+                <a
+                  href="#"
+                  className="hover:text-blue-500 transition-colors cursor-pointer"
+                >
+                  Terms of Service
+                </a>
+                <a
+                  href="#"
+                  className="hover:text-blue-500 transition-colors cursor-pointer"
+                >
+                  Cookie Policy
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </footer>
 
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        gutter={8}
-        containerClassName=""
-        containerStyle={{
-          top: 20,
-          right: 20,
-        }}
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
-            color: '#e879f9',
-            border: '1px solid #8b5cf6',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '600',
-            fontFamily: "'Exo 2', sans-serif",
-            boxShadow: '0 10px 25px rgba(139, 92, 246, 0.3)',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#ffffff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#ffffff',
-            },
-          },
-        }}
-      />
-    </motion.div>
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          border: 2px solid white;
+        }
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        @media (min-width: 640px) {
+          .slider::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+          }
+          .slider::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 
-export default Index;
+export default CloudVault;
