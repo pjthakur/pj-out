@@ -1,1895 +1,1889 @@
 "use client";
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  FaLinkedin,
-  FaSearch,
-  FaHome,
-  FaUsers,
-  FaBriefcase,
-  FaEnvelope,
-  FaBell,
-  FaUser,
-  FaVideo,
-  FaImage,
-  FaSortDown,
-  FaThumbsUp,
-  FaComment,
-  FaUserPlus,
-  FaPuzzlePiece,
-  FaAd,
-  FaAngleDown,
-  FaAngleUp,
-  FaEdit,
-  FaPaperPlane,
-  FaCheck,
-  FaGlobeAmericas,
-  FaShare,
-  FaTimes,
-  FaCheckCircle,
-  FaBars,
-} from "react-icons/fa";
-
-interface Post {
-  id: number;
-  author: string;
-  title: string;
-  content: string;
-  time: string;
-  likes: number;
-  liked: boolean;
-  comments: { id: number; author: string; text: string; time: string }[];
-  reposts: number;
-  shares: number;
-  image?: string;
-  video?: string;
-  company?: string;
-}
-
-interface Connection {
-  id: number;
-  name: string;
-  title: string;
-  mutual: number;
-  isConnected: boolean;
-  isFollowing: boolean;
-  company: string;
-}
-
-interface Profile {
-  name: string;
-  description: string;
-  location: string;
-  picture: string;
-  connections: number;
-  followers: number;
-}
+  PlayIcon,
+  PauseIcon,
+  ArrowPathIcon,
+  Cog6ToothIcon,
+  ChartBarIcon,
+  BeakerIcon,
+  XMarkIcon,
+  Bars3Icon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  MagnifyingGlassPlusIcon,
+  MagnifyingGlassMinusIcon,
+  AdjustmentsHorizontalIcon,
+  RocketLaunchIcon,
+  ChartPieIcon,
+  BookOpenIcon,
+  BuildingOfficeIcon,
+  UserGroupIcon,
+  CpuChipIcon,
+  GlobeAltIcon,
+  ShieldCheckIcon,
+  LightBulbIcon,
+  AcademicCapIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+} from "@heroicons/react/24/outline";
 
 interface Toast {
-  id: number;
+  id: string;
   message: string;
-  type: "success" | "error";
+  type: "success" | "error" | "info";
 }
 
-const Toast: React.FC<{ toast: Toast; onClose: (id: number) => void }> = ({
-  toast,
-  onClose,
-}) => (
-  <div
-    className={`fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-[100] px-4 py-3 rounded-lg shadow-lg transition-all duration-300 transform translate-x-0 ${
-      toast.type === "success"
-        ? "bg-green-500 text-white"
-        : "bg-red-500 text-white"
-    }`}
-  >
-    <div className="flex items-center justify-between space-x-3">
-      <div className="flex items-center space-x-2">
-        {toast.type === "success" && <FaCheckCircle />}
-        <span className="font-medium text-sm md:text-base">{toast.message}</span>
-      </div>
-      <button
-        onClick={() => onClose(toast.id)}
-        className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
-      >
-        <FaTimes />
-      </button>
-    </div>
-  </div>
-);
-
-interface NetworkPageProps {
-  connections: Connection[];
-  handleFollow: (connectionId: number) => void;
-  profileImages: { [key: string]: string };
+interface Obstacle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-const NetworkPage: React.FC<NetworkPageProps> = ({
-  connections,
-  handleFollow,
-  profileImages,
-}) => {
-  const [activeTab, setActiveTab] = useState<"connections" | "followers">(
-    "connections"
-  );
-  const [searchQuery, setSearchQuery] = useState("");
+interface ProjectileState {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  time: number;
+  isFlying: boolean;
+  hasCollided: boolean;
+  collisionType?: string;
+}
 
-  const filteredConnections = connections.filter((connection) =>
-    connection.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">My Network</h1>
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Search connections..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 pl-10 rounded-md bg-gray-100 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-800"
-          />
-          <FaSearch className="absolute left-3 top-3 text-gray-500" />
-        </div>
-      </div>
-
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex space-x-6">
-          <button
-            onClick={() => setActiveTab("connections")}
-            className={`pb-4 px-1 font-medium cursor-pointer ${
-              activeTab === "connections"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Connections ({connections.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("followers")}
-            className={`pb-4 px-1 font-medium cursor-pointer ${
-              activeTab === "followers"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Followers (0)
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {activeTab === "connections" ? (
-          filteredConnections.length > 0 ? (
-          filteredConnections.map((connection) => (
-            <div
-              key={connection.id}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow space-y-3 sm:space-y-0"
-            >
-              <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0">
-                  <img
-                    src={profileImages[connection.name]}
-                    alt={connection.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {connection.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 truncate">{connection.title}</p>
-                  <p className="text-xs text-gray-500 truncate">{connection.company}</p>
-                  <p className="text-xs text-blue-600">
-                    {connection.mutual} mutual connections
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleFollow(connection.id)}
-                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-full font-medium text-sm cursor-pointer ${
-                  connection.isFollowing
-                    ? "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                } transition-colors`}
-              >
-                {connection.isFollowing ? (
-                  <>
-                    <FaCheck className="text-xs" />
-                    <span>Following</span>
-                  </>
-                ) : (
-                  <>
-                    <FaUserPlus className="text-xs" />
-                    <span>Follow</span>
-                  </>
-                )}
-              </button>
-            </div>
-          ))
-          ) : searchQuery ? (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-2">
-              <FaUsers className="inline-block text-4xl" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No results found
-            </h3>
-            <p className="text-gray-600">
-              Try adjusting your search. We couldn&apos;t find any connections
-              matching &quot;{searchQuery}&quot;
-              </p>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-2">
-                <FaUsers className="inline-block text-4xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No connections yet
-              </h3>
-              <p className="text-gray-600">
-                Start connecting with professionals in your field
-              </p>
-            </div>
-          )
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-2">
-              <FaUsers className="inline-block text-4xl" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No followers yet
-            </h3>
-            <p className="text-gray-600">
-              Share great content to attract followers to your profile
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const ProfileCard: React.FC<{
-  profile: Profile;
-  isEditingProfile: boolean;
-  setIsEditingProfile: (value: boolean) => void;
-  tempProfileName: string;
-  setTempProfileName: (value: string) => void;
-  tempProfileDescription: string;
-  setTempProfileDescription: (value: string) => void;
-  tempProfilePicture: string;
-  handleEditProfile: () => void;
-  handleProfilePictureUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleComingSoon: (feature: string) => void;
-  isMobile?: boolean;
-}> = ({
-  profile,
-  isEditingProfile,
-  setIsEditingProfile,
-  tempProfileName,
-  setTempProfileName,
-  tempProfileDescription,
-  setTempProfileDescription,
-  tempProfilePicture,
-  handleEditProfile,
-  handleProfilePictureUpload,
-  handleComingSoon,
-  isMobile,
-}) => (
-  <div
-    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
-      isMobile ? "mb-6" : ""
-    }`}
-  >
-    {/* Blue header banner */}
-    <div className="relative w-full h-16 bg-gradient-to-r from-blue-500 to-blue-600"></div>
-    
-    {/* Profile content */}
-    <div className="relative px-4 pb-4">
-      {/* Profile picture overlapping the banner */}
-      <div className="absolute -top-8 left-4 w-16 h-16 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden">
-        <img
-          src={profile.picture}
-          alt="Profile"
-          className="w-full h-full object-cover"
-        />
-      </div>
-      
-      {/* Profile info */}
-      <div className="pt-10">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {profile.name}
-          </h2>
-          <button
-            onClick={() => setIsEditingProfile(true)}
-            className="text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
-          >
-            <FaEdit />
-          </button>
-        </div>
-        
-        <p className="text-sm text-gray-600 mb-2 leading-relaxed">
-          {profile.description}
-        </p>
-        
-        <p className="text-sm text-gray-500 flex items-center mb-4">
-          <FaGlobeAmericas className="mr-1 text-xs" />
-          {profile.location}
-        </p>
-        
-        {/* Connections and followers */}
-        <div className="mb-4">
-          <div className="text-sm font-semibold text-blue-600 hover:underline cursor-pointer">
-            {profile.connections} connections
-          </div>
-          <div className="text-sm text-gray-600">
-            {profile.followers} followers
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {!isMobile && (
-      <>
-        {/* Profile viewers section */}
-        <div className="border-t border-gray-100 px-4 py-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-sm text-gray-600">Profile viewers</span>
-            <span className="text-sm font-bold text-blue-600">24</span>
-          </div>
-          <button
-            onClick={() => handleComingSoon("Analytics")}
-            className="text-blue-600 text-sm font-medium hover:underline cursor-pointer"
-          >
-            View all analytics
-          </button>
-        </div>
-
-        {/* Premium section */}
-        <div className="border-t border-gray-100 px-4 py-3">
-          <p className="text-sm text-gray-700 font-medium mb-1">
-            Grow your career with Premium
-          </p>
-          <button
-            onClick={() => handleComingSoon("Premium")}
-            className="text-yellow-600 text-sm font-medium hover:underline cursor-pointer"
-          >
-            Try Premium for ₹0
-          </button>
-        </div>
-
-        {/* Bottom links */}
-        <div className="border-t border-gray-100 px-4 py-3 space-y-3">
-          <button
-            onClick={() => handleComingSoon("Saved items")}
-            className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors cursor-pointer w-full text-left"
-          >
-            <FaUser className="text-sm" />
-            <span className="text-sm font-medium">Saved items</span>
-          </button>
-          <button
-            onClick={() => handleComingSoon("Groups")}
-            className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors cursor-pointer w-full text-left"
-          >
-            <FaUsers className="text-sm" />
-            <span className="text-sm font-medium">Groups</span>
-          </button>
-        </div>
-      </>
-    )}
-
-    {isEditingProfile && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-xl p-6 w-full max-w-md mx-auto my-8">
-          <h2 className="text-xl font-semibold mb-6 text-gray-900">
-            Edit Profile
-          </h2>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Profile Picture
-            </label>
-            <div className="flex items-center space-x-4">
-              <img
-                src={tempProfilePicture}
-                alt="Profile"
-                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePictureUpload}
-                className="text-sm text-gray-500 cursor-pointer"
-              />
-            </div>
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Name
-            </label>
-            <input
-              type="text"
-              value={tempProfileName}
-              onChange={(e) => setTempProfileName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-500"
-              style={{ color: "transparent", textShadow: "0 0 0 #000" }}
-              autoComplete="off"
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={tempProfileDescription}
-              onChange={(e) => setTempProfileDescription(e.target.value)}
-              placeholder="Describe yourself"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-500"
-              rows={3}
-              style={{ color: "transparent", textShadow: "0 0 0 #000" }}
-              autoComplete="off"
-            />
-          </div>
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={() => setIsEditingProfile(false)}
-              className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleEditProfile}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-const PostCard: React.FC<{
-  post: Post;
-  profile: Profile;
-  profileImages: { [key: string]: string };
-  connections: Connection[];
-  handleLike: (postId: number) => void;
-  handleCommentSubmit: (postId: number) => void;
-  handleRepost: (postId: number) => void;
-  handleShare: (postId: number) => void;
-  handleFollow: (connectionId: number) => void;
-  handleToggleComments: (postId: number) => void;
-  handleLoadMoreComments: (postId: number) => void;
-  visibleComments: { [key: number]: boolean };
-  showAllComments: { [key: number]: boolean };
-  newComment: { [key: number]: string };
-  setNewComment: (value: { [key: number]: string }) => void;
-}> = ({
-  post,
-  profile,
-  profileImages,
-  connections,
-  handleLike,
-  handleCommentSubmit,
-  handleRepost,
-  handleShare,
-  handleFollow,
-  handleToggleComments,
-  handleLoadMoreComments,
-  visibleComments,
-  showAllComments,
-  newComment,
-  setNewComment,
-}) => {
-  const connection = connections.find((c) => c.name === post.author);
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 transition-shadow hover:shadow-md">
-      <div className="flex items-start space-x-3">
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100">
-          <img
-            src={profileImages[post.author]}
-            alt="Profile"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <div>
-              {/* Mobile layout - button next to name */}
-              <div className="flex items-center space-x-2 mb-1 md:hidden">
-                <h3 className="text-base font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
-                  {post.author}
-                </h3>
-                {connection && (
-                  <button
-                    onClick={() => handleFollow(connection.id)}
-                    className="flex items-center space-x-1 text-blue-600 border border-blue-600 rounded-full px-2 py-0.5 hover:bg-blue-50 transition-colors text-xs font-medium cursor-pointer"
-                  >
-                    {connection.isFollowing ? (
-                      <>
-                        <FaCheck className="text-xs" />
-                        <span>Following</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaUserPlus className="text-xs" />
-                        <span>Follow</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-              
-              {/* Desktop layout - name only */}
-              <h3 className="hidden md:block text-base font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
-                {post.author}
-              </h3>
-              
-              <p className="text-sm text-gray-600">{post.title}</p>
-              {post.company && (
-                <p className="text-sm text-gray-500">{post.company}</p>
-              )}
-              <p className="text-xs text-gray-400 flex items-center mt-1">
-                <span>{post.time}</span>
-                <FaGlobeAmericas className="ml-1" />
-              </p>
-            </div>
-            
-            {/* Desktop layout - button in top right */}
-            {connection && (
-              <button
-                onClick={() => handleFollow(connection.id)}
-                className="hidden md:flex items-center space-x-1 text-blue-600 border border-blue-600 rounded-full px-3 py-1 hover:bg-blue-50 transition-colors text-xs sm:text-sm font-medium cursor-pointer"
-              >
-                {connection.isFollowing ? (
-                  <>
-                    <FaCheck className="text-xs" />
-                    <span>Following</span>
-                  </>
-                ) : (
-                  <>
-                    <FaUserPlus className="text-xs" />
-                    <span>Follow</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="mt-4">
-        <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-line">
-          {post.content}
-        </p>
-        {(post.image || post.video) && (
-          <div className="mt-4 rounded-lg overflow-hidden">
-            {post.image && (
-              <img
-                src={post.image}
-                alt="Post Image"
-                className="w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-              />
-            )}
-            {post.video && (
-              <video
-                src={post.video}
-                controls
-                preload="metadata"
-                className="w-full object-cover"
-                style={{ backgroundColor: '#000' }}
-              />
-            )}
-          </div>
-        )}
-      </div>
-      <div className="mt-4 flex items-center justify-between text-gray-500 text-sm">
-        <div className="flex items-center space-x-1">
-          <FaThumbsUp className="text-blue-500" />
-          <span>{post.likes.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center space-x-3">
-          <span 
-            className="cursor-pointer hover:underline"
-            onClick={() => handleToggleComments(post.id)}
-          >
-            {post.comments.length} comments
-          </span>
-          <span>•</span>
-          <span className="cursor-pointer hover:underline">
-            {post.reposts} reposts
-          </span>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-        <button
-          onClick={() => handleLike(post.id)}
-          className={`flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors cursor-pointer ${
-            post.liked
-              ? "text-blue-600 bg-blue-50"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          <FaThumbsUp />
-          <span className="font-medium hidden xs:inline sm:inline">Like</span>
-        </button>
-        <button
-          onClick={() => handleToggleComments(post.id)}
-          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          <FaComment />
-          <span className="font-medium hidden xs:inline sm:inline">
-            Comment
-          </span>
-        </button>
-        <button
-          onClick={() => handleRepost(post.id)}
-          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          <FaShare />
-          <span className="font-medium hidden xs:inline sm:inline">Repost</span>
-        </button>
-        <button
-          onClick={() => handleShare(post.id)}
-          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          <FaPaperPlane />
-          <span className="font-medium hidden xs:inline sm:inline">Send</span>
-        </button>
-      </div>
-      {visibleComments[post.id] && (
-        <div className="mt-4 space-y-3">
-          {(showAllComments[post.id] ? post.comments : post.comments.slice(0, 2)).map((comment) => (
-            <div key={comment.id} className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden">
-                <img
-                  src={profileImages[comment.author]}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="bg-gray-50 p-3 rounded-xl flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {comment.author}
-                  </p>
-                  <span className="text-xs text-gray-400">{comment.time}</span>
-                </div>
-                <p className="text-sm text-gray-700 mt-1">{comment.text}</p>
-              </div>
-            </div>
-          ))}
-          {post.comments.length > 2 && (
-            <button
-              onClick={() => handleLoadMoreComments(post.id)}
-              className="text-blue-600 text-sm hover:underline cursor-pointer ml-11"
-            >
-              {showAllComments[post.id] 
-                ? `Show less` 
-                : `Load more comments (${post.comments.length - 2} more)`
-              }
-            </button>
-          )}
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden">
-              <img
-                src={profile.picture}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1 flex items-center space-x-2">
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                value={newComment[post.id] || ""}
-                onChange={(e) =>
-                  setNewComment({ ...newComment, [post.id]: e.target.value })
-                }
-                onKeyPress={(e) =>
-                  e.key === "Enter" && handleCommentSubmit(post.id)
-                }
-                className="flex-1 p-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-800"
-              />
-              <button
-                onClick={() => handleCommentSubmit(post.id)}
-                disabled={!newComment[post.id]?.trim()}
-                className={`px-4 py-2 rounded-full font-medium transition-colors cursor-pointer ${
-                  newComment[post.id]?.trim()
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                Post
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const NewsSection: React.FC<{
-  showMoreNews: boolean;
-  setShowMoreNews: (value: boolean) => void;
-}> = ({ showMoreNews, setShowMoreNews }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-    <h2 className="text-lg font-semibold mb-4 text-gray-900">LinkIn News</h2>
-    <ul className="space-y-4">
-      <a
-        href="#"
-        rel="noopener noreferrer"
-        className="block"
-      >
-        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-          <p className="text-sm font-semibold text-gray-900">
-            Freshers&apos; guide: Mapping opportunities for &apos;22-&apos;24
-            batch
-          </p>
-          <p className="text-xs text-gray-500 mt-1">7d ago • 12,940 readers</p>
-        </li>
-      </a>
-      <a
-        href="#"
-        rel="noopener noreferrer"
-        className="block"
-      >
-        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-          <p className="text-sm font-semibold text-gray-900">
-            Microsoft envisions AI-agent future
-          </p>
-          <p className="text-xs text-gray-500 mt-1">1h ago • 6,129 readers</p>
-        </li>
-      </a>
-      <a
-        href="#"
-        rel="noopener noreferrer"
-        className="block"
-      >
-        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-          <p className="text-sm font-semibold text-gray-900">
-            Demand surges for freelancers
-          </p>
-          <p className="text-xs text-gray-500 mt-1">6h ago • 1,599 readers</p>
-        </li>
-      </a>
-      {showMoreNews && (
-        <>
-          <a
-            href="#"
-            rel="noopener noreferrer"
-            className="block"
-          >
-            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-              <p className="text-sm font-semibold text-gray-900">
-                Affordable housing sales dip
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                23h ago • 1,004 readers
-              </p>
-            </li>
-          </a>
-          <a
-            href="#"
-            rel="noopener noreferrer"
-            className="block"
-          >
-            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-              <p className="text-sm font-semibold text-gray-900">
-                Investors take a liking to deeptech
-              </p>
-              <p className="text-xs text-gray-500 mt-1">1d ago • 565 readers</p>
-            </li>
-          </a>
-          <a
-            href="#"
-            rel="noopener noreferrer"
-            className="block"
-          >
-            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-              <p className="text-sm font-semibold text-gray-900">
-                Tech layoffs continue in 2025
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                2d ago • 2,345 readers
-              </p>
-            </li>
-          </a>
-        </>
-      )}
-    </ul>
-    <button
-      onClick={() => setShowMoreNews(!showMoreNews)}
-      className="mt-4 flex items-center space-x-1 text-blue-600 hover:underline text-sm cursor-pointer"
-    >
-      <span>{showMoreNews ? "Show less" : "Show more"}</span>
-      {showMoreNews ? <FaAngleUp /> : <FaAngleDown />}
-    </button>
-  </div>
-);
-
-const LinkedInClone: React.FC = () => {
-  const [profile, setProfile] = useState<Profile>({
-    name: "Liyana",
-    description:
-      "Frontend Developer | React, TypeScript, Next.js",
-    location: "Hyderabad, Telangana, India",
-    picture:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&auto=format",
-    connections: 847,
-    followers: 1234,
+const ProjectileMotionSimulator: React.FC = () => {
+  // Core simulation state
+  const [angle, setAngle] = useState(45);
+  const [velocity, setVelocity] = useState(25);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [projectile, setProjectile] = useState<ProjectileState>({
+    x: 50,
+    y: 320,
+    vx: 0,
+    vy: 0,
+    time: 0,
+    isFlying: false,
+    hasCollided: false,
   });
 
-  const [activePage, setActivePage] = useState<
-    "feed" | "network" | "jobs" | "messaging" | "notifications"
-  >("feed");
+  // UI state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showTrajectory, setShowTrajectory] = useState(true);
+  const [showVectors, setShowVectors] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [controlPanelOpen, setControlPanelOpen] = useState(false);
+  const [controlPanelPosition, setControlPanelPosition] = useState({
+    x: 20,
+    y: 100,
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isInSimulatorSection, setIsInSimulatorSection] = useState(false);
 
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [tempProfileName, setTempProfileName] = useState(profile.name);
-  const [tempProfileDescription, setTempProfileDescription] = useState(
-    profile.description
-  );
-  const [tempProfilePicture, setTempProfilePicture] = useState(profile.picture);
+  const [isClient, setisClient] = useState(false);
 
-  const defaultPosts: Post[] = [
+  // Section refs for smooth scrolling
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const simulatorRef = useRef<HTMLDivElement | null>(null);
+  const featuresRef = useRef<HTMLDivElement | null>(null);
+  const analyticsRef = useRef<HTMLDivElement | null>(null);
+  const documentationRef = useRef<HTMLDivElement | null>(null);
+  const enterpriseRef = useRef<HTMLDivElement | null>(null);
+
+  // Physics constants
+  const GRAVITY = 9.81;
+  const SCALE = 4 * zoomLevel;
+  const TIME_STEP = 0.02;
+  const BASE_CANVAS_HEIGHT = 400;
+  const CANVAS_HEIGHT = BASE_CANVAS_HEIGHT * zoomLevel;
+  const GROUND_Y = 360 * zoomLevel;
+  const LAUNCH_X = 50 * zoomLevel;
+  const LAUNCH_Y = 320 * zoomLevel;
+
+  // Static obstacles (scaled)
+  const obstacles: Obstacle[] = [
     {
-      id: 1,
-      author: "Vikas Singh",
-      title: "AI & Tech Content Creator | Personal Branding Specialist",
-      company: "Microsoft",
-      content:
-        '🚀 ChatGPT Can Get You Hired Faster Than Any Recruiter\n\nCopy these seven prompts to land your dream job:\n\n1. "Help me tailor my resume for [specific role] at [company]"\n2. "Create a compelling cover letter for [position]"\n3. "Prepare me for common interview questions in [industry]"\n\nThe future of job hunting is here. Are you ready? 💼\n\n#AI #JobSearch #CareerTips #ChatGPT',
-      time: "3h",
-      likes: 2782,
-      liked: false,
-      comments: [
-        {
-          id: 1,
-          author: "Sarah Johnson",
-          text: "This is incredibly helpful! Thanks for sharing.",
-          time: "2h",
-        },
-        {
-          id: 2,
-          author: "Mike Chen",
-          text: "AI is definitely changing how we approach job applications.",
-          time: "1h",
-        },
-      ],
-      reposts: 502,
-      shares: 156,
-      image:
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=300&fit=crop&auto=format",
+      x: 200 * zoomLevel,
+      y: 250 * zoomLevel,
+      width: 60 * zoomLevel,
+      height: 110 * zoomLevel,
     },
     {
-      id: 2,
-      author: "Harish Kumar",
-      title: "LinkedIn Growth Expert | Helping Professionals Build Their Brand",
-      company: "Google",
-      content:
-        "5 Tips to Boost Your LinkedIn Profile Visibility! 🚀\n\n✅ Use industry-specific keywords\n✅ Post consistently (3-5 times per week)\n✅ Engage meaningfully with others' content\n✅ Share your expertise through articles\n✅ Optimize your headline for search\n\nConsistency is key to building your professional brand online.\n\n#LinkedInTips #PersonalBranding #ProfessionalGrowth",
-      time: "1d",
-      likes: 1450,
-      liked: true,
-      comments: [
-        {
-          id: 1,
-          author: "Lisa Wang",
-          text: "Great insights! The keyword tip especially helped me.",
-          time: "12h",
-        },
-      ],
-      reposts: 320,
-      shares: 89,
-      image:
-        "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&h=300&fit=crop&auto=format",
+      x: 350 * zoomLevel,
+      y: 200 * zoomLevel,
+      width: 80 * zoomLevel,
+      height: 160 * zoomLevel,
     },
     {
-      id: 3,
-      author: "Anjali Sharma",
-      title: "Senior Data Scientist | ML Engineer",
-      company: "IBM",
-      content:
-        "Excited to share my latest project on predictive analytics! 📊\n\nBuilt a machine learning model that predicts customer churn with 94% accuracy using:\n\n🔹 Python & Scikit-learn\n🔹 Feature engineering techniques\n🔹 Ensemble methods (Random Forest + XGBoost)\n🔹 Cross-validation for robust results\n\nData science is all about turning numbers into actionable insights!\n\n#DataScience #MachineLearning #Python #Analytics",
-      time: "2h",
-      likes: 856,
-      liked: false,
-      comments: [
-        {
-          id: 1,
-          author: "David Rodriguez",
-          text: "Impressive accuracy! What features were most predictive?",
-          time: "1h",
-        },
-        {
-          id: 2,
-          author: "Emily Foster",
-          text: "Would love to see a breakdown of your methodology.",
-          time: "30m",
-        },
-      ],
-      reposts: 145,
-      shares: 67,
-      image:
-        "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=300&fit=crop&auto=format",
-    },
-    {
-      id: 4,
-      author: "Priya Patel",
-      title: "UX/UI Designer | Design Systems Advocate",
-      company: "Adobe",
-      content:
-        "Design is not just what it looks like and feels like. Design is how it works. - Steve Jobs\n\nJust completed a major redesign of our mobile app that increased user engagement by 40%! 🎨\n\nKey improvements:\n• Simplified navigation flow\n• Enhanced accessibility features\n• Consistent design language\n• User-centered approach\n\nGreat design starts with understanding your users deeply.\n\n#UXDesign #ProductDesign #UserExperience #DesignThinking",
-      time: "5h",
-      likes: 1234,
-      liked: false,
-      comments: [],
-      reposts: 234,
-      shares: 78,
-      image:
-        "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&h=300&fit=crop&auto=format",
-    },
-    {
-      id: 5,
-      author: "Rohit Sharma",
-      title: "Full Stack Developer | React & Node.js Specialist",
-      company: "Amazon",
-      content:
-        "🔥 Just deployed my side project to production!\n\nBuilt a real-time collaboration tool using:\n\n⚡ React with TypeScript\n⚡ Node.js & Express\n⚡ Socket.io for real-time features\n⚡ MongoDB for data persistence\n⚡ AWS for hosting\n\nNothing beats the feeling of seeing your code come to life! The learning never stops in tech.\n\n#WebDevelopment #React #NodeJS #FullStack #SideProject",
-      time: "6h",
-      likes: 678,
-      liked: true,
-      comments: [
-        {
-          id: 1,
-          author: "Alex Thompson",
-          text: "Congrats! Would love to check it out.",
-          time: "3h",
-        },
-      ],
-      reposts: 89,
-      shares: 45,
-    },
-    {
-      id: 6,
-      author: "Neha Gupta",
-      title: "Product Manager | SaaS Expert",
-      company: "Slack",
-      content:
-        "Product Management Lesson of the Day 💡\n\nFeatures don't make products successful. Solutions to real problems do.\n\nBefore building anything, ask:\n✓ What problem does this solve?\n✓ Who has this problem?\n✓ How do they solve it today?\n✓ Why is our solution better?\n\nCustomer research > Feature requests\n\n#ProductManagement #SaaS #CustomerResearch #ProductStrategy",
-      time: "8h",
-      likes: 2456,
-      liked: false,
-      comments: [
-        {
-          id: 1,
-          author: "Kevin Liu",
-          text: "This is exactly what I needed to hear today!",
-          time: "5h",
-        },
-        {
-          id: 2,
-          author: "Rachel Green",
-          text: "Customer research is indeed the foundation of great products.",
-          time: "4h",
-        },
-      ],
-      reposts: 456,
-      shares: 123,
+      x: 500 * zoomLevel,
+      y: 220 * zoomLevel,
+      width: 70 * zoomLevel,
+      height: 140 * zoomLevel,
     },
   ];
 
-  const [posts, setPosts] = useState<Post[]>(defaultPosts);
-  const [connections, setConnections] = useState<Connection[]>([
-    {
-      id: 1,
-      name: "Vikas Singh",
-      title: "AI & Tech Content Creator",
-      company: "Microsoft",
-      mutual: 15,
-      isConnected: false,
-      isFollowing: false,
-    },
-    {
-      id: 2,
-      name: "Harish Kumar",
-      title: "LinkedIn Growth Expert",
-      company: "Google",
-      mutual: 23,
-      isConnected: true,
-      isFollowing: false,
-    },
-    {
-      id: 3,
-      name: "Anjali Sharma",
-      title: "Senior Data Scientist",
-      company: "IBM",
-      mutual: 8,
-      isConnected: false,
-      isFollowing: false,
-    },
-    {
-      id: 4,
-      name: "Priya Patel",
-      title: "UX/UI Designer",
-      company: "Adobe",
-      mutual: 12,
-      isConnected: false,
-      isFollowing: true,
-    },
-    {
-      id: 5,
-      name: "Rohit Sharma",
-      title: "Full Stack Developer",
-      company: "Amazon",
-      mutual: 34,
-      isConnected: true,
-      isFollowing: false,
-    },
-    {
-      id: 6,
-      name: "Neha Gupta",
-      title: "Product Manager",
-      company: "Slack",
-      mutual: 19,
-      isConnected: false,
-      isFollowing: false,
-    },
-  ]);
+  // Refs
+  const animationRef = useRef<number | null>(null);
+  const dragRef = useRef({ startX: 0, startY: 0, startPosX: 0, startPosY: 0 });
+  const collisionNotifiedRef = useRef(false);
 
-  const [newPost, setNewPost] = useState("");
-  const [newPostImage, setNewPostImage] = useState<string | null>(null);
-  const [newPostVideo, setNewPostVideo] = useState<string | null>(null);
-
-  const [showMoreNews, setShowMoreNews] = useState(false);
-  const [newComment, setNewComment] = useState<{ [key: number]: string }>({});
-  const [visibleComments, setVisibleComments] = useState<{
-    [key: number]: boolean;
-  }>({});
-  const [showAllComments, setShowAllComments] = useState<{
-    [key: number]: boolean;
-  }>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
-
-  const addToast = (message: string, type: "success" | "error" = "success") => {
-    const id = Date.now();
-    setToasts([{ id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 5000);
-  };
-
-  const removeToast = (id: number) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
-
-  const handlePostSubmit = () => {
-    if (!newPost.trim() && !newPostImage && !newPostVideo) {
-      addToast("Please write something or add media to post", "error");
-      return;
+  // Smooth scroll function
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      ref.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
-    const newPostObj: Post = {
-      id: posts.length + 1,
-      author: profile.name,
-      title: "Frontend Developer | React Specialist",
-      company: "Tech Solutions",
-      content: newPost,
-      time: "Just now",
-      likes: 0,
-      liked: false,
-      comments: [],
-      reposts: 0,
-      shares: 0,
-      image: newPostImage || undefined,
-      video: newPostVideo || undefined,
-    };
-    setPosts([newPostObj, ...posts]);
-    setNewPost("");
-    setNewPostImage(null);
-    // Clean up video URL if it exists
-    if (newPostVideo) {
-      URL.revokeObjectURL(newPostVideo);
-    }
-    setNewPostVideo(null);
-    addToast("Post shared successfully!");
+    setMobileMenuOpen(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        addToast("Image size should be less than 5MB", "error");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewPostImage(reader.result as string);
-        addToast("Image uploaded successfully!");
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 50 * 1024 * 1024) {
-        addToast("Video size should be less than 50MB", "error");
-        return;
-      }
-      // Clean up previous video URL if it exists
-      if (newPostVideo) {
-        URL.revokeObjectURL(newPostVideo);
-      }
-      // Create object URL for video
-      const videoUrl = URL.createObjectURL(file);
-      setNewPostVideo(videoUrl);
-      addToast("Video uploaded successfully!");
-    }
-  };
-
-  const handleLike = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const isLiking = !post.liked;
-          if (isLiking) {
-            addToast("Post liked!");
-          }
-          return {
-            ...post,
-            liked: !post.liked,
-            likes: post.liked ? post.likes - 1 : post.likes + 1,
-          };
-        }
-        return post;
-      })
-    );
-  };
-
-  const handleCommentSubmit = (postId: number) => {
-    const commentText = newComment[postId]?.trim();
-    if (!commentText) {
-      addToast("Please write a comment", "error");
-      return;
-    }
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: [
-              ...post.comments,
-              {
-                id: post.comments.length + 1,
-                author: profile.name,
-                text: commentText,
-                time: "Just now",
-              },
-            ],
-          };
-        }
-        return post;
-      })
-    );
-    setNewComment({ ...newComment, [postId]: "" });
-    addToast("Comment added successfully!");
-  };
-
-  const handleRepost = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return { ...post, reposts: post.reposts + 1 };
-        }
-        return post;
-      })
-    );
-    addToast("Post reposted!");
-  };
-
-  const handleShare = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return { ...post, shares: post.shares + 1 };
-        }
-        return post;
-      })
-    );
-    addToast("Post shared!");
-  };
-
-  const handleToggleComments = (postId: number) => {
-    setVisibleComments((prev) => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
-  };
-
-  const handleLoadMoreComments = (postId: number) => {
-    setShowAllComments((prev) => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
-  };
-
-  const handleComingSoon = (feature: string) => {
-    addToast(`${feature} feature coming soon!`);
-  };
-
-  const handleFollow = (connectionId: number) => {
-    setConnections(
-      connections.map((connection) => {
-        if (connection.id === connectionId) {
-          const isFollowing = !connection.isFollowing;
-          if (isFollowing) {
-            addToast(`Now following ${connection.name}!`);
-          } else {
-            addToast(`Unfollowed ${connection.name}`);
-          }
-          return { ...connection, isFollowing: !connection.isFollowing };
-        }
-        return connection;
-      })
-    );
-  };
-
-  const handleEditProfile = () => {
-    if (!tempProfileName.trim()) {
-      addToast("Name cannot be empty", "error");
-      return;
-    }
-    setProfile({
-      ...profile,
-      name: tempProfileName,
-      description: tempProfileDescription,
-      picture: tempProfilePicture,
-    });
-    setIsEditingProfile(false);
-    addToast("Profile updated successfully!");
-  };
-
-  const handleProfilePictureUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        addToast("Profile picture size should be less than 2MB", "error");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempProfilePicture(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const filteredPosts = posts.filter(
-    (post) =>
-      post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedPosts = [...filteredPosts].sort((a, b) => b.id - a.id);
-
-  const profileImages: { [key: string]: string } = {
-    Liyana:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&auto=format",
-    "Vikas Singh":
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&auto=format",
-    "Harish Kumar":
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&auto=format",
-    "Anjali Sharma":
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&auto=format",
-    "Priya Patel":
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&auto=format",
-    "Rohit Sharma":
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format",
-    "Neha Gupta":
-      "https://images.unsplash.com/photo-1445053023192-8d45cb66099d?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8cGVyc29ufGVufDB8fDB8fHww",
-    "Sarah Johnson":
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&auto=format",
-    "Mike Chen":
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&auto=format",
-    "Lisa Wang":
-      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&auto=format",
-    "David Rodriguez":
-      "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&auto=format",
-    "Emily Foster":
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&auto=format",
-    "Alex Thompson":
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&auto=format",
-    "Kevin Liu":
-      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&h=150&fit=crop&auto=format",
-    "Rachel Green":
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&auto=format",
-  };
-
+  // Check if mobile
   useEffect(() => {
-    const link = document.createElement("link");
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-
-    return () => {
-      document.head.removeChild(link);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        // compute the actual panel width (we cap it at window.innerWidth - 20 for 10px margins)
+        const panelWidth = Math.min(320, window.innerWidth - 20);
+        // maxX is the rightmost x coordinate that still shows the panel fully
+        const maxX = window.innerWidth - panelWidth;
+        // pick a small margin (10px), but never exceed maxX
+        const initialX = Math.min(10, maxX);
+        setControlPanelPosition({
+          x: initialX,
+          y: 80,
+        });
+      }
     };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+  useEffect(() => {
+    if (!isClient) {
+      setisClient(true);
+    }
   }, []);
 
+  // Check if user is in simulator section
   useEffect(() => {
-    if (isEditingProfile || isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
+    const checkSection = () => {
+      if (simulatorRef.current) {
+        const rect = simulatorRef.current.getBoundingClientRect();
+        const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+        setIsInSimulatorSection(isVisible);
+      }
+    };
+
+    checkSection();
+    window.addEventListener('scroll', checkSection);
+    return () => window.removeEventListener('scroll', checkSection);
+  }, []);
+  // Toast management
+  const addToast = useCallback((message: string, type: Toast["type"]) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3000);
+  }, []);
+
+  // Calculate trajectory points for visualization
+  const trajectoryPoints = React.useMemo(() => {
+    const angleRad = (angle * Math.PI) / 180;
+    const v0x = velocity * Math.cos(angleRad);
+    const v0y = velocity * Math.sin(angleRad);
+
+    const points: { x: number; y: number }[] = [];
+    let t = 0;
+
+    while (t <= 10) {
+      const x = LAUNCH_X + v0x * t * SCALE;
+      const y = LAUNCH_Y - (v0y * t - 0.5 * GRAVITY * t * t) * SCALE;
+
+      if (y >= GROUND_Y) {
+        points.push({ x, y: GROUND_Y });
+        break;
+      }
+
+      let hitObstacle = false;
+      for (const obstacle of obstacles) {
+        if (
+          x >= obstacle.x &&
+          x <= obstacle.x + obstacle.width &&
+          y >= obstacle.y &&
+          y <= obstacle.y + obstacle.height
+        ) {
+          hitObstacle = true;
+          break;
+        }
+      }
+
+      points.push({ x, y });
+      if (hitObstacle) break;
+
+      t += 0.05;
+    }
+
+    return points;
+  }, [angle, velocity, LAUNCH_X, LAUNCH_Y, SCALE, GROUND_Y, obstacles]);
+
+  // Check collision function
+  const checkCollision = useCallback(
+    (x: number, y: number) => {
+      if (y >= GROUND_Y) return "ground";
+
+      for (const obstacle of obstacles) {
+        if (
+          x >= obstacle.x &&
+          x <= obstacle.x + obstacle.width &&
+          y >= obstacle.y &&
+          y <= obstacle.y + obstacle.height
+        ) {
+          return "obstacle";
+        }
+      }
+
+      return null;
+    },
+    [GROUND_Y, obstacles]
+  );
+
+  // Animation loop
+  useEffect(() => {
+    if (!isPlaying || !projectile.isFlying || projectile.hasCollided) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      return;
+    }
+
+    const animate = () => {
+      setProjectile((prev) => {
+        const newTime = prev.time + TIME_STEP;
+        const angleRad = (angle * Math.PI) / 180;
+        const v0x = velocity * Math.cos(angleRad);
+        const v0y = velocity * Math.sin(angleRad);
+
+        const newX = LAUNCH_X + v0x * newTime * SCALE;
+        const newY =
+          LAUNCH_Y -
+          (v0y * newTime - 0.5 * GRAVITY * newTime * newTime) * SCALE;
+
+        const newVx = v0x;
+        const newVy = v0y - GRAVITY * newTime;
+
+        const collision = checkCollision(newX, newY);
+        if (collision && !collisionNotifiedRef.current) {
+          collisionNotifiedRef.current = true;
+
+          setTimeout(() => {
+            addToast(
+              collision === "ground" ? "Ground impact!" : "Obstacle collision!",
+              "info"
+            );
+            setIsPlaying(false);
+            // Reset projectile position after collision
+            setTimeout(() => {
+              setProjectile({
+                x: LAUNCH_X,
+                y: LAUNCH_Y,
+                vx: 0,
+                vy: 0,
+                time: 0,
+                isFlying: false,
+                hasCollided: false,
+              });
+            }, 500); // Reset after a short delay to show the collision
+          }, 100);
+
+          return {
+            ...prev,
+            x: newX,
+            y: collision === "ground" ? GROUND_Y : newY,
+            hasCollided: true,
+            isFlying: false,
+            collisionType: collision,
+          };
+        }
+
+        return {
+          x: newX,
+          y: newY,
+          vx: newVx,
+          vy: newVy,
+          time: newTime,
+          isFlying: true,
+          hasCollided: false,
+        };
+      });
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [
+    isPlaying,
+    projectile.isFlying,
+    projectile.hasCollided,
+    angle,
+    velocity,
+    checkCollision,
+    addToast,
+    LAUNCH_X,
+    LAUNCH_Y,
+    SCALE,
+    GROUND_Y,
+  ]);
+
+  // Start/stop simulation
+  const toggleSimulation = () => {
+    if (!isPlaying) {
+      if (!projectile.isFlying) {
+        collisionNotifiedRef.current = false;
+
+        const angleRad = (angle * Math.PI) / 180;
+        const v0x = velocity * Math.cos(angleRad);
+        const v0y = velocity * Math.sin(angleRad);
+
+        setProjectile({
+          x: LAUNCH_X,
+          y: LAUNCH_Y,
+          vx: v0x,
+          vy: v0y,
+          time: 0,
+          isFlying: true,
+          hasCollided: false,
+        });
+
+        addToast("Projectile launched!", "success");
+      }
+      setIsPlaying(true);
     } else {
-      document.body.style.overflow = "unset";
+      setIsPlaying(false);
+      addToast("Simulation paused", "info");
+    }
+  };
+
+  // Reset simulation
+  const resetSimulation = () => {
+    setIsPlaying(false);
+    collisionNotifiedRef.current = false;
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    setProjectile({
+      x: LAUNCH_X,
+      y: LAUNCH_Y,
+      vx: 0,
+      vy: 0,
+      time: 0,
+      isFlying: false,
+      hasCollided: false,
+    });
+    addToast("Simulation reset", "success");
+  };
+
+  // Zoom controls
+  const zoomIn = () => {
+    if (zoomLevel < 1.1) {
+      const newZoomLevel = zoomLevel === 1 ? 1.05 : 1.1;
+      setZoomLevel(newZoomLevel);
+      // Reset simulation after zoom level is set
+      setTimeout(() => {
+        const newLaunchX = 50 * newZoomLevel;
+        const newLaunchY = 320 * newZoomLevel;
+        // resetSimulation();
+
+        // collisionNotifiedRef.current = false;
+        // if (animationRef.current) {
+        //   cancelAnimationFrame(animationRef.current);
+        // }
+        setProjectile((prev) => ({
+          ...prev,
+          x: newLaunchX,
+          y: newLaunchY,
+          vx: 0,
+          vy: 0,
+          time: 0,
+          isFlying: false,
+          hasCollided: false,
+        }));
+      }, 50);
+      addToast(`Zoomed to ${newZoomLevel === 1.05 ? "1.05x" : "1.1x"}`, "info");
+    }
+  };
+
+  const zoomOut = () => {
+    if (zoomLevel > 1) {
+      const newZoomLevel = zoomLevel === 1.1 ? 1.05 : 1;
+      setZoomLevel(newZoomLevel);
+      // Reset simulation after zoom level is set
+      setTimeout(() => {
+        const newLaunchX = 50 * newZoomLevel;
+        const newLaunchY = 320 * newZoomLevel;
+
+        setProjectile((prev) => ({
+          ...prev,
+          x: newLaunchX,
+          y: newLaunchY,
+          vx: 0,
+          vy: 0,
+          time: 0,
+          isFlying: false,
+          hasCollided: false,
+        }));
+      }, 50);
+      addToast(`Zoomed to ${newZoomLevel === 1.05 ? "1.05x" : "1x"}`, "info");
+    }
+  };
+
+  // Drag functionality
+  const handleTitleBarMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: controlPanelPosition.x,
+      startPosY: controlPanelPosition.y,
+    };
+  };
+
+  const handleTitleBarTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startPosX: controlPanelPosition.x,
+      startPosY: controlPanelPosition.y,
+    };
+  };
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - dragRef.current.startX;
+      const deltaY = e.clientY - dragRef.current.startY;
+
+      const panelWidth = isMobile ? Math.min(320, window.innerWidth - 20) : 320;
+      const panelHeight = isMobile ? 450 : 400;
+
+      setControlPanelPosition({
+        x: Math.max(
+          0,
+          Math.min(
+            window.innerWidth - panelWidth,
+            dragRef.current.startPosX + deltaX
+          )
+        ),
+        y: Math.max(
+          0,
+          Math.min(
+            window.innerHeight - panelHeight,
+            dragRef.current.startPosY + deltaY
+          )
+        ),
+      });
+    },
+    [isDragging, isMobile]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDragging) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - dragRef.current.startX;
+      const deltaY = touch.clientY - dragRef.current.startY;
+
+      const panelWidth = isMobile ? Math.min(320, window.innerWidth - 20) : 320;
+      const panelHeight = isMobile ? 450 : 400;
+
+      setControlPanelPosition({
+        x: Math.max(
+          0,
+          Math.min(
+            window.innerWidth - panelWidth,
+            dragRef.current.startPosX + deltaX
+          )
+        ),
+        y: Math.max(
+          0,
+          Math.min(
+            window.innerHeight - panelHeight,
+            dragRef.current.startPosY + deltaY
+          )
+        ),
+      });
+    },
+    [isDragging, isMobile]
+  );
+
+  const handleEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleEnd);
+      document.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      document.addEventListener("touchend", handleEnd);
     }
 
     return () => {
-      document.body.style.overflow = "unset";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
     };
-  }, [isEditingProfile, isMobileMenuOpen]);
+  }, [isDragging, handleMouseMove, handleTouchMove, handleEnd]);
+
+  // Click outside handler for mobile menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        mobileMenuOpen &&
+        !target.closest(".mobile-menu") &&
+        !target.closest(".menu-button")
+      ) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [mobileMenuOpen]);
+
+  const pathData =
+    trajectoryPoints.length > 0
+      ? `M ${trajectoryPoints[0].x} ${trajectoryPoints[0].y} ` +
+        trajectoryPoints
+          .slice(1)
+          .map((p) => `L ${p.x} ${p.y}`)
+          .join(" ")
+      : "";
+  if (!isClient) {
+    return "";
+  }
 
   return (
-    <div
-      className="min-h-screen bg-gray-50 flex flex-col"
-      style={{ fontFamily: "Poppins, sans-serif" }}
-    >
-      {toasts.map((toast) => (
-        <Toast key={toast.id} toast={toast} onClose={removeToast} />
-      ))}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-x-hidden font-roboto">
+      {/* Navigation */}
+      <nav className="bg-slate-800/90 backdrop-blur-sm border-b border-slate-700/50 px-2 sm:px-4 py-3 relative z-30 fixed w-full top-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <BeakerIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
+            <span className="text-lg sm:text-xl font-bold text-white">
+              PhysicsLab Pro
+            </span>
+          </div>
 
-      <header className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
-        <div className="max-w-full xl:max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 md:space-x-4 w-full md:w-auto">
-              <FaLinkedin className="text-blue-600 text-3xl cursor-pointer flex-shrink-0" />
-              {activePage === "feed" && (
-                <div className="relative flex-1 md:w-auto md:block">
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full md:w-64 px-4 py-2 pl-10 rounded-md bg-gray-100 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-800"
-                  />
-                  <FaSearch className="absolute left-3 top-3 text-gray-500" />
-                </div>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-6">
+            <button
+              onClick={() => scrollToSection(simulatorRef)}
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Simulator
+            </button>
+            <button
+              onClick={() => scrollToSection(featuresRef)}
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => scrollToSection(analyticsRef)}
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Analytics
+            </button>
+            <button
+              onClick={() => scrollToSection(documentationRef)}
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Documentation
+            </button>
+            <button
+              onClick={() => scrollToSection(enterpriseRef)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            >
+              Enterprise
+            </button>
+          </div>
+
+          {/* Mobile Controls */}
+          <div className="flex items-center space-x-2 md:hidden">
+            <button
+              onClick={() => setControlPanelOpen(!controlPanelOpen)}
+              className="text-white p-2 cursor-pointer"
+              title="Toggle Control Panel"
+            >
+              <AdjustmentsHorizontalIcon className="h-5 w-5" />
+            </button>
+            <button
+              className="text-white menu-button p-2 cursor-pointer"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <XMarkIcon className="h-5 w-5" />
+              ) : (
+                <Bars3Icon className="h-5 w-5" />
               )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-b border-slate-700/50 mobile-menu z-40">
+            <div className="px-4 py-4 space-y-3">
+              <button
+                onClick={() => scrollToSection(simulatorRef)}
+                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Simulator
+              </button>
+              <button
+                onClick={() => scrollToSection(featuresRef)}
+                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection(analyticsRef)}
+                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => scrollToSection(documentationRef)}
+                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Documentation
+              </button>
+              <button
+                onClick={() => scrollToSection(enterpriseRef)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+              >
+                Enterprise
+              </button>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero Section */}
+      <div
+        ref={heroRef}
+        className="pt-16 px-2 sm:px-4 py-8 sm:py-16 text-center"
+      >
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
+            Advanced Physics <span className="text-blue-400">Simulation</span>
+          </h1>
+          <p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto mb-8 sm:mb-12 px-4">
+            Experience cutting-edge projectile motion simulation with real-time
+            physics, interactive controls, and professional-grade analytics for
+            education and research.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+            <button
+              onClick={() => scrollToSection(simulatorRef)}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold transition-all transform hover:scale-105 cursor-pointer"
+            >
+              Try Simulator
+            </button>
+            <button
+              onClick={() => scrollToSection(featuresRef)}
+              className="w-full sm:w-auto border-2 border-slate-600 hover:border-slate-500 text-white px-8 py-4 rounded-xl font-semibold transition-all cursor-pointer"
+            >
+              Learn More
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div ref={featuresRef} className="px-2 sm:px-4 py-12 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Powerful <span className="text-blue-400">Features</span>
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Everything you need for comprehensive physics simulation and
+              analysis
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <RocketLaunchIcon className="h-12 w-12 text-blue-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Real-time Physics
+              </h3>
+              <p className="text-slate-300">
+                Advanced physics engine with accurate trajectory calculation and
+                collision detection
+              </p>
             </div>
 
-            <div className="flex items-center">
-              <div className="hidden md:flex space-x-6 items-center">
-                <button
-                  onClick={() => setActivePage("feed")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <ChartPieIcon className="h-12 w-12 text-green-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Live Analytics
+              </h3>
+              <p className="text-slate-300">
+                Real-time data visualization with velocity vectors and
+                trajectory paths
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <CpuChipIcon className="h-12 w-12 text-purple-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Interactive Controls
+              </h3>
+              <p className="text-slate-300">
+                Intuitive interface with drag-and-drop panels and responsive
+                controls
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <GlobeAltIcon className="h-12 w-12 text-yellow-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Cross-Platform
+              </h3>
+              <p className="text-slate-300">
+                Works seamlessly on desktop, tablet, and mobile devices
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <ShieldCheckIcon className="h-12 w-12 text-red-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Collision Detection
+              </h3>
+              <p className="text-slate-300">
+                Advanced obstacle detection with multiple collision types and
+                feedback
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <LightBulbIcon className="h-12 w-12 text-indigo-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Educational Tools
+              </h3>
+              <p className="text-slate-300">
+                Perfect for students, educators, and researchers studying
+                physics
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Simulator Section */}
+      <div ref={simulatorRef} className="px-2 sm:px-4 py-12 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Interactive <span className="text-blue-400">Simulator</span>
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Experience physics in action with our interactive projectile
+              motion simulator
+            </p>
+          </div>
+
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-2 sm:p-4 md:p-6">
+            {/* Zoom Controls */}
+            <div className="flex items-center justify-center mb-4 space-x-2">
+              <button
+                onClick={zoomOut}
+                disabled={zoomLevel <= 1}
+                className="flex items-center space-x-1 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg transition-all cursor-pointer"
+              >
+                <MagnifyingGlassMinusIcon className="h-4 w-4" />
+                <span className="text-sm">Zoom Out</span>
+              </button>
+              <span className="text-white font-medium bg-slate-700 px-3 py-2 rounded-lg text-sm">
+                {zoomLevel}x
+              </span>
+              <button
+                onClick={zoomIn}
+                disabled={zoomLevel >= 1.1}
+                className="flex items-center space-x-1 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg transition-all cursor-pointer"
+              >
+                <MagnifyingGlassPlusIcon className="h-4 w-4" />
+                <span className="text-sm">Zoom In</span>
+              </button>
+            </div>
+
+            {/* Simulation Canvas */}
+            <div
+              className="relative bg-gradient-to-b from-sky-200 to-green-200 rounded-xl overflow-hidden mb-4 sm:mb-6 mx-auto"
+              style={{
+                height: `${Math.min(
+                  CANVAS_HEIGHT,
+                  isMobile ? window.innerHeight * 0.8 : window.innerHeight * 0.6
+                )}px`,
+                // width:
+                //   isMobile && zoomLevel > 1 ? `${800 * zoomLevel}px` : "100%",
+                width: isMobile && zoomLevel > 1 ? "100%" : "100%",
+                maxWidth: isMobile && zoomLevel > 1 ? "none" : "100%",
+                // overflowX: zoomLevel > 1 ? "auto" : "hidden",
+                overflowY: "hidden",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {/* Sky with sun and clouds */}
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-sky-200 to-green-300">
+                {/* Sun */}
+                <div
+                  className="absolute bg-yellow-400 rounded-full shadow-lg opacity-90"
+                  style={{
+                    top: 6 * zoomLevel,
+                    right: 8 * zoomLevel,
+                    width: 12 * zoomLevel,
+                    height: 12 * zoomLevel,
+                  }}
                 >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <FaHome className="text-xl" />
-                  </div>
-                  <span className="text-xs font-medium">Home</span>
-                </button>
-                <button
-                  onClick={() => setActivePage("network")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <FaUsers className="text-xl" />
-                  </div>
-                  <span className="text-xs font-medium">My Network</span>
-                </button>
-                <button
-                  onClick={() => handleComingSoon("Jobs")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <FaBriefcase className="text-xl" />
-                  </div>
-                  <span className="text-xs font-medium">Jobs</span>
-                </button>
-                <button
-                  onClick={() => handleComingSoon("Messaging")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <FaEnvelope className="text-xl" />
-                  </div>
-                  <span className="text-xs font-medium">Messaging</span>
-                </button>
-                <button
-                  onClick={() => handleComingSoon("Notifications")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <FaBell className="text-xl" />
-                  </div>
-                  <span className="text-xs font-medium">Notifications</span>
-                </button>
-                <button
-                  onClick={() => handleComingSoon("Profile")}
-                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                >
-                  <div className="h-6 flex items-center justify-center mb-1">
-                    <div className="w-6 h-6 rounded-full overflow-hidden">
-                    <img
-                      src={profile.picture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  </div>
-                  <span className="text-xs font-medium">Me</span>
-                </button>
-                <div className="border-l border-gray-300 pl-4 h-12 flex items-center">
-                  <button
-                    className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
-                    onClick={() => handleComingSoon("For Business")}
-                  >
-                    <div className="h-6 flex items-center justify-center mb-1">
-                      <FaBriefcase className="text-xl" />
-                    </div>
-                    <span className="text-xs font-medium">For Business</span>
-                  </button>
+                  <div
+                    className="absolute bg-yellow-300 rounded-full"
+                    style={{
+                      top: 1 * zoomLevel,
+                      left: 1 * zoomLevel,
+                      right: 1 * zoomLevel,
+                      bottom: 1 * zoomLevel,
+                    }}
+                  ></div>
                 </div>
-                <div className="flex items-center h-12">
-                <button
-                  className="text-yellow-600 text-xs font-medium hover:underline cursor-pointer"
-                  onClick={() => handleComingSoon("Premium")}
-                >
-                  Try Premium for ₹0
-                </button>
-                </div>
+
+                {/* Clouds */}
+                <div
+                  className="absolute bg-white/60 rounded-full"
+                  style={{
+                    top: 8 * zoomLevel,
+                    left: 20 * zoomLevel,
+                    width: 8 * zoomLevel,
+                    height: 4 * zoomLevel,
+                  }}
+                ></div>
+                <div
+                  className="absolute bg-white/40 rounded-full"
+                  style={{
+                    top: 12 * zoomLevel,
+                    left: 16 * zoomLevel,
+                    width: 12 * zoomLevel,
+                    height: 6 * zoomLevel,
+                  }}
+                ></div>
+                <div
+                  className="absolute bg-white/50 rounded-full"
+                  style={{
+                    top: 16 * zoomLevel,
+                    right: 32 * zoomLevel,
+                    width: 10 * zoomLevel,
+                    height: 5 * zoomLevel,
+                  }}
+                ></div>
               </div>
 
-              {/* Mobile hamburger menu */}
-              <div className="flex md:hidden items-center space-x-3 ml-2">
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-                  aria-label="Menu"
+              {/* Ground */}
+              <div
+                className="absolute left-0 right-0 bg-gradient-to-t from-green-700 to-green-500"
+                style={{
+                  bottom: 0,
+                  height: `${(BASE_CANVAS_HEIGHT - 360) * zoomLevel}px`,
+                }}
+              >
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-green-800"
+                  style={{ height: 2 * zoomLevel }}
+                ></div>
+                <div
+                  className="absolute left-0 right-0 bg-green-600 opacity-70"
+                  style={{
+                    bottom: 2 * zoomLevel,
+                    height: 4 * zoomLevel,
+                  }}
+                ></div>
+              </div>
+
+              {/* SVG Overlay */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                <defs>
+                  <marker
+                    id="arrowhead"
+                    markerWidth="12"
+                    markerHeight="8"
+                    refX="10"
+                    refY="4"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon points="0 0, 12 4, 0 8" fill="#3b82f6" />
+                  </marker>
+
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* Trajectory Path */}
+                {showTrajectory && pathData && (
+                  <path
+                    d={pathData}
+                    stroke="#ef4444"
+                    strokeWidth={3 * zoomLevel}
+                    fill="none"
+                    strokeDasharray={`${8 * zoomLevel},${4 * zoomLevel}`}
+                    opacity="0.8"
+                  />
+                )}
+
+                {/* Projectile */}
+                <circle
+                  cx={projectile.x}
+                  cy={projectile.y}
+                  r={8 * zoomLevel}
+                  fill="#dc2626"
+                  stroke="#fff"
+                  strokeWidth={2 * zoomLevel}
+                  filter="url(#glow)"
+                />
+
+                {/* Velocity Vectors */}
+                {showVectors && projectile.isFlying && (
+                  <g>
+                    <line
+                      x1={projectile.x}
+                      y1={projectile.y}
+                      x2={projectile.x + projectile.vx * 3 * zoomLevel}
+                      y2={projectile.y - projectile.vy * 3 * zoomLevel}
+                      stroke="#3b82f6"
+                      strokeWidth={3 * zoomLevel}
+                      markerEnd="url(#arrowhead)"
+                      opacity="0.9"
+                    />
+                  </g>
+                )}
+
+                {/* Launch Angle Indicator */}
+                <line
+                  x1={LAUNCH_X}
+                  y1={LAUNCH_Y}
+                  x2={
+                    LAUNCH_X +
+                    Math.cos((angle * Math.PI) / 180) * 40 * zoomLevel
+                  }
+                  y2={
+                    LAUNCH_Y -
+                    Math.sin((angle * Math.PI) / 180) * 40 * zoomLevel
+                  }
+                  stroke="#fbbf24"
+                  strokeWidth={2 * zoomLevel}
+                  opacity="0.8"
+                />
+                <text
+                  x={
+                    LAUNCH_X +
+                    Math.cos((angle * Math.PI) / 180) * 50 * zoomLevel
+                  }
+                  y={
+                    LAUNCH_Y -
+                    Math.sin((angle * Math.PI) / 180) * 50 * zoomLevel
+                  }
+                  fill="#f59e0b"
+                  fontSize={14 * zoomLevel}
+                  fontWeight="bold"
                 >
-                  <FaBars className="text-xl" />
+                  {angle}°
+                </text>
+              </svg>
+
+              {/* Obstacles */}
+              {obstacles.map((obstacle, index) => (
+                <div
+                  key={index}
+                  className="absolute bg-gradient-to-b from-gray-500 to-gray-700 border-2 border-gray-800 rounded shadow-lg"
+                  style={{
+                    left: obstacle.x,
+                    top: obstacle.y,
+                    width: obstacle.width,
+                    height: obstacle.height,
+                  }}
+                >
+                  <div
+                    className="absolute left-1 right-1 bg-gray-400/50 rounded"
+                    style={{
+                      top: 1 * zoomLevel,
+                      height: 2 * zoomLevel,
+                    }}
+                  ></div>
+                </div>
+              ))}
+
+              {/* Launch Point */}
+              <div
+                className="absolute bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center"
+                style={{
+                  left: `${LAUNCH_X - 12 * zoomLevel}px`,
+                  top: `${LAUNCH_Y - 12 * zoomLevel}px`,
+                  width: 6 * zoomLevel * 4,
+                  height: 6 * zoomLevel * 4,
+                }}
+              >
+                <div
+                  className="bg-white rounded-full"
+                  style={{
+                    width: 2 * zoomLevel,
+                    height: 2 * zoomLevel,
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              <button
+                onClick={toggleSimulation}
+                className="flex items-center space-x-1 sm:space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer"
+              >
+                {isPlaying ? (
+                  <PauseIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                ) : (
+                  <PlayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                )}
+                <span>{isPlaying ? "Pause" : "Launch"}</span>
+              </button>
+
+              <button
+                onClick={resetSimulation}
+                className="flex items-center space-x-1 sm:space-x-2 bg-slate-700 hover:bg-slate-800 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border border-slate-600 hover:border-slate-500"
+              >
+                <ArrowPathIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>Reset</span>
+              </button>
+
+              <button
+                onClick={() => setShowTrajectory(!showTrajectory)}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
+                  showTrajectory
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 hover:border-emerald-400"
+                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
+                }`}
+              >
+                <ChartBarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>Trajectory</span>
+              </button>
+
+              <button
+                onClick={() => setShowVectors(!showVectors)}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
+                  showVectors
+                    ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 hover:border-indigo-400"
+                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
+                }`}
+              >
+                <Cog6ToothIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>Vectors</span>
+              </button>
+
+              <button
+                onClick={() => setControlPanelOpen(!controlPanelOpen)}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
+                  controlPanelOpen
+                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-500 hover:border-orange-400"
+                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
+                }`}
+                title="Toggle Control Panel"
+              >
+                <AdjustmentsHorizontalIcon className="h-5 w-5" />
+                <span>Controls</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Data Display */}
+          <div className="md:hidden flex flex-col bg-slate-800/50 rounded-2xl p-3 sm:p-4 mt-4">
+            <h4 className="font-semibold text-white mb-3 flex items-center text-sm sm:text-base">
+              <InformationCircleIcon className="h-4 w-4 mr-2" />
+              Live Data
+            </h4>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+              <div>
+                <div className="text-slate-400">Position X:</div>
+                <div className="text-blue-400 font-mono">
+                  {((projectile.x - LAUNCH_X) / zoomLevel).toFixed(0)}m
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400">Position Y:</div>
+                <div className="text-blue-400 font-mono">
+                  {Math.max(0, (LAUNCH_Y - projectile.y) / SCALE).toFixed(0)}m
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400">Speed:</div>
+                <div className="text-green-400 font-mono">
+                  {Math.sqrt(projectile.vx ** 2 + projectile.vy ** 2).toFixed(
+                    1
+                  )}{" "}
+                  m/s
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400">Time:</div>
+                <div className="text-yellow-400 font-mono">
+                  {projectile.time.toFixed(2)}s
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-600">
+              <div className="text-slate-400 text-xs sm:text-sm">Status:</div>
+              <div
+                className={`font-semibold text-xs sm:text-sm ${
+                  projectile.hasCollided
+                    ? "text-red-400"
+                    : projectile.isFlying
+                    ? "text-green-400"
+                    : "text-gray-400"
+                }`}
+              >
+                {projectile.hasCollided
+                  ? "Impact"
+                  : projectile.isFlying
+                  ? "In Flight"
+                  : "Ready to Launch"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Section */}
+      <div
+        ref={analyticsRef}
+        className="px-2 sm:px-4 py-12 sm:py-20 bg-slate-900/50"
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Advanced <span className="text-blue-400">Analytics</span>
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Deep insights into projectile motion with comprehensive data
+              analysis
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
+              <h3 className="text-2xl font-semibold text-white mb-6">
+                Real-time Metrics
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Trajectory Analysis</span>
+                  <span className="text-green-400 font-semibold">Live</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Collision Detection</span>
+                  <span className="text-blue-400 font-semibold">Active</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Vector Visualization</span>
+                  <span className="text-purple-400 font-semibold">Enabled</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Performance Monitoring</span>
+                  <span className="text-yellow-400 font-semibold">60 FPS</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
+              <h3 className="text-2xl font-semibold text-white mb-6">
+                Export Options
+              </h3>
+              <div className="space-y-3">
+                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
+                  Export Trajectory Data (CSV)
+                </button>
+                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
+                  Save Simulation Parameters
+                </button>
+                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
+                  Generate Analysis Report
+                </button>
+                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
+                  Share Configuration
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Mobile menu overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 backdrop-blur-xl animate-in fade-in duration-300"
-            onClick={() => setIsMobileMenuOpen(false)}
-            style={{
-              backdropFilter: 'blur(20px) brightness(0.7)',
-              WebkitBackdropFilter: 'blur(20px) brightness(0.7)',
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            }}
-          ></div>
-          
-          {/* Menu panel */}
-          <div className="absolute right-0 top-0 bg-white w-64 h-full shadow-xl animate-in slide-in-from-right duration-300 ease-out">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden">
-                  <img
-                    src={profile.picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
+      {/* Documentation Section */}
+      <div ref={documentationRef} className="px-2 sm:px-4 py-12 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              <span className="text-blue-400">Documentation</span> & Guides
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Comprehensive resources to help you get the most out of our
+              physics simulator
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <BookOpenIcon className="h-10 w-10 text-blue-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Quick Start Guide
+              </h3>
+              <p className="text-slate-300 mb-4">
+                Get up and running with the simulator in minutes
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <AcademicCapIcon className="h-10 w-10 text-green-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Physics Theory
+              </h3>
+              <p className="text-slate-300 mb-4">
+                Understand the mathematical principles behind the simulation
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
+              <UserGroupIcon className="h-10 w-10 text-purple-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-3">
+                Educational Use
+              </h3>
+              <p className="text-slate-300 mb-4">
+                Best practices for using the simulator in educational settings
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Enterprise Section */}
+      <div
+        ref={enterpriseRef}
+        className="px-2 sm:px-4 py-12 sm:py-20 bg-slate-900/50"
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              <span className="text-blue-400">Enterprise</span> Solutions
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Scalable physics simulation solutions for institutions and
+              organizations
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
+              <BuildingOfficeIcon className="h-12 w-12 text-blue-400 mb-6" />
+              <h3 className="text-2xl font-semibold text-white mb-4">
+                For Institutions
+              </h3>
+              <ul className="space-y-3 text-slate-300 mb-6">
+                <li className="flex items-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
+                  Multi-user collaboration tools
+                </li>
+                <li className="flex items-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
+                  Advanced analytics dashboard
+                </li>
+                <li className="flex items-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
+                  Custom simulation scenarios
+                </li>
+                <li className="flex items-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
+                  Priority support & training
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
+              <div className="mb-6">
+                <h3 className="text-2xl font-semibold text-white mb-4">
+                  Contact Sales
+                </h3>
+                <p className="text-slate-300 mb-6">
+                  Ready to transform your physics education or research? Our
+                  team is here to help.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center text-slate-300">
+                  <EnvelopeIcon className="h-5 w-5 text-blue-400 mr-3" />
+                  enterprise@physicslab.pro
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{profile.name}</h3>
-                  <p className="text-sm text-gray-600">View profile</p>
+                <div className="flex items-center text-slate-300">
+                  <PhoneIcon className="h-5 w-5 text-blue-400 mr-3" />
+                  +1 (555) 123-4567
+                </div>
+                <div className="flex items-center text-slate-300">
+                  <MapPinIcon className="h-5 w-5 text-blue-400 mr-3" />
+                  San Francisco, CA
                 </div>
               </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 text-gray-500 hover:text-gray-700 cursor-pointer"
-              >
-                <FaTimes />
-              </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+            {/* Sleek Side Panel Toggle Button */}
+      <div
+        className={`fixed right-0 top-1/2 transform -translate-y-1/2 z-50 transition-all duration-500 ease-in-out ${
+          controlPanelOpen ? (isMobile ? '-translate-x-70' : '-translate-x-80') : 'translate-x-0'
+        } ${
+          isInSimulatorSection 
+            ? 'opacity-100 scale-100' 
+            : 'opacity-0 scale-95 translate-x-4'
+        }`}
+        style={{
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '600ms, 500ms',
+          transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: isInSimulatorSection ? 'auto' : 'none'
+        }}
+      >
+          <div className="relative group">
+            {/* Sleek glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-l from-blue-500/30 to-indigo-600/30 rounded-l-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-400"></div>
             
-            <div className="py-4">
-              <button
-                onClick={() => {
-                  setActivePage("feed");
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors cursor-pointer ${
-                  activePage === "feed" ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : "text-gray-700"
-                }`}
-              >
-                <FaHome className="text-xl" />
-                <span className="font-medium">Home</span>
-              </button>
+            {/* Main sleek button */}
+            <button
+              onClick={() => setControlPanelOpen(!controlPanelOpen)}
+              className="relative bg-gradient-to-b from-slate-800/90 via-slate-700/90 to-slate-900/90 hover:from-blue-600/90 hover:via-blue-700/90 hover:to-indigo-700/90 text-white backdrop-blur-md border border-slate-600/40 hover:border-blue-400/60 shadow-xl hover:shadow-blue-500/20 transition-all duration-400 flex flex-col items-center justify-center group overflow-hidden"
+              style={{
+                borderTopRightRadius: 0,
+                borderBottomRightRadius: 0,
+                borderTopLeftRadius: '24px',
+                borderBottomLeftRadius: '24px',
+                width: '40px',
+                height: '80px',
+                boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)'
+              }}
+            >
+              {/* Vertical shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/0 via-white/8 to-white/0 -translate-y-full group-hover:translate-y-full transition-transform duration-700 ease-out"></div>
               
-              <button
-                onClick={() => {
-                  setActivePage("network");
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors cursor-pointer ${
-                  activePage === "network" ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : "text-gray-700"
-                }`}
-              >
-                <FaUsers className="text-xl" />
-                <span className="font-medium">My Network</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  handleComingSoon("Jobs");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
-              >
-                <FaBriefcase className="text-xl" />
-                <span className="font-medium">Jobs</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  handleComingSoon("Messaging");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
-              >
-                <FaEnvelope className="text-xl" />
-                <span className="font-medium">Messaging</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  handleComingSoon("Notifications");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
-              >
-                <FaBell className="text-xl" />
-                <span className="font-medium">Notifications</span>
-              </button>
-              
-              <div className="border-t border-gray-200 mt-4 pt-4">
-                <button
-                  onClick={() => {
-                    handleComingSoon("Profile");
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
-                >
-                  <FaUser className="text-xl" />
-                  <span className="font-medium">Profile</span>
-                </button>
+              {/* Icon container */}
+              <div className="relative z-10 flex flex-col items-center justify-center h-full">
+                {controlPanelOpen ? (
+                  <svg className="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                  </svg>
+                )}
                 
-                <button
-                  onClick={() => {
-                    handleComingSoon("Settings");
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
+                {/* Minimalist dots */}
+                <div className="mt-2 flex flex-col space-y-1">
+                  <div className={`w-1 h-1 rounded-full transition-all duration-300 ${controlPanelOpen ? 'bg-orange-400' : 'bg-slate-400'}`}></div>
+                  <div className={`w-1 h-1 rounded-full transition-all duration-300 delay-75 ${controlPanelOpen ? 'bg-orange-400' : 'bg-slate-400'}`}></div>
+                </div>
+              </div>
+              
+              {/* Subtle inner glow */}
+              <div className="absolute inset-0 rounded-l-full bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+            
+            {/* Side accent line */}
+            <div className={`absolute -left-1 top-1/2 transform -translate-y-1/2 w-0.5 transition-all duration-300 ${
+              controlPanelOpen 
+                ? 'h-12 bg-gradient-to-b from-orange-400 to-orange-600' 
+                : 'h-8 bg-gradient-to-b from-blue-400 to-blue-600'
+            } rounded-full shadow-sm`}></div>
+          </div>
+        </div>
+
+      {/* Modern Control Panel */}
+      {isInSimulatorSection && (
+        <div
+          className={`fixed right-0 top-1/2 transform -translate-y-1/2 bg-slate-900/95 backdrop-blur-md border-l border-slate-600/50 shadow-2xl z-40 transition-all duration-300 rounded-l-3xl ${
+            controlPanelOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          style={{
+            width: isMobile ? Math.min(280, window.innerWidth - 40) : 320,
+            maxHeight: isMobile ? '70vh' : '80vh',
+            overflow: 'auto',
+          }}
+        >
+          {/* Modern Header */}
+          <div className="p-4 border-b border-slate-700/50 rounded-tl-3xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <h3 className="text-lg font-semibold text-white">Control Panel</h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Control Content */}
+          <div className="p-4">
+            {/* Angle Control */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Launch Angle:{" "}
+                <span className="text-blue-400 font-bold">{angle}°</span>
+              </label>
+              <input
+                type="range"
+                min="5"
+                max="85"
+                value={angle}
+                disabled={isPlaying}
+                onChange={(e) => {
+                  setAngle(Number(e.target.value));
+                  // Reset projectile position when angle changes
+                  setProjectile({
+                    x: LAUNCH_X,
+                    y: LAUNCH_Y,
+                    vx: 0,
+                    vy: 0,
+                    time: 0,
+                    isFlying: false,
+                    hasCollided: false,
+                  });
+                  setIsPlaying(false);
+                  collisionNotifiedRef.current = false;
+                  if (animationRef.current) {
+                    cancelAnimationFrame(animationRef.current);
+                  }
+                }}
+                className={`w-full h-3 rounded-lg appearance-none slider ${
+                  isPlaying 
+                    ? 'bg-slate-700 cursor-not-allowed opacity-50' 
+                    : 'bg-slate-600 cursor-pointer'
+                }`}
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>5°</span>
+                <span>45°</span>
+                <span>85°</span>
+              </div>
+            </div>
+
+            {/* Velocity Control */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Initial Velocity:{" "}
+                <span className="text-blue-400 font-bold">{velocity} m/s</span>
+              </label>
+              <input
+                type="range"
+                min="10"
+                max="50"
+                value={velocity}
+                disabled={isPlaying}
+                onChange={(e) => {
+                  setVelocity(Number(e.target.value));
+                  // Reset projectile position when velocity changes
+                  setProjectile({
+                    x: LAUNCH_X,
+                    y: LAUNCH_Y,
+                    vx: 0,
+                    vy: 0,
+                    time: 0,
+                    isFlying: false,
+                    hasCollided: false,
+                  });
+                  setIsPlaying(false);
+                  collisionNotifiedRef.current = false;
+                  if (animationRef.current) {
+                    cancelAnimationFrame(animationRef.current);
+                  }
+                }}
+                className={`w-full h-3 rounded-lg appearance-none slider ${
+                  isPlaying 
+                    ? 'bg-slate-700 cursor-not-allowed opacity-50' 
+                    : 'bg-slate-600 cursor-pointer'
+                }`}
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>10 m/s</span>
+                <span>30 m/s</span>
+                <span>50 m/s</span>
+              </div>
+            </div>
+
+            {/* Real-time Data */}
+            <div className="flex flex-col bg-slate-800/60 rounded-2xl p-4 border border-slate-600/30">
+              <h4 className="font-semibold text-white mb-3 flex items-center text-sm sm:text-base">
+                <InformationCircleIcon className="h-4 w-4 mr-2" />
+                Live Data
+              </h4>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                <div>
+                  <div className="text-slate-400">Position X:</div>
+                  <div className="text-blue-400 font-mono">
+                    {((projectile.x - LAUNCH_X) / zoomLevel).toFixed(0)}m
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400">Position Y:</div>
+                  <div className="text-blue-400 font-mono">
+                    {Math.max(0, (LAUNCH_Y - projectile.y) / SCALE).toFixed(0)}m
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400">Speed:</div>
+                  <div className="text-green-400 font-mono">
+                    {Math.sqrt(projectile.vx ** 2 + projectile.vy ** 2).toFixed(
+                      1
+                    )}{" "}
+                    m/s
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400">Time:</div>
+                  <div className="text-yellow-400 font-mono">
+                    {projectile.time.toFixed(2)}s
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-600">
+                <div className="text-slate-400 text-xs sm:text-sm">Status:</div>
+                <div
+                  className={`font-semibold text-xs sm:text-sm ${
+                    projectile.hasCollided
+                      ? "text-red-400"
+                      : projectile.isFlying
+                      ? "text-green-400"
+                      : "text-gray-400"
+                  }`}
                 >
-                  <span className="font-medium text-sm">Settings & Privacy</span>
-                </button>
-                
-                <button
-                  onClick={() => {
-                    handleComingSoon("Premium");
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-yellow-600 cursor-pointer"
-                >
-                  <span className="font-medium text-sm">Try Premium for ₹0</span>
-                </button>
+                  {projectile.hasCollided
+                    ? "Impact"
+                    : projectile.isFlying
+                    ? "In Flight"
+                    : "Ready to Launch"}
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-slate-400 text-xs sm:text-sm">
+                  Zoom Level:
+                </div>
+                <div className="text-blue-400 font-mono text-xs sm:text-sm">
+                  {zoomLevel}x
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {activePage === "network" ? (
-        // Network page - full screen width
-        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
-          <NetworkPage
-            connections={connections}
-            handleFollow={handleFollow}
-            profileImages={profileImages}
-          />
-        </main>
-      ) : (
-        // Feed page - constrained width with sidebars
-        <main className="flex-1 max-w-full xl:max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-6">
-          {/* Feed page - with sidebar layout */}
-          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-            {!searchQuery.trim() && (
-              <aside className="hidden md:block w-full md:w-1/6 lg:w-1/5">
-                <ProfileCard
-                  profile={profile}
-                  isEditingProfile={isEditingProfile}
-                  setIsEditingProfile={setIsEditingProfile}
-                  tempProfileName={tempProfileName}
-                  setTempProfileName={setTempProfileName}
-                  tempProfileDescription={tempProfileDescription}
-                  setTempProfileDescription={setTempProfileDescription}
-                  tempProfilePicture={tempProfilePicture}
-                  handleEditProfile={handleEditProfile}
-                  handleProfilePictureUpload={handleProfilePictureUpload}
-                  handleComingSoon={handleComingSoon}
-                />
-              </aside>
-            )}
-
-            <section className={`w-full ${searchQuery.trim() ? "md:w-full" : "md:w-4/6 lg:w-3/5"}`}>
-            {activePage === "feed" && !searchQuery.trim() && (
-              <div className="md:hidden">
-                <ProfileCard
-                  profile={profile}
-                  isEditingProfile={isEditingProfile}
-                  setIsEditingProfile={setIsEditingProfile}
-                  tempProfileName={tempProfileName}
-                  setTempProfileName={setTempProfileName}
-                  tempProfileDescription={tempProfileDescription}
-                  setTempProfileDescription={setTempProfileDescription}
-                  tempProfilePicture={tempProfilePicture}
-                  handleEditProfile={handleEditProfile}
-                  handleProfilePictureUpload={handleProfilePictureUpload}
-                  handleComingSoon={handleComingSoon}
-                  isMobile={true}
-                />
+      {/* Footer */}
+      <footer className="bg-slate-900 border-t border-slate-800 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+            {/* Company Info */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center space-x-3 mb-4">
+                <BeakerIcon className="h-8 w-8 text-blue-400" />
+                <span className="text-xl font-bold text-white">
+                  PhysicsLab Pro
+                </span>
               </div>
-            )}
+              <p className="text-slate-300 mb-6 max-w-md">
+                Advanced physics simulation platform designed for education,
+                research, and professional applications. Experience the future
+                of interactive learning.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
+                  <span className="text-blue-400 font-bold text-sm">f</span>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
+                  <span className="text-blue-400 font-bold text-sm">t</span>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
+                  <span className="text-blue-400 font-bold text-sm">in</span>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
+                  <span className="text-blue-400 font-bold text-sm">yt</span>
+                </a>
+              </div>
+            </div>
 
-            {activePage === "feed" ? (
-              <>
-                {!searchQuery.trim() && (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden">
-                      <img
-                        src={profile.picture}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Start a post"
-                      value={newPost}
-                      onChange={(e) => setNewPost(e.target.value)}
-                      onKeyPress={(e) =>
-                        e.key === "Enter" && handlePostSubmit()
-                      }
-                      className="w-full p-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-800"
-                    />
-                  </div>
-                  {(newPostImage || newPostVideo) && (
-                    <div className="mb-4 relative">
-                      {newPostImage && (
-                        <div className="relative">
-                          <img
-                            src={newPostImage}
-                            alt="Post Preview"
-                            className="w-full rounded-lg max-h-64 object-cover"
-                          />
-                          <button
-                            onClick={() => setNewPostImage(null)}
-                            className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 text-white rounded-full p-1 hover:bg-opacity-90 transition-all cursor-pointer"
-                          >
-                            <FaTimes />
-                          </button>
-                        </div>
-                      )}
-                      {newPostVideo && (
-                        <div className="relative">
-                          <video
-                            src={newPostVideo}
-                            controls
-                            preload="metadata"
-                            className="w-full rounded-lg max-h-64"
-                            style={{ backgroundColor: '#000' }}
-                          />
-                          <button
-                            onClick={() => {
-                              if (newPostVideo) {
-                                URL.revokeObjectURL(newPostVideo);
-                              }
-                              setNewPostVideo(null);
-                            }}
-                            className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 text-white rounded-full p-1 hover:bg-opacity-90 transition-all cursor-pointer"
-                          >
-                            <FaTimes />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <div className="flex space-x-4">
-                      <button
-                        onClick={() => imageInputRef.current?.click()}
-                        className="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <FaImage className="text-blue-500" />
-                        <span className="text-sm font-medium">Media</span>
-                      </button>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={imageInputRef}
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => videoInputRef.current?.click()}
-                        className="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <FaVideo className="text-green-500" />
-                        <span className="text-sm font-medium">Video</span>
-                      </button>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        ref={videoInputRef}
-                        onChange={handleVideoUpload}
-                        className="hidden"
-                      />
-                    </div>
-                    {(newPost.trim() || newPostImage || newPostVideo) && (
-                      <button
-                        onClick={handlePostSubmit}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition-colors cursor-pointer"
-                      >
-                        Post
-                      </button>
-                    )}
-                  </div>
-                </div>
-                )}
-
-                {!searchQuery.trim() && (
-                  <div className="h-px bg-gray-300 mb-6"></div>
-                )}
-
-                {sortedPosts.length > 0 ? (
-                  sortedPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    profile={profile}
-                    profileImages={profileImages}
-                    connections={connections}
-                    handleLike={handleLike}
-                    handleCommentSubmit={handleCommentSubmit}
-                    handleRepost={handleRepost}
-                    handleShare={handleShare}
-                    handleFollow={handleFollow}
-                    handleToggleComments={handleToggleComments}
-                      handleLoadMoreComments={handleLoadMoreComments}
-                    visibleComments={visibleComments}
-                      showAllComments={showAllComments}
-                    newComment={newComment}
-                    setNewComment={setNewComment}
-                  />
-                  ))
-                ) : searchQuery.trim() ? (
-                  <div className="bg-gray-50 rounded-2xl p-12 mb-6 text-center">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FaSearch className="text-gray-500 text-xl" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      No results found
-                    </h3>
-                    <p className="text-gray-600 text-lg mb-2 max-w-md mx-auto">
-                      No posts found for <span className="font-semibold text-gray-800">&quot;{searchQuery}&quot;</span>
-                    </p>
-                    <p className="text-gray-500 mb-8 max-w-sm mx-auto">
-                      Try searching for different keywords or check the spelling
-                    </p>
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="px-8 py-3 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 cursor-pointer transform hover:scale-105"
-                    >
-                      Clear search
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 rounded-2xl p-12 mb-6 text-center">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FaUsers className="text-gray-500 text-xl" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      No posts yet
-                    </h3>
-                    <p className="text-gray-600 text-lg max-w-md mx-auto">
-                      Start sharing your thoughts and connect with your network!
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <NetworkPage
-                connections={connections}
-                handleFollow={handleFollow}
-                profileImages={profileImages}
-              />
-            )}
-            </section>
-
-            {activePage === "feed" && !searchQuery.trim() && (
-              <aside className="hidden md:block w-full md:w-1/6 lg:w-1/5">
-                <NewsSection
-                  showMoreNews={showMoreNews}
-                  setShowMoreNews={setShowMoreNews}
-                />
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-                  <h2 className="text-lg font-semibold mb-4 text-gray-900">
-                    Today&apos;s puzzle
-                  </h2>
+            {/* Product Links */}
+            <div>
+              <h3 className="text-white font-semibold mb-4">Product</h3>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => scrollToSection(simulatorRef)}
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Simulator
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(featuresRef)}
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Features
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection(analyticsRef)}
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Analytics
+                  </button>
+                </li>
+                <li>
                   <a
                     href="#"
-                    rel="noopener noreferrer"
-                    className="block"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                      <FaPuzzlePiece className="text-orange-500 text-2xl" />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          Zip - a quick brain teaser
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Solve in 60s or less!
-                        </p>
-                      </div>
-                    </div>
+                    API Access
                   </a>
-                  <p className="text-xs text-gray-500 mt-3">
-                    Score is private to you
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <FaAd className="text-gray-400 text-xl" />
-                      <p className="text-sm text-gray-500">Promoted</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700 font-medium">
-                      Boost your career with LinkedIn Premium
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Get insights on who viewed your profile
-                    </p>
-                  </div>
-                </div>
-              </aside>
-            )}
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Mobile App
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support Links */}
+            <div>
+              <h3 className="text-white font-semibold mb-4">Support</h3>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => scrollToSection(documentationRef)}
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Documentation
+                  </button>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Help Center
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Community Forum
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Contact Support
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    System Status
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-        </main>
-        )
+
+          {/* Bottom Section */}
+          <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
+            <div className="text-slate-400 text-sm mb-4 sm:mb-0">
+              © 2024 PhysicsLab Pro. All rights reserved.
+            </div>
+            <div className="flex space-x-6 text-sm">
+              <a
+                href="#"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Privacy Policy
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Terms of Service
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Cookie Policy
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Toast Messages */}
+      <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 space-y-2 max-w-xs">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg shadow-lg transform transition-all duration-300 animate-slide-in text-xs sm:text-sm ${
+              toast.type === "success"
+                ? "bg-green-600 text-white"
+                : toast.type === "error"
+                ? "bg-red-600 text-white"
+                : "bg-blue-600 text-white"
+            }`}
+          >
+            {toast.type === "success" && (
+              <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            )}
+            {toast.type === "error" && (
+              <ExclamationTriangleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            )}
+            {toast.type === "info" && (
+              <InformationCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            )}
+            <span className="font-medium">{toast.message}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Custom Styles */}
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+
+        .font-roboto {
+          font-family: "Roboto", sans-serif;
+        }
+        html {
+          scroll-behavior: smooth;
         }
 
-      <footer className="bg-gray-100 border-t border-gray-200 py-4 text-center mt-auto">
-        <p className="text-sm text-gray-600">© 2024 LinkIn. All rights reserved.</p>
-      </footer>
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 24px;
+          width: 24px;
+          border-radius: 50%;
+          background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .slider::-moz-range-thumb {
+          height: 24px;
+          width: 24px;
+          border-radius: 50%;
+          background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+          border: none;
+        }
+
+        .slider::-webkit-slider-track {
+          height: 12px;
+          border-radius: 6px;
+          background: #475569;
+        }
+
+        .slider::-moz-range-track {
+          height: 12px;
+          border-radius: 6px;
+          background: #475569;
+          border: none;
+        }
+
+        @keyframes slide-in {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+
+        @media (max-width: 320px) {
+          .slider::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+          }
+
+          .slider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
-export default LinkedInClone;
+export default ProjectileMotionSimulator;
