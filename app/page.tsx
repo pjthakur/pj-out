@@ -1,1889 +1,2418 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
-  PlayIcon,
-  PauseIcon,
-  ArrowPathIcon,
-  Cog6ToothIcon,
-  ChartBarIcon,
-  BeakerIcon,
-  XMarkIcon,
-  Bars3Icon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  InformationCircleIcon,
-  MagnifyingGlassPlusIcon,
-  MagnifyingGlassMinusIcon,
-  AdjustmentsHorizontalIcon,
-  RocketLaunchIcon,
-  ChartPieIcon,
+  HomeIcon,
   BookOpenIcon,
-  BuildingOfficeIcon,
-  UserGroupIcon,
-  CpuChipIcon,
-  GlobeAltIcon,
-  ShieldCheckIcon,
-  LightBulbIcon,
+  ChartBarIcon,
+  UserIcon,
+
+  PlayIcon,
+  MicrophoneIcon,
+  CheckCircleIcon,
+  TrophyIcon,
+  FireIcon,
+  StarIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  SpeakerWaveIcon,
+  PlusIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  CalendarIcon,
+  BoltIcon,
+  HeartIcon,
+  GiftIcon,
   AcademicCapIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
+  BeakerIcon,
 } from "@heroicons/react/24/outline";
+import {
+  FireIcon as FireIconSolid,
+  StarIcon as StarIconSolid,
+  CheckBadgeIcon,
+} from "@heroicons/react/24/solid";
+
+// Types
+interface SkillNode {
+  id: string;
+  name: string;
+  completed: boolean;
+  level: number;
+  xp: number;
+  maxXp: number;
+  x: number;
+  y: number;
+  prerequisites: string[];
+  category: "basics" | "grammar" | "vocabulary" | "conversation";
+  color: string;
+}
+
+interface WeeklyData {
+  day: string;
+  date: string;
+  xp: number;
+  lessons: number;
+  timeSpent: number;
+  accuracy: number;
+}
 
 interface Toast {
   id: string;
   message: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "warning";
 }
 
-interface Obstacle {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  progress: number;
+  maxProgress: number;
 }
 
-interface ProjectileState {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  time: number;
-  isFlying: boolean;
-  hasCollided: boolean;
-  collisionType?: string;
+interface UserStats {
+  totalLessons: number;
+  totalTimeSpent: number;
+  averageAccuracy: number;
+  longestStreak: number;
+  skillsCompleted: number;
+  practiceMinutesToday: number;
+  weeklyGoal: number;
+  monthlyXP: number;
 }
 
-const ProjectileMotionSimulator: React.FC = () => {
-  // Core simulation state
-  const [angle, setAngle] = useState(45);
-  const [velocity, setVelocity] = useState(25);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [projectile, setProjectile] = useState<ProjectileState>({
-    x: 50,
-    y: 320,
-    vx: 0,
-    vy: 0,
-    time: 0,
-    isFlying: false,
-    hasCollided: false,
-  });
-
-  // UI state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showTrajectory, setShowTrajectory] = useState(true);
-  const [showVectors, setShowVectors] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [controlPanelOpen, setControlPanelOpen] = useState(false);
-  const [controlPanelPosition, setControlPanelPosition] = useState({
-    x: 20,
-    y: 100,
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isInSimulatorSection, setIsInSimulatorSection] = useState(false);
-
-  const [isClient, setisClient] = useState(false);
-
-  // Section refs for smooth scrolling
-  const heroRef = useRef<HTMLDivElement | null>(null);
-  const simulatorRef = useRef<HTMLDivElement | null>(null);
-  const featuresRef = useRef<HTMLDivElement | null>(null);
-  const analyticsRef = useRef<HTMLDivElement | null>(null);
-  const documentationRef = useRef<HTMLDivElement | null>(null);
-  const enterpriseRef = useRef<HTMLDivElement | null>(null);
-
-  // Physics constants
-  const GRAVITY = 9.81;
-  const SCALE = 4 * zoomLevel;
-  const TIME_STEP = 0.02;
-  const BASE_CANVAS_HEIGHT = 400;
-  const CANVAS_HEIGHT = BASE_CANVAS_HEIGHT * zoomLevel;
-  const GROUND_Y = 360 * zoomLevel;
-  const LAUNCH_X = 50 * zoomLevel;
-  const LAUNCH_Y = 320 * zoomLevel;
-
-  // Static obstacles (scaled)
-  const obstacles: Obstacle[] = [
-    {
-      x: 200 * zoomLevel,
-      y: 250 * zoomLevel,
-      width: 60 * zoomLevel,
-      height: 110 * zoomLevel,
-    },
-    {
-      x: 350 * zoomLevel,
-      y: 200 * zoomLevel,
-      width: 80 * zoomLevel,
-      height: 160 * zoomLevel,
-    },
-    {
-      x: 500 * zoomLevel,
-      y: 220 * zoomLevel,
-      width: 70 * zoomLevel,
-      height: 140 * zoomLevel,
-    },
-  ];
-
-  // Refs
-  const animationRef = useRef<number | null>(null);
-  const dragRef = useRef({ startX: 0, startY: 0, startPosX: 0, startPosY: 0 });
-  const collisionNotifiedRef = useRef(false);
-
-  // Smooth scroll function
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      ref.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+  // Achievement icon renderer
+  const renderAchievementIcon = (iconType: string, className: string = "w-5 h-5") => {
+    switch (iconType) {
+      case "target":
+        return <BeakerIcon className={className} />;
+      case "fire":
+        return <FireIconSolid className={className} />;
+      case "microphone":
+        return <MicrophoneIcon className={className} />;
+      case "star":
+        return <StarIconSolid className={className} />;
+      case "check-badge":
+        return <CheckBadgeIcon className={className} />;
+      case "bolt":
+        return <BoltIcon className={className} />;
+      default:
+        return <StarIconSolid className={className} />;
     }
-    setMobileMenuOpen(false);
   };
 
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        // compute the actual panel width (we cap it at window.innerWidth - 20 for 10px margins)
-        const panelWidth = Math.min(320, window.innerWidth - 20);
-        // maxX is the rightmost x coordinate that still shows the panel fully
-        const maxX = window.innerWidth - panelWidth;
-        // pick a small margin (10px), but never exceed maxX
-        const initialX = Math.min(10, maxX);
-        setControlPanelPosition({
-          x: initialX,
-          y: 80,
-        });
-      }
-    };
+const LinguaFlow: React.FC = () => {
+  // Navigation state
+  const [activeTab, setActiveTab] = useState("learn");
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-  useEffect(() => {
-    if (!isClient) {
-      setisClient(true);
-    }
-  }, []);
+  // Progress states
+  const [currentStreak, setCurrentStreak] = useState(23);
+  const [totalXp, setTotalXp] = useState(3547);
+  const [dailyGoal] = useState(300);
+  const [todayXp, setTodayXp] = useState(89);
+  const [weekIndex, setWeekIndex] = useState(0);
 
-  // Check if user is in simulator section
-  useEffect(() => {
-    const checkSection = () => {
-      if (simulatorRef.current) {
-        const rect = simulatorRef.current.getBoundingClientRect();
-        const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
-        setIsInSimulatorSection(isVisible);
-      }
-    };
+  // Interaction states
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [scrollY, setScrollY] = useState(0);
 
-    checkSection();
-    window.addEventListener('scroll', checkSection);
-    return () => window.removeEventListener('scroll', checkSection);
-  }, []);
-  // Toast management
-  const addToast = useCallback((message: string, type: Toast["type"]) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 3000);
-  }, []);
+  // Canvas states
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [canvasReady, setCanvasReady] = useState(false);
 
-  // Calculate trajectory points for visualization
-  const trajectoryPoints = React.useMemo(() => {
-    const angleRad = (angle * Math.PI) / 180;
-    const v0x = velocity * Math.cos(angleRad);
-    const v0y = velocity * Math.sin(angleRad);
+  // Touch states
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
+  const [lastTouchDistance, setLastTouchDistance] = useState(0);
+  const [isTouch, setIsTouch] = useState(false);
 
-    const points: { x: number; y: number }[] = [];
-    let t = 0;
+  // Swipe states
+  const [swipeStart, setSwipeStart] = useState({ x: 0, y: 0 });
+  const [swipeEnd, setSwipeEnd] = useState({ x: 0, y: 0 });
 
-    while (t <= 10) {
-      const x = LAUNCH_X + v0x * t * SCALE;
-      const y = LAUNCH_Y - (v0y * t - 0.5 * GRAVITY * t * t) * SCALE;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const speechRecognition = useRef<any>(null);
+  const weeklyScrollRef = useRef<HTMLDivElement>(null);
 
-      if (y >= GROUND_Y) {
-        points.push({ x, y: GROUND_Y });
-        break;
-      }
+  // User stats
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalLessons: 47,
+    totalTimeSpent: 1240, // minutes
+    averageAccuracy: 87,
+    longestStreak: 31,
+    skillsCompleted: 2,
+    practiceMinutesToday: 25,
+    weeklyGoal: 5, // hours
+    monthlyXP: 8250,
+  });
 
-      let hitObstacle = false;
-      for (const obstacle of obstacles) {
-        if (
-          x >= obstacle.x &&
-          x <= obstacle.x + obstacle.width &&
-          y >= obstacle.y &&
-          y <= obstacle.y + obstacle.height
-        ) {
-          hitObstacle = true;
-          break;
-        }
-      }
-
-      points.push({ x, y });
-      if (hitObstacle) break;
-
-      t += 0.05;
-    }
-
-    return points;
-  }, [angle, velocity, LAUNCH_X, LAUNCH_Y, SCALE, GROUND_Y, obstacles]);
-
-  // Check collision function
-  const checkCollision = useCallback(
-    (x: number, y: number) => {
-      if (y >= GROUND_Y) return "ground";
-
-      for (const obstacle of obstacles) {
-        if (
-          x >= obstacle.x &&
-          x <= obstacle.x + obstacle.width &&
-          y >= obstacle.y &&
-          y <= obstacle.y + obstacle.height
-        ) {
-          return "obstacle";
-        }
-      }
-
-      return null;
+  // Achievements system
+  const [achievements, setAchievements] = useState<Achievement[]>([
+    {
+      id: "first_skill",
+      name: "First Steps",
+      description: "Complete your first skill",
+      icon: "target",
+      unlocked: true,
+      progress: 1,
+      maxProgress: 1,
     },
-    [GROUND_Y, obstacles]
-  );
-
-  // Animation loop
-  useEffect(() => {
-    if (!isPlaying || !projectile.isFlying || projectile.hasCollided) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      return;
-    }
-
-    const animate = () => {
-      setProjectile((prev) => {
-        const newTime = prev.time + TIME_STEP;
-        const angleRad = (angle * Math.PI) / 180;
-        const v0x = velocity * Math.cos(angleRad);
-        const v0y = velocity * Math.sin(angleRad);
-
-        const newX = LAUNCH_X + v0x * newTime * SCALE;
-        const newY =
-          LAUNCH_Y -
-          (v0y * newTime - 0.5 * GRAVITY * newTime * newTime) * SCALE;
-
-        const newVx = v0x;
-        const newVy = v0y - GRAVITY * newTime;
-
-        const collision = checkCollision(newX, newY);
-        if (collision && !collisionNotifiedRef.current) {
-          collisionNotifiedRef.current = true;
-
-          setTimeout(() => {
-            addToast(
-              collision === "ground" ? "Ground impact!" : "Obstacle collision!",
-              "info"
-            );
-            setIsPlaying(false);
-            // Reset projectile position after collision
-            setTimeout(() => {
-              setProjectile({
-                x: LAUNCH_X,
-                y: LAUNCH_Y,
-                vx: 0,
-                vy: 0,
-                time: 0,
-                isFlying: false,
-                hasCollided: false,
-              });
-            }, 500); // Reset after a short delay to show the collision
-          }, 100);
-
-          return {
-            ...prev,
-            x: newX,
-            y: collision === "ground" ? GROUND_Y : newY,
-            hasCollided: true,
-            isFlying: false,
-            collisionType: collision,
-          };
-        }
-
-        return {
-          x: newX,
-          y: newY,
-          vx: newVx,
-          vy: newVy,
-          time: newTime,
-          isFlying: true,
-          hasCollided: false,
-        };
-      });
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [
-    isPlaying,
-    projectile.isFlying,
-    projectile.hasCollided,
-    angle,
-    velocity,
-    checkCollision,
-    addToast,
-    LAUNCH_X,
-    LAUNCH_Y,
-    SCALE,
-    GROUND_Y,
+    {
+      id: "week_streak",
+      name: "Week Warrior",
+      description: "Maintain a 7-day streak",
+      icon: "fire",
+      unlocked: true,
+      progress: 7,
+      maxProgress: 7,
+    },
+    {
+      id: "pronunciation_master",
+      name: "Pronunciation Pro",
+      description: "Get 90%+ on 10 pronunciation exercises",
+      icon: "microphone",
+      unlocked: false,
+      progress: 6,
+      maxProgress: 10,
+    },
+    {
+      id: "xp_milestone",
+      name: "XP Collector",
+      description: "Earn 5000 total XP",
+      icon: "star",
+      unlocked: false,
+      progress: 3547,
+      maxProgress: 5000,
+    },
+    {
+      id: "perfect_week",
+      name: "Perfect Week",
+      description: "Complete daily goals for 7 consecutive days",
+      icon: "check-badge",
+      unlocked: false,
+      progress: 4,
+      maxProgress: 7,
+    },
+    {
+      id: "speed_learner",
+      name: "Speed Learner",
+      description: "Complete 5 lessons in one day",
+      icon: "bolt",
+      unlocked: false,
+      progress: 3,
+      maxProgress: 5,
+    },
   ]);
 
-  // Start/stop simulation
-  const toggleSimulation = () => {
-    if (!isPlaying) {
-      if (!projectile.isFlying) {
-        collisionNotifiedRef.current = false;
-
-        const angleRad = (angle * Math.PI) / 180;
-        const v0x = velocity * Math.cos(angleRad);
-        const v0y = velocity * Math.sin(angleRad);
-
-        setProjectile({
-          x: LAUNCH_X,
-          y: LAUNCH_Y,
-          vx: v0x,
-          vy: v0y,
-          time: 0,
-          isFlying: true,
-          hasCollided: false,
-        });
-
-        addToast("Projectile launched!", "success");
-      }
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(false);
-      addToast("Simulation paused", "info");
-    }
-  };
-
-  // Reset simulation
-  const resetSimulation = () => {
-    setIsPlaying(false);
-    collisionNotifiedRef.current = false;
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-    setProjectile({
-      x: LAUNCH_X,
-      y: LAUNCH_Y,
-      vx: 0,
-      vy: 0,
-      time: 0,
-      isFlying: false,
-      hasCollided: false,
-    });
-    addToast("Simulation reset", "success");
-  };
-
-  // Zoom controls
-  const zoomIn = () => {
-    if (zoomLevel < 1.1) {
-      const newZoomLevel = zoomLevel === 1 ? 1.05 : 1.1;
-      setZoomLevel(newZoomLevel);
-      // Reset simulation after zoom level is set
-      setTimeout(() => {
-        const newLaunchX = 50 * newZoomLevel;
-        const newLaunchY = 320 * newZoomLevel;
-        // resetSimulation();
-
-        // collisionNotifiedRef.current = false;
-        // if (animationRef.current) {
-        //   cancelAnimationFrame(animationRef.current);
-        // }
-        setProjectile((prev) => ({
-          ...prev,
-          x: newLaunchX,
-          y: newLaunchY,
-          vx: 0,
-          vy: 0,
-          time: 0,
-          isFlying: false,
-          hasCollided: false,
-        }));
-      }, 50);
-      addToast(`Zoomed to ${newZoomLevel === 1.05 ? "1.05x" : "1.1x"}`, "info");
-    }
-  };
-
-  const zoomOut = () => {
-    if (zoomLevel > 1) {
-      const newZoomLevel = zoomLevel === 1.1 ? 1.05 : 1;
-      setZoomLevel(newZoomLevel);
-      // Reset simulation after zoom level is set
-      setTimeout(() => {
-        const newLaunchX = 50 * newZoomLevel;
-        const newLaunchY = 320 * newZoomLevel;
-
-        setProjectile((prev) => ({
-          ...prev,
-          x: newLaunchX,
-          y: newLaunchY,
-          vx: 0,
-          vy: 0,
-          time: 0,
-          isFlying: false,
-          hasCollided: false,
-        }));
-      }, 50);
-      addToast(`Zoomed to ${newZoomLevel === 1.05 ? "1.05x" : "1x"}`, "info");
-    }
-  };
-
-  // Drag functionality
-  const handleTitleBarMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startPosX: controlPanelPosition.x,
-      startPosY: controlPanelPosition.y,
-    };
-  };
-
-  const handleTitleBarTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    setIsDragging(true);
-    dragRef.current = {
-      startX: touch.clientX,
-      startY: touch.clientY,
-      startPosX: controlPanelPosition.x,
-      startPosY: controlPanelPosition.y,
-    };
-  };
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging) return;
-
-      const deltaX = e.clientX - dragRef.current.startX;
-      const deltaY = e.clientY - dragRef.current.startY;
-
-      const panelWidth = isMobile ? Math.min(320, window.innerWidth - 20) : 320;
-      const panelHeight = isMobile ? 450 : 400;
-
-      setControlPanelPosition({
-        x: Math.max(
-          0,
-          Math.min(
-            window.innerWidth - panelWidth,
-            dragRef.current.startPosX + deltaX
-          )
-        ),
-        y: Math.max(
-          0,
-          Math.min(
-            window.innerHeight - panelHeight,
-            dragRef.current.startPosY + deltaY
-          )
-        ),
-      });
-    },
-    [isDragging, isMobile]
+  // Weekly progress data (multiple weeks for swiping)
+  const weeklyDataSets = useMemo(
+    () => [
+      // Current week
+      [
+        {
+          day: "Mon",
+          date: "12/2",
+          xp: 120,
+          lessons: 3,
+          timeSpent: 45,
+          accuracy: 85,
+        },
+        {
+          day: "Tue",
+          date: "12/3",
+          xp: 95,
+          lessons: 2,
+          timeSpent: 30,
+          accuracy: 92,
+        },
+        {
+          day: "Wed",
+          date: "12/4",
+          xp: 180,
+          lessons: 4,
+          timeSpent: 60,
+          accuracy: 88,
+        },
+        {
+          day: "Thu",
+          date: "12/5",
+          xp: 140,
+          lessons: 3,
+          timeSpent: 50,
+          accuracy: 90,
+        },
+        {
+          day: "Fri",
+          date: "12/6",
+          xp: 160,
+          lessons: 3,
+          timeSpent: 55,
+          accuracy: 87,
+        },
+        {
+          day: "Sat",
+          date: "12/7",
+          xp: 200,
+          lessons: 5,
+          timeSpent: 75,
+          accuracy: 94,
+        },
+        {
+          day: "Sun",
+          date: "12/8",
+          xp: 89,
+          lessons: 2,
+          timeSpent: 35,
+          accuracy: 89,
+        },
+      ],
+      // Previous week
+      [
+        {
+          day: "Mon",
+          date: "11/25",
+          xp: 100,
+          lessons: 2,
+          timeSpent: 40,
+          accuracy: 83,
+        },
+        {
+          day: "Tue",
+          date: "11/26",
+          xp: 130,
+          lessons: 3,
+          timeSpent: 45,
+          accuracy: 86,
+        },
+        {
+          day: "Wed",
+          date: "11/27",
+          xp: 150,
+          lessons: 3,
+          timeSpent: 50,
+          accuracy: 91,
+        },
+        {
+          day: "Thu",
+          date: "11/28",
+          xp: 80,
+          lessons: 2,
+          timeSpent: 25,
+          accuracy: 85,
+        },
+        {
+          day: "Fri",
+          date: "11/29",
+          xp: 170,
+          lessons: 4,
+          timeSpent: 65,
+          accuracy: 88,
+        },
+        {
+          day: "Sat",
+          date: "11/30",
+          xp: 190,
+          lessons: 4,
+          timeSpent: 70,
+          accuracy: 92,
+        },
+        {
+          day: "Sun",
+          date: "12/1",
+          xp: 110,
+          lessons: 3,
+          timeSpent: 40,
+          accuracy: 87,
+        },
+      ],
+      // Week before
+      [
+        {
+          day: "Mon",
+          date: "11/18",
+          xp: 90,
+          lessons: 2,
+          timeSpent: 35,
+          accuracy: 80,
+        },
+        {
+          day: "Tue",
+          date: "11/19",
+          xp: 110,
+          lessons: 2,
+          timeSpent: 40,
+          accuracy: 84,
+        },
+        {
+          day: "Wed",
+          date: "11/20",
+          xp: 140,
+          lessons: 3,
+          timeSpent: 55,
+          accuracy: 87,
+        },
+        {
+          day: "Thu",
+          date: "11/21",
+          xp: 120,
+          lessons: 3,
+          timeSpent: 45,
+          accuracy: 86,
+        },
+        {
+          day: "Fri",
+          date: "11/22",
+          xp: 160,
+          lessons: 4,
+          timeSpent: 60,
+          accuracy: 90,
+        },
+        {
+          day: "Sat",
+          date: "11/23",
+          xp: 180,
+          lessons: 4,
+          timeSpent: 65,
+          accuracy: 88,
+        },
+        {
+          day: "Sun",
+          date: "11/24",
+          xp: 100,
+          lessons: 2,
+          timeSpent: 35,
+          accuracy: 85,
+        },
+      ],
+    ],
+    []
   );
 
-  const handleTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (!isDragging) return;
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - dragRef.current.startX;
-      const deltaY = touch.clientY - dragRef.current.startY;
-
-      const panelWidth = isMobile ? Math.min(320, window.innerWidth - 20) : 320;
-      const panelHeight = isMobile ? 450 : 400;
-
-      setControlPanelPosition({
-        x: Math.max(
-          0,
-          Math.min(
-            window.innerWidth - panelWidth,
-            dragRef.current.startPosX + deltaX
-          )
-        ),
-        y: Math.max(
-          0,
-          Math.min(
-            window.innerHeight - panelHeight,
-            dragRef.current.startPosY + deltaY
-          )
-        ),
-      });
+  // Skill tree data with responsive positioning
+  const [skillNodes, setSkillNodes] = useState<SkillNode[]>([
+    {
+      id: "1",
+      name: "Greetings",
+      completed: true,
+      level: 3,
+      xp: 150,
+      maxXp: 150,
+      x: 50,
+      y: 50,
+      prerequisites: [],
+      category: "basics",
+      color: "#10b981",
     },
-    [isDragging, isMobile]
+    {
+      id: "2",
+      name: "Numbers",
+      completed: true,
+      level: 2,
+      xp: 120,
+      maxXp: 120,
+      x: 200,
+      y: 50,
+      prerequisites: ["1"],
+      category: "basics",
+      color: "#3b82f6",
+    },
+    {
+      id: "3",
+      name: "Colors",
+      completed: false,
+      level: 1,
+      xp: 60,
+      maxXp: 100,
+      x: 350,
+      y: 50,
+      prerequisites: ["2"],
+      category: "vocabulary",
+      color: "#f59e0b",
+    },
+    {
+      id: "4",
+      name: "Family",
+      completed: false,
+      level: 1,
+      xp: 30,
+      maxXp: 120,
+      x: 50,
+      y: 180,
+      prerequisites: ["1"],
+      category: "vocabulary",
+      color: "#ef4444",
+    },
+    {
+      id: "5",
+      name: "Present Tense",
+      completed: false,
+      level: 1,
+      xp: 40,
+      maxXp: 150,
+      x: 200,
+      y: 180,
+      prerequisites: ["2", "4"],
+      category: "grammar",
+      color: "#8b5cf6",
+    },
+    {
+      id: "6",
+      name: "Food & Drinks",
+      completed: false,
+      level: 1,
+      xp: 20,
+      maxXp: 130,
+      x: 350,
+      y: 180,
+      prerequisites: ["3"],
+      category: "vocabulary",
+      color: "#06b6d4",
+    },
+    {
+      id: "7",
+      name: "Shopping",
+      completed: false,
+      level: 1,
+      xp: 0,
+      maxXp: 140,
+      x: 125,
+      y: 310,
+      prerequisites: ["5"],
+      category: "conversation",
+      color: "#84cc16",
+    },
+    {
+      id: "8",
+      name: "Directions",
+      completed: false,
+      level: 1,
+      xp: 0,
+      maxXp: 120,
+      x: 275,
+      y: 310,
+      prerequisites: ["6"],
+      category: "conversation",
+      color: "#f97316",
+    },
+    {
+      id: "9",
+      name: "Past Tense",
+      completed: false,
+      level: 1,
+      xp: 0,
+      maxXp: 160,
+      x: 200,
+      y: 440,
+      prerequisites: ["7", "8"],
+      category: "grammar",
+      color: "#ec4899",
+    },
+  ]);
+
+  // Toast management
+  const addToast = useCallback(
+    (
+      message: string,
+      type: "success" | "error" | "info" | "warning" = "info"
+    ) => {
+      const id = Date.now().toString();
+      const newToast: Toast = { id, message, type };
+      setToasts((prev) => [...prev, newToast]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 3000);
+    },
+    []
   );
 
-  const handleEnd = useCallback(() => {
-    setIsDragging(false);
+  // Vibration feedback with enhanced patterns
+  const vibrate = useCallback((pattern: number[] = [100]) => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(pattern);
+    }
   }, []);
 
-  // Event listeners for dragging
+  // Scroll tracking for floating elements
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleEnd);
-      document.addEventListener("touchmove", handleTouchMove, {
-        passive: false,
-      });
-      document.addEventListener("touchend", handleEnd);
-    }
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleEnd);
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleEnd);
-    };
-  }, [isDragging, handleMouseMove, handleTouchMove, handleEnd]);
-
-  // Click outside handler for mobile menu
+  // Canvas resize handling with proper responsive sizing
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        mobileMenuOpen &&
-        !target.closest(".mobile-menu") &&
-        !target.closest(".menu-button")
-      ) {
-        setMobileMenuOpen(false);
+    const handleResize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const padding = window.innerWidth < 640 ? 16 : 32; // Smaller padding on mobile
+        const availableWidth = rect.width - padding;
+
+        // Responsive canvas sizing
+        let width, height;
+        if (window.innerWidth < 480) {
+          // Very small screens (320px+)
+          width = Math.min(availableWidth, 400);
+          height = Math.min(width * 1.5, 480); // Taller aspect ratio for mobile
+        } else if (window.innerWidth < 768) {
+          // Mobile screens
+          width = Math.min(availableWidth, 500);
+          height = Math.min(width * 1, 500);
+        } else {
+          // Desktop screens
+          width = Math.min(availableWidth, 1200);
+          height = Math.min(width * 0.8, 560);
+        }
+
+        setCanvasSize({ width, height });
+
+        // Only recenter when zoom is at 1 (reset) or canvas size changes significantly
+        const allX = skillNodes.map((n) => n.x);
+        const allY = skillNodes.map((n) => n.y);
+        const minX = Math.min(...allX);
+        const maxX = Math.max(...allX);
+        const minY = Math.min(...allY);
+        const maxY = Math.max(...allY);
+
+        const treeWidth = maxX - minX + 100;
+        const treeHeight = maxY - minY + 100;
+
+        const offsetX = (width - treeWidth * zoomLevel) / 2 - minX * zoomLevel;
+        const offsetY = (height - treeHeight * zoomLevel) / 2 - minY * zoomLevel;
+
+        // Only update pan offset if zoom is 1 (reset) or if canvas isn't ready yet
+        if (zoomLevel === 1 || !canvasReady) {
+          setPanOffset({ x: offsetX, y: offsetY });
+        }
+        
+        setCanvasReady(true);
       }
     };
+    
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    const timer = setTimeout(() => handleResize(), 200);
 
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [mobileMenuOpen]);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(timer);
+    };
+  }, [skillNodes, zoomLevel, canvasReady]);
 
-  const pathData =
-    trajectoryPoints.length > 0
-      ? `M ${trajectoryPoints[0].x} ${trajectoryPoints[0].y} ` +
-        trajectoryPoints
-          .slice(1)
-          .map((p) => `L ${p.x} ${p.y}`)
-          .join(" ")
-      : "";
-  if (!isClient) {
-    return "";
-  }
+  // Voice recognition state
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+  const [pronunciationScore, setPronunciationScore] = useState(0);
+  const [practiceStreak, setPracticeStreak] = useState(0);
+  const [voicePracticeStats, setVoicePracticeStats] = useState({
+    totalAttempts: 12,
+    averageScore: 78,
+    bestScore: 95,
+    practiceTime: 18, // minutes
+  });
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-x-hidden font-roboto">
-      {/* Navigation */}
-      <nav className="bg-slate-800/90 backdrop-blur-sm border-b border-slate-700/50 px-2 sm:px-4 py-3 relative z-30 fixed w-full top-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <BeakerIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
-            <span className="text-lg sm:text-xl font-bold text-white">
-              PhysicsLab Pro
-            </span>
-          </div>
+  // Practice phrases for pronunciation
+  const practicePhrases = useMemo(
+    () => [
+      { spanish: "Hola", english: "Hello", difficulty: 1 },
+      { spanish: "Buenos días", english: "Good morning", difficulty: 2 },
+      { spanish: "¿Cómo estás?", english: "How are you?", difficulty: 3 },
+      { spanish: "Me llamo María", english: "My name is María", difficulty: 3 },
+      { spanish: "Mucho gusto", english: "Nice to meet you", difficulty: 2 },
+      {
+        spanish: "¿Dónde está el baño?",
+        english: "Where is the bathroom?",
+        difficulty: 4,
+      },
+      {
+        spanish: "No hablo español muy bien",
+        english: "I don't speak Spanish very well",
+        difficulty: 5,
+      },
+    ],
+    []
+  );
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            <button
-              onClick={() => scrollToSection(simulatorRef)}
-              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Simulator
-            </button>
-            <button
-              onClick={() => scrollToSection(featuresRef)}
-              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Features
-            </button>
-            <button
-              onClick={() => scrollToSection(analyticsRef)}
-              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Analytics
-            </button>
-            <button
-              onClick={() => scrollToSection(documentationRef)}
-              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Documentation
-            </button>
-            <button
-              onClick={() => scrollToSection(enterpriseRef)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
-            >
-              Enterprise
-            </button>
-          </div>
+  // Voice recognition setup
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+      speechRecognition.current = new SpeechRecognition();
+      speechRecognition.current.continuous = false;
+      speechRecognition.current.interimResults = false;
+      speechRecognition.current.lang = "es-ES";
+      speechRecognition.current.maxAlternatives = 3;
 
-          {/* Mobile Controls */}
-          <div className="flex items-center space-x-2 md:hidden">
-            <button
-              onClick={() => setControlPanelOpen(!controlPanelOpen)}
-              className="text-white p-2 cursor-pointer"
-              title="Toggle Control Panel"
-            >
-              <AdjustmentsHorizontalIcon className="h-5 w-5" />
-            </button>
-            <button
-              className="text-white menu-button p-2 cursor-pointer"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? (
-                <XMarkIcon className="h-5 w-5" />
-              ) : (
-                <Bars3Icon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-        </div>
+      speechRecognition.current.onstart = () => {
+        addToast(
+          `Say: "${practicePhrases[currentPhraseIndex].spanish}"`,
+          "info"
+        );
+      };
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-b border-slate-700/50 mobile-menu z-40">
-            <div className="px-4 py-4 space-y-3">
-              <button
-                onClick={() => scrollToSection(simulatorRef)}
-                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Simulator
-              </button>
-              <button
-                onClick={() => scrollToSection(featuresRef)}
-                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Features
-              </button>
-              <button
-                onClick={() => scrollToSection(analyticsRef)}
-                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Analytics
-              </button>
-              <button
-                onClick={() => scrollToSection(documentationRef)}
-                className="block text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Documentation
-              </button>
-              <button
-                onClick={() => scrollToSection(enterpriseRef)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
-              >
-                Enterprise
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
+      speechRecognition.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        const confidence = event.results[0][0].confidence;
+        const targetPhrase =
+          practicePhrases[currentPhraseIndex].spanish.toLowerCase();
 
-      {/* Hero Section */}
-      <div
-        ref={heroRef}
-        className="pt-16 px-2 sm:px-4 py-8 sm:py-16 text-center"
-      >
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
-            Advanced Physics <span className="text-blue-400">Simulation</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto mb-8 sm:mb-12 px-4">
-            Experience cutting-edge projectile motion simulation with real-time
-            physics, interactive controls, and professional-grade analytics for
-            education and research.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-            <button
-              onClick={() => scrollToSection(simulatorRef)}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold transition-all transform hover:scale-105 cursor-pointer"
-            >
-              Try Simulator
-            </button>
-            <button
-              onClick={() => scrollToSection(featuresRef)}
-              className="w-full sm:w-auto border-2 border-slate-600 hover:border-slate-500 text-white px-8 py-4 rounded-xl font-semibold transition-all cursor-pointer"
-            >
-              Learn More
-            </button>
-          </div>
-        </div>
-      </div>
+        const similarity = calculateSimilarity(transcript, targetPhrase);
+        const finalScore = Math.round(
+          (confidence * 0.6 + similarity * 0.4) * 100
+        );
 
-      {/* Features Section */}
-      <div ref={featuresRef} className="px-2 sm:px-4 py-12 sm:py-20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Powerful <span className="text-blue-400">Features</span>
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Everything you need for comprehensive physics simulation and
-              analysis
-            </p>
-          </div>
+        setPronunciationScore(finalScore);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <RocketLaunchIcon className="h-12 w-12 text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Real-time Physics
-              </h3>
-              <p className="text-slate-300">
-                Advanced physics engine with accurate trajectory calculation and
-                collision detection
-              </p>
-            </div>
+        // Update voice practice stats
+        setVoicePracticeStats((prev) => ({
+          ...prev,
+          totalAttempts: prev.totalAttempts + 1,
+          averageScore: Math.round(
+            (prev.averageScore * prev.totalAttempts + finalScore) /
+              (prev.totalAttempts + 1)
+          ),
+          bestScore: Math.max(prev.bestScore, finalScore),
+          practiceTime: prev.practiceTime + 1,
+        }));
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <ChartPieIcon className="h-12 w-12 text-green-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Live Analytics
-              </h3>
-              <p className="text-slate-300">
-                Real-time data visualization with velocity vectors and
-                trajectory paths
-              </p>
-            </div>
+        if (finalScore >= 80) {
+          vibrate([100, 50, 100, 50, 200]);
+          addToast(`Excellent! Score: ${finalScore}%`, "success");
+          setPracticeStreak((prev) => prev + 1);
+          setTotalXp((prev) => prev + 20);
+          setTodayXp((prev) => prev + 20);
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <CpuChipIcon className="h-12 w-12 text-purple-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Interactive Controls
-              </h3>
-              <p className="text-slate-300">
-                Intuitive interface with drag-and-drop panels and responsive
-                controls
-              </p>
-            </div>
+          setTimeout(() => {
+            setCurrentPhraseIndex(
+              (prev) => (prev + 1) % practicePhrases.length
+            );
+          }, 1500);
+        } else if (finalScore >= 60) {
+          vibrate([100, 50, 100]);
+          addToast(
+            `Good! Score: ${finalScore}% - Try again for better`,
+            "success"
+          );
+          setTotalXp((prev) => prev + 10);
+          setTodayXp((prev) => prev + 10);
+          setPracticeStreak((prev) => Math.floor(prev / 2));
+        } else {
+          vibrate([200]);
+          addToast(`Keep practicing! Score: ${finalScore}%`, "warning");
+          setPracticeStreak(0);
+        }
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <GlobeAltIcon className="h-12 w-12 text-yellow-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Cross-Platform
-              </h3>
-              <p className="text-slate-300">
-                Works seamlessly on desktop, tablet, and mobile devices
-              </p>
-            </div>
+        setTimeout(() => {
+          addToast(
+            `Heard: "${transcript}" | Expected: "${targetPhrase}"`,
+            "info"
+          );
+        }, 2000);
+      };
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <ShieldCheckIcon className="h-12 w-12 text-red-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Collision Detection
-              </h3>
-              <p className="text-slate-300">
-                Advanced obstacle detection with multiple collision types and
-                feedback
-              </p>
-            </div>
+      speechRecognition.current.onend = () => {
+        setIsListening(false);
+      };
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <LightBulbIcon className="h-12 w-12 text-indigo-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Educational Tools
-              </h3>
-              <p className="text-slate-300">
-                Perfect for students, educators, and researchers studying
-                physics
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      speechRecognition.current.onerror = (event: any) => {
+        setIsListening(false);
+        console.error("Speech recognition error:", event.error);
 
-      {/* Simulator Section */}
-      <div ref={simulatorRef} className="px-2 sm:px-4 py-12 sm:py-20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Interactive <span className="text-blue-400">Simulator</span>
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Experience physics in action with our interactive projectile
-              motion simulator
-            </p>
-          </div>
+        switch (event.error) {
+          case "no-speech":
+            addToast("No speech detected. Try speaking louder!", "warning");
+            break;
+          case "network":
+            addToast("Network error. Check your connection.", "error");
+            break;
+          case "not-allowed":
+            addToast(
+              "Microphone access denied. Please allow microphone.",
+              "error"
+            );
+            break;
+          default:
+            addToast("Voice recognition error. Try again!", "error");
+        }
+        vibrate([300]);
+      };
+    }
+  }, [addToast, vibrate, currentPhraseIndex, practicePhrases]);
 
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-2 sm:p-4 md:p-6">
-            {/* Zoom Controls */}
-            <div className="flex items-center justify-center mb-4 space-x-2">
-              <button
-                onClick={zoomOut}
-                disabled={zoomLevel <= 1}
-                className="flex items-center space-x-1 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg transition-all cursor-pointer"
-              >
-                <MagnifyingGlassMinusIcon className="h-4 w-4" />
-                <span className="text-sm">Zoom Out</span>
-              </button>
-              <span className="text-white font-medium bg-slate-700 px-3 py-2 rounded-lg text-sm">
-                {zoomLevel}x
-              </span>
-              <button
-                onClick={zoomIn}
-                disabled={zoomLevel >= 1.1}
-                className="flex items-center space-x-1 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg transition-all cursor-pointer"
-              >
-                <MagnifyingGlassPlusIcon className="h-4 w-4" />
-                <span className="text-sm">Zoom In</span>
-              </button>
-            </div>
+  // Simple similarity calculation
+  const calculateSimilarity = useCallback(
+    (str1: string, str2: string): number => {
+      const longer = str1.length > str2.length ? str1 : str2;
+      const shorter = str1.length > str2.length ? str2 : str1;
 
-            {/* Simulation Canvas */}
+      if (longer.length === 0) return 1.0;
+
+      const editDistance = levenshteinDistance(longer, shorter);
+      return (longer.length - editDistance) / longer.length;
+    },
+    []
+  );
+
+  // Levenshtein distance calculation
+  const levenshteinDistance = useCallback(
+    (str1: string, str2: string): number => {
+      const matrix = [];
+
+      for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+      }
+
+      for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+      }
+
+      for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+          if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
+        }
+      }
+
+      return matrix[str2.length][str1.length];
+    },
+    []
+  );
+
+  // Touch distance calculation for pinch-to-zoom
+  const getTouchDistance = (touches: TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Get canvas coordinates accounting for zoom and pan
+  const getCanvasCoordinates = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvasSize.width / rect.width;
+      const scaleY = canvasSize.height / rect.height;
+
+      const x = ((clientX - rect.left) * scaleX - panOffset.x) / zoomLevel;
+      const y = ((clientY - rect.top) * scaleY - panOffset.y) / zoomLevel;
+
+      return { x, y };
+    },
+    [canvasSize, panOffset, zoomLevel]
+  );
+
+  // Handle skill node interaction
+  const handleSkillNodeInteraction = useCallback(
+    (x: number, y: number) => {
+      const clickedNode = skillNodes.find((node) => {
+        const nodeRadius = 35;
+        const distance = Math.sqrt(
+          (x - (node.x + nodeRadius)) ** 2 + (y - (node.y + nodeRadius)) ** 2
+        );
+        return distance <= nodeRadius;
+      });
+
+      if (clickedNode) {
+        setSelectedSkill(clickedNode.id);
+
+        const prereqsMet = clickedNode.prerequisites.every(
+          (prereqId) => skillNodes.find((n) => n.id === prereqId)?.completed
+        );
+
+        if (prereqsMet && !clickedNode.completed) {
+          const practiceGain = 30;
+          const newXp = Math.min(
+            clickedNode.xp + practiceGain,
+            clickedNode.maxXp
+          );
+          const isCompleted = newXp === clickedNode.maxXp;
+
+          setSkillNodes((prev) =>
+            prev.map((node) =>
+              node.id === clickedNode.id
+                ? {
+                    ...node,
+                    xp: newXp,
+                    completed: isCompleted,
+                    level: isCompleted ? node.level + 1 : node.level,
+                  }
+                : node
+            )
+          );
+
+          setTotalXp((prev) => prev + practiceGain);
+          setTodayXp((prev) => prev + practiceGain);
+          setUserStats((prev) => ({
+            ...prev,
+            totalLessons: prev.totalLessons + 1,
+            practiceMinutesToday: prev.practiceMinutesToday + 5,
+          }));
+
+          if (isCompleted) {
+            vibrate([200, 100, 200, 100, 300]);
+            addToast(`Skill Mastered: ${clickedNode.name}!`, "success");
+
+            // Update achievements
+            setAchievements((prev) =>
+              prev.map((achievement) => {
+                if (achievement.id === "first_skill" && !achievement.unlocked) {
+                  return { ...achievement, unlocked: true, progress: 1 };
+                }
+                return achievement;
+              })
+            );
+
+            const newlyUnlocked = skillNodes.filter(
+              (node) =>
+                !node.completed &&
+                node.prerequisites.includes(clickedNode.id) &&
+                node.prerequisites.every(
+                  (prereqId) =>
+                    skillNodes.find((n) => n.id === prereqId)?.completed ||
+                    prereqId === clickedNode.id
+                )
+            );
+
+            if (newlyUnlocked.length > 0) {
+              setTimeout(() => {
+                addToast(
+                  `${newlyUnlocked.length} new skill${
+                    newlyUnlocked.length > 1 ? "s" : ""
+                  } unlocked!`,
+                  "info"
+                );
+                vibrate([100, 50, 100]);
+              }, 1000);
+            }
+          } else {
+            vibrate([100]);
+            const progressPercent = Math.round(
+              (newXp / clickedNode.maxXp) * 100
+            );
+            addToast(
+              `+${practiceGain} XP • ${clickedNode.name} (${progressPercent}%)`,
+              "info"
+            );
+          }
+        } else if (!prereqsMet) {
+          vibrate([300, 150, 300]);
+          const missingPrereqs = clickedNode.prerequisites.filter(
+            (prereqId) => !skillNodes.find((n) => n.id === prereqId)?.completed
+          );
+          const prereqNames = missingPrereqs
+            .map((id) => skillNodes.find((n) => n.id === id)?.name)
+            .join(", ");
+          addToast(`Complete "${prereqNames}" first!`, "warning");
+        } else if (clickedNode.completed) {
+          vibrate([50]);
+          addToast(`${clickedNode.name} mastered! Try a new skill.`, "info");
+        }
+      }
+    },
+    [skillNodes, vibrate, addToast]
+  );
+
+  // Canvas drawing with proper scaling and responsive font sizes
+  const drawSkillTree = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvasReady) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = canvasSize.width;
+    const displayHeight = canvasSize.height;
+
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+    ctx.save();
+    ctx.scale(zoomLevel, zoomLevel);
+    ctx.translate(panOffset.x, panOffset.y);
+
+    const time = Date.now() * 0.001;
+
+    // Responsive sizing based on canvas size
+    const isMobile = displayWidth < 500;
+    const nodeRadius = isMobile ? 30 : 35;
+    const fontSize = isMobile ? 10 : 12;
+    const levelFontSize = isMobile ? 12 : 14;
+
+    // Draw connections first
+    skillNodes.forEach((node) => {
+      node.prerequisites.forEach((prereqId) => {
+        const prereq = skillNodes.find((n) => n.id === prereqId);
+        if (prereq) {
+          const isActive = prereq.completed;
+
+          ctx.beginPath();
+          ctx.moveTo(prereq.x + nodeRadius, prereq.y + nodeRadius);
+          ctx.lineTo(node.x + nodeRadius, node.y + nodeRadius);
+          ctx.strokeStyle = isActive ? prereq.color : "#e5e7eb";
+          ctx.lineWidth = isMobile ? 2 : 3;
+          ctx.stroke();
+
+          if (isActive) {
+            const progress = (time % 2) / 2;
+            const x = prereq.x + nodeRadius + (node.x - prereq.x) * progress;
+            const y = prereq.y + nodeRadius + (node.y - prereq.y) * progress;
+
+            ctx.beginPath();
+            ctx.arc(x, y, isMobile ? 3 : 4, 0, 2 * Math.PI);
+            ctx.fillStyle = prereq.color;
+            ctx.fill();
+          }
+        }
+      });
+    });
+
+    // Draw skill nodes
+    skillNodes.forEach((node) => {
+      const centerX = node.x + nodeRadius;
+      const centerY = node.y + nodeRadius;
+
+      // Shadow
+      ctx.beginPath();
+      ctx.arc(centerX + 2, centerY + 2, nodeRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+      ctx.fill();
+
+      // Node background
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, nodeRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = node.completed
+        ? node.color
+        : node.xp > 0
+        ? "#f3f4f6"
+        : "#e5e7eb";
+      ctx.fill();
+
+      // Node border
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, nodeRadius, 0, 2 * Math.PI);
+      ctx.strokeStyle = node.color;
+      ctx.lineWidth = isMobile ? 2 : 3;
+      ctx.stroke();
+
+      // Progress arc
+      if (node.xp > 0 && !node.completed) {
+        const progress = (node.xp / node.maxXp) * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.arc(
+          centerX,
+          centerY,
+          nodeRadius + 3,
+          -Math.PI / 2,
+          -Math.PI / 2 + progress
+        );
+        ctx.strokeStyle = node.color;
+        ctx.lineWidth = isMobile ? 3 : 4;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+
+      // Completion indicator OR level number (not both)
+      if (node.completed) {
+        // Show checkmark instead of level number when completed
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, isMobile ? 12 : 15, 0, 2 * Math.PI);
+        ctx.fillStyle = "white";
+        ctx.fill();
+
+        // Checkmark
+        ctx.beginPath();
+        ctx.moveTo(centerX - (isMobile ? 6 : 8), centerY);
+        ctx.lineTo(centerX - (isMobile ? 1 : 2), centerY + (isMobile ? 5 : 6));
+        ctx.lineTo(centerX + (isMobile ? 6 : 8), centerY - (isMobile ? 5 : 6));
+        ctx.strokeStyle = node.color;
+        ctx.lineWidth = isMobile ? 2 : 3;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      } else {
+        // Show level number only when NOT completed
+        ctx.fillStyle = "#374151";
+        ctx.font = `bold ${levelFontSize}px system-ui`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(node.level.toString(), centerX, centerY);
+      }
+
+      // Selection highlight
+      if (selectedSkill === node.id) {
+        ctx.beginPath();
+        ctx.arc(
+          centerX,
+          centerY,
+          nodeRadius + (isMobile ? 5 : 7),
+          0,
+          2 * Math.PI
+        );
+        ctx.strokeStyle = "#8b5cf6";
+        ctx.lineWidth = isMobile ? 2 : 3;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Node name
+      ctx.fillStyle = "#374151";
+      ctx.font = `${fontSize}px system-ui`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+
+      // Wrap text for mobile
+      const maxWidth = isMobile ? 80 : 100;
+      const words = node.name.split(" ");
+      if (words.length > 1 && ctx.measureText(node.name).width > maxWidth) {
+        // Split into two lines for mobile
+        const line1 = words.slice(0, Math.ceil(words.length / 2)).join(" ");
+        const line2 = words.slice(Math.ceil(words.length / 2)).join(" ");
+        ctx.fillText(
+          line1,
+          centerX,
+          centerY + nodeRadius + (isMobile ? 8 : 12)
+        );
+        ctx.fillText(
+          line2,
+          centerX,
+          centerY + nodeRadius + (isMobile ? 20 : 26)
+        );
+      } else {
+        ctx.fillText(
+          node.name,
+          centerX,
+          centerY + nodeRadius + (isMobile ? 8 : 12)
+        );
+      }
+    });
+
+    ctx.restore();
+  }, [
+    skillNodes,
+    selectedSkill,
+    zoomLevel,
+    panOffset,
+    canvasSize,
+    canvasReady,
+  ]);
+  useEffect(() => {
+    if (activeTab === "learn" && canvasReady) {
+      drawSkillTree();
+    }
+  }, [activeTab, canvasReady, drawSkillTree]);
+  // Mouse event handlers
+  const handleCanvasMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      setIsTouch(false);
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    },
+    [panOffset]
+  );
+
+  const handleCanvasMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDragging || isTouch) return;
+
+      setPanOffset({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    },
+    [isDragging, dragStart, isTouch]
+  );
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (isTouch) return;
+    setIsDragging(false);
+  }, [isTouch]);
+
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (isDragging || isTouch) return;
+
+      const coords = getCanvasCoordinates(e.clientX, e.clientY);
+      handleSkillNodeInteraction(coords.x, coords.y);
+    },
+    [isDragging, isTouch, getCanvasCoordinates, handleSkillNodeInteraction]
+  );
+
+  // Touch handlers for mobile with swipe detection
+  const handleCanvasTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      setIsTouch(true);
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        setTouchStart({ x: touch.clientX, y: touch.clientY });
+        setIsDragging(false); // Don't start dragging immediately
+        setDragStart({
+          x: touch.clientX - panOffset.x,
+          y: touch.clientY - panOffset.y,
+        });
+              } else if (e.touches.length === 2) {
+          const distance = getTouchDistance(e.touches as any);
+          setLastTouchDistance(distance);
+          setIsDragging(false);
+        }
+    },
+    [panOffset]
+  );
+
+  const handleCanvasTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStart.x);
+        const deltaY = Math.abs(touch.clientY - touchStart.y);
+        
+        // Only start dragging if moved more than 10px (to allow taps)
+        if (deltaX > 10 || deltaY > 10) {
+          setIsDragging(true);
+          setPanOffset({
+            x: touch.clientX - dragStart.x,
+            y: touch.clientY - dragStart.y,
+          });
+        }
+              } else if (e.touches.length === 2) {
+          const distance = getTouchDistance(e.touches as any);
+          if (lastTouchDistance > 0) {
+            const scale = distance / lastTouchDistance;
+            const newZoom = Math.max(0.3, Math.min(4, zoomLevel * scale));
+            setZoomLevel(newZoom);
+          }
+          setLastTouchDistance(distance);
+          setIsDragging(false);
+        }
+    },
+    [isDragging, dragStart, lastTouchDistance, touchStart, zoomLevel]
+  );
+
+  const handleCanvasTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+
+      if (e.touches.length === 0) {
+        // If we didn't drag much, treat it as a tap
+        if (!isDragging && e.changedTouches.length === 1) {
+          const touch = e.changedTouches[0];
+          const deltaX = Math.abs(touch.clientX - touchStart.x);
+          const deltaY = Math.abs(touch.clientY - touchStart.y);
+          
+          // Only register as tap if movement was minimal
+          if (deltaX < 10 && deltaY < 10) {
+            const coords = getCanvasCoordinates(touch.clientX, touch.clientY);
+            handleSkillNodeInteraction(coords.x, coords.y);
+          }
+        }
+        setIsDragging(false);
+        setIsTouch(false);
+        setLastTouchDistance(0);
+      }
+    },
+    [isDragging, getCanvasCoordinates, handleSkillNodeInteraction, touchStart]
+  );
+
+  // Weekly swipe handlers
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setSwipeStart({ x: touch.clientX, y: touch.clientY });
+  }, []);
+
+  const handleSwipeMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setSwipeEnd({ x: touch.clientX, y: touch.clientY });
+  }, []);
+
+  const handleSwipeEnd = useCallback(() => {
+    if (!swipeStart.x || !swipeEnd.x) return;
+
+    const deltaX = swipeStart.x - swipeEnd.x;
+    const deltaY = Math.abs(swipeStart.y - swipeEnd.y);
+
+    // Only horizontal swipes
+    if (Math.abs(deltaX) > 50 && deltaY < 100) {
+      if (deltaX > 0 && weekIndex < weeklyDataSets.length - 1) {
+        // Swipe left - next week
+        setWeekIndex((prev) => prev + 1);
+        vibrate([50]);
+      } else if (deltaX < 0 && weekIndex > 0) {
+        // Swipe right - previous week
+        setWeekIndex((prev) => prev - 1);
+        vibrate([50]);
+      }
+    }
+
+    setSwipeStart({ x: 0, y: 0 });
+    setSwipeEnd({ x: 0, y: 0 });
+  }, [swipeStart, swipeEnd, weekIndex, weeklyDataSets.length, vibrate]);
+
+  // Weekly comparison navigation
+  const handleWeeklyNavigation = useCallback(
+    (direction: "left" | "right") => {
+      if (direction === "left" && weekIndex < weeklyDataSets.length - 1) {
+        setWeekIndex((prev) => prev + 1);
+      } else if (direction === "right" && weekIndex > 0) {
+        setWeekIndex((prev) => prev - 1);
+      }
+      vibrate([50]);
+    },
+    [weekIndex, weeklyDataSets.length, vibrate]
+  );
+
+  // Voice recognition toggle
+  const toggleVoiceRecognition = useCallback(() => {
+    if (isListening) {
+      speechRecognition.current?.stop();
+      addToast("Recording stopped", "info");
+    } else {
+      try {
+        speechRecognition.current?.start();
+        setIsListening(true);
+        vibrate([50, 50, 50]);
+              } catch (error) {
+          addToast("Could not start voice recognition", "error");
+          setIsListening(false);
+        }
+    }
+  }, [isListening, addToast, vibrate]);
+
+  // Navigate to next/previous practice phrase
+  const changePracticePhrase = useCallback(
+    (direction: "next" | "prev") => {
+      if (direction === "next") {
+        setCurrentPhraseIndex((prev) => (prev + 1) % practicePhrases.length);
+      } else {
+        setCurrentPhraseIndex((prev) =>
+          prev === 0 ? practicePhrases.length - 1 : prev - 1
+        );
+      }
+      vibrate([50]);
+    },
+    [practicePhrases.length, vibrate]
+  );
+
+  // Progress calculations
+  const progressPercentage = useMemo(
+    () => Math.min((todayXp / dailyGoal) * 100, 100),
+    [todayXp, dailyGoal]
+  );
+
+  const completedSkills = useMemo(
+    () => skillNodes.filter((node) => node.completed).length,
+    [skillNodes]
+  );
+
+  const currentWeeklyData = weeklyDataSets[weekIndex];
+
+  // Calculate weekly improvement
+  const weeklyImprovement = useMemo(() => {
+    if (weekIndex === 0) return null; // Current week
+
+    const currentWeek = weeklyDataSets[weekIndex];
+    const previousWeek = weeklyDataSets[weekIndex + 1];
+
+    if (!previousWeek) return null;
+
+    const currentTotal = currentWeek.reduce((sum, day) => sum + day.xp, 0);
+    const previousTotal = previousWeek.reduce((sum, day) => sum + day.xp, 0);
+    const improvement = currentTotal - previousTotal;
+    const improvementPercent =
+      previousTotal > 0 ? (improvement / previousTotal) * 100 : 0;
+
+    return {
+      xpChange: improvement,
+      percentChange: improvementPercent,
+      isImprovement: improvement > 0,
+    };
+  }, [weekIndex, weeklyDataSets]);
+
+  // Draw canvas when data changes
+  useEffect(() => {
+    if (canvasReady) {
+      drawSkillTree();
+    }
+  }, [drawSkillTree, canvasReady]);
+
+  // Navigation items
+  const navigationItems = [
+    { name: "Learn", icon: BookOpenIcon, id: "learn" },
+    { name: "Progress", icon: ChartBarIcon, id: "progress" },
+    { name: "Practice", icon: SpeakerWaveIcon, id: "practice" },
+    { name: "Profile", icon: UserIcon, id: "profile" },
+  ];
+
+  // Render different tab content
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "learn":
+        return (
+          <>
+            {/* Interactive Skill Tree */}
             <div
-              className="relative bg-gradient-to-b from-sky-200 to-green-200 rounded-xl overflow-hidden mb-4 sm:mb-6 mx-auto"
-              style={{
-                height: `${Math.min(
-                  CANVAS_HEIGHT,
-                  isMobile ? window.innerHeight * 0.8 : window.innerHeight * 0.6
-                )}px`,
-                // width:
-                //   isMobile && zoomLevel > 1 ? `${800 * zoomLevel}px` : "100%",
-                width: isMobile && zoomLevel > 1 ? "100%" : "100%",
-                maxWidth: isMobile && zoomLevel > 1 ? "none" : "100%",
-                // overflowX: zoomLevel > 1 ? "auto" : "hidden",
-                overflowY: "hidden",
-                WebkitOverflowScrolling: "touch",
-              }}
+              className="bg-white rounded-3xl shadow-xl border border-white/50 p-3 sm:p-6 mb-4 sm:mb-6"
+              ref={containerRef}
             >
-              {/* Sky with sun and clouds */}
-              <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-sky-200 to-green-300">
-                {/* Sun */}
-                <div
-                  className="absolute bg-yellow-400 rounded-full shadow-lg opacity-90"
-                  style={{
-                    top: 6 * zoomLevel,
-                    right: 8 * zoomLevel,
-                    width: 12 * zoomLevel,
-                    height: 12 * zoomLevel,
-                  }}
-                >
-                  <div
-                    className="absolute bg-yellow-300 rounded-full"
-                    style={{
-                      top: 1 * zoomLevel,
-                      left: 1 * zoomLevel,
-                      right: 1 * zoomLevel,
-                      bottom: 1 * zoomLevel,
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Skill Tree
+                </h2>
+                <div className="flex gap-1 sm:gap-2">
+                  <button
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
-                  ></div>
-                </div>
-
-                {/* Clouds */}
-                <div
-                  className="absolute bg-white/60 rounded-full"
-                  style={{
-                    top: 8 * zoomLevel,
-                    left: 20 * zoomLevel,
-                    width: 8 * zoomLevel,
-                    height: 4 * zoomLevel,
-                  }}
-                ></div>
-                <div
-                  className="absolute bg-white/40 rounded-full"
-                  style={{
-                    top: 12 * zoomLevel,
-                    left: 16 * zoomLevel,
-                    width: 12 * zoomLevel,
-                    height: 6 * zoomLevel,
-                  }}
-                ></div>
-                <div
-                  className="absolute bg-white/50 rounded-full"
-                  style={{
-                    top: 16 * zoomLevel,
-                    right: 32 * zoomLevel,
-                    width: 10 * zoomLevel,
-                    height: 5 * zoomLevel,
-                  }}
-                ></div>
-              </div>
-
-              {/* Ground */}
-              <div
-                className="absolute left-0 right-0 bg-gradient-to-t from-green-700 to-green-500"
-                style={{
-                  bottom: 0,
-                  height: `${(BASE_CANVAS_HEIGHT - 360) * zoomLevel}px`,
-                }}
-              >
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-green-800"
-                  style={{ height: 2 * zoomLevel }}
-                ></div>
-                <div
-                  className="absolute left-0 right-0 bg-green-600 opacity-70"
-                  style={{
-                    bottom: 2 * zoomLevel,
-                    height: 4 * zoomLevel,
-                  }}
-                ></div>
-              </div>
-
-              {/* SVG Overlay */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                <defs>
-                  <marker
-                    id="arrowhead"
-                    markerWidth="12"
-                    markerHeight="8"
-                    refX="10"
-                    refY="4"
-                    orient="auto"
-                    markerUnits="strokeWidth"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel((prev) => Math.min(prev + 0.3, 3));
+                      vibrate([50]);
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel((prev) => Math.min(prev + 0.3, 3));
+                      vibrate([50]);
+                    }}
+                    className="px-3 py-2 bg-blue-100 text-blue-600 rounded-xl hover:bg-blue-200 active:bg-blue-300 transition-colors text-sm font-medium touch-manipulation select-none"
+                    title="Zoom In"
                   >
-                    <polygon points="0 0, 12 4, 0 8" fill="#3b82f6" />
-                  </marker>
-
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {/* Trajectory Path */}
-                {showTrajectory && pathData && (
-                  <path
-                    d={pathData}
-                    stroke="#ef4444"
-                    strokeWidth={3 * zoomLevel}
-                    fill="none"
-                    strokeDasharray={`${8 * zoomLevel},${4 * zoomLevel}`}
-                    opacity="0.8"
-                  />
-                )}
-
-                {/* Projectile */}
-                <circle
-                  cx={projectile.x}
-                  cy={projectile.y}
-                  r={8 * zoomLevel}
-                  fill="#dc2626"
-                  stroke="#fff"
-                  strokeWidth={2 * zoomLevel}
-                  filter="url(#glow)"
-                />
-
-                {/* Velocity Vectors */}
-                {showVectors && projectile.isFlying && (
-                  <g>
-                    <line
-                      x1={projectile.x}
-                      y1={projectile.y}
-                      x2={projectile.x + projectile.vx * 3 * zoomLevel}
-                      y2={projectile.y - projectile.vy * 3 * zoomLevel}
-                      stroke="#3b82f6"
-                      strokeWidth={3 * zoomLevel}
-                      markerEnd="url(#arrowhead)"
-                      opacity="0.9"
-                    />
-                  </g>
-                )}
-
-                {/* Launch Angle Indicator */}
-                <line
-                  x1={LAUNCH_X}
-                  y1={LAUNCH_Y}
-                  x2={
-                    LAUNCH_X +
-                    Math.cos((angle * Math.PI) / 180) * 40 * zoomLevel
-                  }
-                  y2={
-                    LAUNCH_Y -
-                    Math.sin((angle * Math.PI) / 180) * 40 * zoomLevel
-                  }
-                  stroke="#fbbf24"
-                  strokeWidth={2 * zoomLevel}
-                  opacity="0.8"
-                />
-                <text
-                  x={
-                    LAUNCH_X +
-                    Math.cos((angle * Math.PI) / 180) * 50 * zoomLevel
-                  }
-                  y={
-                    LAUNCH_Y -
-                    Math.sin((angle * Math.PI) / 180) * 50 * zoomLevel
-                  }
-                  fill="#f59e0b"
-                  fontSize={14 * zoomLevel}
-                  fontWeight="bold"
-                >
-                  {angle}°
-                </text>
-              </svg>
-
-              {/* Obstacles */}
-              {obstacles.map((obstacle, index) => (
-                <div
-                  key={index}
-                  className="absolute bg-gradient-to-b from-gray-500 to-gray-700 border-2 border-gray-800 rounded shadow-lg"
-                  style={{
-                    left: obstacle.x,
-                    top: obstacle.y,
-                    width: obstacle.width,
-                    height: obstacle.height,
-                  }}
-                >
-                  <div
-                    className="absolute left-1 right-1 bg-gray-400/50 rounded"
-                    style={{
-                      top: 1 * zoomLevel,
-                      height: 2 * zoomLevel,
+                    <PlusIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
-                  ></div>
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel((prev) => Math.max(prev - 0.3, 0.5));
+                      vibrate([50]);
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel((prev) => Math.max(prev - 0.3, 0.5));
+                      vibrate([50]);
+                    }}
+                    className="px-3 py-2 bg-blue-100 text-blue-600 rounded-xl hover:bg-blue-200 active:bg-blue-300 transition-colors text-sm font-medium touch-manipulation select-none"
+                    title="Zoom Out"
+                  >
+                    −
+                  </button>
+                  <button
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel(1);
+                      // Reset will be handled by the resize useEffect
+                      vibrate([100]);
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoomLevel(1);
+                      // Reset will be handled by the resize useEffect
+                      vibrate([100]);
+                    }}
+                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium touch-manipulation select-none"
+                    title="Reset View"
+                  >
+                    Reset
+                  </button>
                 </div>
-              ))}
+              </div>
 
-              {/* Launch Point */}
-              <div
-                className="absolute bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center"
-                style={{
-                  left: `${LAUNCH_X - 12 * zoomLevel}px`,
-                  top: `${LAUNCH_Y - 12 * zoomLevel}px`,
-                  width: 6 * zoomLevel * 4,
-                  height: 6 * zoomLevel * 4,
-                }}
-              >
-                <div
-                  className="bg-white rounded-full"
+              <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
+                Click or tap on skill nodes to practice and earn XP. Drag to
+                pan, use buttons to zoom.
+              </div>
+
+              <div className="relative w-full max-w-full overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-100">
+                {!canvasReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">
+                        Loading skill tree...
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onClick={handleCanvasClick}
+                  onTouchStart={handleCanvasTouchStart}
+                  onTouchMove={handleCanvasTouchMove}
+                  onTouchEnd={handleCanvasTouchEnd}
+                  className="w-full cursor-pointer touch-none select-none block"
                   style={{
-                    width: 2 * zoomLevel,
-                    height: 2 * zoomLevel,
+                    width: `${canvasSize.width}px`,
+                    height: `${canvasSize.height}px`,
+                    maxWidth: "100%",
+                    opacity: canvasReady ? 1 : 0,
+                    transition: "opacity 0.3s ease",
                   }}
-                ></div>
-              </div>
-            </div>
+                />
 
-            {/* Control Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-              <button
-                onClick={toggleSimulation}
-                className="flex items-center space-x-1 sm:space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer"
-              >
-                {isPlaying ? (
-                  <PauseIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                ) : (
-                  <PlayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                {selectedSkill && (
+                  <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 max-w-xs border border-white/50 z-10">
+                    {(() => {
+                      const skill = skillNodes.find(
+                        (n) => n.id === selectedSkill
+                      );
+                      return skill ? (
+                        <div>
+                          <div className="flex items-start justify-between mb-3 sm:mb-4">
+                            <div className="flex items-center flex-1 mr-3">
+                              <div
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full mr-2 sm:mr-3"
+                                style={{ backgroundColor: skill.color }}
+                              ></div>
+                              <div>
+                                <h3 className="font-bold text-sm sm:text-lg">
+                                  {skill.name}
+                                </h3>
+                                <p className="text-xs sm:text-sm text-gray-600">
+                                  Level {skill.level}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setSelectedSkill(null)}
+                              className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-400 hover:text-gray-600 flex-shrink-0"
+                              title="Close"
+                            >
+                              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3 mb-2">
+                            <div
+                              className="h-2 sm:h-3 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${(skill.xp / skill.maxXp) * 100}%`,
+                                backgroundColor: skill.color,
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-2 sm:mb-3">
+                            {skill.xp}/{skill.maxXp} XP
+                          </p>
+                          {skill.completed ? (
+                            <div className="flex items-center text-green-600 bg-green-50 rounded-lg p-2">
+                              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                              <span className="text-xs sm:text-sm font-medium">
+                                Mastered!
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-blue-600 bg-blue-50 rounded-lg p-2">
+                              Click to practice and earn +30 XP!
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
                 )}
-                <span>{isPlaying ? "Pause" : "Launch"}</span>
-              </button>
+              </div>
+            </div>
 
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+              {/* Go to Progress */}
               <button
-                onClick={resetSimulation}
-                className="flex items-center space-x-1 sm:space-x-2 bg-slate-700 hover:bg-slate-800 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border border-slate-600 hover:border-slate-500"
+                onClick={() => setActiveTab("progress")}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl cursor-pointer sm:rounded-2xl p-4 sm:p-6 text-left hover:shadow-lg transition-all duration-200 transform hover:scale-105"
               >
-                <ArrowPathIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span>Reset</span>
-              </button>
-
-              <button
-                onClick={() => setShowTrajectory(!showTrajectory)}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
-                  showTrajectory
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 hover:border-emerald-400"
-                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
-                }`}
-              >
-                <ChartBarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span>Trajectory</span>
-              </button>
-
-              <button
-                onClick={() => setShowVectors(!showVectors)}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
-                  showVectors
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 hover:border-indigo-400"
-                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
-                }`}
-              >
-                <Cog6ToothIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span>Vectors</span>
-              </button>
-
-              <button
-                onClick={() => setControlPanelOpen(!controlPanelOpen)}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 text-sm sm:text-base cursor-pointer border ${
-                  controlPanelOpen
-                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-500 hover:border-orange-400"
-                    : "bg-slate-700 hover:bg-slate-800 text-white border-slate-600 hover:border-slate-500"
-                }`}
-                title="Toggle Control Panel"
-              >
-                <AdjustmentsHorizontalIcon className="h-5 w-5" />
-                <span>Controls</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Data Display */}
-          <div className="md:hidden flex flex-col bg-slate-800/50 rounded-2xl p-3 sm:p-4 mt-4">
-            <h4 className="font-semibold text-white mb-3 flex items-center text-sm sm:text-base">
-              <InformationCircleIcon className="h-4 w-4 mr-2" />
-              Live Data
-            </h4>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-              <div>
-                <div className="text-slate-400">Position X:</div>
-                <div className="text-blue-400 font-mono">
-                  {((projectile.x - LAUNCH_X) / zoomLevel).toFixed(0)}m
+                <div className="flex items-center mb-2">
+                  <ChartBarIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                  <span className="font-semibold text-sm sm:text-base">
+                    Progress Overview
+                  </span>
                 </div>
-              </div>
-              <div>
-                <div className="text-slate-400">Position Y:</div>
-                <div className="text-blue-400 font-mono">
-                  {Math.max(0, (LAUNCH_Y - projectile.y) / SCALE).toFixed(0)}m
-                </div>
-              </div>
-              <div>
-                <div className="text-slate-400">Speed:</div>
-                <div className="text-green-400 font-mono">
-                  {Math.sqrt(projectile.vx ** 2 + projectile.vy ** 2).toFixed(
-                    1
-                  )}{" "}
-                  m/s
-                </div>
-              </div>
-              <div>
-                <div className="text-slate-400">Time:</div>
-                <div className="text-yellow-400 font-mono">
-                  {projectile.time.toFixed(2)}s
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-slate-600">
-              <div className="text-slate-400 text-xs sm:text-sm">Status:</div>
-              <div
-                className={`font-semibold text-xs sm:text-sm ${
-                  projectile.hasCollided
-                    ? "text-red-400"
-                    : projectile.isFlying
-                    ? "text-green-400"
-                    : "text-gray-400"
-                }`}
-              >
-                {projectile.hasCollided
-                  ? "Impact"
-                  : projectile.isFlying
-                  ? "In Flight"
-                  : "Ready to Launch"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Section */}
-      <div
-        ref={analyticsRef}
-        className="px-2 sm:px-4 py-12 sm:py-20 bg-slate-900/50"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Advanced <span className="text-blue-400">Analytics</span>
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Deep insights into projectile motion with comprehensive data
-              analysis
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
-              <h3 className="text-2xl font-semibold text-white mb-6">
-                Real-time Metrics
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Trajectory Analysis</span>
-                  <span className="text-green-400 font-semibold">Live</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Collision Detection</span>
-                  <span className="text-blue-400 font-semibold">Active</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Vector Visualization</span>
-                  <span className="text-purple-400 font-semibold">Enabled</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Performance Monitoring</span>
-                  <span className="text-yellow-400 font-semibold">60 FPS</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
-              <h3 className="text-2xl font-semibold text-white mb-6">
-                Export Options
-              </h3>
-              <div className="space-y-3">
-                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
-                  Export Trajectory Data (CSV)
-                </button>
-                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
-                  Save Simulation Parameters
-                </button>
-                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
-                  Generate Analysis Report
-                </button>
-                <button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors text-left  ">
-                  Share Configuration
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Documentation Section */}
-      <div ref={documentationRef} className="px-2 sm:px-4 py-12 sm:py-20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              <span className="text-blue-400">Documentation</span> & Guides
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Comprehensive resources to help you get the most out of our
-              physics simulator
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <BookOpenIcon className="h-10 w-10 text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Quick Start Guide
-              </h3>
-              <p className="text-slate-300 mb-4">
-                Get up and running with the simulator in minutes
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <AcademicCapIcon className="h-10 w-10 text-green-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Physics Theory
-              </h3>
-              <p className="text-slate-300 mb-4">
-                Understand the mathematical principles behind the simulation
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all">
-              <UserGroupIcon className="h-10 w-10 text-purple-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                Educational Use
-              </h3>
-              <p className="text-slate-300 mb-4">
-                Best practices for using the simulator in educational settings
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Enterprise Section */}
-      <div
-        ref={enterpriseRef}
-        className="px-2 sm:px-4 py-12 sm:py-20 bg-slate-900/50"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              <span className="text-blue-400">Enterprise</span> Solutions
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Scalable physics simulation solutions for institutions and
-              organizations
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
-              <BuildingOfficeIcon className="h-12 w-12 text-blue-400 mb-6" />
-              <h3 className="text-2xl font-semibold text-white mb-4">
-                For Institutions
-              </h3>
-              <ul className="space-y-3 text-slate-300 mb-6">
-                <li className="flex items-center">
-                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
-                  Multi-user collaboration tools
-                </li>
-                <li className="flex items-center">
-                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
-                  Advanced analytics dashboard
-                </li>
-                <li className="flex items-center">
-                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
-                  Custom simulation scenarios
-                </li>
-                <li className="flex items-center">
-                  <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
-                  Priority support & training
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-slate-700/50">
-              <div className="mb-6">
-                <h3 className="text-2xl font-semibold text-white mb-4">
-                  Contact Sales
-                </h3>
-                <p className="text-slate-300 mb-6">
-                  Ready to transform your physics education or research? Our
-                  team is here to help.
+                <p className="text-xs sm:text-sm opacity-90">
+                  Check your weekly performance
                 </p>
-              </div>
+              </button>
 
-              <div className="space-y-4">
-                <div className="flex items-center text-slate-300">
-                  <EnvelopeIcon className="h-5 w-5 text-blue-400 mr-3" />
-                  enterprise@physicslab.pro
+              {/* Go to Practice */}
+              <button
+                onClick={() => setActiveTab("practice")}
+                className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl cursor-pointer sm:rounded-2xl p-4 sm:p-6 text-left hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+              >
+                <div className="flex items-center mb-2">
+                  <MicrophoneIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                  <span className="font-semibold text-sm sm:text-base">
+                    Voice Practice
+                  </span>
                 </div>
-                <div className="flex items-center text-slate-300">
-                  <PhoneIcon className="h-5 w-5 text-blue-400 mr-3" />
-                  +1 (555) 123-4567
+                <p className="text-xs sm:text-sm opacity-90">
+                  Improve pronunciation
+                </p>
+              </button>
+
+              {/* Go to Profile */}
+              <button
+                onClick={() => setActiveTab("profile")}
+                className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl cursor-pointer sm:rounded-2xl p-4 sm:p-6 text-left hover:shadow-lg transition-all duration-200 transform hover:scale-105 sm:col-span-2 lg:col-span-1"
+              >
+                <div className="flex items-center mb-2">
+                  <BoltIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3" />
+                  <span className="font-semibold text-sm sm:text-base">
+                    Profile & Goals
+                  </span>
                 </div>
-                <div className="flex items-center text-slate-300">
-                  <MapPinIcon className="h-5 w-5 text-blue-400 mr-3" />
-                  San Francisco, CA
-                </div>
-              </div>
+                <p className="text-xs sm:text-sm opacity-90">
+                  View achievements and learning streak
+                </p>
+              </button>
             </div>
-          </div>
-        </div>
-      </div>
+          </>
+        );
 
-            {/* Sleek Side Panel Toggle Button */}
-      <div
-        className={`fixed right-0 top-1/2 transform -translate-y-1/2 z-50 transition-all duration-500 ease-in-out ${
-          controlPanelOpen ? (isMobile ? '-translate-x-70' : '-translate-x-80') : 'translate-x-0'
-        } ${
-          isInSimulatorSection 
-            ? 'opacity-100 scale-100' 
-            : 'opacity-0 scale-95 translate-x-4'
-        }`}
-        style={{
-          transitionProperty: 'opacity, transform',
-          transitionDuration: '600ms, 500ms',
-          transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          pointerEvents: isInSimulatorSection ? 'auto' : 'none'
-        }}
-      >
-          <div className="relative group">
-            {/* Sleek glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-l from-blue-500/30 to-indigo-600/30 rounded-l-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-400"></div>
-            
-            {/* Main sleek button */}
-            <button
-              onClick={() => setControlPanelOpen(!controlPanelOpen)}
-              className="relative bg-gradient-to-b from-slate-800/90 via-slate-700/90 to-slate-900/90 hover:from-blue-600/90 hover:via-blue-700/90 hover:to-indigo-700/90 text-white backdrop-blur-md border border-slate-600/40 hover:border-blue-400/60 shadow-xl hover:shadow-blue-500/20 transition-all duration-400 flex flex-col items-center justify-center group overflow-hidden"
-              style={{
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-                borderTopLeftRadius: '24px',
-                borderBottomLeftRadius: '24px',
-                width: '40px',
-                height: '80px',
-                boxShadow: '0 8px 32px -8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)'
-              }}
-            >
-              {/* Vertical shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/0 via-white/8 to-white/0 -translate-y-full group-hover:translate-y-full transition-transform duration-700 ease-out"></div>
-              
-              {/* Icon container */}
-              <div className="relative z-10 flex flex-col items-center justify-center h-full">
-                {controlPanelOpen ? (
-                  <svg className="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 transition-all duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                  </svg>
-                )}
-                
-                {/* Minimalist dots */}
-                <div className="mt-2 flex flex-col space-y-1">
-                  <div className={`w-1 h-1 rounded-full transition-all duration-300 ${controlPanelOpen ? 'bg-orange-400' : 'bg-slate-400'}`}></div>
-                  <div className={`w-1 h-1 rounded-full transition-all duration-300 delay-75 ${controlPanelOpen ? 'bg-orange-400' : 'bg-slate-400'}`}></div>
+      case "progress":
+        return (
+          <>
+            {/* Weekly Progress Comparison with Swipe */}
+            <div className="bg-white rounded-3xl shadow-xl border border-white/50 p-3 sm:p-6 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900 text-center sm:text-left">
+                  Weekly Progress
+                </h2>
+                <div className="flex justify-center sm:justify-end items-center gap-2">
+                  <button
+                    onClick={() => handleWeeklyNavigation("left")}
+                    disabled={weekIndex === weeklyDataSets.length - 1}
+                    className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    <ChevronLeftIcon className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm font-medium text-gray-600 px-3">
+                    Week {weeklyDataSets.length - weekIndex}
+                  </span>
+                  <button
+                    onClick={() => handleWeeklyNavigation("right")}
+                    disabled={weekIndex === 0}
+                    className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    <ChevronRightIcon className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              
-              {/* Subtle inner glow */}
-              <div className="absolute inset-0 rounded-l-full bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-            
-            {/* Side accent line */}
-            <div className={`absolute -left-1 top-1/2 transform -translate-y-1/2 w-0.5 transition-all duration-300 ${
-              controlPanelOpen 
-                ? 'h-12 bg-gradient-to-b from-orange-400 to-orange-600' 
-                : 'h-8 bg-gradient-to-b from-blue-400 to-blue-600'
-            } rounded-full shadow-sm`}></div>
-          </div>
-        </div>
 
-      {/* Modern Control Panel */}
-      {isInSimulatorSection && (
-        <div
-          className={`fixed right-0 top-1/2 transform -translate-y-1/2 bg-slate-900/95 backdrop-blur-md border-l border-slate-600/50 shadow-2xl z-40 transition-all duration-300 rounded-l-3xl ${
-            controlPanelOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-          style={{
-            width: isMobile ? Math.min(280, window.innerWidth - 40) : 320,
-            maxHeight: isMobile ? '70vh' : '80vh',
-            overflow: 'auto',
-          }}
-        >
-          {/* Modern Header */}
-          <div className="p-4 border-b border-slate-700/50 rounded-tl-3xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <h3 className="text-lg font-semibold text-white">Control Panel</h3>
-              </div>
-            </div>
-          </div>
-
-          {/* Control Content */}
-          <div className="p-4">
-            {/* Angle Control */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Launch Angle:{" "}
-                <span className="text-blue-400 font-bold">{angle}°</span>
-              </label>
-              <input
-                type="range"
-                min="5"
-                max="85"
-                value={angle}
-                disabled={isPlaying}
-                onChange={(e) => {
-                  setAngle(Number(e.target.value));
-                  // Reset projectile position when angle changes
-                  setProjectile({
-                    x: LAUNCH_X,
-                    y: LAUNCH_Y,
-                    vx: 0,
-                    vy: 0,
-                    time: 0,
-                    isFlying: false,
-                    hasCollided: false,
-                  });
-                  setIsPlaying(false);
-                  collisionNotifiedRef.current = false;
-                  if (animationRef.current) {
-                    cancelAnimationFrame(animationRef.current);
-                  }
-                }}
-                className={`w-full h-3 rounded-lg appearance-none slider ${
-                  isPlaying 
-                    ? 'bg-slate-700 cursor-not-allowed opacity-50' 
-                    : 'bg-slate-600 cursor-pointer'
-                }`}
-              />
-              <div className="flex justify-between text-xs text-slate-400 mt-1">
-                <span>5°</span>
-                <span>45°</span>
-                <span>85°</span>
-              </div>
-            </div>
-
-            {/* Velocity Control */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Initial Velocity:{" "}
-                <span className="text-blue-400 font-bold">{velocity} m/s</span>
-              </label>
-              <input
-                type="range"
-                min="10"
-                max="50"
-                value={velocity}
-                disabled={isPlaying}
-                onChange={(e) => {
-                  setVelocity(Number(e.target.value));
-                  // Reset projectile position when velocity changes
-                  setProjectile({
-                    x: LAUNCH_X,
-                    y: LAUNCH_Y,
-                    vx: 0,
-                    vy: 0,
-                    time: 0,
-                    isFlying: false,
-                    hasCollided: false,
-                  });
-                  setIsPlaying(false);
-                  collisionNotifiedRef.current = false;
-                  if (animationRef.current) {
-                    cancelAnimationFrame(animationRef.current);
-                  }
-                }}
-                className={`w-full h-3 rounded-lg appearance-none slider ${
-                  isPlaying 
-                    ? 'bg-slate-700 cursor-not-allowed opacity-50' 
-                    : 'bg-slate-600 cursor-pointer'
-                }`}
-              />
-              <div className="flex justify-between text-xs text-slate-400 mt-1">
-                <span>10 m/s</span>
-                <span>30 m/s</span>
-                <span>50 m/s</span>
-              </div>
-            </div>
-
-            {/* Real-time Data */}
-            <div className="flex flex-col bg-slate-800/60 rounded-2xl p-4 border border-slate-600/30">
-              <h4 className="font-semibold text-white mb-3 flex items-center text-sm sm:text-base">
-                <InformationCircleIcon className="h-4 w-4 mr-2" />
-                Live Data
-              </h4>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                <div>
-                  <div className="text-slate-400">Position X:</div>
-                  <div className="text-blue-400 font-mono">
-                    {((projectile.x - LAUNCH_X) / zoomLevel).toFixed(0)}m
-                  </div>
-                </div>
-                <div>
-                  <div className="text-slate-400">Position Y:</div>
-                  <div className="text-blue-400 font-mono">
-                    {Math.max(0, (LAUNCH_Y - projectile.y) / SCALE).toFixed(0)}m
-                  </div>
-                </div>
-                <div>
-                  <div className="text-slate-400">Speed:</div>
-                  <div className="text-green-400 font-mono">
-                    {Math.sqrt(projectile.vx ** 2 + projectile.vy ** 2).toFixed(
-                      1
-                    )}{" "}
-                    m/s
-                  </div>
-                </div>
-                <div>
-                  <div className="text-slate-400">Time:</div>
-                  <div className="text-yellow-400 font-mono">
-                    {projectile.time.toFixed(2)}s
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-600">
-                <div className="text-slate-400 text-xs sm:text-sm">Status:</div>
+              {/* Weekly Improvement Indicator */}
+              {weeklyImprovement && (
                 <div
-                  className={`font-semibold text-xs sm:text-sm ${
-                    projectile.hasCollided
-                      ? "text-red-400"
-                      : projectile.isFlying
-                      ? "text-green-400"
-                      : "text-gray-400"
+                  className={`mb-3 sm:mb-4 p-2 sm:p-3 rounded-lg sm:rounded-xl ${
+                    weeklyImprovement.isImprovement
+                      ? "bg-green-50 border border-green-200"
+                      : "bg-red-50 border border-red-200"
                   }`}
                 >
-                  {projectile.hasCollided
-                    ? "Impact"
-                    : projectile.isFlying
-                    ? "In Flight"
-                    : "Ready to Launch"}
+                  <div className="flex items-center">
+                    {weeklyImprovement.isImprovement ? (
+                      <ChartBarIcon className="w-4 h-4 mr-2 text-green-600" />
+                    ) : (
+                      <ChartBarIcon className="w-4 h-4 mr-2 text-red-600 transform rotate-180" />
+                    )}
+                    <span
+                      className={`text-xs sm:text-sm font-medium ${
+                        weeklyImprovement.isImprovement
+                          ? "text-green-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      {weeklyImprovement.isImprovement ? "+" : ""}
+                      {weeklyImprovement.xpChange} XP vs previous week (
+                      {weeklyImprovement.percentChange > 0 ? "+" : ""}
+                      {weeklyImprovement.percentChange.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div
+                className="grid grid-cols-7 gap-1 sm:gap-2"
+                onTouchStart={handleSwipeStart}
+                onTouchMove={handleSwipeMove}
+                onTouchEnd={handleSwipeEnd}
+              >
+                {currentWeeklyData.map((day, index) => (
+                  <div key={`${weekIndex}-${index}`} className="text-center">
+                    <div className="text-xs font-medium text-gray-500 mb-1 sm:mb-2">
+                      {day.day}
+                    </div>
+                    <div className="text-xs text-gray-400 mb-1 sm:mb-2">
+                      {day.date}
+                    </div>
+                    <div
+                      className="bg-gradient-to-t from-blue-500 to-purple-500 rounded-lg sm:rounded-xl p-2 sm:p-3 hover:shadow-lg transition-all duration-200 cursor-pointer relative overflow-hidden"
+                      style={{ height: `${Math.max(day.xp / 4, 70)}px` }}
+                    >
+                      <div className="absolute inset-0 bg-white/20 rounded-lg sm:rounded-xl"></div>
+                      <div className="relative text-white">
+                        <div className="text-xs font-bold">{day.xp}</div>
+                        <div className="text-xs opacity-80">{day.lessons}L</div>
+                        <div className="text-xs opacity-60">
+                          {day.accuracy}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-gray-500 mt-2 sm:mt-3 text-center">
+                Swipe left/right to view different weeks
+              </div>
+            </div>
+
+            {/* Detailed Statistics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+              <div className="bg-white rounded-2xl shadow-lg border border-white/50 p-4 sm:p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                  <ChartBarIcon className="w-5 h-5 mr-2 text-blue-500" />
+                  Learning Stats
+                </h3>
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base text-gray-600">
+                      Total Lessons
+                    </span>
+                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                      {userStats.totalLessons}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base text-gray-600">
+                      Total Time
+                    </span>
+                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                      {Math.round(userStats.totalTimeSpent / 60)}h{" "}
+                      {userStats.totalTimeSpent % 60}m
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base text-gray-600">
+                      Average Accuracy
+                    </span>
+                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                      {userStats.averageAccuracy}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm sm:text-base text-gray-600">
+                      Longest Streak
+                    </span>
+                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                      {userStats.longestStreak} days
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="text-slate-400 text-xs sm:text-sm">
-                  Zoom Level:
+
+              <div className="bg-white rounded-2xl shadow-lg border border-white/50 p-4 sm:p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                  <TrophyIcon className="w-5 h-5 mr-2 text-yellow-500" />
+                  Achievements
+                </h3>
+                <div className="space-y-3">
+                  {achievements.slice(0, 4).map((achievement) => (
+                    <div
+                      key={achievement.id}
+                      className={`flex items-center p-2 sm:p-3 rounded-lg sm:rounded-xl ${
+                        achievement.unlocked
+                          ? "bg-green-50 border border-green-200"
+                          : "bg-gray-50 border border-gray-200"
+                      }`}
+                    >
+                      <div className={`mr-2 sm:mr-3 p-1.5 rounded-lg ${
+                        achievement.unlocked 
+                          ? "bg-green-100 text-green-600" 
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {renderAchievementIcon(achievement.icon, "w-4 h-4 sm:w-5 sm:h-5")}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm sm:text-base text-gray-900 truncate">
+                          {achievement.name}
+                        </div>
+                        <div className="text-xs text-gray-600 truncate">
+                          {achievement.description}
+                        </div>
+                        {!achievement.unlocked && (
+                          <div className="mt-1">
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
+                              <div
+                                className="bg-blue-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${
+                                    (achievement.progress /
+                                      achievement.maxProgress) *
+                                    100
+                                  }%`,
+                                }}
+                              ></div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {achievement.progress}/{achievement.maxProgress}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {achievement.unlocked && (
+                        <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div className="text-blue-400 font-mono text-xs sm:text-sm">
-                  {zoomLevel}x
+              </div>
+            </div>
+          </>
+        );
+
+      case "practice":
+        return (
+          <>
+            {/* Voice Practice Section */}
+            <div className="bg-white rounded-3xl shadow-xl border border-white/50 p-3 sm:p-6 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+                Pronunciation Practice
+              </h2>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* Voice Recognition Panel */}
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <MicrophoneIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 mr-2 sm:mr-3" />
+                      <h3 className="text-base sm:text-lg font-semibold">
+                        Voice Practice
+                      </h3>
+                    </div>
+                    <div className="flex items-center text-xs sm:text-sm font-medium text-gray-600">
+                      Streak: {practiceStreak} 
+                      <FireIconSolid className="w-3 h-3 ml-1 text-orange-500" />
+                    </div>
+                  </div>
+
+                  {/* Current Phrase Display */}
+                  <div className="bg-white rounded-xl p-3 sm:p-4 mb-4 border-2 border-blue-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        onClick={() => changePracticePhrase("prev")}
+                        className="p-1.5 sm:p-2 rounded-lg bg-blue-100 text-blue-600 cursor-pointer  hover:bg-blue-200"
+                      >
+                        <ChevronLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </button>
+                      <div className="text-center flex-1 px-2">
+                        <div className="text-lg sm:text-2xl font-bold text-gray-900 mb-1">
+                          {practicePhrases[currentPhraseIndex].spanish}
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600">
+                          {practicePhrases[currentPhraseIndex].english}
+                        </div>
+                        <div className="flex items-center text-xs text-blue-600 mt-1">
+                          <span className="mr-1">Difficulty:</span>
+                          {Array.from({ length: practicePhrases[currentPhraseIndex].difficulty }, (_, i) => (
+                            <StarIconSolid key={i} className="w-3 h-3 text-yellow-400" />
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => changePracticePhrase("next")}
+                        className="p-1.5 sm:p-2 rounded-lg bg-blue-100  cursor-pointer text-blue-600 hover:bg-blue-200"
+                      >
+                        <ChevronRightIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pronunciation Score */}
+                  {pronunciationScore > 0 && (
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">
+                          Pronunciation Score
+                        </span>
+                        <span
+                          className={`text-xs sm:text-sm font-bold ${
+                            pronunciationScore >= 80
+                              ? "text-green-600"
+                              : pronunciationScore >= 60
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {pronunciationScore}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
+                        <div
+                          className={`h-2 sm:h-3 rounded-full transition-all duration-500 ${
+                            pronunciationScore >= 80
+                              ? "bg-green-500"
+                              : pronunciationScore >= 60
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                          style={{ width: `${pronunciationScore}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Voice Control Button */}
+                  <button
+                    onClick={toggleVoiceRecognition}
+                    className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-2xl  cursor-pointer font-semibold transition-all duration-200 flex items-center justify-center ${
+                      isListening
+                        ? "bg-red-500 text-white hover:bg-red-600 shadow-lg animate-pulse"
+                        : "bg-blue-500 text-white hover:bg-blue-600 shadow-lg hover:shadow-xl"
+                    }`}
+                  >
+                    <MicrophoneIcon
+                      className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 ${
+                        isListening ? "animate-bounce" : ""
+                      }`}
+                    />
+                    <span className="text-sm sm:text-base">
+                      {isListening ? "Stop Recording" : "Start Speaking"}
+                    </span>
+                  </button>
+
+                  <p className="text-xs sm:text-sm text-gray-600 mt-3 text-center">
+                    {isListening
+                      ? "Listening for your pronunciation..."
+                      : "Tap to practice pronunciation with AI feedback"}
+                  </p>
                 </div>
+
+                {/* Practice Stats Panel */}
+                <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center mb-4">
+                    <SpeakerWaveIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-500 mr-2 sm:mr-3" />
+                    <h3 className="text-base sm:text-lg font-semibold">
+                      Practice Stats
+                    </h3>
+                  </div>
+
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="bg-white rounded-xl p-3 sm:p-4 border border-green-100">
+                      <div className="flex items-center mb-2 sm:mb-3">
+                        <ChartBarIcon className="w-4 h-4 mr-2 text-blue-500" />
+                        <h4 className="font-medium text-sm sm:text-base text-gray-900">
+                          Your Progress
+                        </h4>
+                      </div>
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-gray-600">Total Attempts</span>
+                          <span className="font-bold text-gray-900">
+                            {voicePracticeStats.totalAttempts}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-gray-600">Average Score</span>
+                          <span className="font-bold text-gray-900">
+                            {voicePracticeStats.averageScore}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-gray-600">Best Score</span>
+                          <span className="font-bold text-green-600">
+                            {voicePracticeStats.bestScore}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-gray-600">Practice Time</span>
+                          <span className="font-bold text-gray-900">
+                            {voicePracticeStats.practiceTime}m
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-3 sm:p-4 border border-blue-100">
+                      <div className="flex items-center mb-2">
+                        <BeakerIcon className="w-4 h-4 mr-2 text-green-500" />
+                        <h4 className="font-medium text-sm sm:text-base text-gray-900">
+                          Scoring System
+                        </h4>
+                      </div>
+                      <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-green-600">80-100%</span>
+                          <span className="text-gray-600">Excellent!</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-yellow-600">60-79%</span>
+                          <span className="text-gray-600">Good</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-red-600">0-59%</span>
+                          <span className="text-gray-600">Keep practicing</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-3 sm:p-4 border border-purple-100">
+                      <div className="flex items-center mb-2">
+                        <AcademicCapIcon className="w-4 h-4 mr-2 text-purple-500" />
+                        <h4 className="font-medium text-sm sm:text-base text-gray-900">
+                          Tips for Success
+                        </h4>
+                      </div>
+                      <ul className="text-xs sm:text-sm text-gray-600 space-y-1">
+                        <li>• Speak clearly and confidently</li>
+                        <li>• Practice in a quiet environment</li>
+                        <li>• Focus on accent and pronunciation</li>
+                        <li>• Repeat difficult phrases</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+
+      case "profile":
+        return (
+          <>
+            {/* User Profile */}
+            <div className="bg-white rounded-3xl shadow-xl border border-white/50 p-3 sm:p-6 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+                Your Profile
+              </h2>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* Profile Info */}
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold">
+                      M
+                    </div>
+                    <div className="ml-3 sm:ml-4">
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                        Maria Rodriguez
+                      </h3>
+                      <p className="text-sm sm:text-base text-gray-600">
+                        Spanish Learner
+                      </p>
+                      <p className="text-xs sm:text-sm text-blue-600">
+                        Member since Oct 2024
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-3 sm:p-4">
+                    <h4 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">
+                      Learning Goals
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span>Weekly Goal: {userStats.weeklyGoal} hours</span>
+                        <span className="font-medium">
+                          {Math.round(
+                            (userStats.practiceMinutesToday / 60) * 10
+                          ) / 10}
+                          h / {userStats.weeklyGoal}h
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              (userStats.practiceMinutesToday /
+                                60 /
+                                userStats.weeklyGoal) *
+                                100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 rounded-xl p-3 sm:p-4">
+                    <h4 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                      Current Streak
+                    </h4>
+                    <div className="flex items-center">
+                      <FireIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 mr-2" />
+                      <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                        {currentStreak}
+                      </span>
+                      <span className="text-sm sm:text-base text-gray-600 ml-2">
+                        days
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                      Keep it up! You're doing great!
+                    </p>
+                  </div>
+                </div>
+
+                {/* All Achievements */}
+                <div>
+                  <h4 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4">
+                    All Achievements
+                  </h4>
+                  <div className="space-y-2 sm:space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
+                    {achievements.map((achievement) => (
+                      <div
+                        key={achievement.id}
+                        className={`flex items-center p-2 sm:p-3 rounded-lg sm:rounded-xl ${
+                          achievement.unlocked
+                            ? "bg-green-50 border border-green-200"
+                            : "bg-gray-50 border border-gray-200"
+                        }`}
+                      >
+                        <div className={`mr-2 sm:mr-3 p-2 rounded-lg ${
+                          achievement.unlocked 
+                            ? "bg-green-100 text-green-600" 
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {renderAchievementIcon(achievement.icon, "w-4 h-4 sm:w-5 sm:h-5")}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm sm:text-base text-gray-900 truncate">
+                            {achievement.name}
+                          </div>
+                          <div className="text-xs text-gray-600 truncate">
+                            {achievement.description}
+                          </div>
+                          {!achievement.unlocked && (
+                            <div className="mt-1 sm:mt-2">
+                              <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
+                                <div
+                                  className="bg-blue-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${
+                                      (achievement.progress /
+                                        achievement.maxProgress) *
+                                      100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {achievement.progress}/{achievement.maxProgress}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {achievement.unlocked && (
+                          <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Settings */}
+            {/* <div className="bg-white rounded-3xl shadow-xl border border-white/50 p-3 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">
+                Settings
+              </h3>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                  <span className="font-medium text-sm sm:text-base text-gray-900">
+                    Notifications
+                  </span>
+                  <button className="bg-blue-500  cursor-pointer rounded-full w-10 h-5 sm:w-12 sm:h-6 relative">
+                    <div className="bg-white w-4 h-4 sm:w-5 sm:h-5 rounded-full absolute top-0.5 right-0.5"></div>
+                  </button>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                  <span className="font-medium text-sm sm:text-base text-gray-900">
+                    Sound Effects
+                  </span>
+                  <button className="bg-blue-500 cursor-pointer  rounded-full w-10 h-5 sm:w-12 sm:h-6 relative">
+                    <div className="bg-white w-4 h-4 sm:w-5 sm:h-5 rounded-full absolute top-0.5 right-0.5"></div>
+                  </button>
+                </div>
+                <div className="flex justify-between cursor-pointer  items-center p-3 bg-gray-50 rounded-xl">
+                  <span className="font-medium text-sm sm:text-base text-gray-900">
+                    Vibration
+                  </span>
+                  <button className="bg-blue-500 rounded-full w-10 h-5 sm:w-12 sm:h-6 relative">
+                    <div className="bg-white w-4 h-4 sm:w-5 sm:h-5 rounded-full absolute top-0.5 right-0.5"></div>
+                  </button>
+                </div>
+              </div>
+            </div> */}
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 overflow-x-hidden">
+      {/* Header */}
+      <header className="bg-white/90 backdrop-blur-lg shadow-lg sticky top-0 z-50 border-b border-white/20">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center">
+                <BookOpenIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                LinguaFlow
+              </span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex space-x-1">
+              {navigationItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex items-center px-3 cursor-pointer  lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    activeTab === item.id
+                      ? "bg-blue-500 text-white shadow-lg"
+                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 lg:w-5 lg:h-5 mr-1 lg:mr-2" />
+                  {item.name}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+
+      </header>
+
+      {/* Floating Progress Ring */}
+      <div
+        className="fixed top-16 sm:top-20 right-2 sm:right-4 z-40 transition-transform duration-200"
+        style={{ transform: `translateY(${scrollY * 0.1}px)` }}
+      >
+        <div className="relative w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full shadow-lg">
+          <svg className="w-12 h-12 sm:w-16 sm:h-16 transform -rotate-90">
+            <circle
+              cx="24"
+              cy="24"
+              r="20"
+              stroke="#e5e7eb"
+              strokeWidth="3"
+              fill="transparent"
+              className="sm:hidden"
+            />
+            <circle
+              cx="32"
+              cy="32"
+              r="26"
+              stroke="#e5e7eb"
+              strokeWidth="4"
+              fill="transparent"
+              className="hidden sm:block"
+            />
+            <circle
+              cx="24"
+              cy="24"
+              r="20"
+              stroke="url(#progressGradient)"
+              strokeWidth="3"
+              fill="transparent"
+              strokeDasharray={`${progressPercentage * 1.26} 126`}
+              className="transition-all duration-300 sm:hidden"
+            />
+            <circle
+              cx="32"
+              cy="32"
+              r="26"
+              stroke="url(#progressGradient)"
+              strokeWidth="4"
+              fill="transparent"
+              strokeDasharray={`${progressPercentage * 1.63} 163`}
+              className="transition-all duration-300 hidden sm:block"
+            />
+            <defs>
+              <linearGradient
+                id="progressGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#8b5cf6" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FireIcon className="w-4 h-4 sm:w-6 sm:h-6 text-orange-500" />
+          </div>
+        </div>
+        <div className="text-center text-xs font-medium text-gray-600 mt-1">
+          {todayXp}/{dailyGoal}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 pb-16 sm:pb-20">
+        {/* Hero Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 py-4 sm:py-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg border border-white/50">
+            <div className="flex items-center">
+              <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg sm:rounded-xl">
+                <FireIcon className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+              </div>
+              <div className="ml-2 sm:ml-3 min-w-0">
+                <p className="text-xs font-medium text-gray-500">Streak</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                  {currentStreak}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg border border-white/50">
+            <div className="flex items-center">
+              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg sm:rounded-xl">
+                <StarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+              </div>
+              <div className="ml-2 sm:ml-3 min-w-0">
+                <p className="text-xs font-medium text-gray-500">Total XP</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                  {totalXp.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg border border-white/50">
+            <div className="flex items-center">
+              <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg sm:rounded-xl">
+                <TrophyIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+              </div>
+              <div className="ml-2 sm:ml-3 min-w-0">
+                <p className="text-xs font-medium text-gray-500">Skills</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                  {completedSkills}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg border border-white/50">
+            <div className="flex items-center">
+              <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg sm:rounded-xl">
+                <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+              </div>
+              <div className="ml-2 sm:ml-3 min-w-0">
+                <p className="text-xs font-medium text-gray-500">Progress</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                  {Math.round(progressPercentage)}%
+                </p>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-12 sm:py-16">
-        <div className="max-w-6xl mx-auto px-2 sm:px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-            {/* Company Info */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center space-x-3 mb-4">
-                <BeakerIcon className="h-8 w-8 text-blue-400" />
-                <span className="text-xl font-bold text-white">
-                  PhysicsLab Pro
-                </span>
-              </div>
-              <p className="text-slate-300 mb-6 max-w-md">
-                Advanced physics simulation platform designed for education,
-                research, and professional applications. Experience the future
-                of interactive learning.
-              </p>
-              <div className="flex space-x-4">
-                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
-                  <span className="text-blue-400 font-bold text-sm">f</span>
-                </a>
-                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
-                  <span className="text-blue-400 font-bold text-sm">t</span>
-                </a>
-                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
-                  <span className="text-blue-400 font-bold text-sm">in</span>
-                </a>
-                <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors cursor-pointer">
-                  <span className="text-blue-400 font-bold text-sm">yt</span>
-                </a>
-              </div>
-            </div>
+        {/* Tab Content */}
+        {renderTabContent()}
+      </main>
 
-            {/* Product Links */}
-            <div>
-              <h3 className="text-white font-semibold mb-4">Product</h3>
-              <ul className="space-y-3">
-                <li>
-                  <button
-                    onClick={() => scrollToSection(simulatorRef)}
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Simulator
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(featuresRef)}
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Features
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => scrollToSection(analyticsRef)}
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Analytics
-                  </button>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    API Access
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Mobile App
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Support Links */}
-            <div>
-              <h3 className="text-white font-semibold mb-4">Support</h3>
-              <ul className="space-y-3">
-                <li>
-                  <button
-                    onClick={() => scrollToSection(documentationRef)}
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Documentation
-                  </button>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Community Forum
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Contact Support
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    System Status
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
-            <div className="text-slate-400 text-sm mb-4 sm:mb-0">
-              © 2024 PhysicsLab Pro. All rights reserved.
-            </div>
-            <div className="flex space-x-6 text-sm">
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                Terms of Service
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                Cookie Policy
-              </a>
-            </div>
-          </div>
+      {/* Bottom Navigation (Mobile) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 px-2 sm:px-4 py-2 safe-area-bottom">
+        <div className="flex justify-around">
+          {navigationItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center py-2 px-2 sm:px-3 cursor-pointer  rounded-xl transition-all duration-200 ${
+                activeTab === item.id
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600"
+              }`}
+            >
+              <item.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+              <span className="text-xs font-medium">{item.name}</span>
+            </button>
+          ))}
         </div>
-      </footer>
+      </nav>
 
-      {/* Toast Messages */}
-      <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 space-y-2 max-w-xs">
+      {/* Toast Notifications */}
+      <div className="fixed top-16 sm:top-20 left-2 right-2 sm:left-4 sm:right-4 z-50 space-y-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg shadow-lg transform transition-all duration-300 animate-slide-in text-xs sm:text-sm ${
+            className={`px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg transform transition-all duration-300 backdrop-blur-lg border ${
               toast.type === "success"
-                ? "bg-green-600 text-white"
+                ? "bg-green-500/90 text-white border-green-400"
                 : toast.type === "error"
-                ? "bg-red-600 text-white"
-                : "bg-blue-600 text-white"
-            }`}
+                ? "bg-red-500/90 text-white border-red-400"
+                : toast.type === "warning"
+                ? "bg-yellow-500/90 text-white border-yellow-400"
+                : "bg-blue-500/90 text-white border-blue-400"
+            } max-w-sm mx-auto text-center`}
           >
-            {toast.type === "success" && (
-              <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-            )}
-            {toast.type === "error" && (
-              <ExclamationTriangleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-            )}
-            {toast.type === "info" && (
-              <InformationCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-            )}
-            <span className="font-medium">{toast.message}</span>
+            <span className="text-xs sm:text-sm break-words">
+              {toast.message}
+            </span>
           </div>
         ))}
       </div>
-
-      {/* Custom Styles */}
-      <style jsx>{`
-        @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
-
-        .font-roboto {
-          font-family: "Roboto", sans-serif;
-        }
-        html {
-          scroll-behavior: smooth;
-        }
-
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 24px;
-          width: 24px;
-          border-radius: 50%;
-          background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-          transition: all 0.2s ease;
-        }
-
-        .slider::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .slider::-moz-range-thumb {
-          height: 24px;
-          width: 24px;
-          border-radius: 50%;
-          background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-          cursor: pointer;
-          border: 2px solid #ffffff;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-          border: none;
-        }
-
-        .slider::-webkit-slider-track {
-          height: 12px;
-          border-radius: 6px;
-          background: #475569;
-        }
-
-        .slider::-moz-range-track {
-          height: 12px;
-          border-radius: 6px;
-          background: #475569;
-          border: none;
-        }
-
-        @keyframes slide-in {
-          from {
-            opacity: 0;
-            transform: translateX(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-
-        @media (max-width: 320px) {
-          .slider::-webkit-slider-thumb {
-            height: 20px;
-            width: 20px;
-          }
-
-          .slider::-moz-range-thumb {
-            height: 20px;
-            width: 20px;
-          }
-        }
-      `}</style>
     </div>
   );
 };
 
-export default ProjectileMotionSimulator;
+export default LinguaFlow;
