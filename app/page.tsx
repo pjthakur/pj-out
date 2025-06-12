@@ -1,2846 +1,1895 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  ChevronDown,
-  MessageSquare,
-  Award,
-  Clock,
-  Users,
-  ArrowUp,
-  ThumbsUp,
-  Search,
-  Menu,
-  X,
-  Home,
-  Filter,
-  PlusCircle,
-  Book,
-  Cpu,
-  Plane,
-  Paintbrush,
-  Bell,
-  User,
-  LogOut,
-  Eye,
-  EyeOff,
-  X as XIcon,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+  FaLinkedin,
+  FaSearch,
+  FaHome,
+  FaUsers,
+  FaBriefcase,
+  FaEnvelope,
+  FaBell,
+  FaUser,
+  FaVideo,
+  FaImage,
+  FaSortDown,
+  FaThumbsUp,
+  FaComment,
+  FaUserPlus,
+  FaPuzzlePiece,
+  FaAd,
+  FaAngleDown,
+  FaAngleUp,
+  FaEdit,
+  FaPaperPlane,
+  FaCheck,
+  FaGlobeAmericas,
+  FaShare,
+  FaTimes,
+  FaCheckCircle,
+  FaBars,
+} from "react-icons/fa";
 
-import { Roboto } from "next/font/google";
+interface Post {
+  id: number;
+  author: string;
+  title: string;
+  content: string;
+  time: string;
+  likes: number;
+  liked: boolean;
+  comments: { id: number; author: string; text: string; time: string }[];
+  reposts: number;
+  shares: number;
+  image?: string;
+  video?: string;
+  company?: string;
+}
 
-const roboto = Roboto({
-  variable: "--font-roboto",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"], // you can customize weights as needed
-});
-
-// Types
-type Category = {
+interface Connection {
   id: number;
   name: string;
-  description: string;
-  icon: React.ReactNode;
-  threadCount: number;
-};
-
-type Thread = {
-  id: number;
-  categoryId: number;
   title: string;
-  author: string;
-  authorAvatar: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-  replies: Reply[];
-  views: number;
-  isHelpful: boolean;
-};
+  mutual: number;
+  isConnected: boolean;
+  isFollowing: boolean;
+  company: string;
+}
 
-type Reply = {
+interface Profile {
+  name: string;
+  description: string;
+  location: string;
+  picture: string;
+  connections: number;
+  followers: number;
+}
+
+interface Toast {
   id: number;
-  threadId: number;
-  author: string;
-  authorAvatar: string;
-  content: string;
-  createdAt: Date;
-  isHelpful: boolean;
-};
+  message: string;
+  type: "success" | "error";
+}
 
-type User = {
-  id: number;
-  username: string;
-  email: string;
-  avatar: string;
-};
+const Toast: React.FC<{ toast: Toast; onClose: (id: number) => void }> = ({
+  toast,
+  onClose,
+}) => (
+  <div
+    className={`fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-[100] px-4 py-3 rounded-lg shadow-lg transition-all duration-300 transform translate-x-0 ${
+      toast.type === "success"
+        ? "bg-green-500 text-white"
+        : "bg-red-500 text-white"
+    }`}
+  >
+    <div className="flex items-center justify-between space-x-3">
+      <div className="flex items-center space-x-2">
+        {toast.type === "success" && <FaCheckCircle />}
+        <span className="font-medium text-sm md:text-base">{toast.message}</span>
+      </div>
+      <button
+        onClick={() => onClose(toast.id)}
+        className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
+      >
+        <FaTimes />
+      </button>
+    </div>
+  </div>
+);
 
-type Notification = {
-  id: number;
-  userId: number;
-  type: "mention" | "reply" | "like" | "system";
-  content: string;
-  threadId?: number;
-  replyId?: number;
-  createdAt: Date;
-  read: boolean;
-};
+interface NetworkPageProps {
+  connections: Connection[];
+  handleFollow: (connectionId: number) => void;
+  profileImages: { [key: string]: string };
+}
 
-type SortOption = "newest" | "active";
-type View = "categories" | "threads" | "thread";
-
-const CommunityDiscussion = () => {
-  // State
-  const [view, setView] = useState<View>("categories");
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
+const NetworkPage: React.FC<NetworkPageProps> = ({
+  connections,
+  handleFollow,
+  profileImages,
+}) => {
+  const [activeTab, setActiveTab] = useState<"connections" | "followers">(
+    "connections"
   );
-  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-  const [sortOption, setSortOption] = useState<SortOption>("newest");
-  const [newReply, setNewReply] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
-  const [popularThreads, setPopularThreads] = useState<Thread[]>([]);
-  const [recentActivity, setRecentActivity] = useState<Thread[]>([]);
-  const [searchResults, setSearchResults] = useState<Thread[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
-  const [threads, setThreads] = useState<Thread[]>([
-    // NEWEST thread but NO recent activity (created Jan 3, last updated Jan 3)
+  const filteredConnections = connections.filter((connection) =>
+    connection.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">My Network</h1>
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Search connections..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 pl-10 rounded-md bg-gray-100 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-800"
+          />
+          <FaSearch className="absolute left-3 top-3 text-gray-500" />
+        </div>
+      </div>
+
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex space-x-6">
+          <button
+            onClick={() => setActiveTab("connections")}
+            className={`pb-4 px-1 font-medium cursor-pointer ${
+              activeTab === "connections"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Connections ({connections.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("followers")}
+            className={`pb-4 px-1 font-medium cursor-pointer ${
+              activeTab === "followers"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Followers (0)
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {activeTab === "connections" ? (
+          filteredConnections.length > 0 ? (
+          filteredConnections.map((connection) => (
+            <div
+              key={connection.id}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow space-y-3 sm:space-y-0"
+            >
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0">
+                  <img
+                    src={profileImages[connection.name]}
+                    alt={connection.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-gray-900 truncate">
+                    {connection.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 truncate">{connection.title}</p>
+                  <p className="text-xs text-gray-500 truncate">{connection.company}</p>
+                  <p className="text-xs text-blue-600">
+                    {connection.mutual} mutual connections
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleFollow(connection.id)}
+                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-full font-medium text-sm cursor-pointer ${
+                  connection.isFollowing
+                    ? "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                } transition-colors`}
+              >
+                {connection.isFollowing ? (
+                  <>
+                    <FaCheck className="text-xs" />
+                    <span>Following</span>
+                  </>
+                ) : (
+                  <>
+                    <FaUserPlus className="text-xs" />
+                    <span>Follow</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ))
+          ) : searchQuery ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-2">
+              <FaUsers className="inline-block text-4xl" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No results found
+            </h3>
+            <p className="text-gray-600">
+              Try adjusting your search. We couldn&apos;t find any connections
+              matching &quot;{searchQuery}&quot;
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">
+                <FaUsers className="inline-block text-4xl" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No connections yet
+              </h3>
+              <p className="text-gray-600">
+                Start connecting with professionals in your field
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-2">
+              <FaUsers className="inline-block text-4xl" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No followers yet
+            </h3>
+            <p className="text-gray-600">
+              Share great content to attract followers to your profile
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ProfileCard: React.FC<{
+  profile: Profile;
+  isEditingProfile: boolean;
+  setIsEditingProfile: (value: boolean) => void;
+  tempProfileName: string;
+  setTempProfileName: (value: string) => void;
+  tempProfileDescription: string;
+  setTempProfileDescription: (value: string) => void;
+  tempProfilePicture: string;
+  handleEditProfile: () => void;
+  handleProfilePictureUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleComingSoon: (feature: string) => void;
+  isMobile?: boolean;
+}> = ({
+  profile,
+  isEditingProfile,
+  setIsEditingProfile,
+  tempProfileName,
+  setTempProfileName,
+  tempProfileDescription,
+  setTempProfileDescription,
+  tempProfilePicture,
+  handleEditProfile,
+  handleProfilePictureUpload,
+  handleComingSoon,
+  isMobile,
+}) => (
+  <div
+    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
+      isMobile ? "mb-6" : ""
+    }`}
+  >
+    {/* Blue header banner */}
+    <div className="relative w-full h-16 bg-gradient-to-r from-blue-500 to-blue-600"></div>
+    
+    {/* Profile content */}
+    <div className="relative px-4 pb-4">
+      {/* Profile picture overlapping the banner */}
+      <div className="absolute -top-8 left-4 w-16 h-16 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden">
+        <img
+          src={profile.picture}
+          alt="Profile"
+          className="w-full h-full object-cover"
+        />
+      </div>
+      
+      {/* Profile info */}
+      <div className="pt-10">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {profile.name}
+          </h2>
+          <button
+            onClick={() => setIsEditingProfile(true)}
+            className="text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
+          >
+            <FaEdit />
+          </button>
+        </div>
+        
+        <p className="text-sm text-gray-600 mb-2 leading-relaxed">
+          {profile.description}
+        </p>
+        
+        <p className="text-sm text-gray-500 flex items-center mb-4">
+          <FaGlobeAmericas className="mr-1 text-xs" />
+          {profile.location}
+        </p>
+        
+        {/* Connections and followers */}
+        <div className="mb-4">
+          <div className="text-sm font-semibold text-blue-600 hover:underline cursor-pointer">
+            {profile.connections} connections
+          </div>
+          <div className="text-sm text-gray-600">
+            {profile.followers} followers
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {!isMobile && (
+      <>
+        {/* Profile viewers section */}
+        <div className="border-t border-gray-100 px-4 py-3">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-sm text-gray-600">Profile viewers</span>
+            <span className="text-sm font-bold text-blue-600">24</span>
+          </div>
+          <button
+            onClick={() => handleComingSoon("Analytics")}
+            className="text-blue-600 text-sm font-medium hover:underline cursor-pointer"
+          >
+            View all analytics
+          </button>
+        </div>
+
+        {/* Premium section */}
+        <div className="border-t border-gray-100 px-4 py-3">
+          <p className="text-sm text-gray-700 font-medium mb-1">
+            Grow your career with Premium
+          </p>
+          <button
+            onClick={() => handleComingSoon("Premium")}
+            className="text-yellow-600 text-sm font-medium hover:underline cursor-pointer"
+          >
+            Try Premium for ₹0
+          </button>
+        </div>
+
+        {/* Bottom links */}
+        <div className="border-t border-gray-100 px-4 py-3 space-y-3">
+          <button
+            onClick={() => handleComingSoon("Saved items")}
+            className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors cursor-pointer w-full text-left"
+          >
+            <FaUser className="text-sm" />
+            <span className="text-sm font-medium">Saved items</span>
+          </button>
+          <button
+            onClick={() => handleComingSoon("Groups")}
+            className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors cursor-pointer w-full text-left"
+          >
+            <FaUsers className="text-sm" />
+            <span className="text-sm font-medium">Groups</span>
+          </button>
+        </div>
+      </>
+    )}
+
+    {isEditingProfile && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-white rounded-xl p-6 w-full max-w-md mx-auto my-8">
+          <h2 className="text-xl font-semibold mb-6 text-gray-900">
+            Edit Profile
+          </h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Profile Picture
+            </label>
+            <div className="flex items-center space-x-4">
+              <img
+                src={tempProfilePicture}
+                alt="Profile"
+                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePictureUpload}
+                className="text-sm text-gray-500 cursor-pointer"
+              />
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Name
+            </label>
+            <input
+              type="text"
+              value={tempProfileName}
+              onChange={(e) => setTempProfileName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-500"
+              style={{ color: "transparent", textShadow: "0 0 0 #000" }}
+              autoComplete="off"
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              value={tempProfileDescription}
+              onChange={(e) => setTempProfileDescription(e.target.value)}
+              placeholder="Describe yourself"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-500"
+              rows={3}
+              style={{ color: "transparent", textShadow: "0 0 0 #000" }}
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setIsEditingProfile(false)}
+              className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEditProfile}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+const PostCard: React.FC<{
+  post: Post;
+  profile: Profile;
+  profileImages: { [key: string]: string };
+  connections: Connection[];
+  handleLike: (postId: number) => void;
+  handleCommentSubmit: (postId: number) => void;
+  handleRepost: (postId: number) => void;
+  handleShare: (postId: number) => void;
+  handleFollow: (connectionId: number) => void;
+  handleToggleComments: (postId: number) => void;
+  handleLoadMoreComments: (postId: number) => void;
+  visibleComments: { [key: number]: boolean };
+  showAllComments: { [key: number]: boolean };
+  newComment: { [key: number]: string };
+  setNewComment: (value: { [key: number]: string }) => void;
+}> = ({
+  post,
+  profile,
+  profileImages,
+  connections,
+  handleLike,
+  handleCommentSubmit,
+  handleRepost,
+  handleShare,
+  handleFollow,
+  handleToggleComments,
+  handleLoadMoreComments,
+  visibleComments,
+  showAllComments,
+  newComment,
+  setNewComment,
+}) => {
+  const connection = connections.find((c) => c.name === post.author);
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 transition-shadow hover:shadow-md">
+      <div className="flex items-start space-x-3">
+        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100">
+          <img
+            src={profileImages[post.author]}
+            alt="Profile"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div>
+              {/* Mobile layout - button next to name */}
+              <div className="flex items-center space-x-2 mb-1 md:hidden">
+                <h3 className="text-base font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
+                  {post.author}
+                </h3>
+                {connection && (
+                  <button
+                    onClick={() => handleFollow(connection.id)}
+                    className="flex items-center space-x-1 text-blue-600 border border-blue-600 rounded-full px-2 py-0.5 hover:bg-blue-50 transition-colors text-xs font-medium cursor-pointer"
+                  >
+                    {connection.isFollowing ? (
+                      <>
+                        <FaCheck className="text-xs" />
+                        <span>Following</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaUserPlus className="text-xs" />
+                        <span>Follow</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              
+              {/* Desktop layout - name only */}
+              <h3 className="hidden md:block text-base font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
+                {post.author}
+              </h3>
+              
+              <p className="text-sm text-gray-600">{post.title}</p>
+              {post.company && (
+                <p className="text-sm text-gray-500">{post.company}</p>
+              )}
+              <p className="text-xs text-gray-400 flex items-center mt-1">
+                <span>{post.time}</span>
+                <FaGlobeAmericas className="ml-1" />
+              </p>
+            </div>
+            
+            {/* Desktop layout - button in top right */}
+            {connection && (
+              <button
+                onClick={() => handleFollow(connection.id)}
+                className="hidden md:flex items-center space-x-1 text-blue-600 border border-blue-600 rounded-full px-3 py-1 hover:bg-blue-50 transition-colors text-xs sm:text-sm font-medium cursor-pointer"
+              >
+                {connection.isFollowing ? (
+                  <>
+                    <FaCheck className="text-xs" />
+                    <span>Following</span>
+                  </>
+                ) : (
+                  <>
+                    <FaUserPlus className="text-xs" />
+                    <span>Follow</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-line">
+          {post.content}
+        </p>
+        {(post.image || post.video) && (
+          <div className="mt-4 rounded-lg overflow-hidden">
+            {post.image && (
+              <img
+                src={post.image}
+                alt="Post Image"
+                className="w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+              />
+            )}
+            {post.video && (
+              <video
+                src={post.video}
+                controls
+                preload="metadata"
+                className="w-full object-cover"
+                style={{ backgroundColor: '#000' }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      <div className="mt-4 flex items-center justify-between text-gray-500 text-sm">
+        <div className="flex items-center space-x-1">
+          <FaThumbsUp className="text-blue-500" />
+          <span>{post.likes.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center space-x-3">
+          <span 
+            className="cursor-pointer hover:underline"
+            onClick={() => handleToggleComments(post.id)}
+          >
+            {post.comments.length} comments
+          </span>
+          <span>•</span>
+          <span className="cursor-pointer hover:underline">
+            {post.reposts} reposts
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+        <button
+          onClick={() => handleLike(post.id)}
+          className={`flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors cursor-pointer ${
+            post.liked
+              ? "text-blue-600 bg-blue-50"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          <FaThumbsUp />
+          <span className="font-medium hidden xs:inline sm:inline">Like</span>
+        </button>
+        <button
+          onClick={() => handleToggleComments(post.id)}
+          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          <FaComment />
+          <span className="font-medium hidden xs:inline sm:inline">
+            Comment
+          </span>
+        </button>
+        <button
+          onClick={() => handleRepost(post.id)}
+          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          <FaShare />
+          <span className="font-medium hidden xs:inline sm:inline">Repost</span>
+        </button>
+        <button
+          onClick={() => handleShare(post.id)}
+          className="flex flex-1 justify-center items-center space-x-2 px-2 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          <FaPaperPlane />
+          <span className="font-medium hidden xs:inline sm:inline">Send</span>
+        </button>
+      </div>
+      {visibleComments[post.id] && (
+        <div className="mt-4 space-y-3">
+          {(showAllComments[post.id] ? post.comments : post.comments.slice(0, 2)).map((comment) => (
+            <div key={comment.id} className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden">
+                <img
+                  src={profileImages[comment.author]}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="bg-gray-50 p-3 rounded-xl flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {comment.author}
+                  </p>
+                  <span className="text-xs text-gray-400">{comment.time}</span>
+                </div>
+                <p className="text-sm text-gray-700 mt-1">{comment.text}</p>
+              </div>
+            </div>
+          ))}
+          {post.comments.length > 2 && (
+            <button
+              onClick={() => handleLoadMoreComments(post.id)}
+              className="text-blue-600 text-sm hover:underline cursor-pointer ml-11"
+            >
+              {showAllComments[post.id] 
+                ? `Show less` 
+                : `Load more comments (${post.comments.length - 2} more)`
+              }
+            </button>
+          )}
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full overflow-hidden">
+              <img
+                src={profile.picture}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                value={newComment[post.id] || ""}
+                onChange={(e) =>
+                  setNewComment({ ...newComment, [post.id]: e.target.value })
+                }
+                onKeyPress={(e) =>
+                  e.key === "Enter" && handleCommentSubmit(post.id)
+                }
+                className="flex-1 p-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-800"
+              />
+              <button
+                onClick={() => handleCommentSubmit(post.id)}
+                disabled={!newComment[post.id]?.trim()}
+                className={`px-4 py-2 rounded-full font-medium transition-colors cursor-pointer ${
+                  newComment[post.id]?.trim()
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const NewsSection: React.FC<{
+  showMoreNews: boolean;
+  setShowMoreNews: (value: boolean) => void;
+}> = ({ showMoreNews, setShowMoreNews }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+    <h2 className="text-lg font-semibold mb-4 text-gray-900">LinkIn News</h2>
+    <ul className="space-y-4">
+      <a
+        href="#"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+          <p className="text-sm font-semibold text-gray-900">
+            Freshers&apos; guide: Mapping opportunities for &apos;22-&apos;24
+            batch
+          </p>
+          <p className="text-xs text-gray-500 mt-1">7d ago • 12,940 readers</p>
+        </li>
+      </a>
+      <a
+        href="#"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+          <p className="text-sm font-semibold text-gray-900">
+            Microsoft envisions AI-agent future
+          </p>
+          <p className="text-xs text-gray-500 mt-1">1h ago • 6,129 readers</p>
+        </li>
+      </a>
+      <a
+        href="#"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+          <p className="text-sm font-semibold text-gray-900">
+            Demand surges for freelancers
+          </p>
+          <p className="text-xs text-gray-500 mt-1">6h ago • 1,599 readers</p>
+        </li>
+      </a>
+      {showMoreNews && (
+        <>
+          <a
+            href="#"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+              <p className="text-sm font-semibold text-gray-900">
+                Affordable housing sales dip
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                23h ago • 1,004 readers
+              </p>
+            </li>
+          </a>
+          <a
+            href="#"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+              <p className="text-sm font-semibold text-gray-900">
+                Investors take a liking to deeptech
+              </p>
+              <p className="text-xs text-gray-500 mt-1">1d ago • 565 readers</p>
+            </li>
+          </a>
+          <a
+            href="#"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <li className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+              <p className="text-sm font-semibold text-gray-900">
+                Tech layoffs continue in 2025
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                2d ago • 2,345 readers
+              </p>
+            </li>
+          </a>
+        </>
+      )}
+    </ul>
+    <button
+      onClick={() => setShowMoreNews(!showMoreNews)}
+      className="mt-4 flex items-center space-x-1 text-blue-600 hover:underline text-sm cursor-pointer"
+    >
+      <span>{showMoreNews ? "Show less" : "Show more"}</span>
+      {showMoreNews ? <FaAngleUp /> : <FaAngleDown />}
+    </button>
+  </div>
+);
+
+const LinkedInClone: React.FC = () => {
+  const [profile, setProfile] = useState<Profile>({
+    name: "Liyana",
+    description:
+      "Frontend Developer | React, TypeScript, Next.js",
+    location: "Hyderabad, Telangana, India",
+    picture:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&auto=format",
+    connections: 847,
+    followers: 1234,
+  });
+
+  const [activePage, setActivePage] = useState<
+    "feed" | "network" | "jobs" | "messaging" | "notifications"
+  >("feed");
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [tempProfileName, setTempProfileName] = useState(profile.name);
+  const [tempProfileDescription, setTempProfileDescription] = useState(
+    profile.description
+  );
+  const [tempProfilePicture, setTempProfilePicture] = useState(profile.picture);
+
+  const defaultPosts: Post[] = [
     {
       id: 1,
-      categoryId: 1,
-      title: "What programming language should I learn in 2025?",
-      author: "TechEnthusiast",
-      authorAvatar: "https://i.pravatar.cc/150?img=1",
+      author: "Vikas Singh",
+      title: "AI & Tech Content Creator | Personal Branding Specialist",
+      company: "Microsoft",
       content:
-        "I'm looking to start a career in software development and was wondering which language would be most valuable to learn right now. I've heard good things about Rust and TypeScript, but I'm open to suggestions.",
-      createdAt: new Date("2025-01-03T09:24:00"),
-      updatedAt: new Date("2025-01-03T10:30:00"), // Updated same day, no recent activity
-      replies: [
+        '🚀 ChatGPT Can Get You Hired Faster Than Any Recruiter\n\nCopy these seven prompts to land your dream job:\n\n1. "Help me tailor my resume for [specific role] at [company]"\n2. "Create a compelling cover letter for [position]"\n3. "Prepare me for common interview questions in [industry]"\n\nThe future of job hunting is here. Are you ready? 💼\n\n#AI #JobSearch #CareerTips #ChatGPT',
+      time: "3h",
+      likes: 2782,
+      liked: false,
+      comments: [
         {
           id: 1,
-          threadId: 1,
-          author: "CodeMaster",
-          authorAvatar: "https://i.pravatar.cc/150?img=2",
-          content:
-            "TypeScript is definitely a great choice as it builds on JavaScript knowledge and is widely used in the industry. If you're just starting, I'd recommend learning JavaScript fundamentals first, then moving to TypeScript.",
-          createdAt: new Date("2025-01-03T10:15:00"),
-          isHelpful: true,
+          author: "Sarah Johnson",
+          text: "This is incredibly helpful! Thanks for sharing.",
+          time: "2h",
+        },
+        {
+          id: 2,
+          author: "Mike Chen",
+          text: "AI is definitely changing how we approach job applications.",
+          time: "1h",
         },
       ],
-      views: 342,
-      isHelpful: false,
+      reposts: 502,
+      shares: 156,
+      image:
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&h=300&fit=crop&auto=format",
     },
-    // Second NEWEST thread with moderate activity (created Jan 2, updated Jan 5)
     {
       id: 2,
-      categoryId: 1,
-      title: "Best practices for securing a React application",
-      author: "SecurityFirst",
-      authorAvatar: "https://i.pravatar.cc/150?img=4",
+      author: "Harish Kumar",
+      title: "LinkedIn Growth Expert | Helping Professionals Build Their Brand",
+      company: "Google",
       content:
-        "I'm building a React application that handles sensitive user data. What are the current best practices for ensuring my application is secure?",
-      createdAt: new Date("2025-01-02T15:30:00"),
-      updatedAt: new Date("2025-01-05T12:10:00"), // Updated 3 days later
-      replies: [
+        "5 Tips to Boost Your LinkedIn Profile Visibility! 🚀\n\n✅ Use industry-specific keywords\n✅ Post consistently (3-5 times per week)\n✅ Engage meaningfully with others' content\n✅ Share your expertise through articles\n✅ Optimize your headline for search\n\nConsistency is key to building your professional brand online.\n\n#LinkedInTips #PersonalBranding #ProfessionalGrowth",
+      time: "1d",
+      likes: 1450,
+      liked: true,
+      comments: [
         {
-          id: 3,
-          threadId: 2,
-          author: "ReactExpert",
-          authorAvatar: "https://i.pravatar.cc/150?img=5",
-          content:
-            "Always sanitize user inputs, use HTTPS, implement proper authentication and authorization, keep dependencies updated, and consider using Content Security Policy (CSP). For sensitive data, you might also want to look into encryption libraries.",
-          createdAt: new Date("2025-01-05T12:00:00"),
-          isHelpful: true,
+          id: 1,
+          author: "Lisa Wang",
+          text: "Great insights! The keyword tip especially helped me.",
+          time: "12h",
         },
       ],
-      views: 189,
-      isHelpful: false,
+      reposts: 320,
+      shares: 89,
+      image:
+        "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&h=300&fit=crop&auto=format",
     },
-    // Third NEWEST thread but very active (created Jan 1, MOST RECENTLY updated Jan 8)
     {
       id: 3,
-      categoryId: 2,
-      title: "Book recommendations for science fiction fans",
-      author: "BookWorm",
-      authorAvatar: "https://i.pravatar.cc/150?img=6",
+      author: "Anjali Sharma",
+      title: "Senior Data Scientist | ML Engineer",
+      company: "IBM",
       content:
-        "I've recently finished the Three-Body Problem trilogy and I'm looking for similar hard sci-fi recommendations. What should I read next?",
-      createdAt: new Date("2025-01-01T18:12:00"),
-      updatedAt: new Date("2025-01-08T09:22:00"), // MOST ACTIVE - updated just today!
-      replies: [
+        "Excited to share my latest project on predictive analytics! 📊\n\nBuilt a machine learning model that predicts customer churn with 94% accuracy using:\n\n🔹 Python & Scikit-learn\n🔹 Feature engineering techniques\n🔹 Ensemble methods (Random Forest + XGBoost)\n🔹 Cross-validation for robust results\n\nData science is all about turning numbers into actionable insights!\n\n#DataScience #MachineLearning #Python #Analytics",
+      time: "2h",
+      likes: 856,
+      liked: false,
+      comments: [
         {
-          id: 4,
-          threadId: 3,
-          author: "SciFiLover",
-          authorAvatar: "https://i.pravatar.cc/150?img=7",
-          content:
-            'If you enjoyed the Three-Body Problem, you might like "Children of Time" by Adrian Tchaikovsky or "Project Hail Mary" by Andy Weir. Both feature interesting scientific concepts and alien civilizations.',
-          createdAt: new Date("2025-01-08T09:20:00"),
-          isHelpful: true,
+          id: 1,
+          author: "David Rodriguez",
+          text: "Impressive accuracy! What features were most predictive?",
+          time: "1h",
+        },
+        {
+          id: 2,
+          author: "Emily Foster",
+          text: "Would love to see a breakdown of your methodology.",
+          time: "30m",
         },
       ],
-      views: 156,
-      isHelpful: false,
+      reposts: 145,
+      shares: 67,
+      image:
+        "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=300&fit=crop&auto=format",
     },
-    // OLDER thread but second most active (created Dec 28, updated Jan 7)
     {
       id: 4,
-      categoryId: 2,
-      title: "Which classic novels are worth rereading?",
-      author: "LiteraryFan",
-      authorAvatar: "https://i.pravatar.cc/150?img=8",
-      content: "I want to revisit some timeless literature. Any suggestions?",
-      createdAt: new Date("2024-12-28T12:00:00"),
-      updatedAt: new Date("2025-01-07T14:00:00"), // Second most active
-      replies: [
-        {
-          id: 5,
-          threadId: 4,
-          author: "JaneReader",
-          authorAvatar: "https://i.pravatar.cc/150?img=9",
-          content:
-            '"Pride and Prejudice", "To Kill a Mockingbird", and "1984" are all worth revisiting.',
-          createdAt: new Date("2025-01-07T13:00:00"),
-          isHelpful: true,
-        },
-      ],
-      views: 98,
-      isHelpful: false,
+      author: "Priya Patel",
+      title: "UX/UI Designer | Design Systems Advocate",
+      company: "Adobe",
+      content:
+        "Design is not just what it looks like and feels like. Design is how it works. - Steve Jobs\n\nJust completed a major redesign of our mobile app that increased user engagement by 40%! 🎨\n\nKey improvements:\n• Simplified navigation flow\n• Enhanced accessibility features\n• Consistent design language\n• User-centered approach\n\nGreat design starts with understanding your users deeply.\n\n#UXDesign #ProductDesign #UserExperience #DesignThinking",
+      time: "5h",
+      likes: 1234,
+      liked: false,
+      comments: [],
+      reposts: 234,
+      shares: 78,
+      image:
+        "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&h=300&fit=crop&auto=format",
     },
-    // OLDER thread with third most recent activity (created Dec 25, updated Jan 6)
     {
       id: 5,
-      categoryId: 3,
-      title: "Best places to visit in South India this summer",
-      author: "GlobeTrotter",
-      authorAvatar: "https://i.pravatar.cc/150?img=10",
+      author: "Rohit Sharma",
+      title: "Full Stack Developer | React & Node.js Specialist",
+      company: "Amazon",
       content:
-        "Looking for scenic, budget-friendly spots in South India for May.",
-      createdAt: new Date("2024-12-25T08:00:00"),
-      updatedAt: new Date("2025-01-06T09:00:00"), // Third most active
-      replies: [
+        "🔥 Just deployed my side project to production!\n\nBuilt a real-time collaboration tool using:\n\n⚡ React with TypeScript\n⚡ Node.js & Express\n⚡ Socket.io for real-time features\n⚡ MongoDB for data persistence\n⚡ AWS for hosting\n\nNothing beats the feeling of seeing your code come to life! The learning never stops in tech.\n\n#WebDevelopment #React #NodeJS #FullStack #SideProject",
+      time: "6h",
+      likes: 678,
+      liked: true,
+      comments: [
         {
-          id: 6,
-          threadId: 5,
-          author: "TravelAddict",
-          authorAvatar: "https://i.pravatar.cc/150?img=11",
-          content:
-            "Try Munnar, Coorg, or Wayanad. They're lush and not too crowded.",
-          createdAt: new Date("2025-01-06T08:30:00"),
-          isHelpful: false,
+          id: 1,
+          author: "Alex Thompson",
+          text: "Congrats! Would love to check it out.",
+          time: "3h",
         },
       ],
-      views: 210,
-      isHelpful: false,
+      reposts: 89,
+      shares: 45,
     },
-    // OLDER thread with NO recent activity (created Dec 20, updated Dec 20)
     {
       id: 6,
-      categoryId: 3,
-      title: "Travel checklist for international trips",
-      author: "JetSetter",
-      authorAvatar: "https://i.pravatar.cc/150?img=12",
-      content: "What are your must-carry items when going abroad for 2 weeks?",
-      createdAt: new Date("2024-12-20T11:00:00"),
-      updatedAt: new Date("2024-12-20T12:30:00"), // No recent activity
-      replies: [
-        {
-          id: 7,
-          threadId: 6,
-          author: "PackSmart",
-          authorAvatar: "https://i.pravatar.cc/150?img=13",
-          content:
-            "Passport, power bank, universal adapter, medicines, copies of documents.",
-          createdAt: new Date("2024-12-20T12:30:00"),
-          isHelpful: true,
-        },
-      ],
-      views: 170,
-      isHelpful: false,
-    },
-    // VERY OLD thread but moderately active (created Dec 18, updated Jan 4)
-    {
-      id: 7,
-      categoryId: 4,
-      title: "Best tools for modern UI design",
-      author: "UXPro",
-      authorAvatar: "https://i.pravatar.cc/150?img=14",
+      author: "Neha Gupta",
+      title: "Product Manager | SaaS Expert",
+      company: "Slack",
       content:
-        "What tools do you recommend for designing responsive, modern interfaces?",
-      createdAt: new Date("2024-12-18T13:45:00"),
-      updatedAt: new Date("2025-01-04T10:20:00"), // Moderately active
-      replies: [
+        "Product Management Lesson of the Day 💡\n\nFeatures don't make products successful. Solutions to real problems do.\n\nBefore building anything, ask:\n✓ What problem does this solve?\n✓ Who has this problem?\n✓ How do they solve it today?\n✓ Why is our solution better?\n\nCustomer research > Feature requests\n\n#ProductManagement #SaaS #CustomerResearch #ProductStrategy",
+      time: "8h",
+      likes: 2456,
+      liked: false,
+      comments: [
         {
-          id: 8,
-          threadId: 7,
-          author: "FigmaFan",
-          authorAvatar: "https://i.pravatar.cc/150?img=15",
-          content:
-            "Figma and Adobe XD are great. Figma especially for collaboration.",
-          createdAt: new Date("2025-01-04T10:10:00"),
-          isHelpful: true,
+          id: 1,
+          author: "Kevin Liu",
+          text: "This is exactly what I needed to hear today!",
+          time: "5h",
+        },
+        {
+          id: 2,
+          author: "Rachel Green",
+          text: "Customer research is indeed the foundation of great products.",
+          time: "4h",
         },
       ],
-      views: 132,
-      isHelpful: false,
+      reposts: 456,
+      shares: 123,
     },
-    // VERY OLD thread with NO recent activity (created Dec 15, updated Dec 15)
-    {
-      id: 8,
-      categoryId: 4,
-      title: "Color theory tips for beginner designers",
-      author: "DesignStarter",
-      authorAvatar: "https://i.pravatar.cc/150?img=16",
-      content: "I struggle with picking good colors. Any practical advice?",
-      createdAt: new Date("2024-12-15T10:30:00"),
-      updatedAt: new Date("2024-12-15T11:45:00"), // No recent activity
-      replies: [
-        {
-          id: 9,
-          threadId: 8,
-          author: "ColorWizard",
-          authorAvatar: "https://i.pravatar.cc/150?img=17",
-          content:
-            "Use tools like Coolors.co, and try to stick with 2-3 main colors for simplicity.",
-          createdAt: new Date("2024-12-15T11:45:00"),
-          isHelpful: true,
-        },
-      ],
-      views: 104,
-      isHelpful: false,
-    },
-  ]);
-  // Form states
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
+  ];
 
-  const replyInputRef = useRef<HTMLTextAreaElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
-  const loginModalRef = useRef<HTMLDivElement>(null);
-
-  const [isNewDiscussionModalOpen, setIsNewDiscussionModalOpen] =
-    useState(false);
-  const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
-  const [newDiscussionContent, setNewDiscussionContent] = useState("");
-  const [newDiscussionCategory, setNewDiscussionCategory] = useState<
-    number | null
-  >(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-
-  const newDiscussionModalRef = useRef<HTMLDivElement>(null);
-  const newDiscussionContentRef = useRef<HTMLTextAreaElement>(null);
-
-  // dynamically compute how many threads are in each category
-  const getThreadCount = (categoryId: number) =>
-    threads.filter((t) => t.categoryId === categoryId).length;
-
-  // Sample data - in a real app this would come from an API
-  const categories: Category[] = [
+  const [posts, setPosts] = useState<Post[]>(defaultPosts);
+  const [connections, setConnections] = useState<Connection[]>([
     {
       id: 1,
-      name: "Technology",
-      description:
-        "Discuss the latest in tech, programming, and digital innovation",
-      icon: <Cpu size={24} />,
-      threadCount: 128,
+      name: "Vikas Singh",
+      title: "AI & Tech Content Creator",
+      company: "Microsoft",
+      mutual: 15,
+      isConnected: false,
+      isFollowing: false,
     },
     {
       id: 2,
-      name: "Books & Literature",
-      description: "Share your favorite reads and literary discussions",
-      icon: <Book size={24} />,
-      threadCount: 95,
+      name: "Harish Kumar",
+      title: "LinkedIn Growth Expert",
+      company: "Google",
+      mutual: 23,
+      isConnected: true,
+      isFollowing: false,
     },
     {
       id: 3,
-      name: "Travel",
-      description: "Explore destinations, travel tips, and adventure stories",
-      icon: <Plane size={24} />,
-      threadCount: 76,
+      name: "Anjali Sharma",
+      title: "Senior Data Scientist",
+      company: "IBM",
+      mutual: 8,
+      isConnected: false,
+      isFollowing: false,
     },
     {
       id: 4,
-      name: "Design",
-      description: "Everything about UI/UX, graphic design, and creative arts",
-      icon: <Paintbrush size={24} />,
-      threadCount: 63,
-    },
-  ];
-
-  // Sample user data
-  const users: User[] = [
-    {
-      id: 1,
-      username: "AdminUser",
-      email: "admin@example.com",
-      avatar: "https://i.pravatar.cc/150?img=8",
+      name: "Priya Patel",
+      title: "UX/UI Designer",
+      company: "Adobe",
+      mutual: 12,
+      isConnected: false,
+      isFollowing: true,
     },
     {
-      id: 2,
-      username: "TechEnthusiast",
-      email: "tech@example.com",
-      avatar: "https://i.pravatar.cc/150?img=1",
-    },
-  ];
-
-  // Sample notifications
-  const [notificationsData, setNotificationsData] = useState<Notification[]>([
-    {
-      id: 1,
-      userId: 1,
-      type: "reply",
-      content:
-        'CodeMaster replied to your thread "What programming language should I learn in 2025?"',
-      threadId: 1,
-      replyId: 1,
-      createdAt: new Date("2025-05-02T16:45:00"),
-      read: false,
+      id: 5,
+      name: "Rohit Sharma",
+      title: "Full Stack Developer",
+      company: "Amazon",
+      mutual: 34,
+      isConnected: true,
+      isFollowing: false,
     },
     {
-      id: 2,
-      userId: 1,
-      type: "like",
-      content: "ReactExpert marked your reply as helpful",
-      threadId: 2,
-      replyId: 3,
-      createdAt: new Date("2025-05-02T14:12:00"),
-      read: false,
-    },
-    {
-      id: 3,
-      userId: 1,
-      type: "system",
-      content:
-        "Welcome to CommunityHub! Explore categories and join discussions.",
-      createdAt: new Date("2025-05-01T09:00:00"),
-      read: true,
+      id: 6,
+      name: "Neha Gupta",
+      title: "Product Manager",
+      company: "Slack",
+      mutual: 19,
+      isConnected: false,
+      isFollowing: false,
     },
   ]);
 
-  // Add custom CSS for fade-in animation and other transitions
-  const fadeInAnimation = `
-    @keyframes fadeIn {
-      0% { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in {
-      animation: fadeIn 0.3s ease-in-out forwards;
-    }
-  `;
+  const [newPost, setNewPost] = useState("");
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
+  const [newPostVideo, setNewPostVideo] = useState<string | null>(null);
 
-  // Get threads for the selected category
-  const getThreadsForCategory = (categoryId: number) => {
-    let filteredThreads = threads.filter(
-      (thread) => thread.categoryId === categoryId
-    );
+  const [showMoreNews, setShowMoreNews] = useState(false);
+  const [newComment, setNewComment] = useState<{ [key: number]: string }>({});
+  const [visibleComments, setVisibleComments] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [showAllComments, setShowAllComments] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Apply search if query exists
-    if (searchQuery.trim() !== "") {
-      filteredThreads = filteredThreads.filter(
-        (thread) =>
-          thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          thread.content.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
-    // Apply sorting
-    if (sortOption === "newest") {
-      return [...filteredThreads].sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-      );
-    } else {
-      return [...filteredThreads].sort(
-        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-      );
-    }
+  const addToast = (message: string, type: "success" | "error" = "success") => {
+    const id = Date.now();
+    setToasts([{ id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 5000);
   };
 
-  // Handler to navigate to threads view
-  const handleCategoryClick = (category: Category) => {
-    setSelectedCategory(category);
-    setView("threads");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  // Handler to navigate to thread detail view
-  const handleThreadClick = (thread: Thread) => {
-    setSelectedThread(thread);
-    setView("thread");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Handler to navigate back to categories
-  const handleBackToCategories = () => {
-    setSelectedCategory(null);
-    setView("categories");
-    setSearchQuery("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Handler to navigate back to threads
-  const handleBackToThreads = () => {
-    setSelectedThread(null);
-    setView("threads");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Handler for marking a post as helpful
-  const handleMarkAsHelpful = (replyId: number) => {
-    if (selectedThread) {
-      const updatedReplies = selectedThread.replies.map((reply) => {
-        if (reply.id === replyId) {
-          return { ...reply, isHelpful: !reply.isHelpful };
-        }
-        return reply;
-      });
-
-      const updatedThread = {
-        ...selectedThread,
-        replies: updatedReplies,
-      };
-
-      // Update the selected thread state
-      setSelectedThread(updatedThread);
-      
-      // Also update the main threads array to persist the change
-      setThreads(prevThreads => 
-        prevThreads.map(thread => 
-          thread.id === selectedThread.id ? updatedThread : thread
-        )
-      );
-    }
-  };
-
-  // Handler for submitting a new reply
-  const handleSubmitReply = () => {
-    if (!currentUser) {
+  const handlePostSubmit = () => {
+    if (!newPost.trim() && !newPostImage && !newPostVideo) {
+      addToast("Please write something or add media to post", "error");
       return;
     }
-    if (newReply.trim() === "" || !selectedThread) return;
-
-    const newReplyObj: Reply = {
-      id: Math.max(0, ...selectedThread.replies.map((r) => r.id)) + 1,
-      threadId: selectedThread.id,
-      author: currentUser.username,
-      authorAvatar: currentUser.avatar,
-      content: newReply,
-      createdAt: new Date(),
-      isHelpful: false,
+    const newPostObj: Post = {
+      id: posts.length + 1,
+      author: profile.name,
+      title: "Frontend Developer | React Specialist",
+      company: "Tech Solutions",
+      content: newPost,
+      time: "Just now",
+      likes: 0,
+      liked: false,
+      comments: [],
+      reposts: 0,
+      shares: 0,
+      image: newPostImage || undefined,
+      video: newPostVideo || undefined,
     };
+    setPosts([newPostObj, ...posts]);
+    setNewPost("");
+    setNewPostImage(null);
+    // Clean up video URL if it exists
+    if (newPostVideo) {
+      URL.revokeObjectURL(newPostVideo);
+    }
+    setNewPostVideo(null);
+    addToast("Post shared successfully!");
+  };
 
-    const updatedThread = {
-      ...selectedThread,
-      replies: [...selectedThread.replies, newReplyObj],
-      updatedAt: new Date(),
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        addToast("Image size should be less than 5MB", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewPostImage(reader.result as string);
+        addToast("Image uploaded successfully!");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        addToast("Video size should be less than 50MB", "error");
+        return;
+      }
+      // Clean up previous video URL if it exists
+      if (newPostVideo) {
+        URL.revokeObjectURL(newPostVideo);
+      }
+      // Create object URL for video
+      const videoUrl = URL.createObjectURL(file);
+      setNewPostVideo(videoUrl);
+      addToast("Video uploaded successfully!");
+    }
+  };
+
+  const handleLike = (postId: number) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          const isLiking = !post.liked;
+          if (isLiking) {
+            addToast("Post liked!");
+          }
+          return {
+            ...post,
+            liked: !post.liked,
+            likes: post.liked ? post.likes - 1 : post.likes + 1,
+          };
+        }
+        return post;
+      })
+    );
+  };
+
+  const handleCommentSubmit = (postId: number) => {
+    const commentText = newComment[postId]?.trim();
+    if (!commentText) {
+      addToast("Please write a comment", "error");
+      return;
+    }
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: [
+              ...post.comments,
+              {
+                id: post.comments.length + 1,
+                author: profile.name,
+                text: commentText,
+                time: "Just now",
+              },
+            ],
+          };
+        }
+        return post;
+      })
+    );
+    setNewComment({ ...newComment, [postId]: "" });
+    addToast("Comment added successfully!");
+  };
+
+  const handleRepost = (postId: number) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return { ...post, reposts: post.reposts + 1 };
+        }
+        return post;
+      })
+    );
+    addToast("Post reposted!");
+  };
+
+  const handleShare = (postId: number) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return { ...post, shares: post.shares + 1 };
+        }
+        return post;
+      })
+    );
+    addToast("Post shared!");
+  };
+
+  const handleToggleComments = (postId: number) => {
+    setVisibleComments((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  const handleLoadMoreComments = (postId: number) => {
+    setShowAllComments((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  const handleComingSoon = (feature: string) => {
+    addToast(`${feature} feature coming soon!`);
+  };
+
+  const handleFollow = (connectionId: number) => {
+    setConnections(
+      connections.map((connection) => {
+        if (connection.id === connectionId) {
+          const isFollowing = !connection.isFollowing;
+          if (isFollowing) {
+            addToast(`Now following ${connection.name}!`);
+          } else {
+            addToast(`Unfollowed ${connection.name}`);
+          }
+          return { ...connection, isFollowing: !connection.isFollowing };
+        }
+        return connection;
+      })
+    );
+  };
+
+  const handleEditProfile = () => {
+    if (!tempProfileName.trim()) {
+      addToast("Name cannot be empty", "error");
+      return;
+    }
+    setProfile({
+      ...profile,
+      name: tempProfileName,
+      description: tempProfileDescription,
+      picture: tempProfilePicture,
+    });
+    setIsEditingProfile(false);
+    addToast("Profile updated successfully!");
+  };
+
+  const handleProfilePictureUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        addToast("Profile picture size should be less than 2MB", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempProfilePicture(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const filteredPosts = posts.filter(
+    (post) =>
+      post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedPosts = [...filteredPosts].sort((a, b) => b.id - a.id);
+
+  const profileImages: { [key: string]: string } = {
+    Liyana:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&auto=format",
+    "Vikas Singh":
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&auto=format",
+    "Harish Kumar":
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&auto=format",
+    "Anjali Sharma":
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&auto=format",
+    "Priya Patel":
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&auto=format",
+    "Rohit Sharma":
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format",
+    "Neha Gupta":
+      "https://images.unsplash.com/photo-1445053023192-8d45cb66099d?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8cGVyc29ufGVufDB8fDB8fHww",
+    "Sarah Johnson":
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&auto=format",
+    "Mike Chen":
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&auto=format",
+    "Lisa Wang":
+      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&auto=format",
+    "David Rodriguez":
+      "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&auto=format",
+    "Emily Foster":
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&auto=format",
+    "Alex Thompson":
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&auto=format",
+    "Kevin Liu":
+      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&h=150&fit=crop&auto=format",
+    "Rachel Green":
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&auto=format",
+  };
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+
+    return () => {
+      document.head.removeChild(link);
     };
-
-    // Update the selected thread state
-    setSelectedThread(updatedThread);
-    
-    // Also update the main threads array to persist the change
-    setThreads(prevThreads => 
-      prevThreads.map(thread => 
-        thread.id === selectedThread.id ? updatedThread : thread
-      )
-    );
-
-    setNewReply("");
-
-    // Scroll to the newly added reply
-    setTimeout(() => {
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: "smooth",
-      });
-    }, 100);
-  };
-
-  // Format date to show relative time
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return "just now";
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-    } else if (diffInSeconds < 604800) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} ${days === 1 ? "day" : "days"} ago`;
-    } else {
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    }
-  };
-
-  // Handle login form submission
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    setLoginError(null);
-    setLoginSuccess(null);
-
-    // Simple validation
-    if (!email || !password) {
-      setLoginError("Please fill in all fields");
-      return;
-    }
-
-    // In a real app, this would make an API call to authenticate
-    setTimeout(() => {
-      if (email === "admin@example.com" && password === "password") {
-        setIsLoggedIn(true);
-        setCurrentUser(users[0]);
-        setLoginSuccess("Login successful!");
-
-        // Close modal after showing success message
-        setTimeout(() => {
-          setIsLoginModalOpen(false);
-          setEmail("");
-          setPassword("");
-          setLoginSuccess(null);
-        }, 1500);
-      } else {
-        setLoginError("Invalid email or password");
-      }
-    }, 800);
-  };
-
-  useEffect(() => {
-    setLoginError("");
-  }, [isRegisterMode]);
-
-  // Add these functions with your other handlers
-  const handleNotificationClick = (notification: Notification) => {
-    // Mark this notification as read
-    if (!notification.read) {
-      markNotificationAsRead(notification.id);
-    }
-
-    // Navigate to the relevant thread if there's a threadId
-    if (notification.threadId) {
-      const thread = threads.find((t) => t.id === notification.threadId);
-      if (thread) {
-        const category = categories.find((c) => c.id === thread.categoryId);
-        if (category) {
-          setSelectedCategory(category);
-          setView("threads");
-          setTimeout(() => {
-            handleThreadClick(thread);
-          }, 100);
-        }
-      }
-    }
-
-    // Close notifications panel
-    setNotificationsOpen(false);
-  };
-
-  const markNotificationAsRead = (notificationId: number) => {
-    const updatedNotifications = notificationsData.map((notification) => {
-      if (notification.id === notificationId) {
-        return { ...notification, read: true };
-      }
-      return notification;
-    });
-    // In a real app, you'd make an API call here
-    // For this example, we'll just update the local state
-    setNotificationsData(updatedNotifications);
-  };
-
-  const handleMarkAllAsRead = () => {
-    const updatedNotifications = notificationsData.map((notification) => {
-      return { ...notification, read: true };
-    });
-    // In a real app, you'd make an API call here
-    setNotificationsData(updatedNotifications);
-  };
-
-  // Handle registration form submission
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    setLoginError(null);
-    setLoginSuccess(null);
-
-    // Simple validation
-    if (!email || !password || !username) {
-      setLoginError("Please fill in all fields");
-      return;
-    }
-
-    if (password.length < 5) {
-      setLoginError("Password must be at least 8 characters");
-      return;
-    }
-
-    // In a real app, this would make an API call to register
-    setTimeout(() => {
-      // Create a new user
-      const newUser: User = {
-        id: users.length + 1,
-        username,
-        email,
-        avatar: `https://i.pravatar.cc/150?img=${Math.floor(
-          Math.random() * 70
-        )}`,
-      };
-
-      setIsLoggedIn(true);
-      setCurrentUser(newUser);
-      setLoginSuccess("Registration successful!");
-
-      // Close modal after showing success message
-      setTimeout(() => {
-        setIsLoginModalOpen(false);
-        setEmail("");
-        setPassword("");
-        setUsername("");
-        setLoginSuccess(null);
-      }, 1500);
-    }, 800);
-  };
-
-  // Handle logout
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    setMobileMenuOpen(false);
-  };
-
-  const getPopularThreads = () => {
-    // In a real app, this would be an API call
-    // For now, sort threads by view count
-    return [...threads].sort((a, b) => b.views - a.views).slice(0, 3);
-  };
-  // Add this function to get recent activity
-  const getRecentActivity = () => {
-    // In a real app, this would be an API call
-    // For now, sort all threads by update date
-    return [...threads]
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-      .slice(0, 5);
-  };
-
-  // Handler to submit a new discussion
-  const handleSubmitNewDiscussion = () => {
-    // Reset states
-    setFormError(null);
-    setFormSuccess(null);
-
-    // Validation
-    if (!newDiscussionTitle.trim()) {
-      setFormError("Please enter a title for your discussion");
-      return;
-    }
-
-    if (!newDiscussionContent.trim()) {
-      setFormError("Please enter content for your discussion");
-      return;
-    }
-
-    if (newDiscussionCategory === null) {
-      setFormError("Please select a category for your discussion");
-      return;
-    }
-
-    if (!currentUser) {
-      setIsNewDiscussionModalOpen(false);
-      setIsLoginModalOpen(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // In a real app, you would make an API call here
-    setTimeout(() => {
-      // Create new thread object
-      const newThread: Thread = {
-        id: Math.max(0, ...threads.map((t) => t.id)) + 1,
-        categoryId: newDiscussionCategory,
-        title: newDiscussionTitle,
-        author: currentUser.username,
-        authorAvatar: currentUser.avatar,
-        content: newDiscussionContent,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        replies: [],
-        views: 0,
-        isHelpful: false,
-      };
-
-      // Add the new thread to the threads array
-      setThreads((prevThreads) => [newThread, ...prevThreads]);
-
-      // Show success message
-      setFormSuccess("Discussion created successfully!");
-
-      // Reset form fields after a delay
-      setTimeout(() => {
-        setNewDiscussionTitle("");
-        setNewDiscussionContent("");
-        setNewDiscussionCategory(null);
-        setIsSubmitting(false);
-        setFormSuccess(null);
-        setIsNewDiscussionModalOpen(false);
-
-        // Navigate to the new thread
-        const category = categories.find((c) => c.id === newDiscussionCategory);
-        if (category) {
-          setSelectedCategory(category);
-          setView("threads");
-          setTimeout(() => {
-            handleThreadClick(newThread);
-          }, 100);
-        }
-      }, 1500);
-    }, 800);
-  };
-
-  const NewDiscussionButton = () => {
-    if (!isLoggedIn) {
-      return (
-        <button
-          className="group flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow-sm transition-all duration-200 ease-in-out cursor-pointer"
-          onClick={() => {
-            setIsLoginModalOpen(true);
-            setIsRegisterMode(false);
-          }}
-        >
-          <PlusCircle
-            size={18}
-            className="transition-transform group-hover:scale-110"
-          />
-          <span>Start Discussion</span>
-        </button>
-      );
-    }
-
-    return (
-      <button
-        className="group flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow-sm transition-all duration-200 ease-in-out cursor-pointer"
-        onClick={() => {
-          setIsNewDiscussionModalOpen(true);
-          // If we're in the categories view, preselect the first category
-          if (view === "categories" && categories.length > 0) {
-            setNewDiscussionCategory(categories[0].id);
-          }
-          // If we're in the threads view, preselect the current category
-          else if (view === "threads" && selectedCategory) {
-            setNewDiscussionCategory(selectedCategory.id);
-          }
-        }}
-      >
-        <PlusCircle
-          size={18}
-          className="transition-transform group-hover:scale-110"
-        />
-        <span>Start Discussion</span>
-      </button>
-    );
-  };
-
-  // before your return( … ), swap this in
-  const getSortedThreads = (): Thread[] => {
-    if (!selectedCategory) return [];
-
-    let filtered = threads.filter(
-      (thread) => thread.categoryId === selectedCategory.id
-    );
-
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(
-        (thread) =>
-          thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          thread.content.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (sortOption === "newest") {
-      // Newest: most recent creation first
-      return [...filtered].sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-      );
-    } else {
-      // Most Active: most recently updated first
-      return [...filtered].sort(
-        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-      );
-    }
-  };
-
-  useEffect(() => {
-    console.log(
-      "Sorted Threads:",
-      getSortedThreads().map((t) => ({
-        title: t.title,
-        createdAt: t.createdAt.toISOString(),
-        updatedAt: t.updatedAt.toISOString(),
-      }))
-    );
-  }, [sortOption, selectedCategory, searchQuery]);
-
-  useEffect(() => {
-    setPopularThreads(getPopularThreads());
-    setRecentActivity(getRecentActivity());
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target as Node)
-      ) {
-        setNotificationsOpen(false);
-      }
-
-      // Close profile dropdown when clicking outside
-      if (
-        profileDropdownOpen &&
-        !(event.target as Element).closest(".profile-dropdown-container")
-      ) {
-        setProfileDropdownOpen(false);
-      }
-
-      if (
-        loginModalRef.current &&
-        !loginModalRef.current.contains(event.target as Node) &&
-        isLoginModalOpen
-      ) {
-        setIsLoginModalOpen(false);
-      }
-
-      if (
-        newDiscussionModalRef.current &&
-        !newDiscussionModalRef.current.contains(event.target as Node) &&
-        isNewDiscussionModalOpen
-      ) {
-        setIsNewDiscussionModalOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [
-    notificationsOpen,
-    isLoginModalOpen,
-    profileDropdownOpen,
-    isNewDiscussionModalOpen,
-  ]);
-
-  // Add this useEffect for auto-resizing the textarea
-  useEffect(() => {
-    if (newDiscussionContentRef.current) {
-      newDiscussionContentRef.current.style.height = "auto";
-      newDiscussionContentRef.current.style.height = `${newDiscussionContentRef.current.scrollHeight}px`;
-    }
-  }, [newDiscussionContent]);
-
-  // Close notifications panel when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target as Node)
-      ) {
-        setNotificationsOpen(false);
-      }
-
-      if (
-        loginModalRef.current &&
-        !loginModalRef.current.contains(event.target as Node) &&
-        !isLoginModalOpen
-      ) {
-        setIsLoginModalOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [notificationsOpen, isLoginModalOpen]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (replyInputRef.current) {
-      replyInputRef.current.style.height = "auto";
-      replyInputRef.current.style.height = `${replyInputRef.current.scrollHeight}px`;
-    }
-  }, [newReply]);
-
-  // Close mobile menu when changing views
-  useEffect(() => {
-    setMobileMenuOpen(false);
-    setNotificationsOpen(false);
-  }, [view]);
-
-  // Lock body scroll when modals are open
-  useEffect(() => {
-    const isAnyModalOpen = isLoginModalOpen || isNewDiscussionModalOpen;
-
-    if (isAnyModalOpen) {
-      // Save current scroll position
-      const scrollY = window.scrollY;
-
-      // Lock the body scroll
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
+    if (isEditingProfile || isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
     } else {
-      // Restore scroll position and unlock
-      const scrollY = document.body.style.top;
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      document.body.style.overflow = "";
-
-      // Restore scroll position
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || "0") * -1);
-      }
+      document.body.style.overflow = "unset";
     }
 
-    // Cleanup function to ensure body scroll is unlocked when component unmounts
     return () => {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      document.body.style.overflow = "";
+      document.body.style.overflow = "unset";
     };
-  }, [isLoginModalOpen, isNewDiscussionModalOpen]);
-
-  // Add this function to perform search across all threads
-  const performSearch = (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    const results = threads.filter(
-      (thread) =>
-        thread.title.toLowerCase().includes(query.toLowerCase()) ||
-        thread.content.toLowerCase().includes(query.toLowerCase())
-    );
-
-    setSearchResults(results);
-  };
-  // Get unread notifications count
-  const unreadNotificationsCount = notificationsData.filter(
-    (notification) => !notification.read
-  ).length;
+  }, [isEditingProfile, isMobileMenuOpen]);
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 ${roboto.variable}`}
-      style={{ fontFamily: "var(--font-roboto)" }}
+      className="min-h-screen bg-gray-50 flex flex-col"
+      style={{ fontFamily: "Poppins, sans-serif" }}
     >
-      <style>{fadeInAnimation}</style>
+      {toasts.map((toast) => (
+        <Toast key={toast.id} toast={toast} onClose={removeToast} />
+      ))}
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            {/* Logo and Navigation */}
-            <div className="flex items-center space-x-8">
-              <div
-                className="flex items-center space-x-2 cursor-pointer transition-all duration-200 ease-in-out hover:opacity-80 active:opacity-70"
-                onClick={handleBackToCategories}
-              >
-                <MessageSquare className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-                <span className="flex text-xl font-bold tracking-tight">
-                  CommunityHub
-                </span>
-              </div>
-
-            </div>
-
-            {/* Search Bar - Desktop */}
-            <div className="hidden md:flex flex-1 max-w-lg mx-8">
-              <div className="relative w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search
-                    className={`h-5 w-5 ${
-                      isSearchFocused
-                        ? "text-indigo-600 dark:text-indigo-400"
-                        : "text-gray-400"
-                    }`}
+      <header className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
+        <div className="max-w-full xl:max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 md:space-x-4 w-full md:w-auto">
+              <FaLinkedin className="text-blue-600 text-3xl cursor-pointer flex-shrink-0" />
+              {activePage === "feed" && (
+                <div className="relative flex-1 md:w-auto md:block">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full md:w-64 px-4 py-2 pl-10 rounded-md bg-gray-100 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-800"
                   />
-                </div>
-                <input
-                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
-                  placeholder="Search discussions..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    performSearch(e.target.value);
-                  }}
-                  onFocus={() => {
-                    setIsSearchFocused(true);
-                    // Navigate to categories view when searching
-                    if (view !== "categories") {
-                      handleBackToCategories();
-                    }
-                  }}
-                  onBlur={() => setIsSearchFocused(false)}
-                />
-                {searchQuery && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <button
-                      className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setIsSearching(false);
-                      }}
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* User Menu - Desktop */}
-            <div className="hidden md:flex items-center space-x-6">
-              {isLoggedIn ? (
-                <>
-                  <div
-                    className="relative cursor-pointer transition-transform duration-200 hover:-translate-y-1"
-                    onClick={() => setNotificationsOpen(!notificationsOpen)}
-                    ref={notificationsRef}
-                  >
-                    <Bell className="h-6 w-6 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white" />
-                    {unreadNotificationsCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                        {unreadNotificationsCount}
-                      </span>
-                    )}
-
-                    {/* Notifications dropdown */}
-                    {notificationsOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-md shadow-lg overflow-hidden z-50 border border-gray-200 dark:border-gray-700">
-                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                          <h3 className="text-sm font-semibold">
-                            Notifications
-                          </h3>
-                          {unreadNotificationsCount > 0 && (
-                            <button
-                              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
-                              onClick={handleMarkAllAsRead}
-                            >
-                              Mark all as read
-                            </button>
-                          )}
-                        </div>
-                        <div className="max-h-96 overflow-y-auto">
-                          {notificationsData.length > 0 ? (
-                            notificationsData.map((notification) => (
-                              <div
-                                key={notification.id}
-                                className={`px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
-                                  notification.read
-                                    ? ""
-                                    : "bg-indigo-50 dark:bg-indigo-900/20"
-                                } cursor-pointer`}
-                                onClick={() =>
-                                  handleNotificationClick(notification)
-                                }
-                              >
-                                <div className="flex items-start">
-                                  <div
-                                    className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                                      notification.type === "reply"
-                                        ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
-                                        : notification.type === "like"
-                                        ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300"
-                                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-                                    }`}
-                                  >
-                                    {notification.type === "reply" ? (
-                                      <MessageSquare size={16} />
-                                    ) : notification.type === "like" ? (
-                                      <ThumbsUp size={16} />
-                                    ) : (
-                                      <Bell size={16} />
-                                    )}
-                                  </div>
-                                  <div className="ml-3 flex-1">
-                                    <p className="text-sm text-gray-900 dark:text-gray-100">
-                                      {notification.content}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                      {formatDate(notification.createdAt)}
-                                    </p>
-                                  </div>
-                                  {!notification.read && (
-                                    <div className="ml-2 h-2 w-2 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
-                                  )}
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                              <p>No notifications yet</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2 cursor-pointer relative">
-                    <div
-                      className="flex items-center space-x-2"
-                      onClick={() =>
-                        setProfileDropdownOpen(!profileDropdownOpen)
-                      }
-                    >
-                      <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white overflow-hidden transition-transform duration-200 hover:-translate-y-1">
-                        {currentUser?.avatar ? (
-                          <img
-                            src={currentUser.avatar}
-                            alt={currentUser.username}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <User size={18} />
-                        )}
-                      </div>
-                      <div className="flex items-center">
-                        <span className="font-medium">
-                          {currentUser?.username || "Profile"}
-                        </span>
-                        <ChevronDown size={16} className="ml-1 text-gray-500" />
-                      </div>
-                    </div>
-
-                    {profileDropdownOpen && (
-                      <div className="absolute top-12 right-0 w-48 mt-2 bg-white dark:bg-gray-800 rounded-md shadow-lg overflow-hidden z-40 border border-gray-200 dark:border-gray-700">
-                        <div className="py-1">
-                          <button
-                            className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left cursor-pointer"
-                            onClick={handleLogout}
-                          >
-                            Sign out
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center space-x-4">
-                  <button
-                    className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200 font-medium cursor-pointer"
-                    onClick={() => {
-                      setIsLoginModalOpen(true);
-                      setIsRegisterMode(false);
-                    }}
-                  >
-                    Log in
-                  </button>
-                  <button
-                    className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200 font-medium cursor-pointer"
-                    onClick={() => {
-                      setIsLoginModalOpen(true);
-                      setIsRegisterMode(true);
-                    }}
-                  >
-                    Sign up
-                  </button>
+                  <FaSearch className="absolute left-3 top-3 text-gray-500" />
                 </div>
               )}
             </div>
 
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(!mobileMenuOpen);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 cursor-pointer"
-              >
-                <span className="sr-only">Open main menu</span>
-                {mobileMenuOpen ? (
-                  <X className="block h-6 w-6" />
-                ) : (
-                  <Menu className="block h-6 w-6" />
-                )}
-              </button>
+            <div className="flex items-center">
+              <div className="hidden md:flex space-x-6 items-center">
+                <button
+                  onClick={() => setActivePage("feed")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <FaHome className="text-xl" />
+                  </div>
+                  <span className="text-xs font-medium">Home</span>
+                </button>
+                <button
+                  onClick={() => setActivePage("network")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <FaUsers className="text-xl" />
+                  </div>
+                  <span className="text-xs font-medium">My Network</span>
+                </button>
+                <button
+                  onClick={() => handleComingSoon("Jobs")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <FaBriefcase className="text-xl" />
+                  </div>
+                  <span className="text-xs font-medium">Jobs</span>
+                </button>
+                <button
+                  onClick={() => handleComingSoon("Messaging")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <FaEnvelope className="text-xl" />
+                  </div>
+                  <span className="text-xs font-medium">Messaging</span>
+                </button>
+                <button
+                  onClick={() => handleComingSoon("Notifications")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <FaBell className="text-xl" />
+                  </div>
+                  <span className="text-xs font-medium">Notifications</span>
+                </button>
+                <button
+                  onClick={() => handleComingSoon("Profile")}
+                  className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                >
+                  <div className="h-6 flex items-center justify-center mb-1">
+                    <div className="w-6 h-6 rounded-full overflow-hidden">
+                    <img
+                      src={profile.picture}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  </div>
+                  <span className="text-xs font-medium">Me</span>
+                </button>
+                <div className="border-l border-gray-300 pl-4 h-12 flex items-center">
+                  <button
+                    className="flex flex-col items-center justify-center text-gray-600 hover:text-gray-900 transition-colors cursor-pointer min-h-[48px]"
+                    onClick={() => handleComingSoon("For Business")}
+                  >
+                    <div className="h-6 flex items-center justify-center mb-1">
+                      <FaBriefcase className="text-xl" />
+                    </div>
+                    <span className="text-xs font-medium">For Business</span>
+                  </button>
+                </div>
+                <div className="flex items-center h-12">
+                <button
+                  className="text-yellow-600 text-xs font-medium hover:underline cursor-pointer"
+                  onClick={() => handleComingSoon("Premium")}
+                >
+                  Try Premium for ₹0
+                </button>
+                </div>
+              </div>
+
+              {/* Mobile hamburger menu */}
+              <div className="flex md:hidden items-center space-x-3 ml-2">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+                  aria-label="Menu"
+                >
+                  <FaBars className="text-xl" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile menu */}
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-800 shadow-lg z-40 transition-all duration-200 ease-in-out">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <button
-              className={`w-full flex items-center space-x-2 px-3 py-2 rounded-md transition-colors duration-150 cursor-pointer ${
-                view === "categories"
-                  ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              }`}
-              onClick={() => {
-                handleBackToCategories();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              <Home size={18} />
-              <span>Home</span>
-            </button>
-          </div>
-
-          {/* Mobile search bar */}
-          <div className="px-4 py-2">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Search discussions..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  performSearch(e.target.value);
-                }}
-                onFocus={() => {
-                  // Navigate to categories view when searching
-                  if (view !== "categories") {
-                    handleBackToCategories();
-                  }
-                }}
-              />
-              {searchQuery && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setIsSearching(false);
-                    }}
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile notifications panel */}
-          {isLoggedIn && (
-            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Notifications
-                </h3>
-                {unreadNotificationsCount > 0 && (
-                  <button
-                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
-                    onClick={handleMarkAllAsRead}
-                  >
-                    Mark all as read
-                  </button>
-                )}
-              </div>
-              <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-700">
-                {notificationsData.length > 0 ? (
-                  notificationsData.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
-                        notification.read
-                          ? ""
-                          : "bg-indigo-50 dark:bg-indigo-900/20"
-                      } cursor-pointer`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start">
-                        <div
-                          className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                            notification.type === "reply"
-                              ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
-                              : notification.type === "like"
-                              ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300"
-                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-                          }`}
-                        >
-                          {notification.type === "reply" ? (
-                            <MessageSquare size={16} />
-                          ) : notification.type === "like" ? (
-                            <ThumbsUp size={16} />
-                          ) : (
-                            <Bell size={16} />
-                          )}
-                        </div>
-                        <div className="ml-3 flex-1">
-                          <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {notification.content}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {formatDate(notification.createdAt)}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <div className="ml-2 h-2 w-2 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                    <p>No notifications yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Mobile user options */}
-          <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-            {isLoggedIn && currentUser ? (
-              <>
-                <div className="flex items-center px-4">
-                  <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white overflow-hidden">
-                    {currentUser?.avatar ? (
-                      <img
-                        src={currentUser.avatar}
-                        alt={currentUser.username}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <User size={20} />
-                    )}
-                  </div>
-                  <div className="ml-3">
-                    <div className="text-base font-medium">
-                      {currentUser.username}
-                    </div>
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {currentUser.email}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1 px-2">
-                  <button className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors duration-150 cursor-pointer">
-                    Your Profile
-                  </button>
-                  <button className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors duration-150 cursor-pointer">
-                    Settings
-                  </button>
-                  <button
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full transition-colors duration-150 cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={18} />
-                    <span>Sign out</span>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="px-4 py-2 space-y-2">
-                <button
-                  className="w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 transition-colors duration-150 cursor-pointer"
-                  onClick={() => {
-                    setIsLoginModalOpen(true);
-                    setIsRegisterMode(false);
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Log in
-                </button>
-                <button
-                  className="w-full px-3 py-2 rounded-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-150 cursor-pointer"
-                  onClick={() => {
-                    setIsLoginModalOpen(true);
-                    setIsRegisterMode(true);
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Sign up
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Login Modal */}
-      {isLoginModalOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-              onClick={() => setIsLoginModalOpen(false)} // Close when clicking backdrop
-            >
-              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
-            </div>
-
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
-
-            {/* Modal Container */}
-            <div
-              className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-50
-                   max-h-[calc(100vh-4rem)] overflow-y-auto"
-              // Stop propagation to prevent closing when clicking inside the modal
-              onClick={(e) => e.stopPropagation()}
-              ref={loginModalRef}
-            >
-              {/* Close button */}
-              <div className="absolute top-0 right-0 pt-4 pr-4 z-50">
-                <button
-                  type="button"
-                  className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
-                  onClick={() => setIsLoginModalOpen(false)}
-                >
-                  <span className="sr-only">Close</span>
-                  <XIcon className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-left sm:mt-0 w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                      {isRegisterMode
-                        ? "Create an account"
-                        : "Sign in to your account"}
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {isRegisterMode
-                          ? "Join our community to start discussions and connect with others."
-                          : "Welcome back! Please enter your credentials to continue."}
-                      </p>
-                    </div>
-
-                    <div className="mt-6">
-                      <form
-                        onSubmit={isRegisterMode ? handleRegister : handleLogin}
-                      >
-                        {/* Username field - only for registration */}
-                        {isRegisterMode && (
-                          <div className="mb-4">
-                            <label
-                              htmlFor="username"
-                              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              Username
-                            </label>
-                            <div className="mt-1">
-                              <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                autoComplete="username"
-                                required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                placeholder="Choose a username"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Email field */}
-                        <div className="mb-4">
-                          <label
-                            htmlFor="email"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            Email address
-                          </label>
-                          <div className="mt-1">
-                            <input
-                              id="email"
-                              name="email"
-                              type="email"
-                              autoComplete="email"
-                              required
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              placeholder="Enter your email"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Password field */}
-                        <div className="mb-6">
-                          <label
-                            htmlFor="password"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            Password
-                          </label>
-                          <div className="mt-1 relative">
-                            <input
-                              id="password"
-                              name="password"
-                              type={showPassword ? "text" : "password"}
-                              autoComplete={
-                                isRegisterMode
-                                  ? "new-password"
-                                  : "current-password"
-                              }
-                              required
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
-                              placeholder={
-                                isRegisterMode
-                                  ? "Create a password"
-                                  : "Enter your password"
-                              }
-                            />
-                            <button
-                              type="button"
-                              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 cursor-pointer"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-5 w-5" />
-                              ) : (
-                                <Eye className="h-5 w-5" />
-                              )}
-                            </button>
-                          </div>
-                          {isRegisterMode && (
-                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                              Password must be at least 8 characters
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Error and success messages */}
-                        {loginError && (
-                          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md flex items-start">
-                            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                            <span>{loginError}</span>
-                          </div>
-                        )}
-
-                        {loginSuccess && (
-                          <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md flex items-start">
-                            <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                            <span>{loginSuccess}</span>
-                          </div>
-                        )}
-
-                        {/* Submit button */}
-                        <button
-                          type="submit"
-                          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 cursor-pointer"
-                        >
-                          {isRegisterMode ? "Create account" : "Sign in"}
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 py-4 bg-gray-50 dark:bg-gray-700 sm:px-6">
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-left">
-                  {isRegisterMode
-                    ? "Already have an account?"
-                    : "Don't have an account?"}
-                  <button
-                    className="ml-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer"
-                    onClick={() => setIsRegisterMode(!isRegisterMode)}
-                  >
-                    {isRegisterMode ? "Sign in" : "Create one"}
-                  </button>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(view === "categories" || view === "threads") && (
-        <div className="md:hidden fixed right-4 bottom-4 z-10">
-          <button
-            onClick={() => {
-              if (isLoggedIn) {
-                setIsNewDiscussionModalOpen(true);
-                // Set default category
-                if (view === "threads" && selectedCategory) {
-                  setNewDiscussionCategory(selectedCategory.id);
-                } else if (categories.length > 0) {
-                  setNewDiscussionCategory(categories[0].id);
-                }
-              } else {
-                setIsLoginModalOpen(true);
-                setIsRegisterMode(false);
-              }
+      {/* Mobile menu overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 backdrop-blur-xl animate-in fade-in duration-300"
+            onClick={() => setIsMobileMenuOpen(false)}
+            style={{
+              backdropFilter: 'blur(20px) brightness(0.7)',
+              WebkitBackdropFilter: 'blur(20px) brightness(0.7)',
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
             }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 cursor-pointer"
-            aria-label="Start new discussion"
-          >
-            <PlusCircle size={24} />
-          </button>
-        </div>
-      )}
-
-      {isNewDiscussionModalOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-              onClick={() => setIsNewDiscussionModalOpen(false)}
-            >
-              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
+          ></div>
+          
+          {/* Menu panel */}
+          <div className="absolute right-0 top-0 bg-white w-64 h-full shadow-xl animate-in slide-in-from-right duration-300 ease-out">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden">
+                  <img
+                    src={profile.picture}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">{profile.name}</h3>
+                  <p className="text-sm text-gray-600">View profile</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                <FaTimes />
+              </button>
             </div>
-
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
-
-            {/* Modal Container */}
-            <div
-              className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full relative z-50"
-              onClick={(e) => e.stopPropagation()}
-              ref={newDiscussionModalRef}
-            >
-              {/* Close button */}
-              <div className="absolute top-0 right-0 pt-4 pr-4 z-50">
+            
+            <div className="py-4">
+              <button
+                onClick={() => {
+                  setActivePage("feed");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors cursor-pointer ${
+                  activePage === "feed" ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : "text-gray-700"
+                }`}
+              >
+                <FaHome className="text-xl" />
+                <span className="font-medium">Home</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setActivePage("network");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors cursor-pointer ${
+                  activePage === "network" ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : "text-gray-700"
+                }`}
+              >
+                <FaUsers className="text-xl" />
+                <span className="font-medium">My Network</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleComingSoon("Jobs");
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
+              >
+                <FaBriefcase className="text-xl" />
+                <span className="font-medium">Jobs</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleComingSoon("Messaging");
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
+              >
+                <FaEnvelope className="text-xl" />
+                <span className="font-medium">Messaging</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleComingSoon("Notifications");
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
+              >
+                <FaBell className="text-xl" />
+                <span className="font-medium">Notifications</span>
+              </button>
+              
+              <div className="border-t border-gray-200 mt-4 pt-4">
                 <button
-                  type="button"
-                  className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
-                  onClick={() => setIsNewDiscussionModalOpen(false)}
+                  onClick={() => {
+                    handleComingSoon("Profile");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
                 >
-                  <span className="sr-only">Close</span>
-                  <X className="h-6 w-6" />
+                  <FaUser className="text-xl" />
+                  <span className="font-medium">Profile</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    handleComingSoon("Settings");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 cursor-pointer"
+                >
+                  <span className="font-medium text-sm">Settings & Privacy</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    handleComingSoon("Premium");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-yellow-600 cursor-pointer"
+                >
+                  <span className="font-medium text-sm">Try Premium for ₹0</span>
                 </button>
               </div>
-
-              {/* Modal Content */}
-              <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4 overflow-y-auto max-h-[calc(100vh-4rem)]">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-left sm:mt-0 w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white flex items-center">
-                      <PlusCircle className="mr-2 h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                      Start a New Discussion
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Share your thoughts, questions, or ideas with the
-                        community.
-                      </p>
-                    </div>
-
-                    <div className="mt-6">
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleSubmitNewDiscussion();
-                        }}
-                      >
-                        {/* Category Selection */}
-                        <div className="mb-4">
-                          <label
-                            htmlFor="category"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            Category
-                          </label>
-                          <div className="mt-1">
-                            <select
-                              id="category"
-                              name="category"
-                              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              value={newDiscussionCategory || ""}
-                              onChange={(e) =>
-                                setNewDiscussionCategory(Number(e.target.value))
-                              }
-                              required
-                            >
-                              <option value="" disabled>
-                                Select a category
-                              </option>
-                              {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                  {category.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Title Field */}
-                        <div className="mb-4">
-                          <label
-                            htmlFor="title"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            Title
-                          </label>
-                          <div className="mt-1">
-                            <input
-                              id="title"
-                              name="title"
-                              type="text"
-                              required
-                              value={newDiscussionTitle}
-                              onChange={(e) =>
-                                setNewDiscussionTitle(e.target.value)
-                              }
-                              className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              placeholder="Enter a descriptive title for your discussion"
-                              maxLength={100}
-                            />
-                          </div>
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {newDiscussionTitle.length}/100 characters
-                          </p>
-                        </div>
-
-                        {/* Content Field */}
-                        <div className="mb-6">
-                          <label
-                            htmlFor="content"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            Content
-                          </label>
-                          <div className="mt-1">
-                            <textarea
-                              id="content"
-                              name="content"
-                              rows={6}
-                              maxLength={40}
-                              required
-                              ref={newDiscussionContentRef}
-                              value={newDiscussionContent}
-                              onChange={(e) =>
-                                setNewDiscussionContent(e.target.value)
-                              }
-                              className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              placeholder="Describe your question or discussion topic in detail"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Error and success messages */}
-                        {formError && (
-                          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md flex items-start">
-                            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                            <span>{formError}</span>
-                          </div>
-                        )}
-
-                        {formSuccess && (
-                          <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md flex items-start">
-                            <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                            <span>{formSuccess}</span>
-                          </div>
-                        )}
-
-                        {/* Submit button */}
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 cursor-pointer ${
-                            isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-                          }`}
-                        >
-                          {isSubmitting ? (
-                            <span className="flex items-center">
-                              <svg
-                                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                              >
-                                <circle
-                                  className="opacity-25"
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  strokeWidth="4"
-                                ></circle>
-                                <path
-                                  className="opacity-75"
-                                  fill="currentColor"
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                ></path>
-                              </svg>
-                              Creating Discussion...
-                            </span>
-                          ) : (
-                            "Post Discussion"
-                          )}
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 py-4 bg-gray-50 dark:bg-gray-700 sm:px-6">
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-left">
-                  By posting, you agree to our{" "}
-                  <a
-                    href="#"
-                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                  >
-                    community guidelines
-                  </a>
-                  .
-                </p>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Categories View */}
-        {isSearching && searchResults.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Search Results
-              </h2>
-              <button
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer"
-                onClick={() => {
-                  setSearchQuery("");
-                  setIsSearching(false);
-                }}
-              >
-                Clear search
-              </button>
-            </div>
-            <div className="space-y-4">
-              {searchResults.map((thread) => (
-                <div
-                  key={thread.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                  onClick={() => {
-                    // Clear search state first
-                    setSearchQuery("");
-                    setIsSearching(false);
-                    setSearchResults([]);
-                    
-                    // First navigate to the thread's category
-                    const category = categories.find(
-                      (c) => c.id === thread.categoryId
-                    );
-                    if (category) {
-                      setSelectedCategory(category);
-                      setView("threads");
-                      // Then navigate to the thread
-                      setTimeout(() => {
-                        handleThreadClick(thread);
-                      }, 100);
-                    }
-                  }}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                          {thread.authorAvatar ? (
-                            <img
-                              src={thread.authorAvatar}
-                              alt={thread.author}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                              {thread.author.charAt(0)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="ml-3 flex-1">
-                        <h3 className="text-base font-medium text-gray-900 dark:text-white">
-                          {thread.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
-                          {thread.content}
-                        </p>
-                        <div className="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
-                          <span className="mr-2">
-                            in{" "}
-                            {
-                              categories.find((c) => c.id === thread.categoryId)
-                                ?.name
-                            }
-                          </span>
-                          <Clock size={14} className="mx-1" />
-                          <span>
-                            Last updated {formatDate(thread.updatedAt)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "categories" && (
-          <div className="opacity-100 transition-opacity duration-300">
-            {/* Welcome Section */}
-            <div className="mb-8">
-              <div className="flex gap-4 md:items-center md:flex-row flex-col">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Welcome to CommunityHub
-                </h1>
-                <NewDiscussionButton />
-              </div>
-              <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-                Join discussions on your favorite topics and connect with
-                like-minded individuals.
-              </p>
-            </div>
-
-            {/* Show "no results" when searching with no matches */}
-            {isSearching &&
-              searchResults.length === 0 &&
-              searchQuery.trim() !== "" && (
-                <div className="mb-10 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 text-center">
-                  <Search className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                    No results found
-                  </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mt-1">
-                    No threads match your search query "{searchQuery}"
-                  </p>
-                </div>
-              )}
-
-            {/* Only show regular content when not searching or search is empty */}
-            {(!isSearching || searchQuery.trim() === "") && (
-              <>
-                {/* Popular Discussions Section */}
-                <div className="mb-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Popular Discussions
-                    </h2>
-                  </div>
-                  <div className="space-y-4">
-                    {popularThreads.map((thread) => (
-                      <div
-                        key={thread.id}
-                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                        onClick={() => {
-                          // First navigate to the thread's category
-                          const category = categories.find(
-                            (c) => c.id === thread.categoryId
-                          );
-                          if (category) {
-                            setSelectedCategory(category);
-                            setView("threads");
-                            // Then navigate to the thread
-                            setTimeout(() => {
-                              handleThreadClick(thread);
-                            }, 100);
-                          }
-                        }}
-                      >
-                        <div className="p-5">
-                          <div className="flex items-start">
-                            <div className="flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                                {thread.authorAvatar ? (
-                                  <img
-                                    src={thread.authorAvatar}
-                                    alt={thread.author}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                                    {thread.author.charAt(0)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="ml-4 flex-1">
-                              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                {thread.title}
-                              </h3>
-                              <p className="mt-1 text-gray-600 dark:text-gray-400 line-clamp-2">
-                                {thread.content}
-                              </p>
-                              <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                <Clock size={16} className="mr-1" />
-                                <span>
-                                  Last updated {formatDate(thread.updatedAt)}
-                                </span>
-                              </div>
-
-                              <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                                {/* Replies & Views */}
-                                <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 space-x-4">
-                                  <div className="flex items-center">
-                                    <MessageSquare size={16} className="mr-1" />
-                                    <span>{thread.replies.length} replies</span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Users size={16} className="mr-1" />
-                                    <span>{thread.views} views</span>
-                                  </div>
-                                </div>
-
-                                {/* Category Name */}
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  {
-                                    categories.find(
-                                      (c) => c.id === thread.categoryId
-                                    )?.name
-                                  }
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Categories Grid */}
-                <div className="mb-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Browse Categories
-                    </h2>
-                  </div>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    {categories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-2 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                        onClick={() => handleCategoryClick(category)}
-                      >
-                        <div className="p-6">
-                          <div className="flex items-start">
-                            <div className="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900 rounded-lg p-3">
-                              {category.icon}
-                            </div>
-                            <div className="ml-4">
-                              <h2 className="text-xl font-semibold">
-                                {category.name}
-                              </h2>
-                              <p className="mt-1 text-gray-600 dark:text-gray-400">
-                                {category.description}
-                              </p>
-                              <div className="mt-4 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                <MessageSquare size={16} className="mr-1" />
-                                <span>
-                                  {getThreadCount(category.id)} discussions
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="mb-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Recent Activity
-                    </h2>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {recentActivity.map((thread) => (
-                        <li key={thread.id}>
-                          <div
-                            className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 cursor-pointer"
-                            onClick={() => {
-                              // First navigate to the thread's category
-                              const category = categories.find(
-                                (c) => c.id === thread.categoryId
-                              );
-                              if (category) {
-                                setSelectedCategory(category);
-                                setView("threads");
-                                // Then navigate to the thread
-                                setTimeout(() => {
-                                  handleThreadClick(thread);
-                                }, 100);
-                              }
-                            }}
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                              {/* Left: Avatar, Title, Author */}
-                              <div className="flex items-start">
-                                <div className="flex-shrink-0">
-                                  <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                                    {thread.authorAvatar ? (
-                                      <img
-                                        src={thread.authorAvatar}
-                                        alt={thread.author}
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                                        {thread.author.charAt(0)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="ml-3">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {thread.title}
-                                  </p>
-                                  <div className="flex flex-col sm:flex-row sm:items-center mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-1 sm:space-y-0 sm:space-x-2">
-                                    <span>by {thread.author}</span>
-                                    <span className="hidden sm:inline">•</span>
-                                    <span>
-                                      in{" "}
-                                      {
-                                        categories.find(
-                                          (c) => c.id === thread.categoryId
-                                        )?.name
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Right: Date */}
-                              <div className="text-xs text-gray-500 dark:text-gray-400 sm:ml-4 sm:mt-0">
-                                {formatDate(thread.updatedAt)}
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Community Stats */}
-                <div className="mb-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Community Stats
-                    </h2>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center">
-                      <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {threads.length}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Discussions
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center">
-                      <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {threads.reduce(
-                          (total, thread) => total + thread.replies.length,
-                          0
-                        )}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Replies
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center">
-                      <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {categories.length}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Categories
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center">
-                      <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {users.length}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Members
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
+      {activePage === "network" ? (
+        // Network page - full screen width
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+          <NetworkPage
+            connections={connections}
+            handleFollow={handleFollow}
+            profileImages={profileImages}
+          />
+        </main>
+      ) : (
+        // Feed page - constrained width with sidebars
+        <main className="flex-1 max-w-full xl:max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8 py-6">
+          {/* Feed page - with sidebar layout */}
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            {!searchQuery.trim() && (
+              <aside className="hidden md:block w-full md:w-1/6 lg:w-1/5">
+                <ProfileCard
+                  profile={profile}
+                  isEditingProfile={isEditingProfile}
+                  setIsEditingProfile={setIsEditingProfile}
+                  tempProfileName={tempProfileName}
+                  setTempProfileName={setTempProfileName}
+                  tempProfileDescription={tempProfileDescription}
+                  setTempProfileDescription={setTempProfileDescription}
+                  tempProfilePicture={tempProfilePicture}
+                  handleEditProfile={handleEditProfile}
+                  handleProfilePictureUpload={handleProfilePictureUpload}
+                  handleComingSoon={handleComingSoon}
+                />
+              </aside>
             )}
-          </div>
-        )}
 
-        {/* Threads View */}
-        {view === "threads" && selectedCategory && (
-          <div className="opacity-100 transition-opacity duration-300">
-            <div className="flex items-center mb-6">
-              <button
-                className="mr-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 cursor-pointer"
-                onClick={handleBackToCategories}
-              >
-                <ArrowUp className="transform rotate-270 h-5 w-5" />
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-                <div className="mr-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg p-2">
-                  {selectedCategory.icon}
-                </div>
-                {selectedCategory.name}
-              </h1>
-            </div>
-
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-gray-600 dark:text-gray-400">
-                {selectedCategory.description}
-              </p>
-
-              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-                <NewDiscussionButton />
-
-                <div className="relative inline-block text-left">
-                  <button
-                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-                    className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
-                  >
-                    <Filter size={16} className="mr-2" />
-                    <span>
-                      Sort by:{" "}
-                      {sortOption === "newest" ? "Newest" : "Most Active"}
-                    </span>
-                    <ChevronDown size={16} className="ml-2" />
-                  </button>
-
-                  {sortDropdownOpen && (
-                    <div className="origin-top-right absolute right-0 mt-2 w-36 sm:w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 border border-gray-200 dark:border-gray-700">
-                      <div
-                        className="py-1"
-                        role="menu"
-                        aria-orientation="vertical"
-                      >
-                        <button
-                          className={`block w-full text-left px-4 py-2 text-sm cursor-pointer ${
-                            sortOption === "newest"
-                              ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
-                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                          }`}
-                          onClick={() => {
-                            setSortOption("newest");
-                            setSortDropdownOpen(false);
-                          }}
-                        >
-                          Newest
-                        </button>
-                        <button
-                          className={`block w-full text-left px-4 py-2 text-sm cursor-pointer ${
-                            sortOption === "active"
-                              ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
-                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                          }`}
-                          onClick={() => {
-                            setSortOption("active");
-                            setSortDropdownOpen(false);
-                          }}
-                        >
-                          Most Active
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            <section className={`w-full ${searchQuery.trim() ? "md:w-full" : "md:w-4/6 lg:w-3/5"}`}>
+            {activePage === "feed" && !searchQuery.trim() && (
+              <div className="md:hidden">
+                <ProfileCard
+                  profile={profile}
+                  isEditingProfile={isEditingProfile}
+                  setIsEditingProfile={setIsEditingProfile}
+                  tempProfileName={tempProfileName}
+                  setTempProfileName={setTempProfileName}
+                  tempProfileDescription={tempProfileDescription}
+                  setTempProfileDescription={setTempProfileDescription}
+                  tempProfilePicture={tempProfilePicture}
+                  handleEditProfile={handleEditProfile}
+                  handleProfilePictureUpload={handleProfilePictureUpload}
+                  handleComingSoon={handleComingSoon}
+                  isMobile={true}
+                />
               </div>
-            </div>
+            )}
 
-            <div className="space-y-4">
-              {getSortedThreads().length > 0 ? (
-                getSortedThreads().map((thread) => (
-                  <div
-                    key={thread.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                    onClick={() => handleThreadClick(thread)}
-                  >
-                    <div className="p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
-                        {/* Avatar */}
-                        <div className="flex-shrink-0 mb-3 sm:mb-0">
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                            {thread.authorAvatar ? (
-                              <img
-                                src={thread.authorAvatar}
-                                alt={thread.author}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                                {thread.author.charAt(0)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Thread content */}
-                        <div className="flex-1">
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {thread.title}
-                          </h3>
-                          <p className="mt-1 text-gray-600 dark:text-gray-400 line-clamp-2">
-                            {thread.content}
-                          </p>
-
-                          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                            {/* Replies & Views */}
-                            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center">
-                                <MessageSquare size={16} className="mr-1" />
-                                <span>{thread.replies.length} replies</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Users size={16} className="mr-1" />
-                                <span>{thread.views} views</span>
-                              </div>
-                            </div>
-
-                            {/* Updated time */}
-                            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                              <Clock size={16} className="mr-1" />
-                              <span>
-                                Updated {formatDate(thread.updatedAt)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+            {activePage === "feed" ? (
+              <>
+                {!searchQuery.trim() && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-12 h-12 rounded-full overflow-hidden">
+                      <img
+                        src={profile.picture}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
+                    <input
+                      type="text"
+                      placeholder="Start a post"
+                      value={newPost}
+                      onChange={(e) => setNewPost(e.target.value)}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handlePostSubmit()
+                      }
+                      className="w-full p-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-800"
+                    />
                   </div>
-                ))
-              ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center">
-                  <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-                    No threads found
-                  </h3>
-                  <p className="mt-1 text-gray-500 dark:text-gray-400">
-                    {searchQuery
-                      ? "No threads match your search query."
-                      : "Be the first to start a discussion!"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {/* Thread Detail View */}
-        {view === "thread" && selectedThread && (
-          <div className="opacity-100 transition-opacity duration-300">
-            <div className="flex items-center mb-6">
-              <button
-                className="mr-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 cursor-pointer"
-                onClick={handleBackToThreads}
-              >
-                <ArrowUp className="transform rotate-270 h-5 w-5" />
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white line-clamp-1">
-                {selectedThread.title}
-              </h1>
-            </div>
-
-            {/* Original post */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">
-              <div className="p-6">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                      {selectedThread.authorAvatar ? (
-                        <img
-                          src={selectedThread.authorAvatar}
-                          alt={selectedThread.author}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                          {selectedThread.author.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          {selectedThread.author}
-                        </h3>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <p>Posted {formatDate(selectedThread.createdAt)}</p>
-                          {selectedThread.updatedAt.getTime() !==
-                            selectedThread.createdAt.getTime() && (
-                            <p className="flex items-center mt-1">
-                              <Clock size={14} className="mr-1" />
-                              Last updated{" "}
-                              {formatDate(selectedThread.updatedAt)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {selectedThread.isHelpful && (
-                        <div className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-3 py-1 rounded-full flex items-center">
-                          <Award size={14} className="mr-1" />
-                          Helpful
-                        </div>
-                      )}
-                    </div>
-                    <div className="prose prose-indigo dark:prose-invert max-w-none">
-                      <p className="text-gray-900 dark:text-gray-100">
-                        {selectedThread.content}
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center">
-                          <MessageSquare size={16} className="mr-1" />
-                          <span>{selectedThread.replies.length} replies</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Users size={16} className="mr-1" />
-                          <span>{selectedThread.views} views</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Replies */}
-            <div className="space-y-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {selectedThread.replies.length} Replies
-              </h2>
-
-              {selectedThread.replies.map((reply) => (
-                <div
-                  key={reply.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 fade-in"
-                >
-                  <div className="p-6">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center overflow-hidden">
-                          {reply.authorAvatar ? (
-                            <img
-                              src={reply.authorAvatar}
-                              alt={reply.author}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="font-medium text-indigo-800 dark:text-indigo-200">
-                              {reply.author.charAt(0)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                              {reply.author}
-                            </h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Replied {formatDate(reply.createdAt)}
-                            </p>
-                          </div>
-                          {reply.isHelpful && (
-                            <div className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-3 py-1 rounded-full flex items-center">
-                              <Award size={14} className="mr-1" />
-                              Helpful
-                            </div>
-                          )}
-                        </div>
-                        <div className="prose prose-indigo dark:prose-invert max-w-none">
-                          <p className="text-gray-900 dark:text-gray-100">
-                            {reply.content}
-                          </p>
-                        </div>
-                        <div className="mt-4 flex justify-end">
+                  {(newPostImage || newPostVideo) && (
+                    <div className="mb-4 relative">
+                      {newPostImage && (
+                        <div className="relative">
+                          <img
+                            src={newPostImage}
+                            alt="Post Preview"
+                            className="w-full rounded-lg max-h-64 object-cover"
+                          />
                           <button
-                            className={`inline-flex items-center text-sm ${
-                              reply.isHelpful
-                                ? "text-indigo-600 dark:text-indigo-400"
-                                : "text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                            } transition-colors duration-200 cursor-pointer`}
-                            onClick={() => {
-                              if (!isLoggedIn) {
-                                setIsLoginModalOpen(true);
-                                return;
-                              }
-                              handleMarkAsHelpful(reply.id);
-                            }}
+                            onClick={() => setNewPostImage(null)}
+                            className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 text-white rounded-full p-1 hover:bg-opacity-90 transition-all cursor-pointer"
                           >
-                            <ThumbsUp size={16} className="mr-1" />
-                            {reply.isHelpful
-                              ? "Marked as helpful"
-                              : "Mark as helpful"}
+                            <FaTimes />
                           </button>
                         </div>
-                      </div>
+                      )}
+                      {newPostVideo && (
+                        <div className="relative">
+                          <video
+                            src={newPostVideo}
+                            controls
+                            preload="metadata"
+                            className="w-full rounded-lg max-h-64"
+                            style={{ backgroundColor: '#000' }}
+                          />
+                          <button
+                            onClick={() => {
+                              if (newPostVideo) {
+                                URL.revokeObjectURL(newPostVideo);
+                              }
+                              setNewPostVideo(null);
+                            }}
+                            className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 text-white rounded-full p-1 hover:bg-opacity-90 transition-all cursor-pointer"
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-4">
+                      <button
+                        onClick={() => imageInputRef.current?.click()}
+                        className="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <FaImage className="text-blue-500" />
+                        <span className="text-sm font-medium">Media</span>
+                      </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={imageInputRef}
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => videoInputRef.current?.click()}
+                        className="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <FaVideo className="text-green-500" />
+                        <span className="text-sm font-medium">Video</span>
+                      </button>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        ref={videoInputRef}
+                        onChange={handleVideoUpload}
+                        className="hidden"
+                      />
+                    </div>
+                    {(newPost.trim() || newPostImage || newPostVideo) && (
+                      <button
+                        onClick={handlePostSubmit}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        Post
+                      </button>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+                )}
 
-            {/* Reply box */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-              <div className="p-6">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                  Post a reply
-                </h2>
-                {isLoggedIn ? (
-                  <div className="space-y-4">
-                    <textarea
-                      ref={replyInputRef}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
-                      rows={4}
-                      placeholder="Write your reply here..."
-                      value={newReply}
-                      onChange={(e) => setNewReply(e.target.value)}
-                    />
-                    <div className="flex justify-end">
-                      <button
-                        className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 cursor-pointer ${
-                          newReply.trim() === ""
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                        onClick={handleSubmitReply}
-                        disabled={newReply.trim() === ""}
-                      >
-                        <MessageSquare size={16} className="mr-2" />
-                        Post Reply
-                      </button>
+                {!searchQuery.trim() && (
+                  <div className="h-px bg-gray-300 mb-6"></div>
+                )}
+
+                {sortedPosts.length > 0 ? (
+                  sortedPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    profile={profile}
+                    profileImages={profileImages}
+                    connections={connections}
+                    handleLike={handleLike}
+                    handleCommentSubmit={handleCommentSubmit}
+                    handleRepost={handleRepost}
+                    handleShare={handleShare}
+                    handleFollow={handleFollow}
+                    handleToggleComments={handleToggleComments}
+                      handleLoadMoreComments={handleLoadMoreComments}
+                    visibleComments={visibleComments}
+                      showAllComments={showAllComments}
+                    newComment={newComment}
+                    setNewComment={setNewComment}
+                  />
+                  ))
+                ) : searchQuery.trim() ? (
+                  <div className="bg-gray-50 rounded-2xl p-12 mb-6 text-center">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <FaSearch className="text-gray-500 text-xl" />
                     </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      No results found
+                    </h3>
+                    <p className="text-gray-600 text-lg mb-2 max-w-md mx-auto">
+                      No posts found for <span className="font-semibold text-gray-800">&quot;{searchQuery}&quot;</span>
+                    </p>
+                    <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                      Try searching for different keywords or check the spelling
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="px-8 py-3 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 cursor-pointer transform hover:scale-105"
+                    >
+                      Clear search
+                    </button>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 text-center">
-                    <p className="text-gray-600 dark:text-gray-300 mb-4">
-                      You need to be logged in to post a reply.
-                    </p>
-                    <div className="flex justify-center space-x-4">
-                      <button
-                        className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors duration-200 cursor-pointer"
-                        onClick={() => {
-                          setIsLoginModalOpen(true);
-                          setIsRegisterMode(false);
-                        }}
-                      >
-                        Log in
-                      </button>
-                      <button
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm transition-colors duration-200 cursor-pointer"
-                        onClick={() => {
-                          setIsLoginModalOpen(true);
-                          setIsRegisterMode(true);
-                        }}
-                      >
-                        Sign up
-                      </button>
+                  <div className="bg-gray-50 rounded-2xl p-12 mb-6 text-center">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <FaUsers className="text-gray-500 text-xl" />
                     </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      No posts yet
+                    </h3>
+                    <p className="text-gray-600 text-lg max-w-md mx-auto">
+                      Start sharing your thoughts and connect with your network!
+                    </p>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+              </>
+            ) : (
+              <NetworkPage
+                connections={connections}
+                handleFollow={handleFollow}
+                profileImages={profileImages}
+              />
+            )}
+            </section>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-2 mb-4">
-                <MessageSquare className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-lg font-bold tracking-tight">
-                  CommunityHub
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
-                CommunityHub is a platform for meaningful discussions and
-                knowledge sharing. Connect with like-minded individuals across
-                various topics and interests.
-              </p>
-              <div className="mt-4 flex space-x-4">
-                <a
-                  href="#"
-                  className="group relative"
-                >
-                  <span className="sr-only">Twitter</span>
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg hover:from-blue-500 hover:to-blue-700 transform hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl">
-                    T
+            {activePage === "feed" && !searchQuery.trim() && (
+              <aside className="hidden md:block w-full md:w-1/6 lg:w-1/5">
+                <NewsSection
+                  showMoreNews={showMoreNews}
+                  setShowMoreNews={setShowMoreNews}
+                />
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                  <h2 className="text-lg font-semibold mb-4 text-gray-900">
+                    Today&apos;s puzzle
+                  </h2>
+                  <a
+                    href="#"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                      <FaPuzzlePiece className="text-orange-500 text-2xl" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Zip - a quick brain teaser
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Solve in 60s or less!
+                        </p>
+                      </div>
+                    </div>
+                  </a>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Score is private to you
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FaAd className="text-gray-400 text-xl" />
+                      <p className="text-sm text-gray-500">Promoted</p>
+                    </div>
                   </div>
-                </a>
-                <a
-                  href="#"
-                  className="group relative"
-                >
-                  <span className="sr-only">LinkedIn</span>
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-bold text-lg hover:from-blue-700 hover:to-blue-900 transform hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl">
-                    L
+                  <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-700 font-medium">
+                      Boost your career with LinkedIn Premium
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Get insights on who viewed your profile
+                    </p>
                   </div>
-                </a>
-                <a
-                  href="#"
-                  className="group relative"
-                >
-                  <span className="sr-only">GitHub</span>
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-600 dark:to-gray-800 flex items-center justify-center text-white font-bold text-lg hover:from-gray-800 hover:to-black dark:hover:from-gray-500 dark:hover:to-gray-700 transform hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-xl">
-                    G
-                  </div>
-                </a>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-wider uppercase mb-4">
-                Resources
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Guidelines
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    API
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Developers
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-wider uppercase mb-4">
-                Company
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Privacy
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-base text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-                  >
-                    Terms
-                  </a>
-                </li>
-              </ul>
-            </div>
+                </div>
+              </aside>
+            )}
           </div>
-          <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-              &copy; {new Date().getFullYear()} CommunityHub. All rights
-              reserved.
-            </p>
-          </div>
-        </div>
+        </main>
+        )
+        }
+
+      <footer className="bg-gray-100 border-t border-gray-200 py-4 text-center mt-auto">
+        <p className="text-sm text-gray-600">© 2024 LinkIn. All rights reserved.</p>
       </footer>
     </div>
   );
 };
 
-export default CommunityDiscussion;
+export default LinkedInClone;
