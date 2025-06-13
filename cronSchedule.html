@@ -11,29 +11,29 @@
       --bg-primary: #0f0f23;
       --bg-secondary: #1a1a2e;
       --bg-tertiary: #16213e;
-      --glass-bg: rgba(255, 255, 255, 0.03);
-      --glass-bg-hover: rgba(255, 255, 255, 0.06);
-      --glass-border: rgba(124, 58, 237, 0.1);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-bg-hover: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(124, 58, 237, 0.15);
       --glass-shadow: rgba(0, 0, 0, 0.3);
-      --text-primary: #e2e8f0;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
-      --accent-primary: #7c3aed;
-      --accent-primary-light: rgba(124, 58, 237, 0.15);
-      --accent-primary-dark: #5b21b6;
+      --text-primary: #ffffff;
+      --text-secondary: #b4c6ef;
+      --text-muted: #8096c7;
+      --accent-primary: #8b5cf6;
+      --accent-primary-light: rgba(139, 92, 246, 0.2);
+      --accent-primary-dark: #6d28d9;
       --accent-secondary: #06b6d4;
-      --accent-secondary-light: rgba(6, 182, 212, 0.15);
+      --accent-secondary-light: rgba(6, 182, 212, 0.2);
       --accent-tertiary: #10b981;
-      --accent-tertiary-light: rgba(16, 185, 129, 0.15);
-      --neutral-light: rgba(148, 163, 184, 0.1);
-      --neutral-medium: rgba(148, 163, 184, 0.2);
-      --neutral-dark: rgba(148, 163, 184, 0.3);
+      --accent-tertiary-light: rgba(16, 185, 129, 0.2);
+      --neutral-light: rgba(180, 198, 239, 0.15);
+      --neutral-medium: rgba(180, 198, 239, 0.25);
+      --neutral-dark: rgba(180, 198, 239, 0.35);
       --success: #10b981;
       --error: #ef4444;
       --warning: #f59e0b;
       --border-radius: 12px;
       --border-radius-small: 6px;
-      --shadow-glow: 0 0 24px rgba(124, 58, 237, 0.15);
+      --shadow-glow: 0 0 24px rgba(139, 92, 246, 0.25);
       --shadow-deep: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
       --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       --cell-bg: #1e293b;
@@ -65,10 +65,10 @@
       width: 100%;
       height: 100%;
       background: 
-        radial-gradient(circle at 15% 25%, rgba(124, 58, 237, 0.04) 0%, transparent 45%),
-        radial-gradient(circle at 85% 75%, rgba(6, 182, 212, 0.03) 0%, transparent 40%),
-        radial-gradient(circle at 45% 15%, rgba(124, 58, 237, 0.02) 0%, transparent 55%),
-        radial-gradient(circle at 75% 45%, rgba(16, 185, 129, 0.02) 0%, transparent 35%),
+        radial-gradient(circle at 15% 25%, rgba(139, 92, 246, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 75%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 45% 15%, rgba(139, 92, 246, 0.04) 0%, transparent 55%),
+        radial-gradient(circle at 75% 45%, rgba(16, 185, 129, 0.04) 0%, transparent 35%),
         linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
       z-index: -3;
     }
@@ -80,11 +80,11 @@
       width: 100%;
       height: 100%;
       background: 
-        radial-gradient(2px 2px at 25px 35px, rgba(124, 58, 237, 0.12), transparent),
-        radial-gradient(2px 2px at 45px 75px, rgba(6, 182, 212, 0.08), transparent),
-        radial-gradient(1px 1px at 95px 45px, rgba(124, 58, 237, 0.1), transparent),
-        radial-gradient(1px 1px at 135px 85px, rgba(16, 185, 129, 0.06), transparent),
-        radial-gradient(3px 3px at 185px 25px, rgba(6, 182, 212, 0.04), transparent);
+        radial-gradient(2px 2px at 25px 35px, rgba(139, 92, 246, 0.15), transparent),
+        radial-gradient(2px 2px at 45px 75px, rgba(6, 182, 212, 0.1), transparent),
+        radial-gradient(1px 1px at 95px 45px, rgba(139, 92, 246, 0.12), transparent),
+        radial-gradient(1px 1px at 135px 85px, rgba(16, 185, 129, 0.08), transparent),
+        radial-gradient(3px 3px at 185px 25px, rgba(6, 182, 212, 0.06), transparent);
       background-repeat: repeat;
       background-size: 200px 120px;
       animation: meshFloat 25s linear infinite;
@@ -105,7 +105,7 @@
 
     .geometric-shape {
       position: absolute;
-      border: 1px solid rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.15);
       border-radius: 50%;
       animation: geometricFloat 20s linear infinite;
     }
@@ -134,7 +134,7 @@
       bottom: 25%;
       left: 20%;
       animation-delay: -15s;
-      border-color: rgba(6, 182, 212, 0.08);
+      border-color: rgba(6, 182, 212, 0.12);
     }
 
     @keyframes meshFloat {
@@ -257,8 +257,8 @@
       background: var(--accent-primary);
       border-radius: 50%;
       box-shadow: 
-        -20px 0 0 -1px rgba(124, 58, 237, 0.3),
-        -40px 0 0 -2px rgba(124, 58, 237, 0.2);
+        -20px 0 0 -1px rgba(139, 92, 246, 0.3),
+        -40px 0 0 -2px rgba(139, 92, 246, 0.2);
     }
 
     .panel-header {
@@ -616,6 +616,9 @@
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--accent-primary) transparent;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .right-panel::-webkit-scrollbar {
@@ -637,10 +640,11 @@
       border-radius: var(--border-radius);
       padding: 24px;
       font-family: 'Courier New', monospace;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       position: relative;
       backdrop-filter: blur(10px);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
     }
 
     .cron-expression {
@@ -696,10 +700,11 @@
       gap: 12px;
       padding: 16px;
       border-radius: var(--border-radius);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       font-size: 0.9rem;
       backdrop-filter: blur(10px);
       transition: all 0.3s ease;
+      flex-shrink: 0;
     }
 
     .validation-status.valid {
@@ -709,7 +714,7 @@
     }
 
     .validation-status.invalid {
-      background: rgba(239, 68, 68, 0.1);
+      background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(239, 68, 68, 0.3);
       color: var(--error);
     }
@@ -719,8 +724,12 @@
       border: 1px solid var(--glass-border);
       border-radius: var(--border-radius);
       padding: 20px;
-      margin-top: 20px;
+      margin-top: 16px;
       backdrop-filter: blur(10px);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
     .task-details h3 {
@@ -772,14 +781,16 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 200px;
+      flex: 1;
       color: var(--text-muted);
       text-align: center;
-      padding: 20px;
+      padding: 40px 20px;
       border: 2px dashed var(--glass-border);
       border-radius: var(--border-radius);
       background: var(--glass-bg);
       backdrop-filter: blur(10px);
+      margin-top: 16px;
+      min-height: 250px;
     }
 
     .empty-state svg {
@@ -1452,35 +1463,50 @@
         taskElement.addEventListener('dragstart', handleDragStart);
         taskElement.addEventListener('dragend', handleDragEnd);
         
-        // Add event listener for selecting the task
+        // Add event listener for selecting/deselecting the task (toggle behavior)
         taskElement.addEventListener('click', function() {
-          // Deselect all tasks
+          const isCurrentlySelected = this.classList.contains('selected');
+          
+          // Deselect all tasks first
           document.querySelectorAll('.timeline-task').forEach(t => {
             t.classList.remove('selected');
           });
           
-          // Select this task
-          this.classList.add('selected');
-          selectedTask = task;
-          
-          // Update task details
-          updateTaskDetails(task);
-          
-          // Hide empty state and show task details
-          emptyState.style.display = 'none';
-          taskDetails.style.display = 'block';
-          deleteTaskBtn.style.display = 'block';
+          if (!isCurrentlySelected) {
+            // Select this task if it wasn't selected
+            this.classList.add('selected');
+            selectedTask = task;
+            
+            // Update task details
+            updateTaskDetails(task);
+            
+            // Hide empty state and show task details
+            emptyState.style.display = 'none';
+            taskDetails.style.display = 'block';
+            deleteTaskBtn.style.display = 'block';
+          } else {
+            // Deselect - clear selection
+            selectedTask = null;
+            
+            // Clear task details
+            detailType.textContent = 'None selected';
+            detailSchedule.textContent = '-';
+            detailNextRun.textContent = '-';
+            deleteTaskBtn.style.display = 'none';
+            
+            // Show empty state if no tasks exist, otherwise just hide delete button
+            if (scheduledTasks.length === 0) {
+              emptyState.style.display = 'flex';
+              taskDetails.style.display = 'none';
+            }
+          }
         });
         
         // Add the task to the hour cell
         hourCell.appendChild(taskElement);
         
-        // Hide empty state and show task details
-        emptyState.style.display = 'none';
-        taskDetails.style.display = 'block';
-        
-        // Update task details
-        updateTaskDetails(task);
+        // Don't auto-select tasks when they're created
+        // Let the user manually select tasks
       }
 
       // Delete task function
@@ -1508,6 +1534,7 @@
           emptyState.style.display = 'flex';
           taskDetails.style.display = 'none';
         } else {
+          // Clear task details when a task is deleted
           deleteTaskBtn.style.display = 'none';
           detailType.textContent = 'None selected';
           detailSchedule.textContent = '-';
@@ -1539,21 +1566,25 @@
         nextRun.setHours(task.hour, 0, 0, 0);
         
         detailNextRun.textContent = nextRun.toLocaleString();
+        
+        // Show delete button
+        deleteTaskBtn.style.display = 'block';
       }
       
       // Update the cron preview based on scheduled tasks
       function updateCronPreview() {
         if (scheduledTasks.length === 0) {
-          // Default cron expression
-          cronExpression.textContent = '0 9 * * 1-5';
-          cronExplanation.textContent = 'Runs at 9:00 AM, Monday through Friday';
-          validationStatus.className = 'validation-status valid';
+          // No tasks scheduled - show empty state
+          cronExpression.textContent = 'No tasks scheduled';
+          cronExplanation.textContent = 'Drag tasks from the left panel to the timeline to create a cron schedule';
+          validationStatus.className = 'validation-status invalid';
           validationStatus.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            Valid cron expression
+            No cron expression generated
           `;
           emptyState.style.display = 'flex';
           taskDetails.style.display = 'none';
@@ -1562,12 +1593,12 @@
         
         // For multiple tasks, we'll show multiple cron expressions or find common patterns
         if (scheduledTasks.length === 1) {
-          // Single task - simple cron expression
+          // Single task
           const task = scheduledTasks[0];
           const cron = `0 ${task.hour} * * ${task.day}`;
           cronExpression.textContent = cron;
         } else {
-          // Multiple tasks - check if we can create a unified expression
+          // Multiple tasks 
           const tasksByTimeSlot = {};
           
           // Group tasks by exact time slot (day + hour combination)
@@ -1600,14 +1631,14 @@
             const cron = `0 ${hour} * * ${daysOfWeek}`;
             cronExpression.textContent = cron;
           } else {
-            // Complex schedule - show first task's cron with note
+            // Complex schedule 
             const firstTask = scheduledTasks[0];
             const cron = `0 ${firstTask.hour} * * ${firstTask.day}`;
             cronExpression.textContent = `${cron} (+${scheduledTasks.length - 1} more)`;
           }
         }
         
-        // Generate human-readable explanation
+        // Generate explanation
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
         if (scheduledTasks.length === 1) {
@@ -1636,7 +1667,7 @@
         }
         
         // Validate cron expression
-        const isValid = validateCronExpression(cron);
+        const isValid = validateCronExpression(cronExpression.textContent);
         if (isValid) {
           validationStatus.className = 'validation-status valid';
           validationStatus.innerHTML = `
