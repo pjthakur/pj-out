@@ -1,2040 +1,2034 @@
-"use client";
+"use client"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useSpring, animated, config } from '@react-spring/web';
+import Head from 'next/head';
+import toast, { Toaster } from 'react-hot-toast';
+import { 
+  Palette, 
+  Download, 
+  Share2, 
+  Layers, 
+  Eye, 
+  EyeOff, 
+  RotateCcw, 
+  Copy, 
+  Trash2,
+  Play,
+  Pause,
+  Square,
+  Circle,
+  Brush,
+  Eraser,
+  Grid,
+  Zap,
+  Crown,
+  Heart,
+  Star,
+  Smile,
+  Plus,
+  Gamepad2,
+  Monitor,
+  Smartphone,
+  Volume2,
+  VolumeX,
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Bars3Icon,
-  XMarkIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  InformationCircleIcon,
-  AdjustmentsHorizontalIcon,
-  ArrowsRightLeftIcon,
-  MapPinIcon,
-  ClockIcon,
-  ChartBarIcon,
-  ArrowPathIcon,
-  BellIcon,
-  ShieldExclamationIcon,
-  PlayIcon,
-  PauseIcon,
-} from "@heroicons/react/24/outline";
-
-// Types
-interface AirQualityData {
-  id: string;
-  city: string;
-  country: string;
-  pm25: number;
-  pm10: number;
-  o3: number;
-  no2: number;
-  so2: number;
-  co: number;
-  aqi: number;
-  status: "Good" | "Moderate" | "Unhealthy" | "Very Unhealthy" | "Hazardous";
-  coordinates: { lat: number; lng: number };
-  timestamp: Date;
-  trend: number[];
+// TypeScript interfaces
+interface Layer {
+  id: number;
+  name: string;
+  visible: boolean;
+  data: (string | null)[];
 }
 
-interface Toast {
-  id: string;
-  message: string;
-  type: "success" | "error" | "warning" | "info";
-  duration?: number;
+interface Template {
+  name: string;
+  icon: React.ElementType;
+  data: (string | null)[];
 }
 
-interface Alert {
-  id: string;
-  cityId: string;
-  cityName: string;
-  type: "threshold" | "trend" | "health";
-  severity: "low" | "medium" | "high";
-  message: string;
-  timestamp: Date;
-  isRead: boolean;
+interface RGBColor {
+  r: number;
+  g: number;
+  b: number;
 }
 
-let toastCounter = 0;
-let alertCounter = 0;
+interface ExportOptions {
+  format: 'png';
+  scale: number;
+  platform: 'discord' | 'twitch' | 'general';
+}
 
-// Mock data generator
-const generateMockData = (): AirQualityData[] => {
-  const cities = [
-    {
-      name: "New York",
-      country: "USA",
-      lat: 40.7128,
-      lng: -74.006,
-      baseAQI: 45,
-    },
-    {
-      name: "Los Angeles",
-      country: "USA",
-      lat: 34.0522,
-      lng: -118.2437,
-      baseAQI: 65,
-    },
-    { name: "London", country: "UK", lat: 51.5074, lng: -0.1278, baseAQI: 40 },
-    {
-      name: "Paris",
-      country: "France",
-      lat: 48.8566,
-      lng: 2.3522,
-      baseAQI: 50,
-    },
-    {
-      name: "Tokyo",
-      country: "Japan",
-      lat: 35.6762,
-      lng: 139.6503,
-      baseAQI: 55,
-    },
-    {
-      name: "Beijing",
-      country: "China",
-      lat: 39.9042,
-      lng: 116.4074,
-      baseAQI: 120,
-    },
-    {
-      name: "Mumbai",
-      country: "India",
-      lat: 19.076,
-      lng: 72.8777,
-      baseAQI: 140,
-    },
-    {
-      name: "São Paulo",
-      country: "Brazil",
-      lat: -23.5505,
-      lng: -46.6333,
-      baseAQI: 70,
-    },
-    {
-      name: "Sydney",
-      country: "Australia",
-      lat: -33.8688,
-      lng: 151.2093,
-      baseAQI: 35,
-    },
-    {
-      name: "Berlin",
-      country: "Germany",
-      lat: 52.52,
-      lng: 13.405,
-      baseAQI: 42,
-    },
-    {
-      name: "Toronto",
-      country: "Canada",
-      lat: 43.6532,
-      lng: -79.3832,
-      baseAQI: 38,
-    },
-    {
-      name: "Singapore",
-      country: "Singapore",
-      lat: 1.3521,
-      lng: 103.8198,
-      baseAQI: 48,
-    },
-    { name: "Dubai", country: "UAE", lat: 25.2048, lng: 55.2708, baseAQI: 85 },
-    {
-      name: "Mexico City",
-      country: "Mexico",
-      lat: 19.4326,
-      lng: -99.1332,
-      baseAQI: 95,
-    },
-    {
-      name: "Cairo",
-      country: "Egypt",
-      lat: 30.0444,
-      lng: 31.2357,
-      baseAQI: 110,
-    },
-  ];
+interface SocialMetadata {
+  title: string;
+  description: string;
+  image: string;
+  url: string;
+}
 
-  const getAQIStatus = (aqi: number): AirQualityData["status"] => {
-    if (aqi <= 50) return "Good";
-    if (aqi <= 100) return "Moderate";
-    if (aqi <= 150) return "Unhealthy";
-    if (aqi <= 200) return "Unhealthy";
-    if (aqi <= 300) return "Very Unhealthy";
-    return "Hazardous";
-  };
+// Constants
+const GRID_SIZE = 16;
+const DESKTOP_CELL_SIZE = 24;
+const PREVIEW_CELL_SIZE = 12;
 
-  return cities.map((city, index) => {
-    const variation = (Math.random() - 0.5) * 30;
-    const currentAQI = Math.max(15, Math.min(300, city.baseAQI + variation));
-    const pm25 = Math.round(currentAQI * 0.4 + (Math.random() - 0.5) * 10);
+const defaultColors: string[] = [
+  '#000000', '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#f39c12',
+  '#2ecc71', '#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#34495e',
+  '#ffffff', '#ecf0f1', '#bdc3c7', '#95a5a6', '#7f8c8d', '#2c3e50',
+  '#f1c40f', '#e74c3c', '#8e44ad', '#c0392b', '#d35400', '#27ae60',
+  '#2980b9', '#8e44ad', '#2c3e50', '#f39c12', '#d35400', '#c0392b',
+  '#a569bd', '#5dade2', '#58d68d', '#f7dc6f', '#f8c471', '#ec7063'
+];
 
-    const trend = Array.from({ length: 24 }, (_, hourIndex) => {
-      const timeVariation = Math.sin((hourIndex / 24) * Math.PI * 2) * 15;
-      const randomVariation = (Math.random() - 0.5) * 10;
-      const baseValue = pm25 + timeVariation + randomVariation;
-      return Math.max(5, Math.round(baseValue));
-    });
-
-    return {
-      id: `city-${index}-${city.name.toLowerCase().replace(/\s/g, "-")}`,
-      city: city.name,
-      country: city.country,
-      pm25,
-      pm10: Math.round(pm25 * 1.3 + Math.random() * 8),
-      o3: Math.round(currentAQI * 0.6 + Math.random() * 20),
-      no2: Math.round(currentAQI * 0.3 + Math.random() * 15),
-      so2: Math.round(currentAQI * 0.2 + Math.random() * 8),
-      co: Math.round(currentAQI * 0.05 + Math.random() * 3),
-      aqi: Math.round(currentAQI),
-      status: getAQIStatus(Math.round(currentAQI)),
-      coordinates: { lat: city.lat, lng: city.lng },
-      timestamp: new Date(),
-      trend,
-    };
-  });
-};
-
-const AirWatch: React.FC = () => {
-  // State management
-  const [data, setData] = useState<AirQualityData[]>([]);
-  const [filteredData, setFilteredData] = useState<AirQualityData[]>([]);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [compareCity, setCompareCity] = useState<string | null>(null);
-  const [isCompareMode, setIsCompareMode] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [filters, setFilters] = useState({
-    country: "",
-    minAQI: 0,
-    maxAQI: 500,
-    status: "",
-  });
-
-  const [isClient, setisClient] = useState(false);
-
-  // Refs for scrolling
-  const compareSectionRef = React.useRef<HTMLDivElement>(null);
-  const alertsRef = React.useRef<HTMLDivElement>(null);
-
-  // Thresholds for alerts
-  const thresholds = {
-    pm25: { moderate: 25, unhealthy: 40, dangerous: 60 },
-    aqi: { moderate: 60, unhealthy: 100, dangerous: 150 },
-  };
-
-  // Prevent background scroll when mobile menu is open
-  useEffect(() => {
-    if (isSidebarOpen || isMobileMenuOpen || isAlertsOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isSidebarOpen, isMobileMenuOpen, isAlertsOpen]);
-  useEffect(() => {
-    if (!isAlertsOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        alertsRef.current &&
-        !alertsRef.current.contains(event.target as Node)
-      ) {
-        setIsAlertsOpen(false);
+const presetTemplates: Template[] = [
+  {
+    name: 'Hero Face',
+    icon: Smile,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Face outline
+      if (x >= 4 && x <= 11 && y >= 3 && y <= 13) {
+        if (y >= 4 && y <= 12 && x >= 5 && x <= 10) return '#FFDBAC';
+        if ((y === 3 || y === 13) && x >= 5 && x <= 10) return '#FFDBAC';
+        if ((x === 4 || x === 11) && y >= 4 && y <= 12) return '#FFDBAC';
       }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isAlertsOpen]);
-
-  useEffect(() => {
-    if (!isClient) {
-      setisClient(true);
-    }
-  }, []);
-  // Initialize data
-  useEffect(() => {
-    const mockData = generateMockData();
-    setData(mockData);
-    setFilteredData(mockData);
-    setSelectedCity(mockData[0]?.id || null);
-
-    // Generate initial alerts for demo
-    setTimeout(() => {
-      mockData.forEach((city) => {
-        if (city.pm25 > thresholds.pm25.moderate) {
-          const severity =
-            city.pm25 > thresholds.pm25.dangerous
-              ? "high"
-              : city.pm25 > thresholds.pm25.unhealthy
-              ? "medium"
-              : "low";
-          const alert: Alert = {
-            id: `initial-alert-${++alertCounter}-${city.id}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "threshold",
-            severity,
-            message: `${city.city} PM2.5 levels are ${
-              severity === "high"
-                ? "dangerous"
-                : severity === "medium"
-                ? "unhealthy"
-                : "elevated"
-            } (${city.pm25} μg/m³)`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev]);
-        }
-      });
-    }, 2000);
-  }, []);
-
-  // Filter data based on filters
-  useEffect(() => {
-    const filtered = data.filter((city) => {
-      const matchesCountry =
-        !filters.country ||
-        city.country.toLowerCase().includes(filters.country.toLowerCase());
-      const matchesAQI =
-        city.aqi >= filters.minAQI && city.aqi <= filters.maxAQI;
-      const matchesStatus = !filters.status || city.status === filters.status;
-      return matchesCountry && matchesAQI && matchesStatus;
-    });
-    setFilteredData(filtered);
-  }, [data, filters]);
-
-  const showToast = (
-    setToasts: React.Dispatch<React.SetStateAction<Toast[]>>,
-    message: string,
-    type: Toast["type"] = "info",
-    duration = 5000
-  ) => {
-    const id = `toast-${++toastCounter}-${Date.now()}`;
-    const newToast: Toast = { id, message, type, duration };
-
-    setToasts((prev) => {
-      const exists = prev.some(
-        (toast) => toast.message === message && toast.type === type
-      );
-      if (exists) return prev;
-      return [newToast, ...prev.slice(0, 4)];
-    });
-
-    setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, duration);
-  };
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
-  // Get color based on AQI
-  const getAQIColor = useCallback((aqi: number): string => {
-    if (aqi <= 50) return "text-green-600 bg-green-50 border-green-200";
-    if (aqi <= 100) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    if (aqi <= 150) return "text-orange-600 bg-orange-50 border-orange-200";
-    if (aqi <= 200) return "text-red-600 bg-red-50 border-red-200";
-    if (aqi <= 300) return "text-purple-600 bg-purple-50 border-purple-200";
-    return "text-rose-600 bg-rose-50 border-rose-200";
-  }, []);
-
-  const getMapPointColor = useCallback((aqi: number): string => {
-    if (aqi <= 50) return "bg-green-500";
-    if (aqi <= 100) return "bg-yellow-500";
-    if (aqi <= 150) return "bg-orange-500";
-    if (aqi <= 200) return "bg-red-500";
-    if (aqi <= 300) return "bg-purple-500";
-    return "bg-rose-500";
-  }, []);
-
-  const getPM25OverlayColor = useCallback((pm25: number): string => {
-    if (pm25 <= 12) return "rgba(16, 185, 129, 0.15)";
-    if (pm25 <= 35) return "rgba(245, 158, 11, 0.15)";
-    if (pm25 <= 55) return "rgba(249, 115, 22, 0.2)";
-    if (pm25 <= 150) return "rgba(239, 68, 68, 0.25)";
-    if (pm25 <= 250) return "rgba(147, 51, 234, 0.3)";
-    return "rgba(244, 63, 94, 0.35)";
-  }, []);
-
-  // Check for threshold alerts
-  const checkThresholdAlerts = useCallback(
-    (newData: AirQualityData[], oldData: AirQualityData[]) => {
-      newData.forEach((city) => {
-        const oldCity = oldData.find((old) => old.id === city.id);
-        if (!oldCity) return;
-
-        if (
-          city.pm25 > thresholds.pm25.dangerous &&
-          oldCity.pm25 <= thresholds.pm25.dangerous
-        ) {
-          const alert: Alert = {
-            id: `alert-${++alertCounter}-${Date.now()}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "threshold",
-            severity: "high",
-            message: `🚨 ${city.city}: PM2.5 reached dangerous levels (${city.pm25} μg/m³)`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev.slice(0, 19)]);
-        } else if (
-          city.pm25 > thresholds.pm25.unhealthy &&
-          oldCity.pm25 <= thresholds.pm25.unhealthy
-        ) {
-          const alert: Alert = {
-            id: `alert-${++alertCounter}-${Date.now()}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "threshold",
-            severity: "medium",
-            message: `⚠️ ${city.city}: PM2.5 levels Unhealthy(${city.pm25} μg/m³)`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev.slice(0, 19)]);
-        } else if (
-          city.pm25 > thresholds.pm25.moderate &&
-          oldCity.pm25 <= thresholds.pm25.moderate
-        ) {
-          const alert: Alert = {
-            id: `alert-${++alertCounter}-${Date.now()}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "threshold",
-            severity: "low",
-            message: `ℹ️ ${city.city}: PM2.5 levels elevated (${city.pm25} μg/m³)`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev.slice(0, 19)]);
-        }
-
-        const trendChange =
-          city.trend[city.trend.length - 1] - city.trend[city.trend.length - 4];
-        if (Math.abs(trendChange) > 15) {
-          const alert: Alert = {
-            id: `alert-${++alertCounter}-${Date.now()}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "trend",
-            severity: trendChange > 0 ? "medium" : "low",
-            message: `📈 ${city.city}: Rapid air quality ${
-              trendChange > 0 ? "deterioration" : "improvement"
-            } detected`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev.slice(0, 19)]);
-        }
-
-        if (
-          city.aqi > thresholds.aqi.dangerous &&
-          oldCity.aqi <= thresholds.aqi.dangerous
-        ) {
-          const alert: Alert = {
-            id: `alert-${++alertCounter}-${Date.now()}`,
-            cityId: city.id,
-            cityName: city.city,
-            type: "threshold",
-            severity: "high",
-            message: `🔴 ${city.city}: AQI reached dangerous levels (${city.aqi})`,
-            timestamp: new Date(),
-            isRead: false,
-          };
-          setAlerts((prev) => [alert, ...prev.slice(0, 19)]);
-        }
-      });
-    },
-    [thresholds]
-  );
-
-  // Update data periodically
-  useEffect(() => {
-    if (!isAutoRefreshEnabled) return;
-
-    const interval = setInterval(() => {
-      setData((prevData) => {
-        const newData = prevData.map((city) => {
-          const variation = (Math.random() - 0.5) * 0.1;
-          const newPM25 = Math.max(5, Math.round(city.pm25 * (1 + variation)));
-          const newAQI = Math.max(
-            10,
-            Math.round(city.aqi * (1 + variation * 0.8))
-          );
-          const newTrend = [...city.trend.slice(1), newPM25];
-
-          return {
-            ...city,
-            pm25: newPM25,
-            pm10: Math.round(newPM25 * 1.3),
-            aqi: newAQI,
-            timestamp: new Date(),
-            trend: newTrend,
-          };
-        });
-
-        checkThresholdAlerts(newData, prevData);
-        setLastRefresh(new Date());
-
-        return newData;
-      });
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [isAutoRefreshEnabled, checkThresholdAlerts]);
-
-  // Manual refresh function
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-
-    showToast(setToasts, "Refreshing air quality data...", "info", 2000);
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const oldData = [...data];
-      const newData = generateMockData();
-      setData(newData);
-      setLastRefresh(new Date());
-
-      if (oldData.length > 0) {
-        checkThresholdAlerts(newData, oldData);
+      // Eyes
+      if ((x === 6 || x === 9) && y === 7) return '#000000';
+      // Nose
+      if (x === 7 && y === 9) return '#E6A876';
+      // Mouth
+      if (x >= 6 && x <= 9 && y === 11) return '#000000';
+      // Hair
+      if (y >= 2 && y <= 5 && x >= 4 && x <= 11) {
+        if (y === 2 && x >= 5 && x <= 10) return '#8B4513';
+        if (y >= 3 && y <= 4 && x >= 4 && x <= 11) return '#8B4513';
       }
-
-      showToast(setToasts, "Data refreshed successfully", "success", 3000);
-    } catch (error) {
-      showToast(setToasts, "Failed to refresh data", "error", 4000);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [data, checkThresholdAlerts]);
-
-  const toggleAutoRefresh = useCallback(() => {
-    setIsAutoRefreshEnabled((prev) => {
-      const newState = !prev;
-      showToast(
-        setToasts,
-        newState ? "Auto-refresh enabled" : "Auto-refresh disabled",
-        "info"
-      );
-      return newState;
-    });
-  }, []);
-  const markAlertAsRead = useCallback((alertId: string) => {
-    setAlerts((prev) =>
-      prev.map((alert) =>
-        alert.id === alertId ? { ...alert, isRead: true } : alert
-      )
-    );
-  }, []);
-  const markAllAlertsAsRead = useCallback(() => {
-    setAlerts((prev) => prev.map((alert) => ({ ...alert, isRead: true })));
-    showToast(setToasts, "All alerts marked as read", "info");
-  }, []);
-
-  // Memoized components
-  const selectedCityData = useMemo(
-    () => data.find((city) => city.id === selectedCity),
-    [data, selectedCity]
-  );
-
-  const compareCityData = useMemo(
-    () => data.find((city) => city.id === compareCity),
-    [data, compareCity]
-  );
-  const handleCitySelect = useCallback(
-    (cityId: string, showToastMessage = true) => {
-      setSelectedCity(cityId);
-      setIsMobileMenuOpen(false);
-      if (showToastMessage) {
-        showToast(
-          setToasts,
-          `Selected ${data.find((c) => c.id === cityId)?.city}`,
-          "info"
-        );
+      return null;
+    })
+  },
+  {
+    name: 'Royal Crown',
+    icon: Crown,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Crown base
+      if (y >= 5 && y <= 7 && x >= 3 && x <= 12) return '#FFD700';
+      // Crown spikes
+      if (y >= 2 && y <= 4) {
+        if ((x === 4 || x === 7 || x === 10) && y >= 2) return '#FFD700';
+        if ((x === 5 || x === 8 || x === 11) && y >= 3) return '#FFD700';
       }
-    },
-    [data]
-  );
-  const handleCompareSelect = useCallback(
-    (cityId: string) => {
-      setCompareCity(cityId);
-      showToast(
-        setToasts,
-        `Comparing with ${data.find((c) => c.id === cityId)?.city}`,
-        "info"
-      );
-    },
-    [data]
-  );
-
-  const toggleCompareMode = useCallback(() => {
-    setIsCompareMode((prev) => {
-      const newMode = !prev;
-      showToast(
-        setToasts,
-        newMode ? "Compare mode enabled" : "Compare mode disabled",
-        "info"
-      );
-      return newMode;
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isCompareMode && compareSectionRef.current) {
-      compareSectionRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }, [isCompareMode]);
-
-  // Chart component
-  const TrendChart: React.FC<{
-    data: number[];
-    title: string;
-    color: string;
-  }> = ({ data, title, color }) => {
-    const maxValue = Math.max(...data);
-    const minValue = Math.min(...data);
-    const range = maxValue - minValue || 1;
-    const avgValue = Math.round(
-      data.reduce((sum, val) => sum + val, 0) / data.length
-    );
-    const currentValue = data[data.length - 1];
-    const previousValue = data[data.length - 2];
-    const change = currentValue - previousValue;
-
-    return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-xl transition-all duration-300">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 sm:mb-6">
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 flex items-center">
-              <ChartBarIcon className="h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-3 text-blue-600" />
-              <span className="text-sm sm:text-xl">{title}</span>
-            </h3>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 text-sm">
-              <div className="flex items-center">
-                <span className="text-gray-500">Current:</span>
-                <span
-                  className="ml-2 font-bold text-base sm:text-lg"
-                  style={{ color }}
-                >
-                  {currentValue} μg/m³
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-gray-500">Avg:</span>
-                <span className="ml-2 font-semibold text-gray-700">
-                  {avgValue} μg/m³
-                </span>
-              </div>
-              <div
-                className={`flex items-center px-2 py-1 rounded-md w-fit ${
-                  change > 0
-                    ? "bg-red-50 text-red-700"
-                    : "bg-green-50 text-green-700"
-                }`}
-              >
-                <span className="text-xs font-medium">
-                  {change > 0 ? "↗" : "↘"} {Math.abs(change).toFixed(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative h-32 sm:h-48 mb-4">
-          <svg className="w-full h-full" viewBox="0 0 400 180">
-            <defs>
-              <linearGradient
-                id={`gradient-${color.replace("#", "")}`}
-                x1="0%"
-                y1="0%"
-                x2="0%"
-                y2="100%"
-              >
-                <stop offset="0%" stopColor={color} stopOpacity="0.4" />
-                <stop offset="50%" stopColor={color} stopOpacity="0.2" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.05" />
-              </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                <feMerge>
-                  <feMergeNode in="coloredBlur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {[0, 25, 50, 75, 100].map((percent) => (
-              <line
-                key={percent}
-                x1="0"
-                y1={percent * 1.6}
-                x2="400"
-                y2={percent * 1.6}
-                stroke="#f1f5f9"
-                strokeWidth="1"
-              />
-            ))}
-
-            <path
-              d={`M 0 160 L 0 ${
-                160 - (((data[0] - minValue) / range) * 120 + 20)
-              } ${data
-                .map(
-                  (value, index) =>
-                    `L ${(index / (data.length - 1)) * 400} ${
-                      160 - (((value - minValue) / range) * 120 + 20)
-                    }`
-                )
-                .join(" ")} L 400 160 Z`}
-              fill={`url(#gradient-${color.replace("#", "")})`}
-              className="transition-all duration-700"
-            />
-
-            <path
-              d={`M 0 ${
-                160 - (((data[0] - minValue) / range) * 120 + 20)
-              } ${data
-                .map(
-                  (value, index) =>
-                    `L ${(index / (data.length - 1)) * 400} ${
-                      160 - (((value - minValue) / range) * 120 + 20)
-                    }`
-                )
-                .join(" ")}`}
-              fill="none"
-              stroke={color}
-              strokeWidth="3"
-              filter="url(#glow)"
-              className="transition-all duration-700"
-            />
-
-            {data.map((value, index) => (
-              <circle
-                key={index}
-                cx={(index / (data.length - 1)) * 400}
-                cy={160 - (((value - minValue) / range) * 120 + 20)}
-                r="4"
-                fill={color}
-                stroke="white"
-                strokeWidth="2"
-                className="transition-all duration-300 hover:r-6 cursor-pointer"
-                opacity={index === data.length - 1 ? 1 : 0.7}
-              >
-                <title>{`${index}h ago: ${value} μg/m³`}</title>
-              </circle>
-            ))}
-
-            <circle
-              cx={400}
-              cy={
-                160 - (((data[data.length - 1] - minValue) / range) * 120 + 20)
-              }
-              r="6"
-              fill={color}
-              stroke="white"
-              strokeWidth="3"
-              className="animate-pulse"
-            />
-          </svg>
-        </div>
-
-        <div className="flex justify-between items-center text-xs sm:text-sm text-gray-500">
-          <span>24h ago</span>
-          <div className="hidden sm:flex items-center space-x-4">
-            <span>Peak: {maxValue} μg/m³</span>
-            <span>Low: {minValue} μg/m³</span>
-          </div>
-          <span>Now</span>
-        </div>
-      </div>
-    );
-  };
-
-  // City card component
-  const CityCard: React.FC<{
-    city: AirQualityData;
-    isSelected?: boolean;
-    onClick: () => void;
-  }> = ({ city, isSelected, onClick }) => (
-    <div
-      className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 cursor-pointer hover:shadow-xl transform hover:-translate-y-1 ${
-        isSelected
-          ? "border-blue-500 shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50 ring-2 ring-blue-200"
-          : "border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50"
-      }`}
-      onClick={onClick}
-    >
-      <div
-        className={`absolute top-3 right-3 w-3 h-3 rounded-full ${
-          city.status === "Good"
-            ? "bg-green-500"
-            : city.status === "Moderate"
-            ? "bg-yellow-500"
-            : "bg-red-500"
-        } shadow-sm`}
-      >
-        <div
-          className={`absolute inset-0 rounded-full animate-ping ${
-            city.status === "Good"
-              ? "bg-green-400"
-              : city.status === "Moderate"
-              ? "bg-yellow-400"
-              : "bg-red-400"
-          }`}
-        ></div>
-      </div>
-
-      <div className="flex items-start justify-between mb-3 sm:mb-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">
-            {city.city}
-          </h3>
-          <p className="text-sm text-gray-500 font-medium">{city.country}</p>
-        </div>
-        <div
-          className={`px-2 sm:px-3 py-1 sm:py-2 rounded-xl text-xs sm:text-sm font-bold border-2 shadow-sm ml-2 ${getAQIColor(
-            city.aqi
-          )}`}
-        >
-          AQI {city.aqi}
-        </div>
-      </div>
-
-      <div className="mb-3 sm:mb-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              PM2.5
-            </span>
-            <div className="flex items-baseline">
-              <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                {city.pm25}
-              </span>
-              <span className="text-sm text-gray-500 ml-1">μg/m³</span>
-            </div>
-          </div>
-          <div
-            className={`w-10 h-6 sm:w-12 sm:h-8 rounded-lg flex items-center justify-center ${
-              city.pm25 <= 12
-                ? "bg-green-100 text-green-700"
-                : city.pm25 <= 35
-                ? "bg-yellow-100 text-yellow-700"
-                : city.pm25 <= 55
-                ? "bg-orange-100 text-orange-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            <div
-              className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
-                city.pm25 <= 12
-                  ? "bg-green-500"
-                  : city.pm25 <= 35
-                  ? "bg-yellow-500"
-                  : city.pm25 <= 55
-                  ? "bg-orange-500"
-                  : "bg-red-500"
-              }`}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm mb-3 sm:mb-4">
-        <div className="flex gap-3">
-          <span className="text-gray-500">PM10:</span>
-          <span className="font-semibold text-gray-900">{city.pm10}</span>
-        </div>
-        <div className="flex gap-3">
-          <span className="text-gray-500">O₃:</span>
-          <span className="font-semibold text-gray-900">{city.o3}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-xs sm:text-sm font-bold px-2 py-1 rounded-md ${
-            city.status === "Good"
-              ? "text-green-700 bg-green-100"
-              : city.status === "Moderate"
-              ? "text-yellow-700 bg-yellow-100"
-              : "text-red-700 bg-red-100"
-          }`}
-        >
-          {city.status}
-        </span>
-        <div className="flex items-center text-xs text-gray-400">
-          <ClockIcon className="h-3 w-3 mr-1" />
-          <span className="hidden sm:inline">
-            {city.timestamp.toLocaleTimeString()}
-          </span>
-          <span className="sm:hidden">
-            {city.timestamp.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">24h trend</span>
-          <div className="flex items-center">
-            {city.trend[city.trend.length - 1] > city.trend[0] ? (
-              <span className="text-red-600 flex items-center">
-                ↗ Increasing
-              </span>
-            ) : (
-              <span className="text-green-600 flex items-center">
-                ↘ Decreasing
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!isClient) {
-    return "";
+      // Gems
+      if ((x === 5 || x === 8 || x === 11) && y === 6) return '#FF0000';
+      return null;
+    })
+  },
+  {
+    name: 'Love Heart',
+    icon: Heart,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Heart shape
+      if (y >= 5 && y <= 13) {
+        if (((x >= 4 && x <= 6) || (x >= 9 && x <= 11)) && y >= 5 && y <= 7) return '#FF69B4';
+        if (x >= 5 && x <= 10 && y >= 8 && y <= 11) return '#FF69B4';
+        if (x >= 6 && x <= 9 && y >= 12 && y <= 13) return '#FF69B4';
+        if ((x === 7 || x === 8) && y === 14) return '#FF69B4';
+      }
+      return null;
+    })
+  },
+  {
+    name: 'Power Star',
+    icon: Star,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Star center
+      if ((x === 7 || x === 8) && y >= 6 && y <= 9) return '#FFFF00';
+      if (y >= 7 && y <= 8 && x >= 6 && x <= 9) return '#FFFF00';
+      // Star points
+      if ((x === 7 || x === 8) && (y === 4 || y === 5)) return '#FFFF00';
+      if ((x === 7 || x === 8) && (y === 10 || y === 11)) return '#FFFF00';
+      if ((y === 7 || y === 8) && (x === 4 || x === 5)) return '#FFFF00';
+      if ((y === 7 || y === 8) && (x === 10 || x === 11)) return '#FFFF00';
+      // Diagonal points
+      if ((x === 5 && y === 5) || (x === 10 && y === 5)) return '#FFFF00';
+      if ((x === 5 && y === 10) || (x === 10 && y === 10)) return '#FFFF00';
+      return null;
+    })
+  },
+  {
+    name: 'Game Controller',
+    icon: Gamepad2,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Controller body
+      if (y >= 6 && y <= 10 && x >= 2 && x <= 13) return '#4A4A4A';
+      // D-pad
+      if ((x === 4 || x === 5) && y === 8) return '#000000';
+      if (x === 4 && (y === 7 || y === 9)) return '#000000';
+      // Buttons
+      if ((x === 10 || x === 11) && y === 7) return '#FF0000';
+      if ((x === 10 || x === 11) && y === 9) return '#00FF00';
+      return null;
+    })
+  },
+  {
+    name: 'Retro Skull',
+    icon: Circle,
+    data: Array(256).fill(null).map((_, i) => {
+      const x = i % 16;
+      const y = Math.floor(i / 16);
+      // Skull outline
+      if (x >= 4 && x <= 11 && y >= 3 && y <= 12) {
+        if (y >= 4 && y <= 11 && x >= 5 && x <= 10) return '#F0F0F0';
+        if ((y === 3 || y === 12) && x >= 5 && x <= 10) return '#F0F0F0';
+        if ((x === 4 || x === 11) && y >= 4 && y <= 11) return '#F0F0F0';
+      }
+      // Eye sockets
+      if ((x >= 6 && x <= 7) && (y >= 6 && y <= 7)) return '#000000';
+      if ((x >= 8 && x <= 9) && (y >= 6 && y <= 7)) return '#000000';
+      // Nose
+      if (x === 7 && y === 9) return '#000000';
+      // Mouth
+      if (y === 11 && x >= 6 && x <= 9) return '#000000';
+      return null;
+    })
   }
+];
+
+const tools = [
+  { name: 'brush', icon: Brush, label: 'Brush', shortcut: 'B' },
+  { name: 'eraser', icon: Eraser, label: 'Eraser', shortcut: 'E' },
+  { name: 'fill', icon: Square, label: 'Fill', shortcut: 'F' }
+] as const;
+
+type ToolType = typeof tools[number]['name'];
+
+const PixelAvatarStudio: React.FC = () => {
+  // State management
+  const [currentTool, setCurrentTool] = useState<ToolType>('brush');
+  const [currentColor, setCurrentColor] = useState('#000000');
+  const [layers, setLayers] = useState<Layer[]>([
+    { id: 1, name: 'Base Layer', visible: true, data: Array(256).fill(null) }
+  ]);
+  const [activeLayer, setActiveLayer] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [rgbColor, setRgbColor] = useState<RGBColor>({ r: 0, g: 0, b: 0 });
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>({
+    format: 'png',
+    scale: 10,
+    platform: 'general'
+  });
+  const [cellSize, setCellSize] = useState(DESKTOP_CELL_SIZE);
+  const [previewCellSize, setPreviewCellSize] = useState(PREVIEW_CELL_SIZE);
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [bottomSheetOffset, setBottomSheetOffset] = useState(0);
+
+  // React Spring Animations
+  const toolsSpring = useSpring({
+    transform: 'translateX(0px)',
+    opacity: 1,
+    from: { transform: 'translateX(-20px)', opacity: 0 },
+    config: config.wobbly
+  });
+
+  const bottomSheetSpring = useSpring({
+    y: isBottomSheetOpen ? 0 : bottomSheetOffset,
+    config: config.gentle
+  });
+
+  // Handle window resize and set initial cell size
+  useEffect(() => {
+    const updateCellSize = () => {
+      const isMobile = window.innerWidth < 768;
+      setCellSize(isMobile ? 16 : DESKTOP_CELL_SIZE);
+      setPreviewCellSize(isMobile ? 8 : PREVIEW_CELL_SIZE);
+      
+      // Set bottom sheet offset for mobile
+      if (isMobile) {
+        setBottomSheetOffset(window.innerHeight * 0.8 - 80);
+      }
+    };
+
+    // Set initial size
+    updateCellSize();
+
+    // Add resize listener
+    window.addEventListener('resize', updateCellSize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', updateCellSize);
+  }, []);
+
+  // Prevent background scroll when bottom sheet is open on mobile
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (isBottomSheetOpen && window.innerWidth < 768) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+      } else {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+      }
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+      }
+    };
+  }, [isBottomSheetOpen]);
+
+  // Color conversion utilities
+  const hexToRgb = useCallback((hex: string): RGBColor => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  }, []);
+
+  const rgbToHex = useCallback((r: number, g: number, b: number): string => {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }, []);
+
+  // Update RGB when hex color changes
+  useEffect(() => {
+    setRgbColor(hexToRgb(currentColor));
+  }, [currentColor, hexToRgb]);
+
+
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      
+      const toolMap: Record<string, ToolType> = {
+        'b': 'brush',
+        'e': 'eraser',
+        'f': 'fill'
+      };
+
+      const tool = toolMap[e.key.toLowerCase()];
+      if (tool) {
+        setCurrentTool(tool);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  const handleRgbChange = (component: keyof RGBColor, value: string) => {
+    const numValue = parseInt(value);
+    const newRgb = { ...rgbColor, [component]: numValue };
+    setRgbColor(newRgb);
+    setCurrentColor(rgbToHex(newRgb.r, newRgb.g, newRgb.b));
+  };
+
+  const getCurrentLayerData = (): (string | null)[] => {
+    return layers[activeLayer]?.data || Array(256).fill(null);
+  };
+
+  const updateLayerData = (newData: (string | null)[]) => {
+    const newLayers = [...layers];
+    newLayers[activeLayer] = { ...newLayers[activeLayer], data: newData };
+    setLayers(newLayers);
+  };
+
+  const floodFill = (data: (string | null)[], startIndex: number, targetColor: string | null, fillColor: string) => {
+    if (targetColor === fillColor) return;
+    
+    const stack = [startIndex];
+    const visited = new Set<number>();
+
+    while (stack.length > 0) {
+      const index = stack.pop()!;
+      if (visited.has(index)) continue;
+      
+      const x = index % GRID_SIZE;
+      const y = Math.floor(index / GRID_SIZE);
+      
+      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
+      if (data[index] !== targetColor) continue;
+      
+      visited.add(index);
+      data[index] = fillColor;
+      
+      // Add adjacent cells
+      if (x > 0) stack.push(index - 1);
+      if (x < GRID_SIZE - 1) stack.push(index + 1);
+      if (y > 0) stack.push(index - GRID_SIZE);
+      if (y < GRID_SIZE - 1) stack.push(index + GRID_SIZE);
+    }
+  };
+
+  const handleCellClick = (index: number) => {
+    const currentData = getCurrentLayerData();
+    const newData = [...currentData];
+
+    switch (currentTool) {
+      case 'brush':
+        newData[index] = currentColor;
+        playSound('paint');
+        break;
+      case 'eraser':
+        newData[index] = null;
+        playSound('erase');
+        break;
+      case 'fill':
+        floodFill(newData, index, currentData[index], currentColor);
+        playSound('paint');
+        break;
+    }
+
+    updateLayerData(newData);
+  };
+
+  const handleMouseDown = (index: number) => {
+    setIsDrawing(true);
+    handleCellClick(index);
+  };
+
+  const handleMouseEnter = (index: number) => {
+    if (isDrawing && (currentTool === 'brush' || currentTool === 'eraser')) {
+      handleCellClick(index);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+  };
+
+  const addLayer = () => {
+    playSound('click');
+    const newLayer: Layer = {
+      id: Date.now(),
+      name: `Layer ${layers.length + 1}`,
+      visible: true,
+      data: Array(256).fill(null)
+    };
+    setLayers([...layers, newLayer]);
+    setActiveLayer(layers.length);
+  };
+
+  const deleteLayer = (index: number) => {
+    // Prevent deleting the base layer (index 0) and ensure at least one layer exists
+    if (layers.length > 1 && index !== 0) {
+      playSound('erase');
+      const newLayers = layers.filter((_, i) => i !== index);
+      setLayers(newLayers);
+      setActiveLayer(Math.max(0, Math.min(activeLayer, newLayers.length - 1)));
+    }
+  };
+
+  const toggleLayerVisibility = (index: number) => {
+    playSound('click');
+    const newLayers = [...layers];
+    newLayers[index].visible = !newLayers[index].visible;
+    setLayers(newLayers);
+  };
+
+  const loadTemplate = (template: Template) => {
+    playSound('click');
+    updateLayerData([...template.data]);
+  };
+
+  const clearCanvas = () => {
+    playSound('clear');
+    updateLayerData(Array(256).fill(null));
+  };
+
+  const getFinalPixelData = useMemo((): (string | null)[] => {
+    const final = Array(256).fill(null);
+    layers.forEach(layer => {
+      if (layer.visible) {
+        layer.data.forEach((color, index) => {
+          if (color) {
+            final[index] = color;
+          }
+        });
+      }
+    });
+    return final;
+  }, [layers]);
+
+  const generateSocialMetadata = (imageDataUrl: string): SocialMetadata => {
+    return {
+      title: 'My Pixel Avatar - Created with Pixel Avatar Studio',
+      description: `Check out my custom 16x16 pixel avatar! Created with the Pixel Avatar Studio - a retro-style editor perfect for Discord, Twitch, and gaming profiles. #PixelArt #Avatar #Retro`,
+      image: imageDataUrl,
+      url: ''
+    };
+  };
+
+  const exportAvatar = (options: ExportOptions = exportOptions) => {
+    playSound('export');
+    const canvas = document.createElement('canvas');
+    let size: number;
+    
+    // Platform-specific sizing
+    switch (options.platform) {
+      case 'discord':
+        size = 128; // Discord avatar size
+        break;
+      case 'twitch':
+        size = 300; // Twitch profile image size
+        break;
+      default:
+        size = GRID_SIZE * options.scale;
+    }
+    
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+
+    // Enable crisp pixel rendering
+    ctx.imageSmoothingEnabled = false;
+
+    // Render all visible layers
+    const pixelSize = size / GRID_SIZE;
+    layers.forEach(layer => {
+      if (layer.visible) {
+        layer.data.forEach((color, index) => {
+          if (color) {
+            const x = (index % GRID_SIZE) * pixelSize;
+            const y = Math.floor(index / GRID_SIZE) * pixelSize;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, pixelSize, pixelSize);
+          }
+        });
+      }
+    });
+
+    // Create download link with platform-specific naming
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pixel-avatar-${options.platform}-${size}x${size}.${options.format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        // Show success toast with platform-specific message
+        const platformMessages = {
+          discord: 'Perfect for Discord profiles! ⚡',
+          twitch: 'Ready for your Twitch channel! 🎮',
+          general: 'Avatar exported successfully! 🎨'
+        };
+        toast.success(`${platformMessages[options.platform]} (${size}x${size})`);
+      }
+    });
+  };
+
+  const copyToClipboard = async () => {
+    const canvas = document.createElement('canvas');
+    const size = GRID_SIZE * 10;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+
+    layers.forEach(layer => {
+      if (layer.visible) {
+        layer.data.forEach((color, index) => {
+          if (color) {
+            const x = (index % GRID_SIZE) * 10;
+            const y = Math.floor(index / GRID_SIZE) * 10;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 10, 10);
+          }
+        });
+      }
+    });
+
+    // Try to copy image to clipboard
+    try {
+      canvas.toBlob(async (blob) => {
+        if (blob && navigator.clipboard && window.ClipboardItem) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            toast.success('Avatar copied to clipboard!');
+            playSound('export');
+          } catch (err) {
+            console.error('Failed to copy image to clipboard:', err);
+            // Fallback: copy data URL as text
+            const dataUrl = canvas.toDataURL();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(dataUrl);
+              toast.success('Avatar data URL copied to clipboard!');
+              playSound('export');
+            } else {
+              toast.error('Clipboard not supported in this browser');
+            }
+          }
+        } else {
+          // Fallback: copy data URL as text
+          const dataUrl = canvas.toDataURL();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(dataUrl);
+            toast.success('Avatar data URL copied to clipboard!');
+            playSound('export');
+          } else {
+            // Final fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = dataUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+              document.execCommand('copy');
+              toast.success('Avatar data URL copied to clipboard!');
+              playSound('export');
+            } catch (err) {
+              toast.error('Failed to copy to clipboard');
+            }
+            document.body.removeChild(textArea);
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Failed to create canvas blob:', err);
+      toast.error('Failed to copy avatar');
+    }
+  };
+
+
+
+  const shareToSocial = (platform: string) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = GRID_SIZE * 10;
+    canvas.height = GRID_SIZE * 10;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+
+    layers.forEach(layer => {
+      if (layer.visible) {
+        layer.data.forEach((color, index) => {
+          if (color) {
+            const x = (index % GRID_SIZE) * 10;
+            const y = Math.floor(index / GRID_SIZE) * 10;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 10, 10);
+          }
+        });
+      }
+    });
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const imageDataUrl = canvas.toDataURL();
+        const metadata = generateSocialMetadata(imageDataUrl);
+        
+        let shareUrl = '';
+        let message = '';
+        
+        switch (platform) {
+          case 'twitter':
+            shareUrl = `${metadata.title}\n\n${metadata.description}`;
+            message = 'Chirper share text copied to clipboard!';
+            break;
+          case 'facebook':
+            shareUrl = `${metadata.title}\n\n${metadata.description}`;
+            message = 'SocialBook share text copied to clipboard!';
+            break;
+          case 'discord':
+            shareUrl = `${metadata.title}\n${metadata.description}`;
+            message = 'PixelCord share text copied to clipboard!';
+            break;
+          case 'reddit':
+            shareUrl = `${metadata.title}\n\n${metadata.description}`;
+            message = 'NetBoard share text copied to clipboard!';
+            break;
+        }
+        
+        // Copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            toast.success(message);
+            playSound('export');
+          }).catch(() => {
+            toast.error('Failed to copy to clipboard');
+          });
+        } else {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = shareUrl;
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            toast.success(message);
+            playSound('export');
+          } catch (err) {
+            toast.error('Failed to copy to clipboard');
+          }
+          document.body.removeChild(textArea);
+        }
+      }
+    });
+  };
+
+  // Sound Effects
+  const playSound = useCallback((type: 'click' | 'paint' | 'erase' | 'export' | 'clear') => {
+    if (!isSoundEnabled) return;
+    
+    // Create simple sound effects using Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    switch (type) {
+      case 'click':
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        break;
+      case 'paint':
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        break;
+      case 'erase':
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        break;
+      case 'export':
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        break;
+      case 'clear':
+        oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(100, audioContext.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+        break;
+    }
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  }, [isSoundEnabled]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Roboto',sans-serif]">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="  mx-auto px-3 sm:px-4 lg:px-24 ">
-          <div className="flex justify-between items-center h-14 sm:h-16">
-            <div className="flex items-center">
-              <button
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                {isMobileMenuOpen ? (
-                  <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                ) : (
-                  <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                )}
-              </button>
-              <div className="flex items-center ml-2 sm:ml-4 lg:ml-0">
-                <div className="h-6 w-6 sm:h-8 sm:w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <MapPinIcon className="h-3 w-3 sm:h-5 sm:w-5 text-white" />
-                </div>
-                <div className="ml-2 sm:ml-3">
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-                    AirWatch Pro
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">
-                    Real-time Air Quality Monitoring
-                  </p>
-                </div>
-              </div>
-            </div>
+    <>
+      <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap"
+          rel="stylesheet"
+        />
 
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              {/* Alerts Button */}
-              <div className="relative">
-                <button
-                  className="p-1.5 sm:p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 cursor-pointer relative"
-                  onClick={() => setIsAlertsOpen(!isAlertsOpen)}
-                  title="View alerts"
-                >
-                  <BellIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                  {alerts.filter((alert) => !alert.isRead).length > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                      {alerts.filter((alert) => !alert.isRead).length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* Auto-refresh Toggle */}
-              <button
-                className={` hidden md:flex p-1.5 sm:p-2 rounded-lg transition-all duration-200 cursor-pointer  items-center ${
-                  isAutoRefreshEnabled
-                    ? "text-green-600 bg-green-50 border border-green-200"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                }`}
-                onClick={toggleAutoRefresh}
-                title={
-                  isAutoRefreshEnabled
-                    ? "Disable auto-refresh"
-                    : "Enable auto-refresh"
-                }
-              >
-                {isAutoRefreshEnabled ? (
-                  <PlayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                ) : (
-                  <PauseIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                )}
-              </button>
-
-              {/* Manual Refresh Button */}
-              <button
-                className={` hidden md:flex px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 cursor-pointer   items-center space-x-1 sm:space-x-2 ${
-                  isRefreshing
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
-                }`}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                title="Refresh data"
-              >
-                <ArrowPathIcon
-                  className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
-                <span className="hidden sm:inline text-sm">
-                  {isRefreshing ? "Refreshing..." : "Refresh"}
-                </span>
-              </button>
-
-              {/* Compare Mode Toggle */}
-              <button
-                className={`hidden md:flex px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 cursor-pointer  items-center ${
-                  isCompareMode
-                    ? "bg-blue-100 text-blue-700 border border-blue-200"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
-                }`}
-                onClick={toggleCompareMode}
-              >
-                <ArrowsRightLeftIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
-                <span className="hidden sm:inline text-sm">Compare</span>
-              </button>
-
-              <button
-                className="lg:hidden p-1.5 sm:p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              >
-                <AdjustmentsHorizontalIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-200 max-h-96 overflow-y-auto">
-            <div className="px-3 sm:px-4 py-4 space-y-3">
-              <div className="flex gap-3">
-                <button
-                  className={`p-1.5 sm:p-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center ${
-                    isAutoRefreshEnabled
-                      ? "text-green-600 bg-green-50 border border-green-200"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                  onClick={() => {
-                    toggleAutoRefresh();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  title={
-                    isAutoRefreshEnabled
-                      ? "Disable auto-refresh"
-                      : "Enable auto-refresh"
-                  }
-                >
-                  {isAutoRefreshEnabled ? (
-                    <PlayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  ) : (
-                    <PauseIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  )}
-                </button>
-
-                {/* Manual Refresh Button */}
-                <button
-                  className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center space-x-1 sm:space-x-2 ${
-                    isRefreshing
-                      ? "bg-blue-50 text-blue-600 border border-blue-200"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
-                  }`}
-                  onClick={() => {
-                    handleRefresh();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  disabled={isRefreshing}
-                  title="Refresh data"
-                >
-                  <ArrowPathIcon
-                    className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                      isRefreshing ? "animate-spin" : ""
-                    }`}
-                  />
-                  <span className="hidden sm:inline text-sm">
-                    {isRefreshing ? "Refreshing..." : "Refresh"}
-                  </span>
-                </button>
-
-                {/* Compare Mode Toggle */}
-                <button
-                  className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 cursor-pointer flex items-center ${
-                    isCompareMode
-                      ? "bg-blue-100 text-blue-700 border border-blue-200"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
-                  }`}
-                  onClick={() => {
-                    toggleCompareMode();
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  <ArrowsRightLeftIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
-                  <span className="hidden sm:inline text-sm">Compare</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Status Bar */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 px-3 sm:px-4 py-2">
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="flex items-center text-gray-600">
-                <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                <span className="hidden sm:inline">
-                  Last updated: {lastRefresh.toLocaleTimeString()}
-                </span>
-                <span className="sm:hidden">
-                  {lastRefresh.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <div
-                  className={`w-2 h-2 rounded-full mr-1 sm:mr-2 ${
-                    isAutoRefreshEnabled
-                      ? "bg-green-500 animate-pulse"
-                      : "bg-gray-400"
-                  }`}
-                ></div>
-                <span className="text-gray-600">
-                  {isAutoRefreshEnabled ? "Live" : "Manual"}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4 text-gray-600">
-              <span className="hidden sm:inline">
-                {data.length} cities monitored
-              </span>
-              <span className="sm:hidden">{data.length} cities</span>
-              <span className="hidden sm:inline">•</span>
-              <span>
-                {alerts.filter((alert) => !alert.isRead).length} alerts
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Alerts Dropdown */}
-        {isAlertsOpen && (
-          <div
-            ref={alertsRef}
-            className="absolute sm:top-16 right-0 z-50 w-full sm:w-96 bg-white shadow-xl border border-gray-200 rounded-b-lg sm:rounded-lg md:right-32 "
-          >
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <ShieldExclamationIcon className="h-5 w-5 mr-2 text-amber-500" />
-                  Alerts
-                </h3>
-                <div className="flex items-center space-x-2">
-                  <button
-                    className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
-                    onClick={markAllAlertsAsRead}
-                  >
-                    Mark all as read
-                  </button>
-                  <button
-                    className="p-1 rounded-md text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setIsAlertsOpen(false)}
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2 max-h-64 sm:max-h-80 overflow-y-auto">
-                {alerts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <BellIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No alerts</p>
-                  </div>
-                ) : (
-                  alerts.slice(0, 10).map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`p-3 rounded-lg border-l-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
-                        alert.isRead ? "opacity-60" : ""
-                      } ${
-                        alert.severity === "high"
-                          ? "bg-red-50 border-red-500"
-                          : alert.severity === "medium"
-                          ? "bg-amber-50 border-amber-500"
-                          : "bg-blue-50 border-blue-500"
-                      }`}
-                      onClick={() => {
-                        markAlertAsRead(alert.id);
-                        handleCitySelect(alert.cityId, false);
-                        setIsAlertsOpen(false);
-                      }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p
-                            className={`text-sm font-medium ${
-                              alert.severity === "high"
-                                ? "text-red-800"
-                                : alert.severity === "medium"
-                                ? "text-amber-800"
-                                : "text-blue-800"
-                            }`}
-                          >
-                            {alert.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {alert.timestamp.toLocaleTimeString()} •{" "}
-                            {alert.cityName}
-                          </p>
-                        </div>
-                        {!alert.isRead && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1 ml-2"></div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alerts overlay for mobile */}
-        {isAlertsOpen && (
-          <div
-            className="lg:hidden fixed inset-0   bg-opacity-50 z-40"
-            onClick={() => setIsAlertsOpen(false)}
+      </Head>
+      
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        {/* Retro CRT Scanlines */}
+        <div className="fixed inset-0 pointer-events-none z-50">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-pink-500/5 to-transparent animate-pulse"></div>
+          <div 
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 0, 128, 0.03) 2px,
+                rgba(255, 0, 128, 0.03) 4px
+              )`
+            }}
           />
-        )}
-      </nav>
-
-      <div className="flex">
-        {/* Sidebar - Desktop */}
-        <div className="hidden lg:block w-80 bg-white shadow-sm border-r border-gray-200   sticky top-20 overflow-y-auto h-[90vh]">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Cities</h2>
-              <span className="text-sm text-gray-500">
-                {filteredData.length} locations
-              </span>
-            </div>
-
-            {/* Filters */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-3">Filters</h3>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Search by country..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  value={filters.country}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, country: e.target.value }))
-                  }
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    placeholder="Min AQI"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    value={filters.minAQI === 0 ? '' : filters.minAQI}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        minAQI: e.target.value === '' ? 0 : Number(e.target.value),
-                      }))
-                    }
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max AQI"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    value={filters.maxAQI === 500 ? '' : filters.maxAQI}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        maxAQI: e.target.value === '' ? 500 : Number(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {filteredData.map((city) => (
-                <CityCard
-                  key={city.id}
-                  city={city}
-                  isSelected={selectedCity === city.id}
-                  onClick={() => handleCitySelect(city.id)}
-                />
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* Mobile Sidebar */}
-        {isSidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-50">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/50 bg-opacity-50"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-
-            {/* Sidebar */}
-            <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl transform transition-transform duration-300 overflow-y-auto">
-              <div className="p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Filters & Cities
-                  </h2>
-                  <button
-                    className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => setIsSidebarOpen(false)}
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-
-                {/* Filters Section */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium text-gray-900 mb-3">Filters</h3>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Search by country..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      value={filters.country}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          country: e.target.value,
-                        }))
-                      }
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        placeholder="Min AQI"
-                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        value={filters.minAQI === 0 ? '' : filters.minAQI}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            minAQI: e.target.value === '' ? 0 : Number(e.target.value),
-                          }))
-                        }
-                      />
-                      <input
-                        type="number"
-                        placeholder="Max AQI"
-                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        value={filters.maxAQI === 500 ? '' : filters.maxAQI}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            maxAQI: e.target.value === '' ? 500 : Number(e.target.value),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cities Section */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">
-                    Cities ({filteredData.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {filteredData.map((city) => (
-                      <CityCard
-                        key={city.id}
-                        city={city}
-                        isSelected={selectedCity === city.id}
-                        onClick={() => {
-                          handleCitySelect(city.id);
-                          setIsSidebarOpen(false);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className={`flex-1 p-3 sm:p-4 lg:p-8 transition-all duration-300 ${
-          isSidebarOpen ? 'lg:mr-0 mr-80' : ''
-        }`}>
-          {selectedCityData && (
-            <div
-              className={`grid gap-4 sm:gap-6 lg:gap-8 ${
-                isCompareMode && compareCityData
-                  ? "lg:grid-cols-2"
-                  : "grid-cols-1"
-              } ${isCompareMode ? "items-start" : ""}`}
-            >
-              {/* Primary City */}
-              <div className="space-y-4 sm:space-y-6 flex flex-col h-full">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {selectedCityData.city}
-                      </h2>
-                      <p className="text-gray-500">
-                        {selectedCityData.country}
-                      </p>
-                    </div>
-                    <div
-                      className={`px-3 sm:px-4 py-2 rounded-full text-base sm:text-lg font-semibold border-2 w-fit ${getAQIColor(
-                        selectedCityData.aqi
-                      )}`}
-                    >
-                      AQI {selectedCityData.aqi}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                    <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {selectedCityData.pm25}
-                      </div>
-                      <div className="text-xs  text-gray-500">PM2.5 μg/m³</div>
-                    </div>
-                    <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {selectedCityData.pm10}
-                      </div>
-                      <div className="text-xs  text-gray-500">PM10 μg/m³</div>
-                    </div>
-                    <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg col-span-2 sm:col-span-1">
-                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {selectedCityData.o3}
-                      </div>
-                      <div className="text-xs  text-gray-500">O₃ μg/m³</div>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`p-3 sm:p-4 rounded-lg border-l-4 ${
-                      selectedCityData.status === "Good"
-                        ? "bg-green-50 border-green-500"
-                        : selectedCityData.status === "Moderate"
-                        ? "bg-yellow-50 border-yellow-500"
-                        : "bg-red-50 border-red-500"
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      {selectedCityData.status === "Good" ? (
-                        <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mr-2" />
-                      ) : selectedCityData.status === "Moderate" ? (
-                        <InformationCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 mr-2" />
-                      ) : (
-                        <ExclamationTriangleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 mr-2" />
-                      )}
-                      <span className="font-semibold text-sm sm:text-base">
-                        {selectedCityData.status}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm mt-1 text-gray-600">
-                      {selectedCityData.status === "Good" &&
-                        "Air quality is satisfactory for most people. Great for outdoor activities."}
-                      {selectedCityData.status === "Moderate" &&
-                        "Air quality is acceptable for most people. Sensitive individuals may experience minor issues."}
-                      {selectedCityData.status === "Unhealthy" &&
-                        "Sensitive groups may experience health effects. General public less likely to be affected."}
-
-                      {selectedCityData.status === "Very Unhealthy" &&
-                        "Health warnings of emergency conditions. Everyone may experience serious health effects."}
-                      {selectedCityData.status === "Hazardous" &&
-                        "Health alert: everyone may experience serious health effects. Avoid outdoor activities."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex-1">
-                  <TrendChart
-                    data={selectedCityData.trend}
-                    title={`${selectedCityData.city} - 24 Hour PM2.5 Trend`}
-                    color="#3B82F6"
-                  />
-                </div>
-
-                {/* World Map - Hidden on small screens, shown on medium+ and hidden in compare mode */}
-                {!isCompareMode && (
-                <div className=" block bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <MapPinIcon className="h-5 w-5 mr-2" />
-                    Global Air Quality Map
-                  </h3>
-                  <div className="relative bg-gradient-to-b from-blue-100 to-blue-50 rounded-lg overflow-hidden">
-                    <svg
-                      viewBox="0 0 1000 500"
-                      className="w-full h-auto min-h-[150px] sm:min-h-[200px]"
-                      //   style={{ minHeight: "200px" }}
-                    >
-                      <defs>
-                        <pattern
-                          id="worldPattern"
-                          patternUnits="userSpaceOnUse"
-                          width="20"
-                          height="20"
-                        >
-                          <rect width="20" height="20" fill="#f8fafc" />
-                          <circle
-                            cx="2"
-                            cy="2"
-                            r="0.5"
-                            fill="#e2e8f0"
-                            opacity="0.3"
-                          />
-                        </pattern>
-                        <filter id="dropShadow">
-                          <feDropShadow
-                            dx="0"
-                            dy="2"
-                            stdDeviation="3"
-                            floodOpacity="0.1"
-                          />
-                        </filter>
-                      </defs>
-
-                      <rect
-                        width="1000"
-                        height="500"
-                        fill="url(#worldPattern)"
-                      />
-
-                      {/* Continents */}
-                      <path
-                        d="M120 80 Q200 60 280 90 L300 120 L280 180 L250 200 L200 190 L150 210 L100 180 L80 120 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-                      <path
-                        d="M180 220 Q220 200 250 230 L280 280 L270 350 L240 380 L200 370 L180 340 L170 280 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-                      <path
-                        d="M400 60 Q460 50 520 80 L540 120 L520 140 L480 130 L440 140 L400 120 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-                      <path
-                        d="M420 160 Q480 140 540 170 L560 220 L550 280 L520 320 L480 340 L440 330 L420 280 L410 220 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-                      <path
-                        d="M550 60 Q680 40 800 80 L820 120 L800 160 L750 180 L680 170 L600 150 L550 120 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-                      <path
-                        d="M720 320 Q780 310 840 330 L860 350 L840 370 L780 380 L720 370 L700 350 Z"
-                        fill="#e5e7eb"
-                        stroke="#d1d5db"
-                        strokeWidth="1"
-                        filter="url(#dropShadow)"
-                      />
-
-                      {/* PM2.5 Overlay Zones */}
-                      {data.map((city, index) => {
-                        const x = ((city.coordinates.lng + 180) / 360) * 1000;
-                        const y = ((90 - city.coordinates.lat) / 180) * 500;
-                        const radius = Math.max(
-                          30,
-                          Math.min(80, city.pm25 * 0.8)
-                        );
-
-                        return (
-                          <circle
-                            key={`overlay-${city.id}`}
-                            cx={x}
-                            cy={y}
-                            r={radius}
-                            fill={getPM25OverlayColor(city.pm25)}
-                            className="transition-all duration-1000"
-                          >
-                            <animate
-                              attributeName="r"
-                              values={`${radius};${radius + 5};${radius}`}
-                              dur="4s"
-                              repeatCount="indefinite"
-                              begin={`${index * 0.5}s`}
-                            />
-                          </circle>
-                        );
-                      })}
-
-                      {/* Air Quality Data Points */}
-                      {data.map((city, index) => {
-                        const x = ((city.coordinates.lng + 180) / 360) * 1000;
-                        const y = ((90 - city.coordinates.lat) / 180) * 500;
-                        const pulseDelay = index * 0.3;
-
-                        return (
-                          <g key={`city-marker-${city.id}`}>
-                            <circle
-                              cx={x}
-                              cy={y}
-                              r="8"
-                              fill="none"
-                              stroke={
-                                city.aqi <= 50
-                                  ? "#10b981"
-                                  : city.aqi <= 100
-                                  ? "#f59e0b"
-                                  : "#ef4444"
-                              }
-                              strokeWidth="1"
-                              opacity="0.6"
-                            >
-                              <animate
-                                attributeName="r"
-                                values="8;16;8"
-                                dur="3s"
-                                repeatCount="indefinite"
-                                begin={`${pulseDelay}s`}
-                              />
-                              <animate
-                                attributeName="opacity"
-                                values="0.6;0.1;0.6"
-                                dur="3s"
-                                repeatCount="indefinite"
-                                begin={`${pulseDelay}s`}
-                              />
-                            </circle>
-
-                            <circle
-                              cx={x}
-                              cy={y}
-                              r="12"
-                              fill={
-                                city.aqi <= 50
-                                  ? "#10b981"
-                                  : city.aqi <= 100
-                                  ? "#f59e0b"
-                                  : "#ef4444"
-                              }
-                              stroke="white"
-                              strokeWidth="2"
-                              className="cursor-pointer transition-all duration-200 hover:r-8"
-                              filter="url(#dropShadow)"
-                              onClick={() => handleCitySelect(city.id)}
-                            >
-                              <animate
-                                attributeName="r"
-                                values="10;12;10"
-                                dur="2s"
-                                repeatCount="indefinite"
-                                begin={`${pulseDelay * 0.5}s`}
-                              />
-                            </circle>
-
-                            <g className="opacity-0 hover:opacity-100 transition-opacity duration-200">
-                              <rect
-                                x={x - 30}
-                                y={y - 35}
-                                width="60"
-                                height="26"
-                                rx="3"
-                                fill="rgba(0,0,0,0.8)"
-                              />
-                              <text
-                                x={x}
-                                y={y - 25}
-                                textAnchor="middle"
-                                fill="white"
-                                fontSize="9"
-                                fontWeight="600"
-                              >
-                                {city.city}
-                              </text>
-                              <text
-                                x={x}
-                                y={y - 15}
-                                textAnchor="middle"
-                                fill="white"
-                                fontSize="8"
-                              >
-                                AQI {city.aqi}
-                              </text>
-                            </g>
-
-                            <text
-                              x={x}
-                              y={y + 3}
-                              textAnchor="middle"
-                              fill="white"
-                              fontSize="8"
-                              fontWeight="700"
-                              className="pointer-events-none"
-                            >
-                              {city.aqi}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
-                  </div>
-
-                  <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
-                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                            AQI Levels
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 bg-green-500 rounded-full mr-2 shadow-sm"></div>
-                              <span className="text-gray-600">Good (0-50)</span>
-                            </div>
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2 shadow-sm"></div>
-                              <span className="text-gray-600">
-                                Moderate (51-100)
-                              </span>
-                            </div>
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 bg-red-500 rounded-full mr-2 shadow-sm"></div>
-                              <span className="text-gray-600">
-                                Unhealthy(101+)
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <ClockIcon className="h-4 w-4" />
-                        <span>Live updates every 30s</span>
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="text-base sm:text-lg font-bold text-green-700">
-                        {data.filter((city) => city.aqi <= 50).length}
-                      </div>
-                      <div className="text-xs text-green-600">Good Quality</div>
-                    </div>
-                    <div className="text-center p-2 sm:p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="text-base sm:text-lg font-bold text-yellow-700">
-                        {
-                          data.filter(
-                            (city) => city.aqi > 50 && city.aqi <= 100
-                          ).length
-                        }
-                      </div>
-                      <div className="text-xs text-yellow-600">Moderate</div>
-                    </div>
-                    <div className="text-center p-2 sm:p-3 bg-red-50 rounded-lg border border-red-200">
-                      <div className="text-base sm:text-lg font-bold text-red-700">
-                        {data.filter((city) => city.aqi > 100).length}
-                      </div>
-                      <div className="text-xs text-red-600">Unhealthy</div>
-                    </div>
-                    <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-base sm:text-lg font-bold text-blue-700">
-                        {Math.round(
-                          data.reduce((sum, city) => sum + city.aqi, 0) /
-                            data.length
-                        )}
-                      </div>
-                      <div className="text-xs text-blue-600">Global Avg</div>
-                    </div>
-                  </div>
-                </div>
-                )}
-              </div>
-
-              {/* Compare City */}
-              {isCompareMode && (
-                <div className="space-y-4 sm:space-y-6 flex flex-col ">
-                  {!compareCityData ? (
-                    <div
-                      ref={compareSectionRef}
-                      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 text-center flex-1 flex flex-col justify-center"
-                    >
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Select a City to Compare
-                      </h3>
-                      <div className="space-y-2">
-                        {filteredData
-                          .filter((city) => city.id !== selectedCity)
-                          .slice(0, 5)
-                          .map((city) => (
-                            <button
-                              key={city.id}
-                              className="w-full p-3 text-left rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
-                              onClick={() => handleCompareSelect(city.id)}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span className="font-medium text-sm sm:text-base">
-                                  {city.city}, {city.country}
-                                </span>
-                                <span
-                                  className={`px-2 py-1 text-sm rounded ${getAQIColor(
-                                    city.aqi
-                                  )}`}
-                                >
-                                  {city.aqi}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
-                          <div>
-                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                              {compareCityData.city}
-                            </h2>
-                            <p className="text-gray-500">
-                              {compareCityData.country}
-                            </p>
-                          </div>
-                          <div
-                            className={`px-3 sm:px-4 py-2 rounded-full text-base sm:text-lg font-semibold border-2 w-fit ${getAQIColor(
-                              compareCityData.aqi
-                            )}`}
-                          >
-                            AQI {compareCityData.aqi}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                          <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                            <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                              {compareCityData.pm25}
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500">
-                              PM2.5 μg/m³
-                            </div>
-                          </div>
-                          <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                            <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                              {compareCityData.pm10}
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500">
-                              PM10 μg/m³
-                            </div>
-                          </div>
-                          <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg col-span-2 sm:col-span-1">
-                            <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                              {compareCityData.o3}
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500">
-                              O₃ μg/m³
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`p-3 sm:p-4 rounded-lg border-l-4 ${
-                            compareCityData.status === "Good"
-                              ? "bg-green-50 border-green-500"
-                              : compareCityData.status === "Moderate"
-                              ? "bg-yellow-50 border-yellow-500"
-                              : "bg-red-50 border-red-500"
-                          }`}
-                        >
-                          <div className="flex items-center">
-                            {compareCityData.status === "Good" ? (
-                              <CheckCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mr-2" />
-                            ) : compareCityData.status === "Moderate" ? (
-                              <InformationCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 mr-2" />
-                            ) : (
-                              <ExclamationTriangleIcon className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 mr-2" />
-                            )}
-                            <span className="font-semibold text-sm sm:text-base">
-                              {compareCityData.status}
-                            </span>
-                          </div>
-                          <p className="text-xs sm:text-sm mt-1 text-gray-600">
-                            {compareCityData.status === "Good" &&
-                              "Air quality is satisfactory for most people. Great for outdoor activities."}
-                            {compareCityData.status === "Moderate" &&
-                              "Air quality is acceptable for most people. Sensitive individuals may experience minor issues."}
-
-                            {compareCityData.status === "Unhealthy" &&
-                              "Sensitive groups may experience health effects. General public less likely to be affected."}
-                            {compareCityData.status === "Very Unhealthy" &&
-                              "Health warnings of emergency conditions. Everyone may experience serious health effects."}
-                            {compareCityData.status === "Hazardous" &&
-                              "Health alert: everyone may experience serious health effects. Avoid outdoor activities."}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex-1">
-                        <TrendChart
-                          data={compareCityData.trend}
-                          title={`${compareCityData.city} - 24 Hour PM2.5 Trend`}
-                          color="#10B981"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+        {/* Retro Grid Background */}
+        <div className="fixed inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `
+              linear-gradient(rgba(255, 0, 128, 0.3) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(0, 255, 255, 0.3) 1px, transparent 1px)
+            `,
+            backgroundSize: '20px 20px'
+          }} />
         </div>
-      </div>
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg shadow-lg border transform transition-all duration-300 min-w-48 sm:min-w-64 ${
-              toast.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800"
-                : toast.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800"
-                : toast.type === "warning"
-                ? "bg-yellow-50 border-yellow-200 text-yellow-800"
-                : "bg-blue-50 border-blue-200 text-blue-800"
-            }`}
-            style={{ animation: "slideIn 0.3s ease-out" }}
+        {/* Neon Border Effect */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute inset-0 border-4 border-pink-500/30 shadow-[inset_0_0_50px_rgba(255,0,128,0.1)]"></div>
+        </div>
+
+        <div className="relative z-10 h-screen flex flex-col">
+          {/* Header */}
+          <motion.header
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-black/80 backdrop-blur-lg border-b-2 border-pink-500/50 px-4 py-3 md:px-6 md:py-4 shadow-[0_0_20px_rgba(255,0,128,0.3)]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-medium">
-                {toast.message}
-              </span>
-              <button
-                className="ml-2 sm:ml-3 text-current opacity-60 hover:opacity-100 cursor-pointer"
-                onClick={() => removeToast(toast.id)}
-              >
-                <XMarkIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              </button>
+              <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-pink-400 to-cyan-400 rounded border-2 border-pink-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(255,0,128,0.5)] flex-shrink-0">
+                  <Gamepad2 className="w-4 h-4 md:w-5 md:h-5 text-black" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-sm md:text-2xl font-black bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(255,0,128,0.5)] truncate" style={{ fontFamily: 'Orbitron, monospace' }}>
+                    PIXEL AVATAR STUDIO
+                  </h1>
+                  <p className="text-xs text-pink-300 tracking-wider hidden md:block" style={{ fontFamily: "'Press Start 2P', monospace" }}>RETRO EDITION v2.0</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Sound Toggle */}
+                <button
+                  onClick={() => {
+                    setIsSoundEnabled(!isSoundEnabled);
+                    playSound('click');
+                  }}
+                  className={`p-2 rounded border border-purple-500/50 transition-all cursor-pointer ${
+                    isSoundEnabled 
+                      ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_10px_rgba(139,0,255,0.3)]' 
+                      : 'bg-gray-500/20 text-gray-400'
+                  }`}
+                >
+                  {isSoundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
+          </motion.header>
+
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* Desktop: Tools Sidebar */}
+            <animated.aside
+              style={toolsSpring}
+              className="hidden md:block w-64 bg-black/80 backdrop-blur-lg border-r-2 border-purple-500/30 p-4 overflow-y-auto shadow-[0_0_20px_rgba(139,0,255,0.1)] pt-6"
+            >
+              {/* Tools */}
+              <div className="mb-6">
+                <h3 className="text-pink-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                  <Brush className="w-4 h-4" />
+                  TOOLS
+                </h3>
+                <div className="space-y-2">
+                  {tools.map((tool) => (
+                    <motion.button
+                      key={tool.name}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ type: "tween", duration: 0.1 }}
+                      onClick={() => {
+                        setCurrentTool(tool.name);
+                        playSound('click');
+                      }}
+                      className={`w-full p-3 rounded border-2 flex items-center justify-between transition-all duration-150 font-mono cursor-pointer ${
+                        currentTool === tool.name
+                          ? 'bg-pink-500/30 text-pink-200 border-pink-400 shadow-[0_0_15px_rgba(255,0,128,0.4)]'
+                          : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-400/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <tool.icon className="w-4 h-4" />
+                        <span className="text-sm font-medium">{tool.label}</span>
+                      </div>
+                      <span className="text-xs opacity-60 font-bold">{tool.shortcut}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grid Toggle */}
+              <div className="mb-6">
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  transition={{ type: "tween", duration: 0.1 }}
+                  onClick={() => {
+                    setShowGrid(!showGrid);
+                    playSound('click');
+                  }}
+                  className={`w-full p-3 rounded border-2 flex items-center gap-3 transition-all duration-150 font-mono cursor-pointer ${
+                    showGrid
+                      ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.4)]'
+                      : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-400/60'
+                  }`}
+                >
+                  <Grid className="w-4 h-4" />
+                  <span className="text-sm font-medium">GRID</span>
+                </motion.button>
+              </div>
+
+              {/* Templates */}
+              <div className="mb-6">
+                <h3 className="text-cyan-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                  <Zap className="w-4 h-4" />
+                  TEMPLATES
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {presetTemplates.map((template, index) => (
+                    <motion.button
+                      key={index}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => loadTemplate(template)}
+                      className="p-3 bg-black/50 hover:bg-purple-500/10 rounded border border-purple-500/30 hover:border-purple-400/50 text-purple-300 transition-all group cursor-pointer"
+                    >
+                      <template.icon className="w-5 h-5 mx-auto mb-1 group-hover:text-purple-400 transition-colors" />
+                      <span className="text-xs font-mono">{template.name}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div>
+                <h3 className="text-pink-300 font-bold mb-3 text-sm uppercase tracking-wider" style={{ fontFamily: 'Orbitron, monospace' }}>
+                  ACTIONS
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={clearCanvas}
+                    className="w-full p-2 bg-pink-500/20 hover:bg-pink-500/30 rounded border border-pink-500/30 text-pink-300 transition-all flex items-center gap-2 text-sm font-mono shadow-[0_0_10px_rgba(255,0,128,0.3)] cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    CLEAR
+                  </button>
+                </div>
+              </div>
+            </animated.aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Canvas Section */}
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                {/* Canvas */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex-1 flex items-center justify-center p-2 md:p-8 pb-24 md:pb-8"
+                >
+                  <div className="relative w-full flex items-center justify-center">
+                    {/* Canvas Container */}
+                    <div className="relative bg-black/50 backdrop-blur-sm rounded-lg p-3 md:p-6 border-2 border-pink-500/40 shadow-[0_0_30px_rgba(255,0,128,0.2)] w-full max-w-sm md:max-w-none">
+                      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-lg" />
+                      
+                      <div className="relative">
+                        <div 
+                          className="grid gap-0 bg-black/80 p-2 rounded border border-pink-400/40 shadow-[inset_0_0_20px_rgba(255,0,128,0.1)] mx-auto"
+                          style={{ 
+                            gridTemplateColumns: `repeat(${GRID_SIZE}, ${cellSize}px)`,
+                            width: 'fit-content'
+                          }}
+                        >
+                          {getFinalPixelData.map((color, index) => (
+                            <motion.div
+                              key={index}
+                              whileHover={{ scale: 1.1 }}
+                              className={`cursor-crosshair transition-all duration-100 ${
+                                showGrid ? 'border border-pink-400/20' : ''
+                              }`}
+                              style={{
+                                width: `${cellSize}px`,
+                                height: `${cellSize}px`,
+                                backgroundColor: color || 'transparent',
+                                boxShadow: color ? '0 0 3px rgba(255,0,128,0.5)' : 'none'
+                              }}
+                              onMouseDown={() => handleMouseDown(index)}
+                              onMouseEnter={() => handleMouseEnter(index)}
+                              onMouseUp={handleMouseUp}
+                            />
+                          ))}
+                        </div>
+                        
+                        {/* Canvas Info */}
+                        <div className="mt-3 md:mt-4 text-xs text-pink-300 font-mono">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="font-bold tracking-wider">16×16 GRID</span>
+                            <span className="font-bold tracking-wider">TOOL: {currentTool.toUpperCase()}</span>
+                          </div>
+                          <div className="flex items-center justify-center mt-2 md:hidden">
+                            <span className="text-purple-300 bg-purple-500/20 px-3 py-1.5 rounded border border-purple-500/30 font-bold tracking-wider">
+                              LAYER: {layers[activeLayer]?.name}
+                            </span>
+                          </div>
+                          <div className="hidden md:block text-center mt-2">
+                            <span className="font-bold tracking-wider">LAYER: {layers[activeLayer]?.name}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Desktop: Right Sidebar */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="hidden md:block w-80 bg-black/80 backdrop-blur-lg border-l-2 border-purple-500/30 p-6 overflow-y-auto shadow-[0_0_20px_rgba(139,0,255,0.1)]"
+                >
+                  {/* Desktop Preview Window */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-cyan-300 font-bold text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                        <Monitor className="w-4 h-4" />
+                        PREVIEW
+                      </h3>
+                      <button
+                        onClick={() => setIsAnimating(!isAnimating)}
+                        className={`p-2 rounded border-2 transition-all cursor-pointer ${
+                          isAnimating
+                            ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_10px_rgba(0,255,255,0.4)]'
+                            : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10'
+                        }`}
+                      >
+                        {isAnimating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    
+                    <div className="bg-black/60 rounded border-2 border-purple-400/40 p-4 shadow-[inset_0_0_20px_rgba(139,0,255,0.1)]">
+                      <div className="flex justify-center">
+                        <motion.div
+                          animate={isAnimating ? {
+                            x: [0, 2, 0, -2, 0],
+                            y: [0, -1, 0, 1, 0]
+                          } : {}}
+                          transition={{
+                            duration: 2,
+                            repeat: isAnimating ? Infinity : 0,
+                            ease: "easeInOut"
+                          }}
+                          className="grid gap-0"
+                          style={{
+                            gridTemplateColumns: `repeat(${GRID_SIZE}, ${previewCellSize}px)`,
+                          }}
+                        >
+                          {getFinalPixelData.map((color, index) => (
+                            <div
+                              key={index}
+                              style={{
+                                width: `${previewCellSize}px`,
+                                height: `${previewCellSize}px`,
+                                backgroundColor: color || 'transparent'
+                              }}
+                            />
+                          ))}
+                        </motion.div>
+                      </div>
+                      
+                      <div className="mt-3 text-center">
+                        <span className="text-xs text-cyan-400 font-mono font-bold">
+                          {isAnimating ? 'ANIMATING' : 'STATIC'} • {GRID_SIZE}×{GRID_SIZE}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Color Picker */}
+                  <div className="mb-6">
+                    <h3 className="text-pink-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Palette className="w-4 h-4" />
+                      COLORS
+                    </h3>
+                    
+                    {/* Current Color */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div 
+                          className="w-12 h-12 rounded border-2 border-pink-400/50 shadow-[0_0_10px_rgba(255,0,128,0.3)]"
+                          style={{ backgroundColor: currentColor }}
+                        />
+                        <div className="flex-1">
+                          <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(e) => setCurrentColor(e.target.value)}
+                            className="w-full h-8 rounded border-2 border-pink-400/40 bg-transparent cursor-pointer"
+                          />
+                          <div className="text-xs text-pink-300 mt-1 font-mono font-bold">
+                            {currentColor.toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RGB Sliders */}
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>RED</span>
+                          <span>{rgbColor.r}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.r}
+                          onChange={(e) => handleRgbChange('r', e.target.value)}
+                          className="w-full h-3 rounded appearance-none cursor-pointer slider-red"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #ff0000)`,
+                            border: '1px solid rgba(255, 0, 0, 0.5)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>GREEN</span>
+                          <span>{rgbColor.g}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.g}
+                          onChange={(e) => handleRgbChange('g', e.target.value)}
+                          className="w-full h-3 rounded appearance-none cursor-pointer slider-green"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #00ff00)`,
+                            border: '1px solid rgba(0, 255, 0, 0.5)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>BLUE</span>
+                          <span>{rgbColor.b}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.b}
+                          onChange={(e) => handleRgbChange('b', e.target.value)}
+                          className="w-full h-3 rounded appearance-none cursor-pointer slider-blue"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #0000ff)`,
+                            border: '1px solid rgba(0, 0, 255, 0.5)'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Color Palette */}
+                    <div className="grid grid-cols-6 gap-1">
+                      {defaultColors.map((color, index) => (
+                        <motion.button
+                          key={index}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setCurrentColor(color)}
+                          className={`w-8 h-8 rounded border-2 transition-all cursor-pointer ${
+                            currentColor === color 
+                              ? 'border-pink-400 shadow-[0_0_10px_rgba(255,0,128,0.5)]' 
+                              : 'border-purple-500/30 hover:border-purple-400/60'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Layers */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-cyan-300 font-bold text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                        <Layers className="w-4 h-4" />
+                        LAYERS
+                      </h3>
+                      <button
+                        onClick={addLayer}
+                        className="p-1 bg-cyan-500/20 hover:bg-cyan-500/30 rounded border border-cyan-500/30 text-cyan-300 transition-all shadow-[0_0_10px_rgba(0,255,255,0.3)] cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-40 overflow-y-auto overflow-x-hidden">
+                      {layers.map((layer, index) => (
+                        <motion.div
+                          key={layer.id}
+                          className={`p-3 rounded border-2 transition-all cursor-pointer font-mono ${
+                            activeLayer === index
+                              ? 'bg-purple-500/20 border-purple-400 shadow-[0_0_10px_rgba(139,0,255,0.3)]'
+                              : 'bg-black/50 border-purple-500/30 hover:bg-purple-500/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between min-w-0">
+                            <button
+                              onClick={() => setActiveLayer(index)}
+                              className="text-purple-200 text-sm font-medium flex-1 text-left truncate mr-2 cursor-pointer"
+                            >
+                              {layer.name}
+                            </button>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => toggleLayerVisibility(index)}
+                                className="p-1 text-purple-300/60 hover:text-purple-300 transition-all cursor-pointer"
+                              >
+                                {layer.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                              </button>
+                              {layers.length > 1 && index !== 0 && (
+                                <button
+                                  onClick={() => deleteLayer(index)}
+                                  className="p-1 text-purple-300/60 hover:text-orange-400 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Export Options */}
+                  <div>
+                    <h3 className="text-cyan-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Share2 className="w-4 h-4" />
+                      EXPORT
+                    </h3>
+                    
+                    {/* Platform Selection */}
+                    <div className="mb-3">
+                      <div className="text-xs text-cyan-300 mb-2 font-mono">PLATFORM</div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['discord', 'twitch', 'general'] as const).map((platform) => (
+                          <button
+                            key={platform}
+                            onClick={() => {
+                              setExportOptions(prev => ({ ...prev, platform }));
+                              playSound('click');
+                            }}
+                            className={`p-2 rounded border-2 text-xs transition-all font-mono cursor-pointer ${
+                              exportOptions.platform === platform
+                                ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_10px_rgba(0,255,255,0.3)]'
+                                : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10'
+                            }`}
+                          >
+                            {platform === 'discord' && <Monitor className="w-3 h-3 mx-auto mb-1" />}
+                            {platform === 'twitch' && <Gamepad2 className="w-3 h-3 mx-auto mb-1" />}
+                            {platform === 'general' && <Smartphone className="w-3 h-3 mx-auto mb-1" />}
+                            <div>{platform.toUpperCase()}</div>
+                            <div className="text-xs opacity-60">
+                              {platform === 'discord' && '128px'}
+                              {platform === 'twitch' && '300px'}
+                              {platform === 'general' && 'Custom'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Export Scale */}
+                    {exportOptions.platform === 'general' && (
+                      <div className="mb-4">
+                        <div className="text-xs text-cyan-300 mb-2 font-mono">SCALE: {exportOptions.scale}X</div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="20"
+                          value={exportOptions.scale}
+                          onChange={(e) => setExportOptions(prev => ({ ...prev, scale: parseInt(e.target.value) }))}
+                          className="w-full h-3 rounded appearance-none cursor-pointer slider-cyan"
+                          style={{
+                            background: `linear-gradient(to right, #0891b2, #06b6d4)`,
+                            border: '1px solid rgba(0, 255, 255, 0.5)'
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Export Buttons */}
+                    <div className="space-y-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => exportAvatar()}
+                        className="w-full p-3 bg-gradient-to-r from-pink-500/50 to-cyan-500/50 hover:from-pink-500/70 hover:to-cyan-500/70 rounded border-2 border-pink-400/50 text-pink-200 transition-all flex items-center gap-2 justify-center font-mono font-bold shadow-[0_0_15px_rgba(255,0,128,0.3)] cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        DOWNLOAD PNG
+                      </motion.button>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={copyToClipboard}
+                        className="w-full p-3 bg-gradient-to-r from-cyan-500/50 to-purple-500/50 hover:from-cyan-500/70 hover:to-purple-500/70 rounded border-2 border-cyan-400/50 text-cyan-200 transition-all flex items-center gap-2 justify-center font-mono font-bold shadow-[0_0_15px_rgba(0,255,255,0.3)] cursor-pointer"
+                      >
+                        <Copy className="w-4 h-4" />
+                        COPY TO CLIPBOARD
+                      </motion.button>
+
+                      <div className="text-xs text-center text-cyan-300 mt-2 font-mono">
+                        {exportOptions.platform === 'general' 
+                          ? `EXPORT SIZE: ${GRID_SIZE * exportOptions.scale}×${GRID_SIZE * exportOptions.scale}PX`
+                          : exportOptions.platform === 'discord'
+                          ? 'OPTIMIZED FOR DISCORD (128×128PX)'
+                          : 'OPTIMIZED FOR TWITCH (300×300PX)'
+                        }
+                      </div>
+                    </div>
+
+                    {/* Social Sharing */}
+                    <div className="mt-4 pt-4 border-t border-purple-500/20">
+                      <div className="text-xs text-purple-300 mb-2 font-mono">SHARE WITH METADATA</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => shareToSocial('discord')}
+                          className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 text-xs text-purple-300 transition-all font-mono cursor-pointer"
+                        >
+                          PIXELCORD
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('twitter')}
+                          className="p-2 bg-cyan-500/20 hover:bg-cyan-500/30 rounded border border-cyan-500/30 text-xs text-cyan-300 transition-all font-mono cursor-pointer"
+                        >
+                          CHIRPER
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('reddit')}
+                          className="p-2 bg-pink-500/20 hover:bg-pink-500/30 rounded border border-pink-500/30 text-xs text-pink-300 transition-all font-mono cursor-pointer"
+                        >
+                          NETBOARD
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('facebook')}
+                          className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 text-xs text-purple-300 transition-all font-mono cursor-pointer"
+                        >
+                          SOCIALBOOK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Mobile: Draggable Bottom Sheet */}
+            <animated.div
+              className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-lg border-t-2 border-purple-500/30 rounded-t-3xl shadow-[0_-10px_30px_rgba(139,0,255,0.2)] z-10"
+              style={{ 
+                height: '80vh',
+                transform: bottomSheetSpring.y.to(y => `translateY(${y}px)`)
+              }}
+            >
+              {/* Draggable Handle Area */}
+              <motion.div
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.1}
+                onDragEnd={(event, info) => {
+                  const threshold = 100;
+                  if (info.offset.y > threshold) {
+                    setIsBottomSheetOpen(false);
+                  } else if (info.offset.y < -threshold) {
+                    setIsBottomSheetOpen(true);
+                  }
+                }}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                {/* Drag Handle */}
+                <div className="flex justify-center pt-3 pb-2">
+                  <div className="w-12 h-1 bg-purple-400/60 rounded-full shadow-[0_0_10px_rgba(139,0,255,0.4)]"></div>
+                </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pb-4 border-b border-purple-500/20">
+                  <h3 className="text-pink-300 font-bold text-lg uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                    <Gamepad2 className="w-5 h-5" />
+                    CONTROLS
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setIsBottomSheetOpen(!isBottomSheetOpen);
+                      playSound('click');
+                    }}
+                    className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-full border border-purple-500/30 text-purple-300 transition-all shadow-[0_0_10px_rgba(139,0,255,0.3)] cursor-pointer"
+                  >
+                    {isBottomSheetOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* Scrollable Controls Content */}
+              <div 
+                className="flex-1 overflow-y-auto overscroll-contain pb-8"
+                style={{
+                  touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollBehavior: 'smooth',
+                  maxHeight: 'calc(80vh - 120px)' // Account for header height
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 space-y-6">
+                  {/* Mobile Tools */}
+                  <div>
+                    <h3 className="text-pink-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Brush className="w-4 h-4" />
+                      TOOLS
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {tools.map((tool) => (
+                        <motion.button
+                          key={tool.name}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setCurrentTool(tool.name);
+                            playSound('click');
+                          }}
+                          className={`p-3 rounded border-2 flex items-center justify-center gap-2 transition-all duration-200 font-mono cursor-pointer ${
+                            currentTool === tool.name
+                              ? 'bg-pink-500/30 text-pink-200 border-pink-400 shadow-[0_0_15px_rgba(255,0,128,0.4)]'
+                              : 'bg-black/50 text-purple-300 border-purple-500/30 active:bg-purple-500/10'
+                          }`}
+                        >
+                          <tool.icon className="w-4 h-4" />
+                          <span className="text-sm font-medium">{tool.label}</span>
+                        </motion.button>
+                      ))}
+                      
+                      {/* Clear button in 2x2 layout */}
+                      <button
+                        onClick={clearCanvas}
+                        className="p-3 bg-pink-500/20 active:bg-pink-500/30 rounded border-2 border-pink-500/30 text-pink-300 transition-all flex items-center justify-center gap-2 text-sm font-mono shadow-[0_0_10px_rgba(255,0,128,0.3)] cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        CLEAR
+                      </button>
+                    </div>
+                    
+                    {/* Grid Toggle - Full Width */}
+                    <div className="mt-2">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          setShowGrid(!showGrid);
+                          playSound('click');
+                        }}
+                        className={`w-full p-3 rounded border-2 flex items-center justify-center gap-2 transition-all font-mono cursor-pointer ${
+                          showGrid
+                            ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.4)]'
+                            : 'bg-black/50 text-purple-300 border-purple-500/30 active:bg-purple-500/10'
+                        }`}
+                      >
+                        <Grid className="w-4 h-4" />
+                        <span className="text-sm font-medium">GRID</span>
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Preview */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-cyan-300 font-bold text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                        <Monitor className="w-4 h-4" />
+                        PREVIEW
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setIsAnimating(!isAnimating);
+                          playSound('click');
+                        }}
+                        className={`p-2 rounded border-2 transition-all cursor-pointer ${
+                          isAnimating
+                            ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_10px_rgba(0,255,255,0.4)]'
+                            : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10'
+                        }`}
+                      >
+                        {isAnimating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    
+                    <div className="bg-black/60 rounded border-2 border-purple-400/40 p-2 shadow-[inset_0_0_20px_rgba(139,0,255,0.1)]">
+                      <div className="flex justify-center">
+                        <motion.div
+                          animate={isAnimating ? {
+                            x: [0, 2, 0, -2, 0],
+                            y: [0, -1, 0, 1, 0]
+                          } : {}}
+                          transition={{
+                            duration: 2,
+                            repeat: isAnimating ? Infinity : 0,
+                            ease: "easeInOut"
+                          }}
+                          className="grid gap-0"
+                          style={{
+                            gridTemplateColumns: `repeat(${GRID_SIZE}, ${previewCellSize}px)`,
+                          }}
+                        >
+                          {getFinalPixelData.map((color, index) => (
+                            <div
+                              key={index}
+                              style={{
+                                width: `${previewCellSize}px`,
+                                height: `${previewCellSize}px`,
+                                backgroundColor: color || 'transparent'
+                              }}
+                            />
+                          ))}
+                        </motion.div>
+                      </div>
+                      
+                      <div className="mt-2 text-center">
+                        <span className="text-xs text-cyan-400 font-mono font-bold">
+                          {isAnimating ? 'ANIMATING' : 'STATIC'} • {GRID_SIZE}×{GRID_SIZE}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Templates */}
+                  <div>
+                    <h3 className="text-cyan-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Zap className="w-4 h-4" />
+                      TEMPLATES
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {presetTemplates.map((template, index) => (
+                        <motion.button
+                          key={index}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => loadTemplate(template)}
+                          className="p-3 bg-black/50 active:bg-purple-500/10 rounded border border-purple-500/30 text-purple-300 transition-all group cursor-pointer"
+                        >
+                          <template.icon className="w-5 h-5 mx-auto mb-1 group-active:text-purple-400 transition-colors" />
+                          <span className="text-xs font-mono">{template.name}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mobile Colors */}
+                  <div>
+                    <h3 className="text-pink-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Palette className="w-4 h-4" />
+                      COLORS
+                    </h3>
+                    
+                    {/* Current Color */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div 
+                          className="w-12 h-12 rounded border-2 border-pink-400/50 shadow-[0_0_10px_rgba(255,0,128,0.3)]"
+                          style={{ backgroundColor: currentColor }}
+                        />
+                        <div className="flex-1">
+                          <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(e) => setCurrentColor(e.target.value)}
+                            className="w-full h-10 rounded border-2 border-pink-400/40 bg-transparent cursor-pointer"
+                          />
+                          <div className="text-xs text-pink-300 mt-1 font-mono font-bold">
+                            {currentColor.toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RGB Sliders */}
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>RED</span>
+                          <span>{rgbColor.r}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.r}
+                          onChange={(e) => handleRgbChange('r', e.target.value)}
+                          className="w-full h-4 rounded appearance-none cursor-pointer slider-red"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #ff0000)`,
+                            border: '1px solid rgba(255, 0, 0, 0.5)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>GREEN</span>
+                          <span>{rgbColor.g}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.g}
+                          onChange={(e) => handleRgbChange('g', e.target.value)}
+                          className="w-full h-4 rounded appearance-none cursor-pointer slider-green"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #00ff00)`,
+                            border: '1px solid rgba(0, 255, 0, 0.5)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-pink-300 mb-1 font-mono">
+                          <span>BLUE</span>
+                          <span>{rgbColor.b}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="255"
+                          value={rgbColor.b}
+                          onChange={(e) => handleRgbChange('b', e.target.value)}
+                          className="w-full h-4 rounded appearance-none cursor-pointer slider-blue"
+                          style={{
+                            background: `linear-gradient(to right, #000000, #0000ff)`,
+                            border: '1px solid rgba(0, 0, 255, 0.5)'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Color Palette */}
+                    <div className="grid grid-cols-8 gap-2 mb-4">
+                      {defaultColors.map((color, index) => (
+                        <motion.button
+                          key={index}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setCurrentColor(color)}
+                          className={`w-8 h-8 rounded border-2 transition-all cursor-pointer ${
+                            currentColor === color 
+                              ? 'border-pink-400 shadow-[0_0_10px_rgba(255,0,128,0.5)]' 
+                              : 'border-purple-500/30 active:border-purple-400/60'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mobile Layers */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-cyan-300 font-bold text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                        <Layers className="w-4 h-4" />
+                        LAYERS
+                      </h3>
+                      <button
+                        onClick={addLayer}
+                        className="p-1 bg-cyan-500/20 active:bg-cyan-500/30 rounded border border-cyan-500/30 text-cyan-300 transition-all shadow-[0_0_10px_rgba(0,255,255,0.3)] cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-32 overflow-y-auto overflow-x-hidden">
+                      {layers.map((layer, index) => (
+                        <motion.div
+                          key={layer.id}
+                          whileTap={{ scale: 0.98 }}
+                          className={`p-3 rounded border-2 transition-all cursor-pointer font-mono ${
+                            activeLayer === index
+                              ? 'bg-purple-500/20 border-purple-400 shadow-[0_0_10px_rgba(139,0,255,0.3)]'
+                              : 'bg-black/50 border-purple-500/30 active:bg-purple-500/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between min-w-0">
+                            <button
+                              onClick={() => {
+                                setActiveLayer(index);
+                                playSound('click');
+                              }}
+                              className="text-purple-200 text-sm font-medium flex-1 text-left truncate mr-2 cursor-pointer"
+                            >
+                              {layer.name}
+                            </button>
+                            <div className="flex gap-1 flex-shrink-0">
+                                                             <button
+                                 onClick={() => {
+                                   toggleLayerVisibility(index);
+                                   playSound('click');
+                                 }}
+                                 className="p-1 text-purple-300/60 active:text-purple-300 transition-all cursor-pointer"
+                               >
+                                 {layer.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                               </button>
+                               {layers.length > 1 && index !== 0 && (
+                                 <button
+                                   onClick={() => {
+                                     deleteLayer(index);
+                                     playSound('erase');
+                                   }}
+                                   className="p-1 text-purple-300/60 active:text-pink-400 transition-all cursor-pointer"
+                                 >
+                                   <Trash2 className="w-3 h-3" />
+                                 </button>
+                               )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mobile Export */}
+                  <div>
+                    <h3 className="text-cyan-300 font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
+                      <Share2 className="w-4 h-4" />
+                      EXPORT
+                    </h3>
+                    
+                    {/* Platform Selection */}
+                    <div className="mb-3">
+                      <div className="text-xs text-cyan-300 mb-2 font-mono">PLATFORM</div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['discord', 'twitch', 'general'] as const).map((platform) => (
+                          <button
+                            key={platform}
+                            onClick={() => {
+                              setExportOptions(prev => ({ ...prev, platform }));
+                              playSound('click');
+                            }}
+                            className={`p-2 rounded border-2 text-xs transition-all font-mono cursor-pointer ${
+                              exportOptions.platform === platform
+                                ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400 shadow-[0_0_10px_rgba(0,255,255,0.3)]'
+                                : 'bg-black/50 text-purple-300 border-purple-500/30 hover:bg-purple-500/10'
+                            }`}
+                          >
+                            {platform === 'discord' && <Monitor className="w-3 h-3 mx-auto mb-1" />}
+                            {platform === 'twitch' && <Gamepad2 className="w-3 h-3 mx-auto mb-1" />}
+                            {platform === 'general' && <Smartphone className="w-3 h-3 mx-auto mb-1" />}
+                            <div>{platform.toUpperCase()}</div>
+                            <div className="text-xs opacity-60">
+                              {platform === 'discord' && '128px'}
+                              {platform === 'twitch' && '300px'}
+                              {platform === 'general' && 'Custom'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Export Scale */}
+                    {exportOptions.platform === 'general' && (
+                      <div className="mb-4">
+                        <div className="text-xs text-cyan-300 mb-2 font-mono">SCALE: {exportOptions.scale}X</div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="20"
+                          value={exportOptions.scale}
+                          onChange={(e) => setExportOptions(prev => ({ ...prev, scale: parseInt(e.target.value) }))}
+                          className="w-full h-4 rounded appearance-none cursor-pointer slider-cyan"
+                          style={{
+                            background: `linear-gradient(to right, #0891b2, #06b6d4)`,
+                            border: '1px solid rgba(0, 255, 255, 0.5)'
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Export Buttons */}
+                    <div className="space-y-3">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => exportAvatar()}
+                        className="w-full p-4 bg-gradient-to-r from-pink-500/50 to-cyan-500/50 active:from-pink-500/70 active:to-cyan-500/70 rounded border-2 border-pink-400/50 text-pink-200 transition-all flex items-center gap-2 justify-center font-mono font-bold shadow-[0_0_15px_rgba(255,0,128,0.3)] cursor-pointer"
+                      >
+                        <Download className="w-5 h-5" />
+                        DOWNLOAD PNG
+                      </motion.button>
+                      
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={copyToClipboard}
+                        className="w-full p-4 bg-gradient-to-r from-cyan-500/50 to-purple-500/50 active:from-cyan-500/70 active:to-purple-500/70 rounded border-2 border-cyan-400/50 text-cyan-200 transition-all flex items-center gap-2 justify-center font-mono font-bold shadow-[0_0_15px_rgba(0,255,255,0.3)] cursor-pointer"
+                      >
+                        <Copy className="w-5 h-5" />
+                        COPY TO CLIPBOARD
+                      </motion.button>
+
+                      <div className="text-xs text-center text-cyan-300 mt-2 font-mono">
+                        {exportOptions.platform === 'general' 
+                          ? `EXPORT SIZE: ${GRID_SIZE * exportOptions.scale}×${GRID_SIZE * exportOptions.scale}PX`
+                          : exportOptions.platform === 'discord'
+                          ? 'OPTIMIZED FOR DISCORD (128×128PX)'
+                          : 'OPTIMIZED FOR TWITCH (300×300PX)'
+                        }
+                      </div>
+                    </div>
+
+                    {/* Social Sharing */}
+                    <div className="mt-4 pt-4 border-t border-purple-500/20">
+                      <div className="text-xs text-purple-300 mb-2 font-mono">SHARE WITH METADATA</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => shareToSocial('discord')}
+                          className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 text-xs text-purple-300 transition-all font-mono cursor-pointer"
+                        >
+                          PIXELCORD
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('twitter')}
+                          className="p-2 bg-cyan-500/20 hover:bg-cyan-500/30 rounded border border-cyan-500/30 text-xs text-cyan-300 transition-all font-mono cursor-pointer"
+                        >
+                          CHIRPER
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('reddit')}
+                          className="p-2 bg-pink-500/20 hover:bg-pink-500/30 rounded border border-pink-500/30 text-xs text-pink-300 transition-all font-mono cursor-pointer"
+                        >
+                          NETBOARD
+                        </button>
+                        <button
+                          onClick={() => shareToSocial('facebook')}
+                          className="p-2 bg-purple-500/20 hover:bg-purple-500/30 rounded border border-purple-500/30 text-xs text-purple-300 transition-all font-mono cursor-pointer"
+                        >
+                          SOCIALBOOK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+
+                </div>
+              </div>
+            </animated.div>
           </div>
-        ))}
+        </div>
       </div>
 
-      <style jsx>{`
-        @keyframes pulse {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
+      {/* Custom Styles */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap');
+        
+        /* Hide scrollbars for all browsers */
+        * {
+          scrollbar-width: none !important; /* Firefox */
+          -ms-overflow-style: none !important; /* Internet Explorer 10+ */
         }
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+        
+        *::-webkit-scrollbar {
+          display: none !important; /* Safari and Chrome */
+          width: 0px !important;
+          height: 0px !important;
+          background: transparent !important;
         }
-        @keyframes slideUp {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+        
+        *::-webkit-scrollbar-track {
+          display: none !important;
+          background: transparent !important;
         }
-        @keyframes glow {
-          0%,
-          100% {
-            box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
-          }
-          50% {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
-          }
+        
+        *::-webkit-scrollbar-thumb {
+          display: none !important;
+          background: transparent !important;
         }
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-5px);
-          }
+        
+        *::-webkit-scrollbar-corner {
+          display: none !important;
+          background: transparent !important;
         }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
+        
+        html, body {
+          overflow: auto !important;
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
         }
-        .animate-glow {
-          animation: glow 2s ease-in-out infinite;
+        
+        html::-webkit-scrollbar, 
+        body::-webkit-scrollbar,
+        div::-webkit-scrollbar,
+        aside::-webkit-scrollbar {
+          display: none !important;
+          width: 0px !important;
+          height: 0px !important;
+          background: transparent !important;
         }
-        .animate-slideUp {
-          animation: slideUp 0.5s ease-out;
+        
+        /* Ensure all scrollable elements hide scrollbars */
+        .overflow-y-auto::-webkit-scrollbar,
+        .overflow-x-auto::-webkit-scrollbar,
+        .overflow-auto::-webkit-scrollbar {
+          display: none !important;
+          width: 0px !important;
+          height: 0px !important;
+        }
+        
+        .overflow-y-auto,
+        .overflow-x-auto,
+        .overflow-auto {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+          height: 12px;
+          border-radius: 6px;
+        }
+        
+        input[type="range"]::-webkit-slider-track {
+          height: 12px;
+          border-radius: 6px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ff0080, #00ffff);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(255, 0, 128, 0.5);
+          margin-top: -1px;
+        }
+        
+        input[type="range"]::-moz-range-track {
+          height: 12px;
+          border-radius: 6px;
+          border: none;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ff0080, #00ffff);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(255, 0, 128, 0.5);
+          margin-top: -1px;
+        }
+
+        .slider-red::-webkit-slider-thumb {
+          background: linear-gradient(135deg, #ff0000, #ff6666);
+          border: 2px solid #ff0000;
+          box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-green::-webkit-slider-thumb {
+          background: linear-gradient(135deg, #00ff00, #66ff66);
+          border: 2px solid #00ff00;
+          box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-blue::-webkit-slider-thumb {
+          background: linear-gradient(135deg, #0000ff, #6666ff);
+          border: 2px solid #0000ff;
+          box-shadow: 0 0 10px rgba(0, 0, 255, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-red::-moz-range-thumb {
+          background: linear-gradient(135deg, #ff0000, #ff6666);
+          border: 2px solid #ff0000;
+          box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-green::-moz-range-thumb {
+          background: linear-gradient(135deg, #00ff00, #66ff66);
+          border: 2px solid #00ff00;
+          box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-blue::-moz-range-thumb {
+          background: linear-gradient(135deg, #0000ff, #6666ff);
+          border: 2px solid #0000ff;
+          box-shadow: 0 0 10px rgba(0, 0, 255, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-orange::-webkit-slider-thumb {
+          background: linear-gradient(135deg, #ff6600, #ff9900);
+          border: 2px solid #ff6600;
+          box-shadow: 0 0 10px rgba(255, 165, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-orange::-moz-range-thumb {
+          background: linear-gradient(135deg, #ff6600, #ff9900);
+          border: 2px solid #ff6600;
+          box-shadow: 0 0 10px rgba(255, 165, 0, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-cyan::-webkit-slider-thumb {
+          background: linear-gradient(135deg, #0891b2, #06b6d4);
+          border: 2px solid #0891b2;
+          box-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+          margin-top: -1px;
+        }
+
+        .slider-cyan::-moz-range-thumb {
+          background: linear-gradient(135deg, #0891b2, #06b6d4);
+          border: 2px solid #0891b2;
+          box-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+          margin-top: -1px;
         }
       `}</style>
-      <footer className="text-center text-sm text-gray-500 py-4 border-t border-gray-200">
-        © 2025 AirWatch Pro. All rights reserved.
-      </footer>
-    </div>
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: 'rgba(0, 0, 0, 0.9)',
+            color: '#ff0080',
+            border: '1px solid rgba(255, 0, 128, 0.5)',
+            borderRadius: '8px',
+            boxShadow: '0 0 20px rgba(255, 0, 128, 0.3)',
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            backdropFilter: 'blur(10px)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#00ff00',
+              secondary: '#000000',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ff0000',
+              secondary: '#000000',
+            },
+          },
+        }}
+      />
+    </>
   );
 };
 
-export default AirWatch;
+export default PixelAvatarStudio;
