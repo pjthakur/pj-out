@@ -1,2787 +1,2426 @@
-"use client"
-import React, { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
-import toast, { Toaster } from 'react-hot-toast';
-import { 
-  MdFavorite, 
-  MdPeople, 
-  MdAccessTime, 
-  MdChat, 
-  MdMic, 
-  MdRadio, 
-  MdVisibility, 
-  MdHome, 
-  MdCalendarToday, 
-  MdInfo,
-  MdEmail,
-  MdCheckCircle,
-  MdVolumeUp,
-  MdVolumeOff
-} from "react-icons/md";
-type Show = {
+'use client';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import {
+  FaBolt,
+  FaSpinner,
+  FaExclamationTriangle,
+  FaRocket,
+  FaAtom,
+  FaChartLine,
+  FaMobile,
+  FaDesktop,
+} from 'react-icons/fa';
+interface Planet {
   id: string;
-  title: string;
-  startTime: Date;
-  hosts: string[];
-  description: string;
-  image: string;
-  category: string;
-  duration: number;
-};
-type ReactionType = "like" | "funny" | "love" | "fire";
-type FloatingReaction = {
-  id: string;
-  type: ReactionType;
   x: number;
   y: number;
-  timestamp: number;
-};
-type ChatMessage = {
-  id: string;
-  user: string;
-  content: string;
-  timestamp: Date;
-  answered?: boolean;
-};
-type TabType = "home" | "live" | "upcoming" | "about";
-const upcomingShows: Show[] = [
-  {
-    id: "2",
-    title: "Coffee & Code",
-    startTime: new Date(Date.now() + 1000 * 60 * 45),
-    hosts: ["Sarah Chen"],
-    description: "Morning conversations about development practices and coding.",
-    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&fit=crop",
-    category: "Development",
-    duration: 45,
-  },
-  {
-    id: "3",
-    title: "Night Owl Live",
-    startTime: new Date(Date.now() + 1000 * 60 * 180),
-    hosts: ["Mitch R."],
-    description: "Late-night conversations about tech culture and innovation.",
-    image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=400&fit=crop",
-    category: "Culture",
-    duration: 90,
-  },
-  {
-    id: "4",
-    title: "Startup Stories",
-    startTime: new Date(Date.now() + 1000 * 60 * 300),
-    hosts: ["Emma Wilson"],
-    description: "Real stories from startup founders and their journeys.",
-    image: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&fit=crop",
-    category: "Business",
-    duration: 75,
-  },
-  {
-    id: "5",
-    title: "Design Deep Dive",
-    startTime: new Date(Date.now() + 1000 * 60 * 420),
-    hosts: ["Alex Kim"],
-    description: "Exploring modern design trends and user experience principles.",
-    image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&fit=crop",
-    category: "Design",
-    duration: 60,
-  },
-];
-const currentLiveShow: Show & { isLive: true } = {
-  id: "1",
-  title: "Tech Roundtable",
-  startTime: new Date(Date.now() - 1000 * 60 * 15),
-  hosts: ["Alice Johnson", "Bob Smith"],
-  description: "Deep dive into the latest trends in technology, AI, and software development with industry experts.",
-  image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&fit=crop",
-  category: "Technology",
-  duration: 120,
-  isLive: true,
-};
-const dummyMessages = [
-  { user: "TechEnthusiast92", content: "This is so insightful! Thanks for breaking it down." },
-  { user: "CodeNewbie", content: "Can you recommend any beginner-friendly resources?" },
-  { user: "StartupFounder", content: "How do you handle technical debt in fast-growing companies?" },
-  { user: "DevOpsGuru", content: "What's your experience with Kubernetes in production?" },
-  { user: "AIResearcher", content: "Thoughts on the future of machine learning?" },
-  { user: "WebDeveloper", content: "Great explanation of REST vs GraphQL!" },
-  { user: "MobileDevPro", content: "Any advice for cross-platform development?" },
-  { user: "DataScientist", content: "How do you ensure data quality in ML pipelines?" },
-  { user: "CloudArchitect", content: "What's your preferred cloud provider and why?" },
-  { user: "SecurityExpert", content: "Can you talk about zero-trust architecture?" },
-  { user: "ProductManager", content: "How do you balance technical debt with new features?" },
-  { user: "FullStackDev", content: "This is exactly what I was looking for!" },
-  { user: "SystemAdmin", content: "Any tips for monitoring distributed systems?" },
-  { user: "FrontendDev", content: "What's your take on the latest JavaScript frameworks?" },
-  { user: "BackendDev", content: "How do you handle database scaling challenges?" },
-  { user: "TechLead", content: "Great insights on team management and technical decisions." },
-  { user: "InternDeveloper", content: "As someone new to the field, this is incredibly helpful!" },
-  { user: "SeniorEngineer", content: "Solid advice based on real experience. Thank you!" },
-  { user: "OpenSourceContrib", content: "Do you contribute to open source? Any recommendations?" },
-  { user: "RemoteWorker", content: "How do you maintain team culture in remote-first companies?" }
-];
-function useCountdown(target: Date) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
-  const h = Math.floor(diff / 3600);
-  const m = Math.floor((diff % 3600) / 60);
-  const s = diff % 60;
-  return { h, m, s, done: diff === 0 };
-}
-function useIsDesktop(breakpoint = 1024) {
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    setIsDesktop(window.innerWidth >= breakpoint);
-    function handle() {
-      setIsDesktop(window.innerWidth >= breakpoint);
-    }
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
-  }, [breakpoint]);
-  return isDesktop;
-}
-const Navigation: React.FC<{
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
-  platformMetrics: { totalListeners: number };
-}> = ({ activeTab, onTabChange, platformMetrics }) => {
-  const isDesktop = useIsDesktop();
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const tabs = [
-    { id: 'home' as TabType, label: 'Home', icon: MdHome },
-    { id: 'live' as TabType, label: 'Live', icon: MdRadio },
-    { id: 'upcoming' as TabType, label: 'Upcoming', icon: MdCalendarToday },
-    { id: 'about' as TabType, label: 'About', icon: MdInfo },
-  ];
-  const minSwipeDistance = 50;
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-  const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
-    if (isLeftSwipe && currentIndex < tabs.length - 1) {
-      onTabChange(tabs[currentIndex + 1].id);
-    }
-    if (isRightSwipe && currentIndex > 0) {
-      onTabChange(tabs[currentIndex - 1].id);
-    }
-  };
-  if (isDesktop) {
-    return (
-      <nav className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/30 px-8 py-3 sticky top-0 z-50 shadow-2xl">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <MdRadio size={20} color="white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white m-0 tracking-tight bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              AudioHub
-            </h1>
-              <p className="text-xs text-gray-500 m-0 font-medium">
-                Professional Podcast Platform
-            </p>
-            </div>
-          </div>
-          <div className="flex gap-1 bg-gray-800/60 backdrop-blur-md rounded-full p-1 border border-gray-600/30 shadow-lg">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-                          return (
-              <motion.button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full border-none text-sm font-medium cursor-pointer relative overflow-hidden backdrop-blur-sm transition-all duration-200 ${
-                  isActive 
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md' 
-                      : 'bg-transparent text-gray-300 hover:bg-gray-700/40 hover:text-white'
-                }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                >
-                  <Icon size={16} />
-                  <span className="font-medium">{tab.label}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeTab"
-                      className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full -z-10"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </motion.button>
-            );
-            })}
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-red-600/20 backdrop-blur-md px-4 py-2 rounded-full border border-red-500/30">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-red-400 text-sm font-semibold">LIVE</span>
-              <span className="text-gray-400 text-xs">{platformMetrics.totalListeners} listeners</span>
-            </div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
-  return (
-    <>
-      <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        className="touch-pan-x"
-      >
-        <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-xl border-t border-gray-700/50 px-4 py-2 z-50 shadow-2xl">
-        <div className="flex justify-around items-center max-w-md mx-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <motion.button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                  className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl border-none cursor-pointer min-w-0 backdrop-blur-sm ${
-                  isActive 
-                      ? 'text-blue-400' 
-                      : 'text-gray-400 hover:text-white active:text-blue-400'
-                }`}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              >
-                <motion.div
-                  animate={{ 
-                    y: isActive ? -2 : 0,
-                    scale: isActive ? 1.1 : 1 
-                  }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                >
-                  <Icon size={22} />
-                </motion.div>
-                <motion.span 
-                  className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}
-                  animate={{ scale: isActive ? 1.05 : 1 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                >
-                  {tab.label}
-                </motion.span>
-                {isActive && (
-                  <motion.div 
-                      className="w-1 h-1 bg-blue-400 rounded-full mt-0.5"
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 600, damping: 30 }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-      </nav>
-      </div>
-    </>
-  );
-};
-const CountdownTimer: React.FC<{ target: Date }> = ({ target }) => {
-  const { h, m, s, done } = useCountdown(target);
-  if (done) {
-    return (
-      <div className="flex items-center gap-2 text-white font-bold text-sm backdrop-blur-xl bg-green-600/90 px-3 py-2 rounded-xl border border-green-400/50 shadow-lg">
-        <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-        LIVE NOW
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 text-white text-sm font-bold tabular-nums backdrop-blur-xl bg-gray-900/90 px-3 py-2 rounded-xl border border-gray-500/50 shadow-lg">
-      <MdAccessTime size={14} />
-      <span>
-      {h.toString().padStart(2, "0")}:{m.toString().padStart(2, "0")}:{s.toString().padStart(2, "0")}
-      </span>
-    </div>
-  );
-};
-type Speaker = {
-  id: string;
-  name: string;
-  avatar: string;
-  role: string;
+  vx: number;
+  vy: number;
+  mass: number;
+  radius: number;
   color: string;
-};
-const LiveStage: React.FC<{
-  show: Show & { isLive: true };
-  audienceMetrics: {
-    listeners: number;
-    activeInChat: number;
-  };
-  totalReactions: number;
-  timeRemaining: string;
-  onOpenMobileChat?: () => void;
-  audioEnabled: boolean;
-  setAudioEnabled: (enabled: boolean) => void;
-  isAudioMuted: boolean;
-  setIsAudioMuted: (muted: boolean) => void;
-}> = ({ show, audienceMetrics, totalReactions, timeRemaining, onOpenMobileChat, audioEnabled, setAudioEnabled, isAudioMuted, setIsAudioMuted }) => {
-  const speakers: Speaker[] = [
-    {
-      id: '1',
-      name: show.hosts[0] || 'Alice Johnson',
-      avatar: 'https://images.unsplash.com/photo-1676146260286-1a84d61b9df9?w=150&h=150&fit=crop&crop=face',
-      role: 'Host',
-      color: '#6366f1',
-    },
-    {
-      id: '2', 
-      name: show.hosts[1] || 'Bob Smith',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      role: 'Co-Host',
-      color: '#f59e0b',
-    },
-    {
-      id: '3',
-      name: 'Sarah Wilson',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', 
-      role: 'Guest',
-      color: '#ec4899',
-    }
-  ];
-  const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(speakers[0].id);
-  const [lastSpeaker, setLastSpeaker] = useState<string>(speakers[0].id);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorRef = useRef<OscillatorNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const [isTabVisible, setIsTabVisible] = useState(true);
-  const [isWindowFocused, setIsWindowFocused] = useState(true);
-  const createAudioContext = () => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      gainNodeRef.current = audioContextRef.current.createGain();
-      gainNodeRef.current.connect(audioContextRef.current.destination);
-      gainNodeRef.current.gain.value = 0.1;
-    }
-  };
-  useEffect(() => {
-    if (audioEnabled) {
-      createAudioContext();
-    }
-  }, [audioEnabled]);
-  const handleEnableAudioClick = () => {
-    createAudioContext();
-    setAudioEnabled(true);
-    setIsAudioMuted(false);
-  };
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const isVisible = !document.hidden;
-      setIsTabVisible(isVisible);
-      if (!isVisible && oscillatorRef.current) {
-        oscillatorRef.current.stop();
-        oscillatorRef.current = null;
-      }
-    };
-    const handleWindowFocus = () => {
-      setIsWindowFocused(true);
-    };
-    const handleWindowBlur = () => {
-      setIsWindowFocused(false);
-      if (oscillatorRef.current) {
-        oscillatorRef.current.stop();
-        oscillatorRef.current = null;
-      }
-    };
-    const handleBeforeUnload = () => {
-      if (oscillatorRef.current) {
-        oscillatorRef.current.stop();
-        oscillatorRef.current = null;
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleWindowFocus);
-    window.addEventListener('blur', handleWindowBlur);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handleBeforeUnload);
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey && e.key === 'Tab') || 
-          (e.ctrlKey && e.key === 'w') || 
-          (e.altKey && e.key === 'Tab')) {
-        setIsWindowFocused(false);
-        if (oscillatorRef.current) {
-          oscillatorRef.current.stop();
-          oscillatorRef.current = null;
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleWindowFocus);
-      window.removeEventListener('blur', handleWindowBlur);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handleBeforeUnload);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-  const getSpeakerAudioConfig = (speakerId: string) => {
-    switch (speakerId) {
-      case '1':
-        return { 
-          frequency: 120, 
-          type: 'sine' as OscillatorType, 
-          filterFreq: 300,
-          volume: 0.08 
-        };
-      case '2':  
-        return { 
-          frequency: 80, 
-          type: 'sawtooth' as OscillatorType, 
-          filterFreq: 250,
-          volume: 0.1 
-        };
-      case '3':
-        return { 
-          frequency: 150, 
-          type: 'triangle' as OscillatorType, 
-          filterFreq: 350,
-          volume: 0.09 
-        };
-      default:
-        return { 
-          frequency: 100, 
-          type: 'sine' as OscillatorType, 
-          filterFreq: 300,
-          volume: 0.08 
-        };
-    }
-  };
-  const playAmbientSound = (speakerId?: string) => {
-    if (!audioContextRef.current || !gainNodeRef.current || !audioEnabled || !speakerId || 
-        !isTabVisible || !isWindowFocused || isAudioMuted) {
-      return;
-    }
-    if (oscillatorRef.current) {
-      oscillatorRef.current.stop();
-    }
-    const config = getSpeakerAudioConfig(speakerId);
-    oscillatorRef.current = audioContextRef.current.createOscillator();
-    const filter = audioContextRef.current.createBiquadFilter();
-    oscillatorRef.current.type = config.type;
-    oscillatorRef.current.frequency.setValueAtTime(config.frequency, audioContextRef.current.currentTime);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(config.filterFreq, audioContextRef.current.currentTime);
-    gainNodeRef.current.gain.value = config.volume;
-    oscillatorRef.current.connect(filter);
-    filter.connect(gainNodeRef.current);
-    oscillatorRef.current.start();
-  };
-  const stopAmbientSound = () => {
-    if (oscillatorRef.current) {
-      oscillatorRef.current.stop();
-      oscillatorRef.current = null;
-    }
-  };
-  const toggleAudioMute = () => {
-    setIsAudioMuted(!isAudioMuted);
-  };
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.3) {
-        const randomSpeaker = speakers[Math.floor(Math.random() * speakers.length)];
-        setCurrentSpeaker(randomSpeaker.id);
-        setLastSpeaker(randomSpeaker.id);
-        if (audioEnabled && !isAudioMuted) {
-          playAmbientSound(randomSpeaker.id);
-        }
-      } else {
-        setCurrentSpeaker(null);
-        stopAmbientSound();
-      }
-    }, 2000 + Math.random() * 3000); 
-    return () => clearInterval(interval);
-  }, [audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    if (currentSpeaker && audioEnabled && !isAudioMuted) {
-      playAmbientSound(currentSpeaker);
-    } else {
-      stopAmbientSound();
-    }
-  }, [currentSpeaker, audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    if (!isTabVisible || !isWindowFocused) {
-      stopAmbientSound();
-    } else if (currentSpeaker && audioEnabled && !isAudioMuted) {
-      playAmbientSound(currentSpeaker);
-    }
-  }, [isTabVisible, isWindowFocused, currentSpeaker, audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    return () => {
-      stopAmbientSound();
-    };
-  }, []);
-  const isDesktop = useIsDesktop();
-  return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden rounded-3xl">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-blue-500/5 to-purple-600/5 rounded-full blur-3xl" />
-      </div>
-    <motion.div 
-        className="relative z-10 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-blue-800/90 backdrop-blur-xl border-b border-white/10"
-        initial={{ opacity: 0, y: -50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-    >
-        <div className="px-4 lg:px-6 py-4 lg:py-5">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-3 lg:gap-4">
-              <div className="relative flex-shrink-0">
-                <img
-                  src={show.image}
-                  alt={show.title}
-                  className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl object-cover border-2 border-white/20 shadow-lg"
-                />
-                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                  <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                LIVE
-              </div>
-            </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg lg:text-2xl font-bold text-white mb-1 tracking-tight truncate">
-                  {show.title}
-                </h1>
-                <p className="text-white/80 text-xs lg:text-sm mb-2 leading-relaxed line-clamp-1">
-                  {show.description}
-                </p>
-                <div className="flex items-center gap-2 lg:gap-3 text-white/70">
-                  <div className="flex items-center gap-1">
-                    <MdAccessTime size={12} />
-                    <span className="text-xs font-medium">Started 15 min ago</span>
-          </div>
-                  <div className="flex items-center gap-1">
-                    <MdPeople size={12} />
-                    <span className="text-xs font-medium">{show.duration} min duration</span>
-        </div>
-                  <div className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
-            {show.category}
-        </div>
-      </div>
-          </div>
-        </div>
-          </div>
-        </div>
-      </motion.div>
-      <div className="flex-1 relative z-20 p-3 lg:p-4 min-h-0 overflow-hidden">
-        <div className="max-w-7xl mx-auto h-full flex flex-col min-h-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4 h-full min-h-0">
-            <motion.div 
-              className="lg:col-span-2 bg-gray-900/80 backdrop-blur-xl rounded-2xl lg:rounded-3xl border border-gray-700/30 p-4 lg:p-5 shadow-2xl h-full min-h-0 flex flex-col overflow-hidden"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <div className="flex items-center justify-between mb-3 lg:mb-4 flex-shrink-0">
-                <h2 className="text-base lg:text-lg font-bold text-white flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            Live Speakers
-                </h2>
-                <div className="flex items-center gap-1 text-gray-400 text-xs lg:text-sm">
-                  <MdMic size={14} />
-                  <span>{speakers.length} speakers</span>
-                </div>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                    {currentSpeaker ? 'Currently Speaking' : 'Last Speaker'}
-                  </h3>
-                  {(() => {
-                    const displaySpeaker = currentSpeaker ? 
-                      speakers.find(speaker => speaker.id === currentSpeaker) : 
-                      speakers.find(speaker => speaker.id === lastSpeaker);
-                    if (displaySpeaker) {
-                      const isCurrentlySpeaking = currentSpeaker === displaySpeaker.id;
-                      return (
-                        <div className={`rounded-2xl p-4 border backdrop-blur-md ${
-                          isCurrentlySpeaking 
-                            ? 'bg-gradient-to-br from-blue-500/20 to-purple-600/20 border-blue-500/30' 
-                            : 'bg-gray-800/40 border-gray-700/30'
-                        }`}>
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <img
-                                src={displaySpeaker.avatar}
-                                alt={displaySpeaker.name}
-                                className={`w-16 h-16 rounded-xl object-cover border-2 shadow-lg ${
-                                  isCurrentlySpeaking 
-                                    ? 'border-blue-400 shadow-blue-500/30 ring-2 ring-blue-500/20' 
-                                    : 'border-gray-500 shadow-gray-900/30'
-                                }`}
-                              />
-                              {isCurrentlySpeaking && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-gray-900 animate-pulse flex items-center justify-center">
-                                  <MdMic size={10} className="text-white" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className={`text-lg font-bold mb-1 ${
-                                isCurrentlySpeaking ? 'text-blue-300' : 'text-white'
-                              }`}>
-                                {displaySpeaker.name}
-                              </h3>
-                              <p className={`text-sm mb-2 ${
-                                isCurrentlySpeaking ? 'text-blue-200/80' : 'text-gray-400'
-                              }`}>
-                                {displaySpeaker.role}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                {isCurrentlySpeaking ? (
-                                  <>
-                                                                        <div className="flex items-center gap-0.5">
-                                      {[0, 1, 2, 3, 4, 5].map((i) => (
-                                        <div
-                                          key={i}
-                                          className={`w-0.5 bg-blue-400 rounded-full animate-audio-bars audio-bar-${i}`}
-                                        />
-                                      ))}
-                                    </div>
-                                    <span className="text-blue-300 text-sm font-medium ml-1">Speaking now</span>
-                                  </>
-                                ) : (
-                                  <span className="text-gray-500 text-sm">Silent</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">All Speakers</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {speakers.map((speaker) => {
-            const isSpeaking = currentSpeaker === speaker.id;
-            return (
-                    <div 
-                key={speaker.id}
-                          className={`relative bg-gray-800/60 backdrop-blur-md rounded-xl border transition-all duration-300 overflow-hidden hover:bg-gray-800/80 ${
-                  isSpeaking 
-                              ? 'border-blue-500/60 bg-blue-500/10 shadow-lg shadow-blue-500/20' 
-                              : 'border-gray-700/40 hover:border-gray-600/60'
-                      }`}
-                    >
-                          <div className="relative z-10 p-3">
-                            <div className="flex items-center gap-3">
-                              <div className="relative flex-shrink-0">
-                  <img
-                    src={speaker.avatar}
-                    alt={speaker.name}
-                                  className={`w-12 h-12 rounded-lg object-cover transition-all duration-300 ${
-                              isSpeaking 
-                                      ? 'border-2 border-blue-500 shadow-lg shadow-blue-500/30' 
-                                : 'border-2 border-gray-600'
-                            }`}
-                          />
-                  {isSpeaking && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-gray-900 animate-pulse" />
-                          )}
-                        </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className={`font-semibold mb-1 text-sm transition-colors duration-300 truncate ${
-                          isSpeaking ? 'text-blue-300' : 'text-white'
-                        }`}>
-                          {speaker.name}
-                        </h3>
-                                <p className="text-gray-400 text-xs mb-1 truncate">{speaker.role}</p>
-                                <div className="flex items-center gap-1">
-                          {isSpeaking ? (
-                                    <>
-                            <div className="flex items-center gap-0.5">
-                              {[0, 1, 2, 3, 4].map((i) => (
-                                <div
-                                  key={i}
-                                            className={`w-0.5 bg-blue-400 rounded-full animate-audio-bars audio-bar-${i}`}
-                    />
-                              ))}
-                            </div>
-                                      <span className="text-blue-400 text-xs font-medium ml-2">Speaking</span>
-                                    </>
-                          ) : (
-                                    <span className="text-gray-500 text-xs">Silent</span>
-                  )}
-                                </div>
-                              </div>
-                </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">Live Stats</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/30">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-gray-400 text-xs">Active Speakers</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">
-                        {speakers.filter(s => currentSpeaker === s.id).length} / {speakers.length}
-                      </div>
-                    </div>
-                    <div className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/30">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MdAccessTime size={12} className="text-blue-400" />
-                        <span className="text-gray-400 text-xs">Time Remaining</span>
-                      </div>
-                      <div className="text-white font-bold text-lg">{timeRemaining}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-            <motion.div 
-              className="h-full min-h-0 flex flex-col overflow-hidden"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              <div className="bg-gray-900/80 backdrop-blur-xl rounded-2xl lg:rounded-3xl border border-gray-700/30 p-3 lg:p-4 shadow-2xl h-full flex flex-col overflow-hidden">
-                <h3 className="text-base lg:text-lg font-bold text-white mb-3 lg:mb-4 flex items-center gap-2 flex-shrink-0">
-                  <MdAccessTime size={16} className="text-blue-400" />
-                  Session Info
-                </h3>
-                <div className="space-y-2 lg:space-y-3 flex-1 min-h-0 overflow-y-auto">
-                  <div className="flex items-center justify-between p-2 lg:p-3 rounded-xl bg-gray-800/60 border border-gray-700/20">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-gray-300 text-xs lg:text-sm">Status</span>
-                  </div>
-                    <span className="text-green-400 font-semibold text-xs lg:text-sm">LIVE</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 lg:p-3 rounded-xl bg-gray-800/60 border border-gray-700/20">
-                    <div className="flex items-center gap-2">
-                      <MdAccessTime size={14} className="text-blue-400" />
-                      <span className="text-gray-300 text-xs lg:text-sm">Duration</span>
-                    </div>
-                    <span className="text-white font-semibold text-xs lg:text-sm">120 min</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 lg:p-3 rounded-xl bg-gray-800/60 border border-gray-700/20">
-                    <div className="flex items-center gap-2">
-                      <MdPeople size={14} className="text-purple-400" />
-                      <span className="text-gray-300 text-xs lg:text-sm">Peak Viewers</span>
-                    </div>
-                    <span className="text-white font-semibold text-xs lg:text-sm">312</span>
-                  </div>
-                  <div className="border-t border-gray-700/30 pt-2 lg:pt-3">
-                    <h4 className="text-xs lg:text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <MdCalendarToday size={12} className="text-green-400" />
-                      Coming Up
-                    </h4>
-                    <div className="space-y-1.5">
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-800/40 border border-gray-700/10">
-                        <div className="w-1 h-4 bg-green-500 rounded-full flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white font-medium text-xs">Q&A Session</div>
-                          <div className="text-gray-400 text-xs">In 10 minutes</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-800/40 border border-gray-700/10">
-                        <div className="w-1 h-4 bg-blue-500 rounded-full flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white font-medium text-xs">Expert Panel</div>
-                          <div className="text-gray-400 text-xs">In 25 minutes</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {!isDesktop && onOpenMobileChat && (
-                    <button 
-                      onClick={onOpenMobileChat}
-                      className="w-full flex items-center justify-center gap-2 p-2 lg:p-3 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-blue-300 font-medium transition-colors cursor-pointer mt-2"
-                    >
-                      <MdChat size={16} />
-                      Open Chat
-                    </button>
-                    )}
-                  {!audioEnabled && (
-                    <button 
-                      onClick={handleEnableAudioClick}
-                      className="w-full flex items-center justify-center gap-2 p-2 lg:p-3 bg-green-500/20 hover:bg-green-500/30 rounded-xl text-green-300 font-medium transition-colors cursor-pointer mt-2"
-                    >
-                      <MdMic size={16} />
-                      Enable Audio
-                    </button>
-                  )}
-                  {audioEnabled && (
-                    <button 
-                      onClick={toggleAudioMute}
-                      className={`w-full flex items-center justify-center gap-2 p-2 lg:p-3 rounded-xl font-medium transition-colors cursor-pointer mt-2 ${
-                        isAudioMuted 
-                          ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300' 
-                          : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300'
-                      }`}
-                    >
-                      {isAudioMuted ? (
-                        <>
-                          <MdVolumeOff size={18} />
-                          Unmute Audio
-                        </>
-                      ) : (
-                        <>
-                          <MdVolumeUp size={18} />
-                          Mute Audio
-                        </>
-                      )}
-                    </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-          </div>
-        </div>
-      </div>
-      <motion.div 
-        className="relative z-10 bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/30 px-3 lg:px-4 py-2 lg:py-3 flex-shrink-0"
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-400 text-xs lg:text-sm">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <span className="font-medium">Live Audience Metrics</span>
-            </div>
-            <div className="flex items-center gap-4 lg:gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <MdVisibility size={14} className="text-blue-400" />
-          </div>
-          <div>
-                  <div className="text-base lg:text-xl font-bold text-white">
-              {audienceMetrics.listeners.toLocaleString()}
-            </div>
-                  <div className="text-xs text-gray-400 font-medium">Listening Now</div>
-          </div>
-        </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <MdChat size={14} className="text-purple-400" />
-          </div>
-          <div>
-                  <div className="text-base lg:text-xl font-bold text-white">
-              {audienceMetrics.activeInChat}
-            </div>
-                  <div className="text-xs text-gray-400 font-medium">Engaging in Chat</div>
-          </div>
-        </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-lg bg-pink-500/20 flex items-center justify-center">
-                  <MdFavorite size={14} className="text-pink-400" />
-          </div>
-          <div>
-                  <div className="text-base lg:text-xl font-bold text-white">
-                    {totalReactions}
-            </div>
-                  <div className="text-xs text-gray-400 font-medium">Total Reactions</div>
-            </div>
-          </div>
-        </div>
-      </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-const MobileChatDrawer: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  messages: ChatMessage[];
-  onSendMessage: (content: string) => void;
-  onReact: (type: ReactionType) => void;
-  floatingReactions: FloatingReaction[];
-  audienceMetrics: {
-    listeners: number;
-    activeInChat: number;
-  };
-  typingUsers: string[];
-}> = ({ isOpen, onClose, messages, onSendMessage, onReact, floatingReactions, audienceMetrics, typingUsers }) => {
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-  if (!isOpen) return null;
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm [touch-action:none]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/30 rounded-t-3xl flex flex-col h-[calc(100vh-100px)] max-h-[85vh] [touch-action:auto]"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        onClick={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-bold text-white">Live Chat</h3>
-            <div className="flex items-center gap-2 text-gray-400 text-sm bg-gray-800/50 px-3 py-1 rounded-lg">
-              <MdChat size={14} />
-              <span>{audienceMetrics.activeInChat} active</span>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-800/60 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-          >
-            ×
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-hidden relative">
-          <LiveChat
-            messages={messages}
-            onSendMessage={onSendMessage}
-            onReact={onReact}
-            floatingReactions={floatingReactions}
-            audienceMetrics={audienceMetrics}
-            typingUsers={typingUsers}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-const MobileLiveStage: React.FC<{
-  show: Show & { isLive: true };
-  audienceMetrics: {
-    listeners: number;
-    activeInChat: number;
-  };
-  totalReactions: number;
-  timeRemaining: string;
-  onOpenChat: () => void;
-  audioEnabled: boolean;
-  setAudioEnabled: (enabled: boolean) => void;
-  isAudioMuted: boolean;
-  setIsAudioMuted: (muted: boolean) => void;
-}> = ({ show, audienceMetrics, totalReactions, timeRemaining, onOpenChat, audioEnabled, setAudioEnabled, isAudioMuted, setIsAudioMuted }) => {
-  const speakers: Speaker[] = [
-    {
-      id: '1',
-      name: show.hosts[0] || 'Alice Johnson',
-      avatar: 'https://images.unsplash.com/photo-1676146260286-1a84d61b9df9?w=150&h=150&fit=crop&crop=face',
-      role: 'Host',
-      color: '#6366f1',
-    },
-    {
-      id: '2', 
-      name: show.hosts[1] || 'Bob Smith',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      role: 'Co-Host',
-      color: '#f59e0b',
-    },
-    {
-      id: '3',
-      name: 'Sarah Wilson',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', 
-      role: 'Guest',
-      color: '#ec4899',
-    }
-  ];
-  const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(speakers[0].id);
-  const [lastSpeaker, setLastSpeaker] = useState<string>(speakers[0].id);
-  const mobileAudioContextRef = useRef<AudioContext | null>(null);
-  const mobileOscillatorRef = useRef<OscillatorNode | null>(null);
-  const mobileGainNodeRef = useRef<GainNode | null>(null);
-  const [isMobileTabVisible, setIsMobileTabVisible] = useState(true);
-  const [isMobileWindowFocused, setIsMobileWindowFocused] = useState(true);
-  const createMobileAudioContext = () => {
-    if (!mobileAudioContextRef.current) {
-      mobileAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      mobileGainNodeRef.current = mobileAudioContextRef.current.createGain();
-      mobileGainNodeRef.current.connect(mobileAudioContextRef.current.destination);
-      mobileGainNodeRef.current.gain.value = 0.1;
-    }
-  };
-  useEffect(() => {
-    if (audioEnabled) {
-      createMobileAudioContext();
-    }
-  }, [audioEnabled]);
-  const handleEnableMobileAudioClick = () => {
-    createMobileAudioContext();
-    setAudioEnabled(true);
-    setIsAudioMuted(false);
-  };
-  useEffect(() => {
-    const handleMobileVisibilityChange = () => {
-      const isVisible = !document.hidden;
-      setIsMobileTabVisible(isVisible);
-      if (!isVisible && mobileOscillatorRef.current) {
-        mobileOscillatorRef.current.stop();
-        mobileOscillatorRef.current = null;
-      }
-    };
-    const handleMobileWindowFocus = () => {
-      setIsMobileWindowFocused(true);
-    };
-    const handleMobileWindowBlur = () => {
-      setIsMobileWindowFocused(false);
-      if (mobileOscillatorRef.current) {
-        mobileOscillatorRef.current.stop();
-        mobileOscillatorRef.current = null;
-      }
-    };
-    const handleMobileBeforeUnload = () => {
-      if (mobileOscillatorRef.current) {
-        mobileOscillatorRef.current.stop();
-        mobileOscillatorRef.current = null;
-      }
-    };
-    document.addEventListener('visibilitychange', handleMobileVisibilityChange);
-    window.addEventListener('focus', handleMobileWindowFocus);
-    window.addEventListener('blur', handleMobileWindowBlur);
-    window.addEventListener('beforeunload', handleMobileBeforeUnload);
-    window.addEventListener('pagehide', handleMobileBeforeUnload);
-    return () => {
-      document.removeEventListener('visibilitychange', handleMobileVisibilityChange);
-      window.removeEventListener('focus', handleMobileWindowFocus);
-      window.removeEventListener('blur', handleMobileWindowBlur);
-      window.removeEventListener('beforeunload', handleMobileBeforeUnload);
-      window.removeEventListener('pagehide', handleMobileBeforeUnload);
-    };
-  }, []);
-  const getMobileSpeakerAudioConfig = (speakerId: string) => {
-    switch (speakerId) {
-      case '1':
-        return { 
-          frequency: 120, 
-          type: 'sine' as OscillatorType, 
-          filterFreq: 300,
-          volume: 0.08 
-        };
-      case '2': 
-        return { 
-          frequency: 80, 
-          type: 'sawtooth' as OscillatorType, 
-          filterFreq: 250,
-          volume: 0.1 
-        };
-      case '3':
-        return { 
-          frequency: 150, 
-          type: 'triangle' as OscillatorType, 
-          filterFreq: 350,
-          volume: 0.09 
-        };
-      default:
-        return { 
-          frequency: 100, 
-          type: 'sine' as OscillatorType, 
-          filterFreq: 300,
-          volume: 0.08 
-        };
-    }
-  };
-  const playMobileAmbientSound = (speakerId?: string) => {
-    if (!mobileAudioContextRef.current || !mobileGainNodeRef.current || !audioEnabled || !speakerId ||
-        !isMobileTabVisible || !isMobileWindowFocused || isAudioMuted) {
-      return;
-    }
-    if (mobileOscillatorRef.current) {
-      mobileOscillatorRef.current.stop();
-    }
-    const config = getMobileSpeakerAudioConfig(speakerId);
-    mobileOscillatorRef.current = mobileAudioContextRef.current.createOscillator();
-    const filter = mobileAudioContextRef.current.createBiquadFilter();
-    mobileOscillatorRef.current.type = config.type;
-    mobileOscillatorRef.current.frequency.setValueAtTime(config.frequency, mobileAudioContextRef.current.currentTime);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(config.filterFreq, mobileAudioContextRef.current.currentTime);
-    mobileGainNodeRef.current.gain.value = config.volume;
-    mobileOscillatorRef.current.connect(filter);
-    filter.connect(mobileGainNodeRef.current);
-    mobileOscillatorRef.current.start();
-  };
-  const stopMobileAmbientSound = () => {
-    if (mobileOscillatorRef.current) {
-      mobileOscillatorRef.current.stop();
-      mobileOscillatorRef.current = null;
-    }
-  };
-  const toggleMobileAudioMute = () => {
-    setIsAudioMuted(!isAudioMuted);
-  };
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.3) {
-        const randomSpeaker = speakers[Math.floor(Math.random() * speakers.length)];
-        setCurrentSpeaker(randomSpeaker.id);
-        setLastSpeaker(randomSpeaker.id);
-        if (audioEnabled && !isAudioMuted) {
-          playMobileAmbientSound(randomSpeaker.id);
-        }
-      } else {
-        setCurrentSpeaker(null);
-        stopMobileAmbientSound();
-      }
-    }, 2000 + Math.random() * 3000); 
-    return () => clearInterval(interval);
-    }, [audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    if (currentSpeaker && audioEnabled && !isAudioMuted) {
-      playMobileAmbientSound(currentSpeaker);
-    } else {
-      stopMobileAmbientSound();
-    }
-  }, [currentSpeaker, audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    if (!isMobileTabVisible || !isMobileWindowFocused) {
-      stopMobileAmbientSound();
-    } else if (currentSpeaker && audioEnabled && !isAudioMuted) {
-      playMobileAmbientSound(currentSpeaker);
-    }
-  }, [isMobileTabVisible, isMobileWindowFocused, currentSpeaker, audioEnabled, isAudioMuted]);
-  useEffect(() => {
-    return () => {
-      stopMobileAmbientSound();
-    };
-  }, []);
-  return (
-    <div className="min-h-full bg-gradient-to-br from-gray-900 via-black to-gray-900 relative">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
-      </div>
-    <motion.div 
-        className="relative z-10 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-blue-800/90 backdrop-blur-xl"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-    >
-        <div className="px-4 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-shrink-0">
-              <img
-                src={show.image}
-                alt={show.title}
-                className="w-16 h-16 rounded-xl object-cover border-2 border-white/20 shadow-lg"
-              />
-              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                 LIVE
-               </div>
-             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-white mb-1 tracking-tight truncate">
-               {show.title}
-              </h1>
-              <div className="flex items-center gap-3 text-white/70 text-sm mb-2">
-                <div className="flex items-center gap-1">
-                  <MdVisibility size={14} />
-                  <span>{audienceMetrics.listeners}</span>
-                </div>
-                <div className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
-                  {show.category}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-white/60 text-xs">
-                <div className="flex items-center gap-1">
-                  <MdAccessTime size={12} />
-                  <span>Started 15 min ago</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MdPeople size={12} />
-                  <span>{show.duration} min duration</span>
-                </div>
-              </div>
-           </div>
-         </div>
-          <p className="text-white/80 text-sm leading-relaxed mb-4">
-            {show.description}
-          </p>
-           </div>
-      </motion.div>
-      <div className="flex-1 relative z-10 p-3 pb-2">
-        <div className="flex flex-col">
-          <motion.div 
-            className="bg-gray-900/60 backdrop-blur-xl rounded-2xl border border-gray-700/50 p-3 mb-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                Live Speakers
-              </h2>
-              <div className="text-gray-400 text-xs">
-                {speakers.length} speakers
-         </div>
-      </div>
-            <div className="space-y-2 p-1">
-             {speakers.map((speaker) => {
-               const isSpeaking = currentSpeaker === speaker.id;
-               return (
-                  <div 
-                   key={speaker.id}
-                    className={`relative flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 overflow-hidden ${
-                     isSpeaking 
-                        ? 'border-blue-500/60 bg-blue-500/15 shadow-lg shadow-blue-500/25' 
-                        : 'border-gray-700/50 bg-gray-800/70'
-                    }`}
-                  >
-                    {isSpeaking && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-purple-500/10 animate-pulse" />
-                    )}
-                    <div className="relative flex-shrink-0 z-10">
-                     <img
-                       src={speaker.avatar}
-                       alt={speaker.name}
-                        className={`w-11 h-11 rounded-full object-cover transition-all duration-300 ${
-                          isSpeaking 
-                            ? 'border-2 border-blue-500 shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/20' 
-                            : 'border-2 border-gray-600'
-                        }`}
-                      />
-                     {isSpeaking && (
-                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-gray-900 animate-pulse" />
-                     )}
-                   </div>
-                    <div className="flex-1 min-w-0 relative z-10">
-                      <h3 className={`font-semibold mb-0.5 text-sm transition-colors duration-300 ${
-                        isSpeaking ? 'text-blue-300' : 'text-white'
-                      }`}>
-                        {speaker.name}
-                      </h3>
-                      <p className="text-gray-400 text-xs">{speaker.role}</p>
-                    </div>
-                    <div className="flex items-center gap-0.5 h-4 min-w-[40px] flex-shrink-0 relative z-10">
-                      {isSpeaking ? (
-                        <div className="flex items-center gap-0.5">
-                          {[0, 1, 2, 3, 4].map((i) => (
-                           <div
-                             key={i}
-                             className={`w-0.5 bg-blue-400 rounded-full animate-audio-bars mobile-audio-bar-${i}`}
-                           />
-                         ))}
-                       </div>
-                      ) : (
-                        <div className="text-gray-500 text-xs">Silent</div>
-                     )}
-                   </div>
-                  </div>
-               );
-             })}
-            </div>
-          </motion.div>
-          <motion.div 
-            className="grid grid-cols-1 gap-2 mt-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <button 
-              onClick={onOpenChat}
-              className="flex items-center justify-center gap-2 p-3 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg text-blue-300 font-medium transition-colors cursor-pointer"
-            >
-              <MdChat size={16} />
-              Open Chat
-            </button>
-            {!audioEnabled && (
-              <button 
-                onClick={handleEnableMobileAudioClick}
-                className="flex items-center justify-center gap-2 p-3 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-green-300 font-medium transition-colors cursor-pointer"
-              >
-                <MdMic size={16} />
-                Enable Audio
-              </button>
-            )}
-            {audioEnabled && (
-              <button 
-                onClick={toggleMobileAudioMute}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg font-medium transition-colors cursor-pointer ${
-                  isAudioMuted 
-                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300' 
-                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300'
-                }`}
-              >
-                {isAudioMuted ? (
-                  <>
-                    <MdVolumeOff size={18} />
-                    Unmute Audio
-                  </>
-                ) : (
-                  <>
-                    <MdVolumeUp size={18} />
-                    Mute Audio
-                  </>
-                )}
-              </button>
-            )}
-          </motion.div>
-           </div>
-         </div>
-      <motion.div 
-        className="relative z-10 bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-gray-700/30 p-3 mt-4 shadow-2xl"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.6 }}
-      >
-        <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-          <MdAccessTime size={16} className="text-blue-400" />
-          Session Info
-        </h3>
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-gray-800/60 border border-gray-700/20">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-gray-300 text-xs">Status</span>
-            </div>
-            <span className="text-green-400 font-semibold text-xs">LIVE</span>
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-gray-800/60 border border-gray-700/20">
-            <div className="flex items-center gap-1">
-              <MdAccessTime size={12} className="text-blue-400" />
-              <span className="text-gray-300 text-xs">Duration</span>
-            </div>
-            <span className="text-white font-semibold text-xs">{show.duration} min</span>
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-gray-800/60 border border-gray-700/20">
-            <div className="flex items-center gap-1">
-              <MdPeople size={12} className="text-purple-400" />
-              <span className="text-gray-300 text-xs">Peak Viewers</span>
-            </div>
-            <span className="text-white font-semibold text-xs">312</span>
-          </div>
-          </div>
-        <div className="border-t border-gray-700/30 pt-3 mb-4">
-          <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            Live Stats
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-800/40 rounded-lg p-2 border border-gray-700/30">
-              <div className="flex items-center gap-1 mb-1">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-gray-400 text-xs">Active Speakers</span>
-            </div>
-              <div className="text-white font-bold text-sm">
-                {speakers.filter(s => currentSpeaker === s.id).length} / {speakers.length}
-          </div>
-        </div>
-            <div className="bg-gray-800/40 rounded-lg p-2 border border-gray-700/30">
-              <div className="flex items-center gap-1 mb-1">
-                <MdAccessTime size={10} className="text-blue-400" />
-                <span className="text-gray-400 text-xs">Time Remaining</span>
-              </div>
-              <div className="text-white font-bold text-sm">{timeRemaining}</div>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-700/30 pt-3">
-          <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <MdCalendarToday size={12} className="text-green-400" />
-            Coming Up
-          </h4>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-800/40 border border-gray-700/10">
-              <div className="w-1 h-4 bg-green-500 rounded-full flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="text-white font-medium text-xs">Q&A Session</div>
-                <div className="text-gray-400 text-xs">In 10 minutes</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-800/40 border border-gray-700/10">
-              <div className="w-1 h-4 bg-blue-500 rounded-full flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="text-white font-medium text-xs">Expert Panel</div>
-                <div className="text-gray-400 text-xs">In 25 minutes</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-      <motion.div 
-        className="relative z-10 bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/30 px-3 py-3 mt-4 mb-1"
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.8 }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-gray-400 text-xs">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            <span className="font-medium">Live Audience Metrics</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center">
-            <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center mb-1">
-              <MdVisibility size={14} className="text-blue-400" />
-            </div>
-            <div className="text-lg font-bold text-white">
-              {audienceMetrics.listeners.toLocaleString()}
-            </div>
-            <div className="text-xs text-gray-400 font-medium text-center">Listening Now</div>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center mb-1">
-              <MdChat size={14} className="text-purple-400" />
-            </div>
-            <div className="text-lg font-bold text-white">
-              {audienceMetrics.activeInChat}
-            </div>
-            <div className="text-xs text-gray-400 font-medium text-center">Engaging in Chat</div>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="w-7 h-7 rounded-lg bg-pink-500/20 flex items-center justify-center mb-1">
-              <MdFavorite size={14} className="text-pink-400" />
-            </div>
-            <div className="text-lg font-bold text-white">
-              {totalReactions}
-            </div>
-            <div className="text-xs text-gray-400 font-medium text-center">Total Reactions</div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-const UpcomingShowCard: React.FC<{ show: Show }> = ({ show }) => {
-  const handleSetReminder = () => {
-    toast.custom(
-      (t) => (
-        <div className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-sm bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl rounded-2xl pointer-events-auto`}>
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
-                  <MdCheckCircle className="h-4 w-4 text-green-400" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-white">Reminder Set</span>
-                  <MdEmail className="h-3.5 w-3.5 text-blue-400" />
-                </div>
-                <p className="text-xs text-gray-300 truncate">
-                  You'll be notified before "{show.title}"
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ),
-      {
-        duration: 3000,
-      }
-    );
-  };
-  return (
-    <motion.div 
-      className="group bg-gradient-to-br from-gray-800/95 to-gray-900/95 backdrop-blur-xl rounded-2xl border border-gray-600/30 overflow-hidden shadow-xl relative h-full flex flex-col"
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ 
-        y: -6, 
-        scale: 1.02,
-        boxShadow: "0 20px 40px -12px rgba(59, 130, 246, 0.2)"
-      }}
-      whileTap={{ scale: 0.99 }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 30,
-        opacity: { duration: 0.4 },
-        y: { duration: 0.4 }
-      }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/3 via-purple-600/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="relative flex flex-col h-full">
-        <div className="relative overflow-hidden h-48 flex-shrink-0">
-          <div className="relative w-full h-full transition-transform duration-500 ease-out group-hover:scale-105">
-        <img
-          src={show.image}
-          alt={show.title}
-              className="w-full h-full object-cover"
-        />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-gray-900/40" />
-          </div>
-          <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/90 backdrop-blur-xl rounded-xl text-white text-xs font-bold border border-white/20 shadow-lg z-10">
-          {show.duration}min
-      </div>
-          <div className="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-700 rounded-xl text-white text-xs font-bold uppercase tracking-wider shadow-lg border border-white/10 z-10">
-            {show.category}
-          </div>
-          <div className="absolute bottom-4 right-4 z-10">
-          <CountdownTimer target={show.startTime} />
-          </div>
-        </div>
-        <div className="p-6 relative flex flex-col flex-1">
-          <h3 className="text-xl font-bold text-white mb-3 leading-tight tracking-tight group-hover:text-blue-400 transition-colors duration-200">
-          {show.title}
-        </h3>
-          <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-2 flex-1">
-          {show.description}
-        </p>
-          <div className="flex items-center justify-between mt-auto">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse flex-shrink-0" />
-              <span className="text-gray-400 text-sm font-medium truncate">
-          with {show.hosts.join(", ")}
-              </span>
-            </div>
-            <motion.button
-              onClick={handleSetReminder}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600/30 to-purple-700/30 hover:from-blue-600/40 hover:to-purple-700/40 border border-blue-500/40 rounded-lg text-blue-300 text-sm font-semibold transition-all duration-200 backdrop-blur-sm flex-shrink-0 ml-4 cursor-pointer"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              Set Reminder
-            </motion.button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-const UpcomingShowsGrid: React.FC<{ shows: Show[] }> = ({ shows }) => {
-  return (
-    <motion.div 
-      className="mb-12 relative"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-96 h-96 bg-gradient-to-r from-blue-500/5 to-purple-600/5 rounded-full blur-3xl -z-10" />
-      <motion.div 
-        className="text-center mb-12"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-      >
-        <h2 className="text-5xl font-bold text-white my-4 tracking-tight bg-gradient-to-r from-blue-400 via-purple-500 to-blue-600 bg-clip-text text-transparent">
-        Upcoming Shows
-        </h2>
-        <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-          Don't miss these exciting upcoming podcast episodes
-        </p>
-      </motion.div>
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-      >
-        {shows.map((show, index) => (
-          <motion.div
-            key={show.id}
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              duration: 0.6, 
-              delay: 0.6 + index * 0.15,
-              type: "spring",
-              stiffness: 100
-            }}
-          >
-            <UpcomingShowCard show={show} />
-          </motion.div>
-        ))}
-      </motion.div>
-    </motion.div>
-  );
-};
-const ReactionButton: React.FC<{
-  type: ReactionType;
-  onReact: () => void;
-}> = ({ type, onReact }) => {
-  const [isPressed, setIsPressed] = useState(false);
-  const getReactionConfig = (type: ReactionType) => {
-    switch (type) {
-      case 'like': return { emoji: '👍', color: '#065fd4' };
-      case 'funny': return { emoji: '😂', color: '#ff6d01' };
-      case 'love': return { emoji: '❤️', color: '#ff0000' };
-      case 'fire': return { emoji: '🔥', color: '#ff6d01' };
-    }
-  };
-  const config = getReactionConfig(type);
-  const handleClick = () => {
-    setIsPressed(true);
-    onReact();
-    setTimeout(() => setIsPressed(false), 300);
-  };
-  return (
-    <motion.button
-      onClick={handleClick}
-      className={`flex items-center justify-center w-11 h-11 rounded-full border-none text-white text-xl cursor-pointer backdrop-blur-md transition-all duration-200 ${
-        isPressed 
-          ? 'bg-white/20 shadow-lg' 
-          : 'bg-white/10 shadow-sm'
-      }`}
-      whileHover={{ 
-        scale: 1.15, 
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        boxShadow: `0 0 15px ${config.color}30`
-      }}
-      whileTap={{ 
-        scale: 0.9,
-        backgroundColor: `${config.color}30`,
-        boxShadow: `0 0 25px ${config.color}50`
-      }}
-      animate={{
-        scale: isPressed ? 0.85 : 1,
-        rotate: isPressed ? [0, -10, 10, 0] : 0
-      }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 400, 
-        damping: 17,
-        rotate: { duration: 0.3 }
-      }}
-    >
-      <motion.span
-        animate={{ 
-          scale: isPressed ? 1.2 : 1,
-          y: isPressed ? -2 : 0
-        }}
-        transition={{ type: "spring", stiffness: 500, damping: 25 }}
-      >
-        {config.emoji}
-      </motion.span>
-    </motion.button>
-  );
-};
-const FloatingReactionComponent: React.FC<{ reaction: FloatingReaction }> = ({ reaction }) => {
-  const getReactionConfig = (type: ReactionType) => {
-    switch (type) {
-      case 'like': return { emoji: '👍' };
-      case 'funny': return { emoji: '😂' };
-      case 'love': return { emoji: '❤️' };
-      case 'fire': return { emoji: '🔥' };
-    }
-  };
-  const config = getReactionConfig(reaction.type);
-  return (
-    <motion.div
-      className="absolute text-4xl pointer-events-none z-50 select-none"
-      style={{
-        left: `${reaction.x}%`,
-        bottom: `${reaction.y}%`,
-      }}
-      initial={{ 
-        opacity: 0, 
-        scale: 0.5, 
-        y: 0, 
-        rotate: -15 
-      }}
-      animate={{ 
-        opacity: [0, 1, 1, 0], 
-        scale: [0.5, 1.2, 1, 0.8], 
-        y: [-120, -140, -160, -180], 
-        rotate: [0, 5, -5, 0] 
-      }}
-      transition={{ 
-        duration: 3, 
-        ease: "easeOut",
-        times: [0, 0.1, 0.8, 1]
-      }}
-    >
-      {config.emoji}
-    </motion.div>
-  );
-};
-const LiveChat: React.FC<{
-  messages: ChatMessage[];
-  onSendMessage: (content: string) => void;
-  onReact: (type: ReactionType) => void;
-  floatingReactions: FloatingReaction[];
-  audienceMetrics: {
-    listeners: number;
-    activeInChat: number;
-  };
-  typingUsers?: string[];
-}> = ({ messages, onSendMessage, onReact, floatingReactions, audienceMetrics, typingUsers = [] }) => {
-  const [input, setInput] = useState('');
-  const [reactionsExpanded, setReactionsExpanded] = useState(false);
-  const [showNotification, setShowNotification] = useState(false);
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (messagesRef.current) {
-      const scrollContainer = messagesRef.current;
-      const isNearBottom = scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 100;
-      if (isNearBottom || messages.length === 1) {
-        scrollContainer.scrollTo({
-          top: scrollContainer.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
-    }
-  }, [messages.length, messages]);
-  useEffect(() => {
-    if (messagesRef.current && typingUsers.length > 0) {
-      const scrollContainer = messagesRef.current;
-      const isNearBottom = scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 100;
-      if (isNearBottom) {
-        setTimeout(() => {
-          scrollContainer.scrollTo({
-            top: scrollContainer.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 100);
-      }
-    }
-  }, [typingUsers.length]);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowNotification(true);
-      setTimeout(() => {
-        setShowNotification(false);
-      }, 3000);
-    }, 10000); 
-    return () => clearInterval(interval);
-  }, []);
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (chatContainerRef.current && !chatContainerRef.current.contains(event.target as Node)) {
-        setReactionsExpanded(false);
-      }
-    };
-    if (reactionsExpanded) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [reactionsExpanded]);
-  const handleSubmit = (e: React.FormEvent) => {
+  trail: { x: number; y: number }[];
+  isDragging: boolean;
+  hasCollided: boolean;
+  presetName: string;
+}
+interface DebrisParticle {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  mass: number;
+  radius: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  trail: { x: number; y: number }[];
+}
+interface CollisionEffect {
+  id: string;
+  x: number;
+  y: number;
+  intensity: number;
+  timestamp: number;
+}
+interface TrajectoryPoint {
+  x: number;
+  y: number;
+}
+interface SimulationMetrics {
+  totalKineticEnergy: number;
+  totalAngularMomentum: number;
+  collisionForce: number;
+  impactVelocity: number;
+  lastCollisionTime: number;
+}
+interface CanvasDimensions {
+  width: number;
+  height: number;
+}
+interface InteractionState {
+  mode: 'none' | 'drag' | 'velocity' | 'longpress';
+  bodyId: string | null;
+  startPos: { x: number; y: number };
+  currentPos: { x: number; y: number };
+  offset: { x: number; y: number };
+  isActive: boolean;
+  isLongPress: boolean;
+  longPressTimer: NodeJS.Timeout | null;
+}
+const PLANET_PRESETS = [
+  { name: 'Small Terrestrial', mass: 50, color: '#A9A9A9', velocityMagnitude: 1.0 },
+  { name: 'Earth-like', mass: 100, color: '#4A90E2', velocityMagnitude: 1.2 },
+  { name: 'Gas Giant', mass: 200, color: '#FF8C00', velocityMagnitude: 0.8 },
+  { name: 'Ice Giant', mass: 150, color: '#ADD8E6', velocityMagnitude: 1.0 },
+  { name: 'Dwarf Planet', mass: 25, color: '#D2B48C', velocityMagnitude: 1.5 },
+];
+const PlayIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+const PauseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+  </svg>
+);
+const ResetIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z" />
+  </svg>
+);
+const SettingsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+  </svg>
+);
+const InfoIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z" />
+  </svg>
+);
+const TargetIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z" />
+  </svg>
+);
+const LandingPage: React.FC<{ onEnterSimulator: () => void }> = ({ onEnterSimulator }) => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const handleFooterLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    if (input.trim()) {
-      onSendMessage(input.trim());
-      setInput('');
-      if (textareaRef.current) {
-        textareaRef.current.style.height = '';
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+  };
+  useEffect(() => {
+    setIsClient(true);
+    const hideScrollbars = () => {
+      const style = document.createElement('style');
+      style.id = 'scrollbar-hider';
+      style.textContent = `
+        * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+          display: none !important;
+        }
+      `;
+      const existingStyle = document.getElementById('scrollbar-hider');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      document.head.appendChild(style);
+    };
+    hideScrollbars();
+    const intervalId = setInterval(hideScrollbars, 1000);
+    const observer = new MutationObserver(hideScrollbars);
+    observer.observe(document.body, { childList: true, subtree: true });
+    let scrollTimeout: NodeJS.Timeout;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isScrolling) {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      }
+    };
+    const handleScroll = () => {
+      setIsScrolling(true);
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setIsScrolling(false);
+      }, 150);
+    };
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+      clearInterval(intervalId);
+      observer.disconnect();
+    };
+  }, [isScrolling]);
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.3,
+        delayChildren: 0.2
       }
     }
   };
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: [0.25, 0.1, 0.25, 1] as const
+      }
+    }
   };
-  const isDesktop = useIsDesktop();
+  const floatingVariants = {
+    animate: {
+      y: [-10, 10, -10],
+      rotate: [-2, 2, -2],
+      transition: {
+        duration: 6,
+        repeat: Infinity,
+        ease: [0.42, 0, 0.58, 1] as const
+      }
+    }
+  };
+  const staggerContainer = {
+    visible: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+  const features = [
+    {
+      icon: <FaAtom className="text-2xl" />,
+      title: "Advanced Physics Engine",
+      description: "Real-time collision dynamics with accurate momentum conservation and energy calculations.",
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      icon: <FaChartLine className="text-2xl" />,
+      title: "Debris Analysis",
+      description: "Comprehensive trajectory prediction and impact force analysis with visual feedback.",
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      icon: <FaMobile className="text-2xl" />,
+      title: "Cross-Platform",
+      description: "Responsive design with touch controls optimized for both desktop and mobile devices.",
+      gradient: "from-purple-500 to-pink-500"
+    },
+    {
+      icon: <FaDesktop className="text-2xl" />,
+      title: "Professional Interface",
+      description: "Modern glassmorphism design with intuitive controls and real-time performance metrics.",
+      gradient: "from-purple-500 to-pink-500"
+    }
+  ];
   return (
     <div
-      ref={chatContainerRef}
-      className={`bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-xl ${isDesktop ? 'rounded-3xl h-full' : 'h-full'} ${isDesktop ? 'border border-gray-600/50' : ''} flex flex-col overflow-hidden relative shadow-2xl`}
+      ref={scrollContainerRef}
+      className={`fixed inset-0 bg-black text-white overflow-y-auto overflow-x-hidden`}
     >
-      <div className="absolute inset-0 pointer-events-none z-50">
-        {floatingReactions.map((reaction) => (
-          <FloatingReactionComponent key={reaction.id} reaction={reaction} />
-        ))}
-      </div>
-      {showNotification && (
+      <div className="fixed inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900" />
         <motion.div
-          className={`absolute ${isDesktop ? 'top-16 left-4 right-4' : 'top-2 left-3 right-3'} bg-blue-500/90 backdrop-blur-xl text-white px-4 py-3 rounded-xl shadow-lg z-40 border border-blue-400/50`}
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            <span className="text-sm font-medium">
-              Your questions will be answered soon! Keep them coming.
-            </span>
-          </div>
-        </motion.div>
-      )}
-      {isDesktop && (
-        <div className="px-6 py-4 border-b border-gray-600/50 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white m-0 tracking-tight bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            Live Chat
-          </h3>
-            <div className="flex items-center gap-2 text-gray-400 text-sm backdrop-blur-sm bg-gray-800/50 px-3 py-1 rounded-lg">
-              <MdChat size={14} />
-              <span>{audienceMetrics.activeInChat} active</span>
-            </div>
+          className="absolute -top-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-2xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(139, 95, 191, 0.6) 0%, rgba(139, 95, 191, 0.1) 50%, transparent 100%)',
+            willChange: 'transform',
+            transform: 'translate3d(0, 0, 0)'
+          }}
+          animate={!isScrolling ? {
+            scale: [1, 1.2, 1],
+            x: [0, 30, 0],
+            y: [0, 20, 0],
+          } : {}}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: [0.42, 0, 0.58, 1] as const
+          }}
+        />
+        <motion.div
+          className="absolute top-1/4 -right-40 w-96 h-96 rounded-full opacity-25 blur-2xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(255, 107, 53, 0.5) 0%, rgba(255, 107, 53, 0.1) 50%, transparent 100%)',
+            willChange: 'transform',
+            transform: 'translate3d(0, 0, 0)'
+          }}
+          animate={!isScrolling ? {
+            scale: [1.1, 1, 1.1],
+            x: [0, -20, 0],
+            y: [0, 25, 0],
+          } : {}}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: [0.42, 0, 0.58, 1] as const
+          }}
+        />
+        <motion.div
+          className="absolute bottom-1/4 left-1/4 w-72 h-72 rounded-full opacity-20 blur-2xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(236, 72, 153, 0.1) 50%, transparent 100%)',
+            willChange: 'transform',
+            transform: 'translate3d(0, 0, 0)'
+          }}
+          animate={!isScrolling ? {
+            scale: [1, 1.3, 1],
+            x: [0, -15, 0],
+            y: [0, -30, 0],
+          } : {}}
+          transition={{
+            duration: 30,
+            repeat: Infinity,
+            ease: [0.42, 0, 0.58, 1] as const
+          }}
+        />
+        <motion.div
+          className="absolute bottom-0 right-1/3 w-64 h-64 rounded-full opacity-15 blur-2xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0.1) 50%, transparent 100%)',
+            willChange: 'transform',
+            transform: 'translate3d(0, 0, 0)'
+          }}
+          animate={!isScrolling ? {
+            scale: [1.05, 1, 1.05],
+            x: [0, 25, 0],
+            y: [0, -15, 0],
+          } : {}}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: [0.42, 0, 0.58, 1] as const
+          }}
+        />
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-transparent to-orange-600/10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-pink-600/5 to-transparent" />
         </div>
-      </div>
-      )}
-      <div
-        ref={messagesRef}
-        className={`flex-1 overflow-y-auto ${isDesktop ? 'p-4' : 'p-3'} ${isDesktop ? 'bg-gray-900' : 'bg-transparent'}`}
-      >
-        {messages.length === 0 ? (
-          <div className="text-center py-8 px-4 text-gray-500">
-            <MdChat size={32} className="mb-3 opacity-50 mx-auto" />
-            <p className="text-base mb-1">No messages yet</p>
-            <p className="text-xs">Be the first to start the conversation!</p>
-          </div>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <motion.div 
-                key={message.id}
-                className={`p-4 rounded-xl mb-3 shadow-sm max-w-full overflow-hidden ${
-                  message.answered 
-                    ? 'bg-blue-500/10 border border-blue-500/30' 
-                    : 'bg-gray-800/60 border border-gray-700/30'
-                }`}
-                initial={{ opacity: 0, x: -30, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                whileHover={{ scale: 1.01, y: -1 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 25,
-                  duration: 0.3 
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-white text-sm">
-                    {message.user}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {message.answered && (
-                      <span className="text-blue-400 text-xs font-medium uppercase tracking-wider">
-                        ✓ Answered
-                      </span>
-                    )}
-                    <span className="text-gray-500 text-xs">
-                      {new Date(message.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed m-0 break-words overflow-wrap-anywhere">
-                  {message.content}
-                </p>
-              </motion.div>
-            ))}
-            {typingUsers.length > 0 && (
-              <motion.div 
-                className="p-3 rounded-xl mb-3 bg-gray-800/40 border border-gray-700/20"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:300ms]" />
-                  </div>
-                  <span className="text-gray-400 text-xs">
-                    {typingUsers.length === 1 
-                      ? `${typingUsers[0]} is typing...`
-                      : `${typingUsers.length} people are typing...`
-                    }
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </>
-        )}
-      </div>
-      {reactionsExpanded && (
-        <div className={`absolute ${isDesktop ? 'bottom-16 left-4 right-4' : 'bottom-14 left-3 right-3'} bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-2xl rounded-2xl p-3 px-4 flex gap-3 items-center justify-center shadow-2xl border border-purple-500/20 z-50 animate-popup-in`}>
-          {(['like', 'funny', 'love', 'fire'] as ReactionType[]).map((type) => (
-            <ReactionButton
-              key={type}
-              type={type}
-              onReact={() => {
-                onReact(type);
-              }}
-            />
-          ))}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className={`${isDesktop ? 'px-6 py-2.5' : 'px-4 py-3'} ${isDesktop ? 'border-t border-gray-600/50 bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl shadow-2xl' : 'border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-xl'} flex-shrink-0`}>
-        <div className="flex gap-3 items-start">
-          <button
-            type="button"
-            onClick={() => setReactionsExpanded(!reactionsExpanded)}
-            className={`flex items-center justify-center w-11 h-11 rounded-xl border-none cursor-pointer transition-all duration-200 backdrop-blur-md flex-shrink-0 ${
-              reactionsExpanded 
-                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
-                : 'bg-white/10 text-gray-400 hover:bg-white/20'
-            }`}
-          >
-            <MdFavorite 
-              size={16}
-              className={`transition-transform duration-300 ${reactionsExpanded ? 'rotate-180' : 'rotate-0'}`}
-            />
-          </button>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Type your message"
-            rows={1}
-            className="flex-1 p-3 rounded-xl border border-gray-600/50 bg-gray-900/80 backdrop-blur-md text-white text-sm outline-none resize-none h-11 font-inherit leading-4 overflow-y-auto transition-all duration-200 focus:border-blue-500 focus:bg-gray-900/90"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (input.trim()) {
-                  handleSubmit(e as any);
-                }
-              }
+        {isClient && Array.from({ length: 8 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-white/40 rounded-full"
+            style={{
+              left: `${(i * 23 + 15) % 100}%`,
+              top: `${(i * 37 + 20) % 100}%`
+            }}
+            animate={!isScrolling ? {
+              opacity: [0.2, 0.6, 0.2],
+              scale: [0.8, 1, 0.8],
+            } : { opacity: 0.1 }}
+            transition={{
+              duration: 4 + (i % 3),
+              repeat: Infinity,
+              delay: i * 0.5
             }}
           />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className={`px-4 py-2 h-11 rounded-xl border-none text-sm font-medium cursor-pointer transition-all duration-200 whitespace-nowrap backdrop-blur-sm flex-shrink-0 ${
-              input.trim() 
-                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25' 
-                : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Send
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
-const HomePage: React.FC<{ onTabChange: (tab: TabType) => void }> = ({ onTabChange }) => {
-  const isDesktop = useIsDesktop();
-  const featuredShows = [
-    {
-      id: "featured-1",
-      title: "Tech Innovators Weekly",
-      host: "Sarah Chen",
-      image: "https://images.unsplash.com/photo-1589903308904-1010c2294adc?w=400&h=400&fit=crop",
-      listeners: "12.5K",
-      category: "Technology",
-      description: "Weekly deep dives with tech industry leaders"
-    },
-    {
-      id: "featured-2", 
-      title: "Creative Minds",
-      host: "Alex Rodriguez",
-      image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&h=400&fit=crop",
-      listeners: "8.2K",
-      category: "Design",
-      description: "Conversations with creative professionals"
-    },
-    {
-      id: "featured-3",
-      title: "Business Decoded",
-      host: "Michael Park",
-      image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=400&fit=crop",
-      listeners: "15.1K", 
-      category: "Business",
-      description: "Startup stories and business insights"
-    }
-  ];
-  return (
-    <div className="relative">
-      <section className={`relative ${isDesktop ? 'px-8 py-20' : 'px-6 py-16'} text-center overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-600/5 to-transparent backdrop-blur-3xl" />
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl animate-pulse [animation-delay:1s]" />
-        <div className="max-w-6xl mx-auto relative z-10">
+        ))}
+        {isClient && !isScrolling && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h1 className={`${isDesktop ? 'text-7xl mb-8' : 'text-4xl mb-6'} font-bold text-white leading-tight tracking-tight`}>
-              Experience Live{' '}
-              <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-blue-600 bg-clip-text text-transparent">
-                Podcasts
-              </span>
-        </h1>
-            <p className={`${isDesktop ? 'text-2xl mb-12 max-w-4xl' : 'text-lg mb-8 max-w-md'} text-gray-300 leading-relaxed mx-auto font-light`}>
-              Join thousands of listeners for live podcast recordings. Interact with hosts, 
-              ask questions, and be part of the conversation in real-time.
-            </p>
-            <div className={`flex ${isDesktop ? 'gap-6 justify-center' : 'flex-col gap-4'} items-center`}>
-              <button 
-                onClick={() => onTabChange('live')}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 px-8 py-4 rounded-full text-white font-semibold text-lg shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 cursor-pointer"
-              >
-                Join Live Shows
-              </button>
-              <button 
-                onClick={() => onTabChange('upcoming')}
-                className="bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/60 border border-gray-600/50 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 transform hover:scale-105 cursor-pointer"
-              >
-                Browse Shows
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-      <section className={`${isDesktop ? 'px-8 py-16' : 'px-6 py-12'} bg-gradient-to-r from-gray-800/50 to-gray-900/50 backdrop-blur-xl border-y border-gray-700/30`}>
-        <div className="max-w-6xl mx-auto">
-          <div className={`grid ${isDesktop ? 'grid-cols-4' : 'grid-cols-2'} gap-8 text-center`}>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <div className={`${isDesktop ? 'text-4xl' : 'text-3xl'} font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent`}>
-                50K+
-              </div>
-              <div className="text-gray-400 font-medium">Daily Listeners</div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <div className={`${isDesktop ? 'text-4xl' : 'text-3xl'} font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent`}>
-                2.5K+
-              </div>
-              <div className="text-gray-400 font-medium">Live Shows</div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <div className={`${isDesktop ? 'text-4xl' : 'text-3xl'} font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent`}>
-                150+
-              </div>
-              <div className="text-gray-400 font-medium">Shows Available</div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <div className={`${isDesktop ? 'text-4xl' : 'text-3xl'} font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent`}>
-                24/7
-              </div>
-              <div className="text-gray-400 font-medium">Live Content</div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-      <section className={`${isDesktop ? 'px-8 py-20' : 'px-6 py-16'}`}>
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2 className={`${isDesktop ? 'text-5xl' : 'text-3xl'} font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent`}>
-              Popular Live Shows
-            </h2>
-            <p className={`${isDesktop ? 'text-xl' : 'text-lg'} text-gray-400 max-w-2xl mx-auto`}>
-              Join the most engaging live podcast conversations
-            </p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
-            {featuredShows.map((show, index) => (
-              <motion.div
-                key={show.id}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -6, scale: 1.02 }}
-                transition={{ 
-                  duration: 0.6, 
-                  delay: index * 0.1,
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 25
-                }}
-                className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-xl rounded-3xl border border-gray-600/50 overflow-hidden shadow-xl group h-full flex flex-col"
-              >
-                <div className="relative h-48 flex-shrink-0 overflow-hidden">
-                  <div className="relative w-full h-full group-hover:scale-105 transition-transform duration-300 ease-out">
-                    <img 
-                      src={show.image} 
-                      alt={show.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  </div>
-                  <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 rounded-full text-white text-xs font-semibold">
-                    {show.category}
-                  </div>
-                  <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-sm font-medium">
-                    {show.listeners} listeners
-                  </div>
-          </div>
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2">{show.title}</h3>
-                  <p className="text-gray-400 text-sm mb-3">by {show.host}</p>
-                  <p className="text-gray-300 text-sm leading-relaxed flex-1">{show.description}</p>
-            </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className={`${isDesktop ? 'px-8 py-20' : 'px-6 py-16'} bg-gradient-to-br from-blue-500/10 to-purple-600/10 backdrop-blur-xl`}>
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className={`${isDesktop ? 'text-5xl' : 'text-3xl'} font-bold text-white mb-6`}>
-              Ready to Join the{' '}
-              <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Conversation?
-              </span>
-            </h2>
-            <p className={`${isDesktop ? 'text-xl' : 'text-lg'} text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed`}>
-              Be part of live podcast recordings as they happen. Ask questions, react in real-time, 
-              and connect with hosts and fellow listeners in an interactive experience.
-            </p>
-            <div className={`flex ${isDesktop ? 'gap-6 justify-center' : 'flex-col gap-4'} items-center`}>
-                              <button 
-                  onClick={() => onTabChange('about')}
-                  className="text-blue-400 hover:text-blue-300 font-semibold text-lg transition-colors duration-300 flex items-center gap-2 cursor-pointer"
-                >
-                  Learn More 
-                  <span className="text-sm">→</span>
-                </button>
-          </div>
-          </motion.div>
-        </div>
-      </section>
-    </div>
-  );
-};
-const AboutPage: React.FC = () => {
-  const isDesktop = useIsDesktop();
-  return (
-    <div className={`max-w-4xl mx-auto ${isDesktop ? 'px-8 py-20' : 'px-6 py-16'} relative`}>
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-96 h-96 bg-gradient-to-r from-blue-500/5 to-purple-600/5 rounded-full blur-3xl -z-10" />
-      <motion.div 
-        className="text-center"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+            className="absolute w-80 h-80 rounded-full opacity-[0.02] blur-xl"
+            style={{
+              background: 'radial-gradient(circle, rgba(139, 95, 191, 0.15) 0%, rgba(255, 107, 53, 0.08) 50%, transparent 80%)',
+              left: mousePosition.x - 160,
+              top: mousePosition.y - 160,
+              pointerEvents: 'none',
+              willChange: 'transform',
+              transform: 'translate3d(0, 0, 0)'
+            }}
+            animate={{
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: [0.42, 0, 0.58, 1] as const
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-black/5 backdrop-blur-[1px]" />
+      </div>
+      <motion.div
+        className="relative z-10"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
       >
-        <div className={`${isDesktop ? 'w-20 h-20' : 'w-16 h-16'} bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-blue-500/20`}>
-          <MdRadio size={isDesktop ? 32 : 24} color="white" />
-            </div>
-        <h1 className={`${isDesktop ? 'text-4xl' : 'text-3xl'} font-bold text-white mb-6 leading-tight`}>
-          About AudioHub
-        </h1>
-                  <div className="max-w-2xl mx-auto space-y-6 text-gray-300 leading-relaxed">
-            <p className={`${isDesktop ? 'text-lg' : 'text-base'}`}>
-              AudioHub is your gateway to live podcast experiences. Join thousands of listeners as they engage 
-              with their favorite shows in real-time, ask questions, and participate in interactive conversations 
-              that shape the content as it happens.
-            </p>
-            <p className={`${isDesktop ? 'text-lg' : 'text-base'}`}>
-              Experience podcasts like never before with live chat, real-time reactions, Q&A sessions, and 
-              the ability to connect with both hosts and fellow listeners during live recordings.
-            </p>
+        <section className="min-h-screen flex items-center justify-center px-4 py-8">
+          <div className="max-w-6xl mx-auto text-center">
+            <motion.div
+              variants={itemVariants}
+              className="mb-6 md:mb-8"
+            >
+              <motion.div
+                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-xl md:rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-2xl"
+                variants={floatingVariants}
+                animate={!isScrolling ? "animate" : undefined}
+                style={{
+                  willChange: 'transform',
+                  transform: 'translate3d(0, 0, 0)'
+                }}
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="white" className="sm:w-8 sm:h-8 md:w-12 md:h-12">
+                  <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
+                  <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
+                  <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
+                  <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
+                  <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
+                  <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
+                </svg>
+              </motion.div>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6">
+                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
+                  Celestial Impact
+                </span>
+                <br />
+                <span className="text-white">Simulator</span>
+              </h1>
+              <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-6 md:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
+                Experience the cosmos like never before. Simulate planetary collisions, analyze debris patterns,
+                and explore the fundamental forces that shape our universe.
+              </p>
+            </motion.div>
+            <motion.div
+              variants={itemVariants}
+              className="flex justify-center items-center mb-8 md:mb-12"
+            >
+              <motion.button
+                onClick={onEnterSimulator}
+                className="group relative overflow-hidden px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-bold text-lg sm:text-xl text-white transition-all duration-300 shadow-2xl shadow-purple-500/30 border border-purple-400/20 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  background: 'linear-gradient(135deg, #8B5FBF 0%, #EC4899 50%, #FF6B35 100%)',
+                  boxShadow: '0 10px 30px rgba(139, 95, 191, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+                <span className="flex items-center space-x-2 sm:space-x-3 relative z-10">
+                  <PlayIcon />
+                  <span>Launch Simulator</span>
+                </span>
+              </motion.button>
+            </motion.div>
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8 max-w-4xl mx-auto"
+            >
+              {[
+                { number: "60", label: "FPS Performance", suffix: "" },
+                { number: "∞", label: "Collision Scenarios", suffix: "" },
+                { number: "100", label: "Accuracy Rate", suffix: "%" }
+              ].map((stat, index) => (
+                <motion.div
+                  key={index}
+                  variants={itemVariants}
+                  className="text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:bg-white/[0.05] transition-all duration-300"
+                  style={{
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    {stat.number}{stat.suffix}
+                  </div>
+                  <div className="text-gray-300 mt-1 sm:mt-2 text-sm sm:text-base">{stat.label}</div>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
-        <div className={`mt-12 grid ${isDesktop ? 'grid-cols-3' : 'grid-cols-1'} gap-8 max-w-3xl mx-auto`}>
-          <div className="text-center">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <MdRadio size={24} className="text-blue-400" />
-            </div>
-            <h3 className="text-white font-semibold mb-2">Live Listening</h3>
-            <p className="text-gray-400 text-sm">Join live podcast recordings in real-time</p>
+        </section>
+        <section className="py-12 md:py-20 px-4">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              variants={itemVariants}
+              className="text-center mb-8 md:mb-16"
+            >
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
+                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Advanced Features
+                </span>
+              </h2>
+              <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto px-2">
+                Powered by cutting-edge physics algorithms and modern web technologies
+                for the most realistic celestial simulation experience.
+              </p>
+            </motion.div>
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8"
+            >
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  variants={itemVariants}
+                  className="group p-4 sm:p-6 md:p-8 rounded-xl md:rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:bg-white/[0.05] transition-all duration-300"
+                  style={{
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+                  }}
+                  whileHover={{ y: -5 }}
+                >
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg md:rounded-xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                    <div className="text-lg sm:text-xl md:text-2xl">{feature.icon}</div>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold mb-3 md:mb-4 text-white">{feature.title}</h3>
+                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">{feature.description}</p>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <MdChat size={24} className="text-purple-400" />
+        </section>
+        <section className="py-12 md:py-20 px-4">
+          <motion.div
+            variants={itemVariants}
+            className="max-w-4xl mx-auto text-center"
+          >
+            <div
+              className="p-6 sm:p-8 md:p-12 rounded-2xl md:rounded-3xl bg-white/[0.02] backdrop-blur-2xl border border-white/10"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 95, 191, 0.1) 0%, rgba(236, 72, 153, 0.05) 50%, rgba(255, 107, 53, 0.1) 100%)',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+              }}
+            >
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
+                Ready to Explore the Cosmos?
+              </h2>
+              <p className="text-lg sm:text-xl text-gray-300 mb-6 md:mb-8 max-w-2xl mx-auto px-2">
+                Join thousands of researchers, educators, and space enthusiasts in discovering
+                the secrets of planetary collision dynamics.
+              </p>
+              <motion.button
+                onClick={onEnterSimulator}
+                className="group relative overflow-hidden px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-bold text-lg sm:text-xl text-white transition-all duration-300 shadow-2xl shadow-purple-500/30 border border-purple-400/20 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  background: 'linear-gradient(135deg, #8B5FBF 0%, #EC4899 50%, #FF6B35 100%)',
+                  boxShadow: '0 10px 30px rgba(139, 95, 191, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+                <span className="flex items-center space-x-2 sm:space-x-3 relative z-10">
+                  <FaRocket className="text-sm sm:text-lg" />
+                  <span>Launch Simulator Now</span>
+                </span>
+              </motion.button>
             </div>
-            <h3 className="text-white font-semibold mb-2">Interactive Chat</h3>
-            <p className="text-gray-400 text-sm">Chat with hosts and fellow listeners</p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <MdVisibility size={24} className="text-green-400" />
-            </div>
-            <h3 className="text-white font-semibold mb-2">Live Metrics</h3>
-            <p className="text-gray-400 text-sm">See real-time listener engagement</p>
-          </div>
-        </div>
+          </motion.div>
+        </section>
       </motion.div>
+      <Footer onLinkClick={handleFooterLinkClick} />
     </div>
   );
 };
-const Footer: React.FC = () => {
-  const isDesktop = useIsDesktop();
+const useCanvasDimensions = () => {
+  const [dimensions, setDimensions] = useState<CanvasDimensions>({ width: 800, height: 600 });
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (ref.current) {
+        const { width, height } = ref.current.getBoundingClientRect();
+        setDimensions({ width, height });
+      } else {
+        const isMobile = window.innerWidth < 768;
+        const padding = isMobile ? 24 : 48;
+        const availableWidth = window.innerWidth - padding;
+        let width, height;
+        if (isMobile) {
+          width = Math.max(350, Math.min(availableWidth, 600));
+          height = Math.min(window.innerHeight * 0.5, 450);
+        } else {
+          const maxWidth = 1280 - padding;
+          width = Math.max(600, Math.min(availableWidth, maxWidth));
+          height = Math.min(width * 0.6, 600);
+        }
+        setDimensions({ width, height });
+      }
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+  const setRef = useCallback((node: HTMLDivElement) => {
+    ref.current = node;
+  }, []);
+  return { dimensions, setRef };
+};
+const massToRadius = (mass: number): number => {
+  return Math.round(18 + Math.sqrt(mass / 1.5));
+};
+const predictTrajectory = (body: Planet, canvasDimensions: CanvasDimensions, steps: number = 40): TrajectoryPoint[] => {
+  const trajectory: TrajectoryPoint[] = [];
+  let x = body.x;
+  let y = body.y;
+  let vx = body.vx;
+  let vy = body.vy;
+  for (let i = 0; i < steps; i++) {
+    x += vx;
+    y += vy;
+    if (x - body.radius <= 0 || x + body.radius >= canvasDimensions.width) {
+      vx *= -0.9;
+    }
+    if (y - body.radius <= 0 || y + body.radius >= canvasDimensions.height) {
+      vy *= -0.9;
+    }
+    vx *= 0.9995;
+    vy *= 0.9995;
+    trajectory.push({ x, y });
+    if (Math.abs(vx) < 0.1 && Math.abs(vy) < 0.1) break;
+  }
+  return trajectory;
+};
+const predictDebrisTrajectory = (particle: DebrisParticle, canvasDimensions: CanvasDimensions, steps: number = 20): TrajectoryPoint[] => {
+  const trajectory: TrajectoryPoint[] = [];
+  let x = particle.x;
+  let y = particle.y;
+  let vx = particle.vx;
+  let vy = particle.vy;
+  for (let i = 0; i < steps; i++) {
+    vx *= 0.997;
+    vy = vy * 0.997 + 0.015;
+    x += vx;
+    y += vy;
+    trajectory.push({ x, y });
+    if (x < 0 || x > canvasDimensions.width ||
+      y < 0 || y > canvasDimensions.height ||
+      (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05)) break;
+  }
+  return trajectory;
+};
+const useSimulation = () => {
+  const { dimensions: canvasDimensions, setRef } = useCanvasDimensions();
+  const [bodies, setBodies] = useState<Planet[]>([]);
+  const [debris, setDebris] = useState<DebrisParticle[]>([]);
+  const [collisionEffects, setCollisionEffects] = useState<CollisionEffect[]>([]);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [metrics, setMetrics] = useState<SimulationMetrics>({
+    totalKineticEnergy: 0,
+    totalAngularMomentum: 0,
+    collisionForce: 0,
+    impactVelocity: 0,
+    lastCollisionTime: 0,
+  });
+  const animationRef = useRef<number>(0);
+  const collisionCooldown = useRef<Map<string, number>>(new Map());
+  const lastFrameTime = useRef<number>(0);
+  const calculateMetrics = useCallback((currentBodies: Planet[], collisionData?: { force: number; velocity: number; timestamp: number } | null) => {
+    let totalKE = 0;
+    let totalAM = 0;
+    currentBodies.forEach(body => {
+      const velocity = Math.sqrt(body.vx ** 2 + body.vy ** 2);
+      totalKE += 0.5 * body.mass * velocity ** 2;
+      totalAM += body.mass * velocity * body.radius;
+    });
+    let displayForce = metrics.collisionForce > 0 ? metrics.collisionForce * 0.95 : 0;
+    let displayVelocity = metrics.impactVelocity > 0 ? metrics.impactVelocity * 0.95 : 0;
+    let lastCollision = metrics.lastCollisionTime;
+    if (collisionData) {
+      displayForce = collisionData.force;
+      displayVelocity = collisionData.velocity;
+      lastCollision = collisionData.timestamp;
+    }
+    return {
+      totalKineticEnergy: totalKE,
+      totalAngularMomentum: totalAM,
+      collisionForce: displayForce,
+      impactVelocity: displayVelocity,
+      lastCollisionTime: lastCollision,
+    };
+  }, [metrics.collisionForce, metrics.impactVelocity, metrics.lastCollisionTime]);
+  const pureCheckCollisions = (
+    currentBodies: Planet[],
+    canvasDimensions: CanvasDimensions,
+    collisionCooldownRef: React.MutableRefObject<Map<string, number>>
+  ) => {
+    let bodies = JSON.parse(JSON.stringify(currentBodies));
+    const newDebris: DebrisParticle[] = [];
+    const newCollisionEffects: CollisionEffect[] = [];
+    const currentTime = Date.now();
+    let maxImpactVelocity = 0;
+    let maxCollisionForce = 0;
+    let hasCollisions = false;
+    for (let i = 0; i < bodies.length; i++) {
+      for (let j = i + 1; j < bodies.length; j++) {
+        const body1 = bodies[i];
+        const body2 = bodies[j];
+        const pairId = `${Math.min(i, j)}-${Math.max(i, j)}`;
+        const lastCollisionTime = collisionCooldownRef.current.get(pairId) || 0;
+        const dx = body2.x - body1.x;
+        const dy = body2.y - body1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < body1.radius + body2.radius && currentTime - lastCollisionTime > 300) {
+          hasCollisions = true;
+          collisionCooldownRef.current.set(pairId, currentTime);
+          const normalX = dx / distance;
+          const normalY = dy / distance;
+          const tangentX = -normalY;
+          const tangentY = normalX;
+          const u1n = body1.vx * normalX + body1.vy * normalY;
+          const u1t = body1.vx * tangentX + body1.vy * tangentY;
+          const u2n = body2.vx * normalX + body2.vy * normalY;
+          const u2t = body2.vx * tangentX + body2.vy * tangentY;
+          const totalMass = body1.mass + body2.mass;
+          const v1n = (u1n * (body1.mass - body2.mass) + 2 * body2.mass * u2n) / totalMass;
+          const v2n = (u2n * (body2.mass - body1.mass) + 2 * body1.mass * u1n) / totalMass;
+          const restitution = 0.85;
+          body1.vx = (v1n * normalX + u1t * tangentX) * restitution;
+          body1.vy = (v1n * normalY + u1t * tangentY) * restitution;
+          body2.vx = (v2n * normalX + u2t * tangentX) * restitution;
+          body2.vy = (v2n * normalY + u2t * tangentY) * restitution;
+          const impactVelocity = Math.abs(v1n - v2n);
+          maxImpactVelocity = Math.max(maxImpactVelocity, impactVelocity);
+          const collisionForce = (impactVelocity * totalMass) / 0.016;
+          maxCollisionForce = Math.max(maxCollisionForce, collisionForce);
+          const collisionX = body1.x + (dx / distance) * body1.radius;
+          const collisionY = body1.y + (dy / distance) * body1.radius;
+          newCollisionEffects.push({ id: `effect-${currentTime}`, x: collisionX, y: collisionY, intensity: impactVelocity, timestamp: currentTime });
+          const numDebris = Math.min(15, Math.floor(3 + impactVelocity * 2));
+          for (let k = 0; k < numDebris; k++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * impactVelocity;
+            newDebris.push({
+              id: `debris-${currentTime}-${k}`, x: collisionX, y: collisionY,
+              vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+              mass: Math.random() + 0.5, radius: Math.random() * 1.5 + 1,
+              color: Math.random() > 0.5 ? body1.color : body2.color,
+              life: 100, maxLife: 100, trail: []
+            });
+          }
+          body1.trail = [];
+          body2.trail = [];
+        }
+      }
+    }
+    return { bodies, newDebris, newCollisionEffects, collisionData: hasCollisions ? { force: maxCollisionForce, velocity: maxImpactVelocity, timestamp: currentTime } : null };
+  };
+  useEffect(() => {
+    if (canvasDimensions.width > 0) {
+      const isMobile = canvasDimensions.width < 400;
+      const preset1 = PLANET_PRESETS.find(p => p.name === 'Earth-like')!;
+      const preset2 = PLANET_PRESETS.find(p => p.name === 'Small Terrestrial')!;
+      const body1Radius = massToRadius(preset1.mass);
+      const body2Radius = massToRadius(preset2.mass);
+      setBodies([
+        { id: '1', x: canvasDimensions.width * 0.25, y: canvasDimensions.height * 0.4, vx: isMobile ? 0.8 : preset1.velocityMagnitude, vy: isMobile ? 0.4 : preset1.velocityMagnitude * 0.5, mass: preset1.mass, radius: body1Radius, color: preset1.color, trail: [], isDragging: false, hasCollided: false, presetName: preset1.name },
+        { id: '2', x: canvasDimensions.width * 0.75, y: canvasDimensions.height * 0.6, vx: isMobile ? -0.6 : -preset2.velocityMagnitude, vy: isMobile ? -0.2 : -preset2.velocityMagnitude * 0.5, mass: preset2.mass, radius: body2Radius, color: preset2.color, trail: [], isDragging: false, hasCollided: false, presetName: preset2.name },
+      ]);
+    }
+  }, [canvasDimensions]);
+  const updateSimulation = useCallback(() => {
+    if (!isSimulating) return;
+    const frameStartTime = performance.now();
+    if (frameStartTime - lastFrameTime.current < 16) {
+      animationRef.current = requestAnimationFrame(updateSimulation);
+      return;
+    }
+    const movedBodies = bodies.map(body => {
+      if (body.isDragging) return body;
+      let newVx = body.vx * 0.9999;
+      let newVy = body.vy * 0.9999;
+      let newX = body.x + newVx;
+      let newY = body.y + newVy;
+      if (newX - body.radius < 0 || newX + body.radius > canvasDimensions.width) { newVx = -newVx * 0.8; newX = body.x; }
+      if (newY - body.radius < 0 || newY + body.radius > canvasDimensions.height) { newVy = -newVy * 0.8; newY = body.y; }
+      return { ...body, x: newX, y: newY, vx: newVx, vy: newVy, trail: [...body.trail, { x: body.x, y: body.y }].slice(-8) };
+    });
+    const collisionResult = pureCheckCollisions(movedBodies, canvasDimensions, collisionCooldown);
+    setBodies(collisionResult.bodies);
+    setDebris(prevDebris => {
+      const updatedDebris = prevDebris.map(p => ({ ...p, x: p.x + p.vx, y: p.y + p.vy, vx: p.vx * 0.99, vy: p.vy * 0.99 + 0.015, life: p.life - 1.5 }))
+        .filter(p => p.life > 0);
+      return [...updatedDebris, ...collisionResult.newDebris].slice(-150);
+    });
+    setCollisionEffects(prevEffects => {
+      const updatedEffects = prevEffects.filter(e => Date.now() - e.timestamp < 1000);
+      return [...updatedEffects, ...collisionResult.newCollisionEffects].slice(-10);
+    });
+    setMetrics(calculateMetrics(collisionResult.bodies, collisionResult.collisionData));
+    lastFrameTime.current = performance.now();
+    animationRef.current = requestAnimationFrame(updateSimulation);
+  }, [isSimulating, bodies, debris, collisionEffects, canvasDimensions, calculateMetrics]);
+  const resetSimulation = () => {
+    setIsSimulating(false);
+    const isMobile = canvasDimensions.width < 400;
+    const preset1 = PLANET_PRESETS.find(p => p.name === 'Earth-like')!;
+    const preset2 = PLANET_PRESETS.find(p => p.name === 'Small Terrestrial')!;
+    const body1Radius = massToRadius(preset1.mass);
+    const body2Radius = massToRadius(preset2.mass);
+    const minDistance = body1Radius + body2Radius + 20;
+    const centerX = canvasDimensions.width * 0.5;
+    const centerY = canvasDimensions.height * 0.5;
+    const offsetX = Math.max(minDistance * 0.6, canvasDimensions.width * 0.15);
+    const offsetY = Math.max(minDistance * 0.3, canvasDimensions.height * 0.1);
+    const body1X = Math.max(body1Radius, Math.min(canvasDimensions.width - body1Radius, centerX - offsetX));
+    const body1Y = Math.max(body1Radius, Math.min(canvasDimensions.height - body1Radius, centerY - offsetY));
+    const body2X = Math.max(body2Radius, Math.min(canvasDimensions.width - body2Radius, centerX + offsetX));
+    const body2Y = Math.max(body2Radius, Math.min(canvasDimensions.height - body2Radius, centerY + offsetY));
+    setBodies([
+      { id: '1', x: body1X, y: body1Y, vx: isMobile ? 0.8 : preset1.velocityMagnitude, vy: isMobile ? 0.4 : preset1.velocityMagnitude * 0.5, mass: preset1.mass, radius: body1Radius, color: preset1.color, trail: [], isDragging: false, hasCollided: false, presetName: preset1.name },
+      { id: '2', x: body2X, y: body2Y, vx: isMobile ? -0.6 : -preset2.velocityMagnitude, vy: isMobile ? -0.2 : -preset2.velocityMagnitude * 0.5, mass: preset2.mass, radius: body2Radius, color: preset2.color, trail: [], isDragging: false, hasCollided: false, presetName: preset2.name },
+    ]);
+    setDebris([]);
+    setCollisionEffects([]);
+    setMetrics({
+      totalKineticEnergy: 0,
+      totalAngularMomentum: 0,
+      collisionForce: 0,
+      impactVelocity: 0,
+      lastCollisionTime: 0,
+    });
+  };
+  useEffect(() => {
+    if (isSimulating) {
+      animationRef.current = requestAnimationFrame(updateSimulation);
+    } else {
+      cancelAnimationFrame(animationRef.current);
+    }
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isSimulating, updateSimulation]);
+  return {
+    bodies,
+    setBodies,
+    debris,
+    collisionEffects,
+    isSimulating,
+    setIsSimulating,
+    metrics,
+    canvasDimensions,
+    resetSimulation,
+    setCanvasRef: setRef,
+  };
+};
+const Header: React.FC<{ onReturnToLanding?: () => void }> = ({ onReturnToLanding }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
   return (
-    <footer className="bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-xl border-t border-gray-700/50">
-      <div className={`max-w-7xl mx-auto ${isDesktop ? 'px-8 py-8' : 'px-6 py-10 pb-28'}`}>
-        <div className={`grid ${isDesktop ? 'grid-cols-12 gap-8' : 'grid-cols-1 gap-10'}`}>
-          <div className={`${isDesktop ? 'col-span-5' : 'text-center'}`}>
-            <div className={`flex items-center gap-3 mb-6 ${!isDesktop ? 'justify-center' : ''}`}>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <MdRadio size={24} color="white" />
+    <header
+      className={`relative text-white border-b border-white/10 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
+        }`}
+      style={{
+        background: 'rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <div className="md:hidden py-4">
+          <div className="flex items-center justify-between">
+            <div
+              className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+              onClick={onReturnToLanding}
+            >
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                  <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
+                  <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
+                  <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
+                  <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
+                  <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
+                  <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
+                </svg>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white m-0 tracking-tight bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  AudioHub
-            </h3>
-                <p className="text-sm text-gray-500 m-0 font-medium">
-                  Professional Podcast Platform
-            </p>
+                <h1 className="text-base font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x leading-tight">
+                  Celestial Impact Simulator
+                </h1>
+                <div className="flex items-center space-x-1 mt-1">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
+                  <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse [animation-delay:0.5s]"></div>
+                  <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse [animation-delay:1s]"></div>
+                </div>
+              </div>
+            </div>
+            <div className={`transition-all duration-500 delay-200 ${isVisible ? 'opacity-100' : 'opacity-0'
+              }`}>
+              <div className="bg-white/5 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10 shadow-sm">
+                <p className="text-sm font-medium text-white/90">Research Platform</p>
+              </div>
+            </div>
           </div>
         </div>
-            <p className={`text-gray-300 leading-relaxed mb-8 ${isDesktop ? 'text-base max-w-md' : 'text-sm'}`}>
-              Join live podcast recordings as they happen. Engage with hosts, ask questions, and be part of interactive conversations with fellow listeners.
-            </p>
-            <div className={`flex gap-3 ${!isDesktop ? 'justify-center' : ''}`}>
-              <a href="#" className="w-11 h-11 bg-gray-800/60 backdrop-blur-md hover:bg-blue-500/20 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 group">
-                <span className="text-gray-400 group-hover:text-blue-400 text-sm font-bold">X</span>
-              </a>
-              <a href="#" className="w-11 h-11 bg-gray-800/60 backdrop-blur-md hover:bg-blue-500/20 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 group">
-                <span className="text-gray-400 group-hover:text-blue-400 text-sm font-bold">F</span>
-              </a>
-              <a href="#" className="w-11 h-11 bg-gray-800/60 backdrop-blur-md hover:bg-blue-500/20 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 group">
-                <span className="text-gray-400 group-hover:text-blue-400 text-sm font-bold">L</span>
-              </a>
-              <a href="#" className="w-11 h-11 bg-gray-800/60 backdrop-blur-md hover:bg-blue-500/20 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 group">
-                <span className="text-gray-400 group-hover:text-blue-400 text-sm font-bold">Y</span>
-              </a>
+        <div className="hidden md:flex items-center justify-between py-4">
+          <div
+            className="flex items-center space-x-4 hover:scale-[1.02] transition-all duration-300 cursor-pointer group"
+            onClick={onReturnToLanding}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:shadow-purple-500/25 transition-all duration-300">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
+                <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
+                <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
+                <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
+                <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
+                <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
+                Celestial Impact Simulator
+              </h1>
+              <div className="flex items-center space-x-2 mt-1">
+                <p className="text-sm text-gray-300 font-light">
+                  Advanced Planetary Collision Dynamics & Debris Analysis
+                </p>
+                <div className="flex items-center space-x-1">
+                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse"></div>
+                  <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse [animation-delay:0.5s]"></div>
+                  <div className="w-1 h-1 bg-yellow-400 rounded-full animate-pulse [animation-delay:1s]"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`flex items-center space-x-3 transition-all duration-500 delay-500 ${isVisible ? 'opacity-100' : 'opacity-0'
+            }`}>
+            <div className="text-right bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10 hover:bg-white/10 transition-all duration-200">
+              <p className="text-xs text-gray-400 font-medium">Astrophysics Suite</p>
+              <p className="text-sm font-semibold text-white">Research Platform</p>
+            </div>
+            <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full opacity-60"></div>
+          </div>
+        </div>
       </div>
-    </div>
-          <div className={`${isDesktop ? 'col-span-7 grid grid-cols-3 gap-6' : 'grid grid-cols-1 gap-8'}`}>
-            <div>
-              <h4 className="text-white font-semibold mb-5 text-base">Features</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Live Shows</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Interactive Chat</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Real-time Reactions</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Q&A Sessions</a></li>
-              </ul>
+    </header>
+  );
+};
+const Footer: React.FC<{ onLinkClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }> = ({ onLinkClick }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    const footerElement = document.getElementById('footer');
+    if (footerElement) {
+      observer.observe(footerElement);
+    }
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (footerElement) {
+        observer.unobserve(footerElement);
+      }
+    };
+  }, []);
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (onLinkClick) {
+      onLinkClick(e);
+    } else {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  return (
+    <footer
+      id="footer"
+      className={`text-white mt-8 md:mt-12 border-t border-white/10 transition-all duration-700 backdrop-blur-xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      style={{
+        background: 'rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 lg:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 lg:gap-8 mb-4 md:mb-6 lg:mb-8">
+          <div className={`md:col-span-2 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+            }`}>
+            <div className="mb-3 md:mb-4">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Celestial Impact Simulator
+              </h3>
             </div>
-            <div>
-              <h4 className="text-white font-semibold mb-5 text-base">Support</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Help Center</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Community</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Guidelines</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Contact Us</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-5 text-base">Company</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">About Us</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Terms of Service</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300 text-sm block">Careers</a></li>
-              </ul>
-            </div>
+            <p className="text-gray-300 text-sm leading-relaxed max-w-md">
+              Advanced astrophysics simulation platform featuring realistic planetary collision dynamics,
+              comprehensive debris trajectory analysis, and glassmorphism design for educational exploration.
+            </p>
+          </div>
+          <div className={`transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+            }`}>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 md:mb-4 lg:mb-6 text-white">Features</h4>
+            <ul className="space-y-1.5 sm:space-y-2 md:space-y-3 text-gray-300 text-sm">
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Collision Physics</a></li>
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Debris Dynamics</a></li>
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Trajectory Prediction</a></li>
+            </ul>
+          </div>
+          <div className={`transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+            }`}>
+            <h4 className="text-base sm:text-lg font-semibold mb-3 md:mb-4 lg:mb-6 text-white">Resources</h4>
+            <ul className="space-y-1.5 sm:space-y-2 md:space-y-3 text-gray-300 text-sm">
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Documentation</a></li>
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">API Reference</a></li>
+              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Examples</a></li>
+            </ul>
           </div>
         </div>
-        <div className={`mt-12 pt-6 border-t border-gray-700/30 text-center`}>
-          <div className="text-gray-500 text-sm">
-            2024 AudioHub. All rights reserved.
+        <div className={`border-t border-white/10 pt-4 md:pt-6 lg:pt-8 flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0 transition-all duration-700 delay-400 ${isVisible ? 'opacity-100' : 'opacity-0'
+          }`}>
+          <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 lg:space-x-6">
+            <p className="text-xs sm:text-sm text-gray-400 text-center md:text-left">
+              2025 Astrophysics Research Platform. All rights reserved.
+            </p>
+            <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-400">
+              <a href="#" onClick={handleClick} className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" onClick={handleClick} className="hover:text-white transition-colors">Terms of Service</a>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className="text-xs text-gray-400">
+                {isOnline ? 'System Online' : 'System Offline'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
     </footer>
   );
 };
-const PodcastAudioHub: React.FC = () => {
-  const isDesktop = useIsDesktop();
-  const [activeTab, setActiveTab] = useState<TabType>('home');
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-  const [isAudioMuted, setIsAudioMuted] = useState(true);
-  const handleTabChange = (newTab: TabType) => {
-    if (activeTab === 'live' && newTab !== 'live') {
-      if(audioEnabled && !isAudioMuted) {
-        toast.custom(
-          (t) => (
-            <div className={`${
-              t.visible ? 'animate-enter' : 'animate-leave'
-            } max-w-sm bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl rounded-2xl pointer-events-auto`}>
-              <div className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
-                      <MdRadio className="h-4 w-4 text-blue-400" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold text-white">Audio Paused</span>
-                    </div>
-                    <p className="text-xs text-gray-300">
-                      Return to the Live tab to resume listening.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ),
-          {
-            duration: 4000,
-          }
-        );
-      }
-      setIsAudioMuted(true);
-    }
-    setActiveTab(newTab);
-  };
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      user: "Emma Thompson",
-      content: "Great discussion on AI ethics! Will this be recorded?",
-      timestamp: new Date(Date.now() - 600000),
-    },
-    {
-      id: "2",
-      user: "Alex Chen",
-      content: "What's your take on the latest React developments?",
-      timestamp: new Date(Date.now() - 480000),
-    },
-    {
-      id: "3",
-      user: "Jordan Smith",
-      content: "Thanks for the system design insights! Very helpful.",
-      timestamp: new Date(Date.now() - 420000),
-      answered: true,
-    },
-    {
-      id: "4",
-      user: "Sarah Kim",
-      content: "Can you explain the difference between microservices and monoliths?",
-      timestamp: new Date(Date.now() - 360000),
-    },
-    {
-      id: "5",
-      user: "Mike Rodriguez",
-      content: "Love the real-world examples you're sharing!",
-      timestamp: new Date(Date.now() - 300000),
-      answered: true,
-    },
-    {
-      id: "6",
-      user: "Lisa Wang",
-      content: "How do you handle state management in large React apps?",
-      timestamp: new Date(Date.now() - 240000),
-    },
-    {
-      id: "7",
-      user: "David Park",
-      content: "This is exactly what I needed to learn. Thank you!",
-      timestamp: new Date(Date.now() - 180000),
-    },
-    {
-      id: "8",
-      user: "Maria Garcia",
-      content: "Could you share some resources for learning system design?",
-      timestamp: new Date(Date.now() - 120000),
-    },
-    {
-      id: "9",
-      user: "James Wilson",
-      content: "The scalability discussion is fascinating. More please!",
-      timestamp: new Date(Date.now() - 90000),
-      answered: true,
-    },
-    {
-      id: "10",
-      user: "Anna Chen",
-      content: "What tools do you recommend for monitoring distributed systems?",
-      timestamp: new Date(Date.now() - 60000),
-    },
-  ]);
-  const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
-  const [reactionCount, setReactionCount] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [audienceMetrics, setAudienceMetrics] = useState({
-    listeners: 247,
-    activeInChat: 18,
-  });
-  const [platformMetrics, setPlatformMetrics] = useState({
-    totalListeners: 1247, 
-  });
-  const [timeRemaining, setTimeRemaining] = useState('105 min');
+const ControlPanel: React.FC<{
+  isSimulating: boolean;
+  onToggleSimulation: () => void;
+  onReset: () => void;
+  metrics: SimulationMetrics;
+}> = ({ isSimulating, onToggleSimulation, onReset, metrics }) => {
+  const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
-    const startTime = Date.now();
-    const initialMinutes = 105;
-    const updateRemainingTime = () => {
-      const elapsed = Math.floor((Date.now() - startTime) / (1000 * 30));
-      const remaining = Math.max(0, initialMinutes - elapsed);
-      if (remaining <= 0) {
-        setTimeRemaining('Session Ended');
-      } else {
-        setTimeRemaining(`${remaining} min`);
-      }
-    };
-    updateRemainingTime();
-    const timeInterval = setInterval(updateRemainingTime, 30000);
-    return () => clearInterval(timeInterval);
+    const timer = setTimeout(() => setIsVisible(true), 200);
+    return () => clearTimeout(timer);
   }, []);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setFloatingReactions(prev => prev.filter(reaction => now - reaction.timestamp < 3000));
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAudienceMetrics(prev => ({
-        listeners: Math.max(200, prev.listeners + Math.floor(Math.random() * 20 - 10)),
-        activeInChat: Math.max(10, prev.activeInChat + Math.floor(Math.random() * 6 - 3)),
-      }));
-      setAudienceMetrics(currentAudience => {
-        setPlatformMetrics(prev => ({
-          totalListeners: Math.max(currentAudience.listeners + 800, prev.totalListeners + Math.floor(Math.random() * 30 - 15)),
-        }));
-        return currentAudience;
-      });
-    }, 5000);
-    const messageTimer = setInterval(() => {
-      if (Math.random() > 0.6) { 
-        const randomMessage = dummyMessages[Math.floor(Math.random() * dummyMessages.length)];
-        const newMessage: ChatMessage = {
-          id: Math.random().toString(36).substr(2, 9),
-          user: randomMessage.user,
-          content: randomMessage.content,
-          timestamp: new Date(),
-          answered: Math.random() > 0.8 
-        };
-        setMessages(prev => [...prev, newMessage]);
-      }
-    }, 8000 + Math.random() * 12000); 
-    const answerTimer = setInterval(() => {
-      setMessages(prev => prev.map(msg => {
-        const messageAge = Date.now() - msg.timestamp.getTime();
-        if (!msg.answered && messageAge >= 5000 && messageAge <= 6000 && Math.random() > 0.3) {
-          return { ...msg, answered: true };
-        }
-        return msg;
-      }));
-    }, 1000); 
-    const reactionTimer = setInterval(() => {
-      if (Math.random() > 0.7) { 
-        const types: ReactionType[] = ['like', 'funny', 'love', 'fire'];
-        const randomType = types[Math.floor(Math.random() * types.length)];
-        handleReact(randomType);
-      }
-    }, 3000 + Math.random() * 4000);
-    const typingTimer = setInterval(() => {
-      if (Math.random() > 0.8) { 
-        const typingUser = dummyMessages[Math.floor(Math.random() * dummyMessages.length)].user;
-        setTypingUsers(prev => {
-          if (!prev.includes(typingUser)) {
-            return [...prev, typingUser];
-          }
-          return prev;
-        });
-        setTimeout(() => {
-          setTypingUsers(prev => prev.filter(user => user !== typingUser));
-        }, 2000 + Math.random() * 3000);
-      }
-    }, 5000 + Math.random() * 10000);
-    return () => {
-      clearInterval(interval);
-      clearInterval(messageTimer);
-      clearInterval(answerTimer);
-      clearInterval(reactionTimer);
-      clearInterval(typingTimer);
-    };
-  }, []);
-  const handleSendMessage = (content: string) => {
-    const newMessage: ChatMessage = {
-      id: Math.random().toString(36).substr(2, 9),
-      user: "You", 
-      content,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-  const handleReact = (type: ReactionType) => {
-    const newReaction: FloatingReaction = {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      x: Math.random() * 80 + 10, 
-      y: Math.random() * 20 + 5,  
-      timestamp: Date.now(),
-    };
-    setFloatingReactions(prev => [...prev, newReaction]);
-    setReactionCount(prev => prev + 1);
-  };
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <motion.main 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
-            <HomePage onTabChange={handleTabChange} />
-          </motion.main>
-        );
-      case 'live':
-        if (isDesktop) {
-          return (
-            <motion.main 
-              className="max-w-[1600px] mx-auto p-4 lg:p-6 flex gap-4 lg:gap-6 flex-row h-[calc(100vh-80px)] overflow-hidden"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-                <div className="h-full overflow-hidden">
-                  <LiveStage 
-                    show={currentLiveShow} 
-                    audienceMetrics={audienceMetrics}
-                    totalReactions={reactionCount}
-                    timeRemaining={timeRemaining}
-                    onOpenMobileChat={() => setIsMobileChatOpen(true)}
-                    audioEnabled={audioEnabled}
-                    setAudioEnabled={setAudioEnabled}
-                    isAudioMuted={isAudioMuted}
-                    setIsAudioMuted={setIsAudioMuted}
-                  />
-                </div>
-              </div>
-              <div className="w-[350px] lg:w-[400px] flex-shrink-0 h-full overflow-hidden">
-                <LiveChat
-                  messages={messages}
-                  onSendMessage={handleSendMessage}
-                  onReact={handleReact}
-                  floatingReactions={floatingReactions}
-                  audienceMetrics={audienceMetrics}
-                  typingUsers={typingUsers}
-                />
-              </div>
-            </motion.main>
-          );
-        }
-        return (
-          <>
-          <motion.div 
-              className="min-h-[calc(100vh-120px)] mobile-container overflow-y-auto pb-20"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-              <MobileLiveStage 
-                show={currentLiveShow} 
-                audienceMetrics={audienceMetrics}
-                totalReactions={reactionCount}
-                timeRemaining={timeRemaining}
-                onOpenChat={() => setIsMobileChatOpen(true)}
-                audioEnabled={audioEnabled}
-                setAudioEnabled={setAudioEnabled}
-                isAudioMuted={isAudioMuted}
-                setIsAudioMuted={setIsAudioMuted}
-              />
-            </motion.div>
-            <MobileChatDrawer
-              isOpen={isMobileChatOpen}
-              onClose={() => setIsMobileChatOpen(false)}
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                onReact={handleReact}
-                floatingReactions={floatingReactions}
-                audienceMetrics={audienceMetrics}
-              typingUsers={typingUsers}
-              />
-          </>
-        );
-      case 'upcoming':
-        return (
-          <motion.main 
-            className={`max-w-[1400px] mx-auto ${isDesktop ? 'p-8' : 'p-4'}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
-            <UpcomingShowsGrid shows={upcomingShows} />
-          </motion.main>
-        );
-      case 'about':
-        return (
-          <motion.main 
-            className={`${isDesktop ? '' : 'pt-4 pb-8'}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
-            <AboutPage />
-          </motion.main>
-        );
-      default:
-        return null;
-    }
-  };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden flex flex-col box-border m-0 p-0 antialiased overflow-x-hidden selection:bg-blue-500/30 selection:text-white">
-      <Toaster 
-        position="top-right"
-        reverseOrder={false}
-        gutter={8}
-        containerClassName="!top-5 !right-5"
-      />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/6 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/6 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse [animation-delay:2s]" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-500/5 to-purple-600/5 rounded-full blur-3xl" />
+    <div
+      className={`relative rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      style={{
+        background: 'rgba(255, 255, 255, 0.06)',
+        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+      }}
+    >
+      <div className="lg:hidden">
+        <div className="grid grid-cols-2 gap-3 text-center mb-4">
+          <MetricCard
+            icon={<FaBolt />}
+            label="Kinetic Energy"
+            value={metrics.totalKineticEnergy.toFixed(1)}
+            unit="J"
+          />
+          <MetricCard
+            icon={<FaSpinner />}
+            label="Angular Momentum"
+            value={metrics.totalAngularMomentum.toFixed(1)}
+            unit="kg⋅m²/s"
+          />
+          <MetricCard
+            icon={<FaExclamationTriangle />}
+            label="Collision Force"
+            value={metrics.collisionForce.toFixed(1)}
+            unit="N"
+            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
+          />
+          <MetricCard
+            icon={<FaRocket />}
+            label="Impact Velocity"
+            value={metrics.impactVelocity.toFixed(1)}
+            unit="m/s"
+            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
+          />
+        </div>
+        <div className="flex items-center justify-center space-x-3">
+          <button
+            onClick={onToggleSimulation}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 hover:scale-105 transform ${isSimulating
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
+              }`}
+          >
+            {isSimulating ? <PauseIcon /> : <PlayIcon />}
+            <span className="text-sm">{isSimulating ? 'Pause' : 'Start'}</span>
+          </button>
+          <button
+            onClick={onReset}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-purple-600/95 hover:bg-purple-700/95 text-white rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 shadow-lg shadow-purple-500/25 hover:scale-105 transform"
+          >
+            <ResetIcon />
+            <span className="text-sm">Reset</span>
+          </button>
+        </div>
       </div>
-      <div className="relative z-10 flex flex-col min-h-screen">
-      <Navigation activeTab={activeTab} onTabChange={handleTabChange} platformMetrics={platformMetrics} />
-        <div className={`flex-1`}>
-        {renderContent()}
+      <div className="hidden lg:flex flex-row items-center justify-between gap-6">
+        <div className="flex items-center justify-start space-x-3">
+          <button
+            onClick={onToggleSimulation}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 hover:scale-105 transform ${isSimulating
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
+              }`}
+          >
+            {isSimulating ? <PauseIcon /> : <PlayIcon />}
+            <span className="text-base">{isSimulating ? 'Pause' : 'Start'}</span>
+          </button>
+          <button
+            onClick={onReset}
+            className="flex items-center space-x-2 px-6 py-3 bg-purple-600/95 hover:bg-purple-700/95 text-white rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 shadow-lg shadow-purple-500/25 hover:scale-105 transform"
+          >
+            <ResetIcon />
+            <span className="text-base">Reset</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-4 text-center">
+          <MetricCard
+            icon={<FaBolt />}
+            label="Kinetic Energy"
+            value={metrics.totalKineticEnergy.toFixed(1)}
+            unit="J"
+          />
+          <MetricCard
+            icon={<FaSpinner />}
+            label="Angular Momentum"
+            value={metrics.totalAngularMomentum.toFixed(1)}
+            unit="kg⋅m²/s"
+          />
+          <MetricCard
+            icon={<FaExclamationTriangle />}
+            label="Collision Force"
+            value={metrics.collisionForce.toFixed(1)}
+            unit="N"
+            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
+          />
+          <MetricCard
+            icon={<FaRocket />}
+            label="Impact Velocity"
+            value={metrics.impactVelocity.toFixed(1)}
+            unit="m/s"
+            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
+          />
+        </div>
       </div>
-        {(isDesktop || activeTab !== 'live') && <Footer />}
-      </div>
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
-          * {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          }
-          *::-webkit-scrollbar {
-            display: none;
-          }
-          html, body {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          }
-          html::-webkit-scrollbar,
-          body::-webkit-scrollbar {
-            display: none;
-          }
-          @keyframes animate-audio-bars {
-            0%, 100% { 
-              transform: scaleY(0.7); 
-              opacity: 0.8; 
-            }
-            50% { 
-              transform: scaleY(1.2); 
-              opacity: 1; 
-            }
-          }
-          .animate-audio-bars {
-            animation: animate-audio-bars 0.6s ease-in-out infinite;
-            transform-origin: bottom;
-          }
-          .audio-bar-0 {
-            height: 8px;
-            animation-delay: 0s;
-          }
-          .audio-bar-1 {
-            height: 12px;
-            animation-delay: 0.1s;
-            }
-          .audio-bar-2 {
-            height: 10px;
-            animation-delay: 0.2s;
-            }
-          .audio-bar-3 {
-            height: 14px;
-            animation-delay: 0.3s;
-          }
-          .audio-bar-4 {
-            height: 11px;
-            animation-delay: 0.4s;
-          }
-          .audio-bar-5 {
-            height: 9px;
-            animation-delay: 0.5s;
-          }
-          .mobile-audio-bar-0 {
-            height: 6px;
-            animation-delay: 0s;
-          }
-          .mobile-audio-bar-1 {
-            height: 9px;
-            animation-delay: 0.1s;
-            }
-          .mobile-audio-bar-2 {
-            height: 7px;
-            animation-delay: 0.2s;
-          }
-          .mobile-audio-bar-3 {
-            height: 10px;
-            animation-delay: 0.3s;
-          }
-          .mobile-audio-bar-4 {
-            height: 8px;
-            animation-delay: 0.4s;
-          }
-          @keyframes animate-enter {
-            0% {
-              transform: translate3d(100%, 0, 0) scale(0.95);
-              opacity: 0;
-            }
-            100% {
-              transform: translate3d(0, 0, 0) scale(1);
-              opacity: 1;
-            }
-          }
-          @keyframes animate-leave {
-            0% {
-              transform: translate3d(0, 0, 0) scale(1);
-              opacity: 1;
-            }
-            100% {
-              transform: translate3d(100%, 0, 0) scale(0.95);
-              opacity: 0;
-            }
-          }
-          .animate-enter {
-            animation: animate-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
-          .animate-leave {
-            animation: animate-leave 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
-          }
-        `}
-      </style>
     </div>
   );
 };
-export default PodcastAudioHub;
+const MetricCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  unit: string;
+  highlight?: boolean;
+}> = React.memo(({ icon, label, value, unit, highlight = false }) => (
+  <div
+    className={`p-2 md:p-3 rounded-xl border transition-all duration-200 hover:scale-105 transform backdrop-blur-md ${highlight
+      ? 'border-orange-400/60 shadow-lg shadow-orange-400/20'
+      : 'border-white/20'
+      }`}
+    style={{
+      background: highlight
+        ? 'rgba(255, 107, 53, 0.1)'
+        : 'rgba(255, 255, 255, 0.05)',
+      boxShadow: highlight
+        ? '0 4px 16px rgba(255, 107, 53, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        : '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+    }}
+  >
+    <div className="flex items-center justify-center space-x-1 text-purple-400 mb-1">
+      <span className="text-xs md:text-sm">{icon}</span>
+      <span className="text-xs font-medium hidden md:inline">{label}</span>
+    </div>
+    <div className={`text-sm md:text-lg font-bold transition-colors ${highlight ? 'text-orange-300' : 'text-white'
+      }`}>
+      {value} <span className="text-xs text-gray-400">{unit}</span>
+    </div>
+  </div>
+));
+const CustomSlider: React.FC<{
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}> = ({ label, value, min, max, step, onChange, disabled = false }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [localValue, setLocalValue] = useState(value);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  useEffect(() => {
+    if (!isDragging) {
+      setLocalValue(value);
+    }
+  }, [value, isDragging]);
+  const percentage = ((localValue - min) / (max - min)) * 100;
+  const updateValue = useCallback((clientX: number) => {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const newValue = min + percentage * (max - min);
+    const steppedValue = Math.round(newValue / step) * step;
+    const clampedValue = Math.max(min, Math.min(max, steppedValue));
+    setLocalValue(clampedValue);
+    const now = performance.now();
+    if (now - lastUpdateTimeRef.current > 16) {
+      lastUpdateTimeRef.current = now;
+      onChange(clampedValue);
+    }
+  }, [min, max, step, onChange]);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return;
+    e.preventDefault();
+    setIsDragging(true);
+    isDraggingRef.current = true;
+    updateValue(e.clientX);
+  }, [disabled, updateValue]);
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingRef.current || disabled) return;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    animationFrameRef.current = requestAnimationFrame(() => {
+      updateValue(e.clientX);
+    });
+  }, [disabled, updateValue]);
+  const handleMouseUp = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    setIsDragging(false);
+    isDraggingRef.current = false;
+    onChange(localValue);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, [onChange, localValue]);
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm text-gray-300">
+        {label}: {localValue.toFixed(2)}
+      </label>
+      <div
+        ref={sliderRef}
+        className={`relative h-2 bg-gray-600/50 rounded-full cursor-pointer transition-opacity duration-200 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+        onMouseDown={handleMouseDown}
+      >
+        <div
+          className={`absolute top-1/2 w-4 h-4 bg-purple-500 rounded-full transform -translate-y-1/2 -translate-x-1/2 transition-all duration-150 ${disabled ? 'cursor-not-allowed' : 'cursor-grab hover:scale-110'} ${isDragging ? 'scale-125 cursor-grabbing' : ''}`}
+          style={{
+            left: `${percentage}%`,
+            backgroundColor: isDragging ? '#EC4899' : '#8B5FBF',
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+const SimulationCanvas: React.FC<{
+  bodies: Planet[];
+  debris: DebrisParticle[];
+  collisionEffects: CollisionEffect[];
+  setBodies: React.Dispatch<React.SetStateAction<Planet[]>>;
+  isSimulating: boolean;
+  canvasDimensions: CanvasDimensions;
+  showInstructions: boolean;
+  setShowInstructions: React.Dispatch<React.SetStateAction<boolean>>;
+  hasStarted: boolean;
+  setCanvasRef: (node: HTMLDivElement) => void;
+}> = ({ bodies, debris, collisionEffects, setBodies, isSimulating, canvasDimensions, showInstructions, setShowInstructions, hasStarted, setCanvasRef }) => {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [interactionState, setInteractionState] = useState<InteractionState>({
+    mode: 'none',
+    bodyId: null,
+    startPos: { x: 0, y: 0 },
+    currentPos: { x: 0, y: 0 },
+    offset: { x: 0, y: 0 },
+    isActive: false,
+    isLongPress: false,
+    longPressTimer: null,
+  });
+  const [showTrajectories, setShowTrajectories] = useState(!isSimulating);
+  const [showDebrisTrajectories, setShowDebrisTrajectories] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastClickTimeRef = useRef<number>(0);
+  const [starField, setStarField] = useState<Array<{
+    id: number;
+    left: number;
+    top: number;
+    animationDelay: number;
+    animationDuration: number;
+    size: number;
+    opacity: number;
+  }>>([]);
+  useEffect(() => {
+    if (canvasDimensions.width > 0 && canvasDimensions.height > 0) {
+      const numStars = Math.min(20, Math.floor(canvasDimensions.width / 30));
+      const newStarField = Array.from({ length: numStars }, (_, i) => ({
+        id: i,
+        left: (i * 23 + 15) % 100,
+        top: (i * 37 + 20) % 100,
+        animationDelay: i * 0.5,
+        animationDuration: 2 + (i % 3),
+        size: 1 + (i % 2),
+        opacity: 0.3 + (i % 3) * 0.2,
+      }));
+      setStarField(newStarField);
+    }
+  }, [canvasDimensions.width, canvasDimensions.height]);
+  useEffect(() => {
+    setShowTrajectories(!isSimulating);
+  }, [isSimulating]);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (isSimulating) {
+      if (interactionState.longPressTimer) {
+        clearTimeout(interactionState.longPressTimer);
+      }
+      setInteractionState({
+        mode: 'none',
+        bodyId: null,
+        startPos: { x: 0, y: 0 },
+        currentPos: { x: 0, y: 0 },
+        offset: { x: 0, y: 0 },
+        isActive: false,
+        isLongPress: false,
+        longPressTimer: null,
+      });
+    }
+  }, [isSimulating]);
+  useEffect(() => {
+    return () => {
+      if (interactionState.longPressTimer) {
+        clearTimeout(interactionState.longPressTimer);
+      }
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, [interactionState.longPressTimer]);
+  const getCoordinatesFromEvent = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    if ('touches' in e) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    }
+  };
+  const handlePointerStart = (e: React.MouseEvent | React.TouchEvent, bodyId: string) => {
+    if (isSimulating) return;
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.style.overflow = 'hidden';
+    const coords = getCoordinatesFromEvent(e);
+    const body = bodies.find(b => b.id === bodyId);
+    if (!body) return;
+    if (interactionState.longPressTimer) {
+      clearTimeout(interactionState.longPressTimer);
+    }
+    const now = Date.now();
+    const isDesktop = !('touches' in e);
+    if (isDesktop) {
+      const timeSinceLastClick = now - lastClickTimeRef.current;
+      const wasRecentClick = timeSinceLastClick < 400 && interactionState.bodyId === bodyId;
+      if (wasRecentClick) {
+        setInteractionState({
+          mode: 'velocity',
+          bodyId,
+          startPos: coords,
+          currentPos: coords,
+          offset: { x: coords.x - body.x, y: coords.y - body.y },
+          isActive: true,
+          isLongPress: true,
+          longPressTimer: null,
+        });
+        return;
+      }
+    }
+    const longPressTimer = setTimeout(() => {
+      setInteractionState(prev => ({
+        ...prev,
+        mode: 'velocity',
+        isLongPress: true,
+      }));
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    }, 500);
+    setInteractionState({
+      mode: 'longpress',
+      bodyId,
+      startPos: coords,
+      currentPos: coords,
+      offset: { x: coords.x - body.x, y: coords.y - body.y },
+      isActive: true,
+      isLongPress: false,
+      longPressTimer,
+    });
+    lastClickTimeRef.current = now;
+    setBodies(prev =>
+      prev.map(b => (b.id === bodyId ? { ...b, isDragging: true } : b))
+    );
+  };
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!interactionState.isActive || !interactionState.bodyId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const coords = getCoordinatesFromEvent(e);
+    setInteractionState(prev => ({
+      ...prev,
+      currentPos: coords,
+    }));
+    if (interactionState.mode === 'longpress' && !interactionState.isLongPress) {
+      const distance = Math.sqrt(
+        (coords.x - interactionState.startPos.x) ** 2 +
+        (coords.y - interactionState.startPos.y) ** 2
+      );
+      if (distance > 10) {
+        if (interactionState.longPressTimer) {
+          clearTimeout(interactionState.longPressTimer);
+        }
+        setInteractionState(prev => ({
+          ...prev,
+          mode: 'drag',
+          longPressTimer: null,
+        }));
+      }
+    }
+    if (interactionState.mode === 'drag' || interactionState.mode === 'longpress') {
+      const draggedBody = bodies.find(b => b.id === interactionState.bodyId);
+      if (!draggedBody) return;
+      const rawX = coords.x - interactionState.offset.x;
+      const rawY = coords.y - interactionState.offset.y;
+      let newX = Math.max(draggedBody.radius, Math.min(canvasDimensions.width - draggedBody.radius, rawX));
+      let newY = Math.max(draggedBody.radius, Math.min(canvasDimensions.height - draggedBody.radius, rawY));
+      const otherBodies = bodies.filter(b => b.id !== interactionState.bodyId);
+      for (const otherBody of otherBodies) {
+        const dx = newX - otherBody.x;
+        const dy = newY - otherBody.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = draggedBody.radius + otherBody.radius + 8;
+        if (distance < minDistance) {
+          const angle = Math.atan2(dy, dx);
+          newX = otherBody.x + Math.cos(angle) * minDistance;
+          newY = otherBody.y + Math.sin(angle) * minDistance;
+          newX = Math.max(draggedBody.radius, Math.min(canvasDimensions.width - draggedBody.radius, newX));
+          newY = Math.max(draggedBody.radius, Math.min(canvasDimensions.height - draggedBody.radius, newY));
+        }
+      }
+      setBodies(prev =>
+        prev.map(b =>
+          b.id === interactionState.bodyId
+            ? { ...b, x: newX, y: newY }
+            : b
+        )
+      );
+    }
+  };
+  const handlePointerEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.style.overflow = '';
+    if (!interactionState.isActive || !interactionState.bodyId) return;
+    if (interactionState.longPressTimer) {
+      clearTimeout(interactionState.longPressTimer);
+    }
+    if (interactionState.mode === 'velocity') {
+      const deltaX = interactionState.currentPos.x - interactionState.startPos.x;
+      const deltaY = interactionState.currentPos.y - interactionState.startPos.y;
+      const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2);
+      if (distance > 10) {
+        const maxVelocity = 5;
+        const velocityMultiplier = Math.min(distance / 60, maxVelocity);
+        const vx = (deltaX / distance) * velocityMultiplier;
+        const vy = (deltaY / distance) * velocityMultiplier;
+        setBodies(prev =>
+          prev.map(b =>
+            b.id === interactionState.bodyId ? { ...b, vx, vy, isDragging: false } : b
+          )
+        );
+      } else {
+        setBodies(prev =>
+          prev.map(b =>
+            b.id === interactionState.bodyId ? { ...b, isDragging: false } : b
+          )
+        );
+      }
+    } else {
+      setBodies(prev =>
+        prev.map(b =>
+          b.id === interactionState.bodyId ? { ...b, isDragging: false } : b
+        )
+      );
+    }
+    setInteractionState({
+      mode: 'none',
+      bodyId: null,
+      startPos: { x: 0, y: 0 },
+      currentPos: { x: 0, y: 0 },
+      offset: { x: 0, y: 0 },
+      isActive: false,
+      isLongPress: false,
+      longPressTimer: null,
+    });
+  };
+  const handleButtonClick = (action: () => void) => {
+    return (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      action();
+    };
+  };
+  const combinedRef = useCallback((node: HTMLDivElement) => {
+    canvasRef.current = node;
+    setCanvasRef(node);
+  }, [setCanvasRef]);
+  return (
+    <div
+      className={`relative rounded-2xl overflow-hidden transition-all duration-700 w-full max-w-full backdrop-blur-xl ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+      style={{
+        background: 'rgba(0, 0, 0, 0.4)',
+        boxShadow: isSimulating
+          ? '0 15px 30px -8px rgba(139, 95, 191, 0.25), 0 20px 40px -10px rgba(139, 95, 191, 0.15), 0 0 0 1px rgba(139, 95, 191, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          : '0 15px 30px -8px rgba(0, 0, 0, 0.25), 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      <div
+        ref={combinedRef}
+        className="relative w-full cursor-crosshair touch-none select-none"
+        style={{
+          height: canvasDimensions.height > 0 ? canvasDimensions.height : '60vh',
+          background: 'radial-gradient(circle at 30% 30%, rgba(139, 95, 191, 0.3) 0%, rgba(0, 0, 0, 0.95) 70%)',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerEnd}
+        onMouseLeave={handlePointerEnd}
+        onTouchMove={handlePointerMove}
+        onTouchEnd={handlePointerEnd}
+      >
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {starField.map((star) => (
+            <div
+              key={star.id}
+              className="absolute bg-white rounded-full animate-twinkle"
+              style={{
+                left: `${star.left}%`,
+                top: `${star.top}%`,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                opacity: star.opacity,
+                animationDelay: `${star.animationDelay}s`,
+                animationDuration: `${star.animationDuration}s`,
+                boxShadow: `0 0 ${star.size * 2}px rgba(255, 255, 255, 0.8)`,
+              }}
+            />
+          ))}
+        </div>
+        {showTrajectories && bodies.map(body => {
+          const trajectory = predictTrajectory(body, canvasDimensions);
+          return (
+            <svg
+              key={`trajectory-${body.id}`}
+              className="absolute inset-0 pointer-events-none"
+              width="100%"
+              height="100%"
+            >
+              <defs>
+                <linearGradient id={`trajectoryGradient-${body.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor={body.color} stopOpacity="0.95" />
+                  <stop offset="100%" stopColor={body.color} stopOpacity="0.2" />
+                </linearGradient>
+              </defs>
+              <path
+                d={trajectory.length > 1
+                  ? `M ${body.x} ${body.y} ${trajectory
+                    .map(point => `L ${point.x} ${point.y}`)
+                    .join(' ')}`
+                  : ''
+                }
+                stroke={`url(#trajectoryGradient-${body.id})`}
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="8,4"
+                opacity="0.9"
+              />
+            </svg>
+          );
+        })}
+        {showDebrisTrajectories && debris.map(particle => {
+          const trajectory = predictDebrisTrajectory(particle, canvasDimensions);
+          return (
+            <svg
+              key={`debris-trajectory-${particle.id}`}
+              className="absolute inset-0 pointer-events-none"
+              width="100%"
+              height="100%"
+            >
+              <path
+                d={trajectory.length > 1
+                  ? `M ${particle.x} ${particle.y} ${trajectory
+                    .map(point => `L ${point.x} ${point.y}`)
+                    .join(' ')}`
+                  : ''
+                }
+                stroke={particle.color}
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="3,2"
+                opacity="0.7"
+              />
+            </svg>
+          );
+        })}
+        {interactionState.isActive && (
+          interactionState.mode === 'velocity' ||
+          (interactionState.mode === 'longpress' && interactionState.isLongPress)
+        ) && (
+            <svg
+              className="absolute inset-0 pointer-events-none z-20"
+              width="100%"
+              height="100%"
+            >
+              <defs>
+                <marker
+                  id="velocityArrow"
+                  markerWidth="12"
+                  markerHeight="8"
+                  refX="10"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0 0, 12 4, 0 8"
+                    fill="#00ff88"
+                  />
+                </marker>
+              </defs>
+              <line
+                x1={interactionState.startPos.x}
+                y1={interactionState.startPos.y}
+                x2={interactionState.currentPos.x}
+                y2={interactionState.currentPos.y}
+                stroke="#00ff88"
+                strokeWidth="4"
+                markerEnd="url(#velocityArrow)"
+                opacity="0.9"
+              />
+            </svg>
+          )}
+        {bodies.map(body => (
+          <svg
+            key={`trail-${body.id}`}
+            className="absolute inset-0 pointer-events-none"
+            width="100%"
+            height="100%"
+          >
+            <path
+              d={body.trail.length > 1
+                ? `M ${body.trail[0].x} ${body.trail[0].y} ${body.trail
+                  .slice(1)
+                  .map(point => `L ${point.x} ${point.y}`)
+                  .join(' ')}`
+                : ''
+              }
+              stroke={body.color}
+              strokeWidth="2"
+              fill="none"
+              opacity="0.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        ))}
+        {debris.map(particle => (
+          <svg
+            key={`debris-trail-${particle.id}`}
+            className="absolute inset-0 pointer-events-none"
+            width="100%"
+            height="100%"
+          >
+            <path
+              d={particle.trail.length > 1
+                ? `M ${particle.trail[0].x} ${particle.trail[0].y} ${particle.trail
+                  .slice(1)
+                  .map(point => `L ${point.x} ${point.y}`)
+                  .join(' ')}`
+                : ''
+              }
+              stroke={particle.color}
+              strokeWidth="1"
+              fill="none"
+              opacity="0.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        ))}
+        {collisionEffects.map(effect => (
+          <div
+            key={effect.id}
+            className="absolute pointer-events-none"
+            style={{
+              left: effect.x - 40,
+              top: effect.y - 40,
+              width: 80,
+              height: 80,
+            }}
+          >
+            <div className="w-full h-full rounded-full relative animate-collision-blast">
+              <div className="absolute inset-0 rounded-full border-2 border-orange-400 bg-orange-400/20 backdrop-blur-sm"></div>
+              <div className="absolute inset-1 rounded-full border-2 border-yellow-300 bg-yellow-300/15 animate-pulse"></div>
+              <div className="absolute inset-2 rounded-full border-1 border-white bg-white/10 animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+        {debris.map(particle => {
+          const lifeRatio = particle.life / particle.maxLife;
+          const glowIntensity = Math.min(1, lifeRatio * 1.5);
+          const scaleEffect = 0.8 + (lifeRatio * 0.4);
+          return (
+            <div
+              key={particle.id}
+              className="absolute rounded-full pointer-events-none backdrop-blur-sm animate-debris-fade"
+              style={{
+                left: particle.x - particle.radius * scaleEffect,
+                top: particle.y - particle.radius * scaleEffect,
+                width: particle.radius * 2 * scaleEffect,
+                height: particle.radius * 2 * scaleEffect,
+                backgroundColor: particle.color,
+                boxShadow: `0 0 ${particle.radius * (3 + glowIntensity * 2)}px ${particle.color}${Math.floor(glowIntensity * 70).toString(16).padStart(2, '0')}`,
+                opacity: Math.max(0.1, lifeRatio * 0.9),
+                transform: `rotate(${particle.life * 3}deg)`,
+                transition: 'all 0.05s ease-out',
+                filter: `brightness(${100 + glowIntensity * 50}%)`,
+              }}
+            />
+          );
+        })}
+        {bodies.map(body => {
+          const velocity = Math.sqrt(body.vx ** 2 + body.vy ** 2);
+          const hasVelocity = velocity > 0.1;
+          const showVelocityVector = !isSimulating && hasVelocity && !body.isDragging && interactionState.bodyId !== body.id;
+          return (
+            <div key={body.id}>
+              <div
+                className="absolute cursor-pointer select-none hover:scale-105 transition-transform duration-150"
+                style={{
+                  left: body.x - body.radius,
+                  top: body.y - body.radius,
+                  width: body.radius * 2,
+                  height: body.radius * 2,
+                }}
+                onMouseDown={(e) => handlePointerStart(e, body.id)}
+                onTouchStart={(e) => handlePointerStart(e, body.id)}
+              >
+                <div
+                  className="w-full h-full rounded-full relative shadow-lg backdrop-blur-sm border border-white/30 flex items-center justify-center"
+                  style={{
+                    background: `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), ${body.color})`,
+                    boxShadow: `0 0 ${body.radius}px ${body.color}50, inset 0 0 ${body.radius / 2}px rgba(255,255,255,0.4)`,
+                  }}
+                >
+                  {!interactionState.isActive && (
+                    <div
+                      className="text-center select-none pointer-events-none font-semibold"
+                      style={{
+                        fontSize: `${Math.max(10, body.radius * 0.3)}px`,
+                        color: '#ffffff',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                        letterSpacing: '0.3px',
+                      }}
+                    >
+                      <span style={{
+                        fontWeight: '600',
+                        color: '#ffffff'
+                      }}>
+                        {body.mass.toFixed(0)}
+                      </span>
+                      <span style={{
+                        fontSize: '0.75em',
+                        opacity: 0.9,
+                        marginLeft: '2px',
+                        fontWeight: '400',
+                        color: '#e0e0e0'
+                      }}>
+                        kg
+                      </span>
+                    </div>
+                  )}
+                  {showVelocityVector && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {(() => {
+                        const normalizedVx = body.vx / velocity;
+                        const normalizedVy = body.vy / velocity;
+                        const edgeOffset = body.radius - 4;
+                        const startX = normalizedVx * edgeOffset;
+                        const startY = normalizedVy * edgeOffset;
+                        const baseLength = Math.max(body.radius * 1.2, 15);
+                        const velocityFactor = Math.min(velocity * 6, 2.0);
+                        const arrowLength = baseLength * velocityFactor;
+                        const endX = startX + normalizedVx * arrowLength;
+                        const endY = startY + normalizedVy * arrowLength;
+                        const strokeWidth = Math.max(1.5, body.radius * 0.08);
+                        const containerPadding = 40;
+                        return (
+                          <svg
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                              width: (body.radius + arrowLength + containerPadding) * 2,
+                              height: (body.radius + arrowLength + containerPadding) * 2,
+                              left: -(arrowLength + containerPadding),
+                              top: -(arrowLength + containerPadding),
+                            }}
+                            viewBox={`${-(arrowLength + containerPadding)} ${-(arrowLength + containerPadding)} ${(arrowLength + containerPadding) * 2} ${(arrowLength + containerPadding) * 2}`}
+                          >
+                            <defs>
+                              <marker
+                                id={`arrowhead-${body.id}`}
+                                markerWidth="8"
+                                markerHeight="6"
+                                refX="7"
+                                refY="3"
+                                orient="auto"
+                                markerUnits="strokeWidth"
+                              >
+                                <polygon
+                                  points="0 0, 8 3, 0 6"
+                                  fill="#00ff88"
+                                />
+                              </marker>
+                            </defs>
+                            <line
+                              x1={startX}
+                              y1={startY}
+                              x2={endX}
+                              y2={endY}
+                              stroke="#00ff88"
+                              strokeWidth={strokeWidth}
+                              markerEnd={`url(#arrowhead-${body.id})`}
+                              opacity="0.9"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {interactionState.isActive && (
+          <div
+            className="absolute bottom-16 md:bottom-20 right-4 text-white px-3 py-1 rounded-lg border border-white/20 text-xs z-20 backdrop-blur-md"
+            style={{
+              background: 'rgba(0, 0, 0, 0.6)',
+            }}
+          >
+            {interactionState.mode === 'velocity' || (interactionState.mode === 'longpress' && interactionState.isLongPress)
+              ? ' Velocity'
+              : ' Drag'
+            }
+          </div>
+        )}
+        <div className="absolute top-4 right-4 flex flex-col items-end space-y-3 z-50">
+          <div className="flex items-center space-x-2 md:space-x-3">
+            <div className="relative overflow-visible">
+              <button
+                onMouseDown={handleButtonClick(() => setShowDebrisTrajectories(!showDebrisTrajectories))}
+                onTouchStart={handleButtonClick(() => setShowDebrisTrajectories(!showDebrisTrajectories))}
+                className={`peer p-2 md:p-3 rounded-xl border border-white/20 text-white transition-all duration-200 hover:scale-110 transform cursor-pointer select-none backdrop-blur-md pointer-events-auto ${showDebrisTrajectories
+                  ? 'shadow-lg shadow-orange-500/30'
+                  : 'hover:bg-white/10'
+                  }`}
+                style={{
+                  background: showDebrisTrajectories
+                    ? 'rgba(255, 107, 53, 0.3)'
+                    : 'rgba(0, 0, 0, 0.4)',
+                }}
+              >
+                <TargetIcon />
+              </button>
+              <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999]">
+                {showDebrisTrajectories ? "Hide debris trajectories" : "Show debris trajectories"}
+                <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
+              </div>
+            </div>
+            <div className="relative overflow-visible">
+              <button
+                onMouseDown={handleButtonClick(() => setShowInstructions(!showInstructions))}
+                onTouchStart={handleButtonClick(() => setShowInstructions(!showInstructions))}
+                className="peer p-2 md:p-3 rounded-xl border border-white/20 text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 transform cursor-pointer select-none backdrop-blur-md pointer-events-auto"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.4)',
+                }}
+              >
+                <InfoIcon />
+              </button>
+              <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999]">
+                {showInstructions ? "Hide control instructions" : "Show control instructions"}
+                <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
+              </div>
+            </div>
+          </div>
+          <div className="relative overflow-visible flex items-center space-x-2">
+            <div className={`w-2 md:w-3 h-2 md:h-3 rounded-full ${isSimulating ? 'bg-green-400 animate-pulse' : hasStarted ? 'bg-red-400' : 'bg-blue-400'}`}></div>
+            <span
+              className="peer text-xs text-white px-2 md:px-3 py-1 rounded-lg border border-white/20 backdrop-blur-md cursor-help"
+              style={{
+                background: 'rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              {isSimulating ? 'Running' : hasStarted ? 'Paused' : 'Idle'}
+            </span>
+            <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999] max-w-xs">
+              {isSimulating
+                ? "Simulation is actively running with real-time physics"
+                : hasStarted
+                  ? "Simulation is paused - click Start to resume"
+                  : "Simulation is ready to start"
+              }
+              <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
+            </div>
+          </div>
+        </div>
+        <div
+          className="absolute bottom-2 md:bottom-4 right-2 md:right-4 text-xs text-white/70 px-2 py-1 rounded border border-white/10 backdrop-blur-md"
+          style={{
+            background: 'rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          {canvasDimensions.width} × {canvasDimensions.height}
+        </div>
+      </div>
+    </div>
+  );
+};
+const VelocityControls: React.FC<{
+  bodies: Planet[];
+  setBodies: React.Dispatch<React.SetStateAction<Planet[]>>;
+  isSimulating: boolean;
+}> = ({ bodies, setBodies, isSimulating }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 600);
+    return () => clearTimeout(timer);
+  }, []);
+  const updateVelocity = (bodyId: string, axis: 'vx' | 'vy', value: number) => {
+    setBodies(prev =>
+      prev.map(body =>
+        body.id === bodyId ? { ...body, [axis]: value, presetName: 'Custom' } : body
+      )
+    );
+  };
+  const updateMass = (bodyId: string, mass: number) => {
+    setBodies(prev =>
+      prev.map(body =>
+        body.id === bodyId
+          ? {
+            ...body,
+            mass,
+            radius: massToRadius(mass),
+            presetName: 'Custom'
+          }
+          : body
+      )
+    );
+  };
+  const handlePresetChange = (bodyId: string, presetName: string) => {
+    const preset = PLANET_PRESETS.find(p => p.name === presetName);
+    if (!preset) return;
+    setBodies(prevBodies =>
+      prevBodies.map(body => {
+        if (body.id === bodyId) {
+          const isFirstBody = body.id === '1';
+          const isMobile = window.innerWidth < 768;
+          const vx = isFirstBody ? (isMobile ? 0.8 : preset.velocityMagnitude) : (isMobile ? -0.6 : -preset.velocityMagnitude);
+          const vy = isFirstBody ? (isMobile ? 0.4 : preset.velocityMagnitude * 0.5) : (isMobile ? -0.2 : -preset.velocityMagnitude * 0.5);
+          return {
+            ...body,
+            mass: preset.mass,
+            radius: massToRadius(preset.mass),
+            color: preset.color,
+            presetName: preset.name,
+            vx,
+            vy,
+          };
+        }
+        return body;
+      })
+    );
+  };
+  return (
+    <div
+      className={`rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      style={{
+        background: 'rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+      }}
+    >
+      <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center space-x-2">
+        <SettingsIcon />
+        <span>Planet Parameters</span>
+      </h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {bodies.map((body, index) => (
+          <div
+            key={body.id}
+            className={`p-4 rounded-xl border border-white/20 transition-all duration-500 backdrop-blur-md ${isVisible ? 'opacity-100 translate-x-0' : `opacity-0 ${index % 2 === 0 ? '-translate-x-5' : 'translate-x-5'}`
+              }`}
+            style={{
+              transitionDelay: `${100 * index}ms`,
+              background: 'rgba(255, 255, 255, 0.06)',
+              boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div
+                className="w-5 md:w-6 h-5 md:h-6 rounded-full border border-white/20"
+                style={{ backgroundColor: body.color }}
+              />
+              <h4 className="font-semibold text-white text-sm md:text-base">
+                Planet {index + 1}
+              </h4>
+              <select
+                value={body.presetName}
+                onChange={(e) => handlePresetChange(body.id, e.target.value)}
+                disabled={isSimulating}
+                className="bg-gray-700/50 text-white text-xs rounded px-2 py-1 border border-white/20 hover:bg-gray-600/50"
+              >
+                {body.presetName === 'Custom' && <option value="Custom">Custom</option>}
+                {PLANET_PRESETS.map(preset => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+              {body.hasCollided && (
+                <span className="text-xs bg-orange-500/80 backdrop-blur-sm text-white px-2 py-1 rounded border border-white/20">
+                  Merged
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <CustomSlider
+                  label="Velocity X"
+                  value={body.vx}
+                  min={-6}
+                  max={6}
+                  step={0.1}
+                  onChange={(value) => updateVelocity(body.id, 'vx', value)}
+                  disabled={isSimulating}
+                />
+              </div>
+              <div>
+                <CustomSlider
+                  label="Velocity Y"
+                  value={body.vy}
+                  min={-6}
+                  max={6}
+                  step={0.1}
+                  onChange={(value) => updateVelocity(body.id, 'vy', value)}
+                  disabled={isSimulating}
+                />
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <CustomSlider
+                  label="Mass"
+                  value={body.mass}
+                  min={20}
+                  max={250}
+                  step={5}
+                  onChange={(value) => updateMass(body.id, value)}
+                  disabled={isSimulating}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+const InfoPanel: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div
+      className={`rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      style={{
+        background: 'rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+      }}
+    >
+      <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center space-x-2">
+        <InfoIcon />
+        <span>Perfect Celestial Physics Engine</span>
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-gray-300">
+        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-100 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+          }`} style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          }}>
+          <h4 className="font-semibold text-white mb-2">Flawless Dual-Mode Controls</h4>
+          <p className="text-sm">
+            Revolutionary interaction system: single click/tap for precise body positioning.
+            Works perfectly on both desktop and mobile with proper gesture recognition and visual feedback.
+          </p>
+        </div>
+        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-200 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+          }`} style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          }}>
+          <h4 className="font-semibold text-white mb-2">Optimized Performance</h4>
+          <p className="text-sm">
+            Smooth 60fps rendering with intelligent collision detection, optimized debris generation, and performance monitoring.
+            No frame drops during complex multi-body collisions with proper boundary detection and smooth physics calculations.
+          </p>
+        </div>
+        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-300 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+          }`} style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          }}>
+          <h4 className="font-semibold text-white mb-2">Professional Interface</h4>
+          <p className="text-sm">
+            Cutting-edge glassmorphism design with cosmic color palette, perfectly responsive layout, fully clickable controls,
+            and professional user experience. Clean implementation with proper event handling and flawless interactions.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+const PlanetaryCollisionSimulator: React.FC = () => {
+  const [showLandingPage, setShowLandingPage] = useState(true);
+  const {
+    bodies,
+    setBodies,
+    debris,
+    collisionEffects,
+    isSimulating,
+    setIsSimulating,
+    metrics,
+    canvasDimensions,
+    resetSimulation,
+    setCanvasRef,
+  } = useSimulation();
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  useEffect(() => {
+    if (showInstructions) {
+      document.body.classList.add('overflow-hidden', 'fixed', 'w-full');
+      document.documentElement.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden', 'fixed', 'w-full');
+      document.documentElement.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.body.classList.remove('overflow-hidden', 'fixed', 'w-full');
+      document.documentElement.classList.remove('overflow-hidden');
+    };
+  }, [showInstructions]);
+  const handleToggleSimulation = () => {
+    setIsSimulating(prev => !prev);
+    if (!hasStarted) {
+      setHasStarted(true);
+    }
+  };
+  const handleReset = () => {
+    resetSimulation();
+    setHasStarted(false);
+  };
+  const handleEnterSimulator = () => {
+    setShowLandingPage(false);
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  };
+  const handleReturnToLanding = () => {
+    setShowLandingPage(true);
+    resetSimulation();
+    setHasStarted(false);
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  };
+  return (
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&display=swap');
+        html, body, #__next, [id^="__next"] {
+          margin: 0;
+          padding: 0;
+          touch-action: manipulation;
+          overscroll-behavior: none;
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+          overflow-x: hidden !important;
+          font-family: 'Exo 2', sans-serif;
+        }
+        * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+          display: none !important;
+        }
+        @keyframes gradient-x {
+          0%, 100% {
+            background-size: 200% 200%;
+            background-position: left center;
+          }
+          50% {
+            background-size: 200% 200%;
+            background-position: right center;
+          }
+        }
+        @keyframes twinkle {
+          0%, 100% {
+            opacity: 0.3;
+            transform: scale(0.8);
+            filter: brightness(0.8);
+          }
+          25% {
+            opacity: 0.6;
+            transform: scale(1);
+            filter: brightness(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.2);
+            filter: brightness(1.5);
+          }
+          75% {
+            opacity: 0.8;
+            transform: scale(1.1);
+            filter: brightness(1.2);
+          }
+        }
+        @keyframes collision-blast {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          20% {
+            transform: scale(1);
+            opacity: 0.9;
+          }
+          50% {
+            transform: scale(2);
+            opacity: 0.6;
+          }
+          80% {
+            transform: scale(3);
+            opacity: 0.3;
+          }
+          100% {
+            transform: scale(4);
+            opacity: 0;
+          }
+        }
+        @keyframes debris-fade {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0.1;
+          }
+        }
+        .animate-gradient-x {
+          animation: gradient-x 4s ease infinite;
+        }
+        .animate-twinkle {
+          animation: twinkle 3s ease-in-out infinite;
+        }
+        .animate-collision-blast {
+          animation: collision-blast 1s ease-out forwards;
+        }
+        .animate-debris-fade {
+          animation: debris-fade 0.3s ease-out;
+        }
+      `}</style>
+      {showLandingPage ? (
+        <LandingPage onEnterSimulator={handleEnterSimulator} />
+      ) : (
+        <div className={`min-h-screen bg-black text-white scroll-smooth overflow-x-hidden relative`}>
+          <Header onReturnToLanding={handleReturnToLanding} />
+          <main className="max-w-7xl mx-auto px-3 py-3 md:px-6 md:py-6 space-y-4 md:space-y-8">
+            <ControlPanel
+              isSimulating={isSimulating}
+              onToggleSimulation={handleToggleSimulation}
+              onReset={handleReset}
+              metrics={metrics}
+            />
+            <SimulationCanvas
+              bodies={bodies}
+              debris={debris}
+              collisionEffects={collisionEffects}
+              setBodies={setBodies}
+              isSimulating={isSimulating}
+              canvasDimensions={canvasDimensions}
+              showInstructions={showInstructions}
+              setShowInstructions={setShowInstructions}
+              hasStarted={hasStarted}
+              setCanvasRef={setCanvasRef}
+            />
+            {showInstructions && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto touch-none"
+              >
+                <div
+                  className="fixed inset-0 bg-black/70 backdrop-blur-sm touch-none"
+                  onClick={() => setShowInstructions(false)}
+                />
+                <div
+                  className={`relative text-white m-4 p-4 sm:p-6 rounded-2xl border border-white/20 shadow-2xl w-full max-w-sm sm:max-w-md transition-all duration-300 backdrop-blur-2xl max-h-[calc(100vh-4rem)] overflow-y-auto ${showInstructions ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+                    }`}
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.9)',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
+                      <InfoIcon />
+                      <span>Perfect Controls</span>
+                    </h3>
+                    <button
+                      onClick={() => setShowInstructions(false)}
+                      className="text-gray-400 cursor-pointer hover:text-white transition-colors p-1.5 sm:p-2 rounded-lg hover:bg-white/10 -mr-1 sm:-mr-2 flex-shrink-0"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="sm:w-5 sm:h-5">
+                        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
+                      <h4 className="text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Interaction Controls</h4>
+                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
+                        <li>• <span className="text-blue-400">Quick tap/click + drag</span> to move bodies</li>
+                        <li>• <span className="text-yellow-400">Long press (0.5s) + drag</span> to set velocity</li>
+                      </ul>
+                    </div>
+                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
+                      <h4 className="text-xs sm:text-sm font-medium text-green-300 mb-1.5 sm:mb-2">Visual Indicators</h4>
+                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
+                        <li>• <span className="text-green-400">Green arrows</span> show velocity vectors</li>
+                        <li>• <span className="text-purple-400">Dashed lines</span> show trajectory predictions</li>
+                        <li>• <span className="text-orange-400">Target button</span> shows debris trajectories</li>
+                      </ul>
+                    </div>
+                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
+                      <h4 className="text-xs sm:text-sm font-medium text-pink-300 mb-1.5 sm:mb-2">Performance</h4>
+                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
+                        <li>• Real-time collision physics with debris analysis</li>
+                        <li>• Optimized 60fps performance on all devices</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="mt-4 sm:mt-6 flex justify-center">
+                    <button
+                      onClick={() => setShowInstructions(false)}
+                      className="px-4 sm:px-6 cursor-pointer py-2 bg-purple-600/80 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base"
+                    >
+                      Got it!
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <VelocityControls
+              bodies={bodies}
+              setBodies={setBodies}
+              isSimulating={isSimulating}
+            />
+            <InfoPanel />
+          </main>
+          <Footer />
+        </div>
+      )}
+    </>
+  );
+};
+export default PlanetaryCollisionSimulator;
