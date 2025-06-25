@@ -1,2426 +1,1591 @@
-'use client';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import {
-  FaBolt,
-  FaSpinner,
-  FaExclamationTriangle,
-  FaRocket,
-  FaAtom,
-  FaChartLine,
-  FaMobile,
-  FaDesktop,
-} from 'react-icons/fa';
-interface Planet {
-  id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  mass: number;
-  radius: number;
-  color: string;
-  trail: { x: number; y: number }[];
-  isDragging: boolean;
-  hasCollided: boolean;
-  presetName: string;
+"use client"
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
 }
-interface DebrisParticle {
+interface TranscriptLine {
   id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  mass: number;
-  radius: number;
-  color: string;
-  life: number;
-  maxLife: number;
-  trail: { x: number; y: number }[];
+  startTime: number;
+  endTime: number;
+  text: string;
+  culturalNote?: string;
 }
-interface CollisionEffect {
-  id: string;
-  x: number;
-  y: number;
-  intensity: number;
+interface Quiz {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+interface Bookmark {
+  lineId: string;
+  text: string;
   timestamp: number;
 }
-interface TrajectoryPoint {
-  x: number;
-  y: number;
+interface QuizAnswer {
+  questionIndex: number;
+  selectedAnswer: number | null;
+  isCorrect: boolean;
 }
-interface SimulationMetrics {
-  totalKineticEnergy: number;
-  totalAngularMomentum: number;
-  collisionForce: number;
-  impactVelocity: number;
-  lastCollisionTime: number;
-}
-interface CanvasDimensions {
-  width: number;
-  height: number;
-}
-interface InteractionState {
-  mode: 'none' | 'drag' | 'velocity' | 'longpress';
-  bodyId: string | null;
-  startPos: { x: number; y: number };
-  currentPos: { x: number; y: number };
-  offset: { x: number; y: number };
-  isActive: boolean;
-  isLongPress: boolean;
-  longPressTimer: NodeJS.Timeout | null;
-}
-const PLANET_PRESETS = [
-  { name: 'Small Terrestrial', mass: 50, color: '#A9A9A9', velocityMagnitude: 1.0 },
-  { name: 'Earth-like', mass: 100, color: '#4A90E2', velocityMagnitude: 1.2 },
-  { name: 'Gas Giant', mass: 200, color: '#FF8C00', velocityMagnitude: 0.8 },
-  { name: 'Ice Giant', mass: 150, color: '#ADD8E6', velocityMagnitude: 1.0 },
-  { name: 'Dwarf Planet', mass: 25, color: '#D2B48C', velocityMagnitude: 1.5 },
-];
-const PlayIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M8 5v14l11-7z" />
-  </svg>
-);
-const PauseIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-  </svg>
-);
-const ResetIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z" />
-  </svg>
-);
-const SettingsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
-  </svg>
-);
-const InfoIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M13,17h-2v-6h2V17z M13,9h-2V7h2V9z" />
-  </svg>
-);
-const TargetIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z" />
-  </svg>
-);
-const LandingPage: React.FC<{ onEnterSimulator: () => void }> = ({ onEnterSimulator }) => {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const handleFooterLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
-    }
-  };
+const LanguageLearningApp: React.FC = () => {
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [source, setSource] = useState<AudioBufferSourceNode | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeLine, setActiveLine] = useState<string | null>(null);
+  const [heardLines, setHeardLines] = useState<Set<string>>(new Set());
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   useEffect(() => {
-    setIsClient(true);
-    const hideScrollbars = () => {
-      const style = document.createElement('style');
-      style.id = 'scrollbar-hider';
-      style.textContent = `
-        * {
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-        }
-        *::-webkit-scrollbar {
-          display: none !important;
-        }
-      `;
-      const existingStyle = document.getElementById('scrollbar-hider');
-      if (existingStyle) {
-        existingStyle.remove();
+    const isMobile = window.innerWidth < 1024;
+    if (showBookmarks && isMobile) {
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    } else if (!showBookmarks && isMobile) {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.paddingRight = '';
+      if (scrollY) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        });
       }
-      document.head.appendChild(style);
-    };
-    hideScrollbars();
-    const intervalId = setInterval(hideScrollbars, 1000);
-    const observer = new MutationObserver(hideScrollbars);
-    observer.observe(document.body, { childList: true, subtree: true });
-    let scrollTimeout: NodeJS.Timeout;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isScrolling) {
-        setMousePosition({ x: e.clientX, y: e.clientY });
-      }
-    };
-    const handleScroll = () => {
-      setIsScrolling(true);
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
-      }, 150);
-    };
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('scroll', handleScroll);
-      clearTimeout(scrollTimeout);
-      clearInterval(intervalId);
-      observer.disconnect();
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.paddingRight = '';
     };
-  }, [isScrolling]);
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.3,
-        delayChildren: 0.2
-      }
-    }
-  };
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.8,
-        ease: [0.25, 0.1, 0.25, 1] as const
-      }
-    }
-  };
-  const floatingVariants = {
-    animate: {
-      y: [-10, 10, -10],
-      rotate: [-2, 2, -2],
-      transition: {
-        duration: 6,
-        repeat: Infinity,
-        ease: [0.42, 0, 0.58, 1] as const
-      }
-    }
-  };
-  const staggerContainer = {
-    visible: {
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-  const features = [
+  }, [showBookmarks]);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
+  const [showQuizResults, setShowQuizResults] = useState(false);
+  const [quizResult, setQuizResult] = useState<{
+    message: string;
+    status: "correct" | "incorrect" | null;
+  }>({
+    message: "",
+    status: null,
+  });
+  const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const startTimeRef = useRef<number>(0);
+  const pauseTimeRef = useRef<number>(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const audioPlayerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const speedDropdownRef = useRef<HTMLDivElement>(null);
+  const transcript: TranscriptLine[] = [
+    { id: "1", startTime: 0, endTime: 2, text: "Hello." },
+    { id: "2", startTime: 2, endTime: 4, text: "Hi." },
+    { id: "3", startTime: 4, endTime: 6, text: "Been a while." },
     {
-      icon: <FaAtom className="text-2xl" />,
-      title: "Advanced Physics Engine",
-      description: "Real-time collision dynamics with accurate momentum conservation and energy calculations.",
-      gradient: "from-purple-500 to-pink-500"
+      id: "4",
+      startTime: 6,
+      endTime: 8,
+      text: "You're back!",
+      culturalNote:
+        "This should be used when the person returns from a short absence.",
+    },
+    { id: "5", startTime: 8, endTime: 10, text: "Welcome." },
+    { id: "6", startTime: 10, endTime: 14, text: "I'd recognize that face anywhere!" },
+    {
+      id: "7",
+      startTime: 14,
+      endTime: 17,
+      text: "You've looked better.",
+      culturalNote:
+        "This greeting would be used when the other person doesn't look ok.",
+    },
+    { id: "8", startTime: 17, endTime: 19, text: "Greetings." },
+    {
+      id: "9",
+      startTime: 19,
+      endTime: 21,
+      text: "Well howdy!",
+      culturalNote:
+        "The phrase 'howdy' is an informal greeting, from 'How do ye?'",
+    },
+    { id: "10", startTime: 21, endTime: 24, text: "Nice to meet you." },
+    { id: "11", startTime: 24, endTime: 26, text: "Well hello there!" },
+    {
+      id: "12",
+      startTime: 26,
+      endTime: 29,
+      text: "You must be the hero!",
+      culturalNote:
+        "This phrase would be used by a character in a video game.",
     },
     {
-      icon: <FaChartLine className="text-2xl" />,
-      title: "Debris Analysis",
-      description: "Comprehensive trajectory prediction and impact force analysis with visual feedback.",
-      gradient: "from-purple-500 to-pink-500"
+      id: "13",
+      startTime: 29,
+      endTime: 32,
+      text: "It's a real honor to meet you.",
+      culturalNote:
+        "This greeting is a formal way to show respect.",
     },
     {
-      icon: <FaMobile className="text-2xl" />,
-      title: "Cross-Platform",
-      description: "Responsive design with touch controls optimized for both desktop and mobile devices.",
-      gradient: "from-purple-500 to-pink-500"
-    },
-    {
-      icon: <FaDesktop className="text-2xl" />,
-      title: "Professional Interface",
-      description: "Modern glassmorphism design with intuitive controls and real-time performance metrics.",
-      gradient: "from-purple-500 to-pink-500"
+      id: "14",
+      startTime: 32,
+      endTime: 35,
+      text: "Wow! It's really you!",
+      culturalNote:
+        "This phrase would be used when you are surprised to meet somebody.",
     }
   ];
-  return (
-    <div
-      ref={scrollContainerRef}
-      className={`fixed inset-0 bg-black text-white overflow-y-auto overflow-x-hidden`}
-    >
-      <div className="fixed inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900" />
-        <motion.div
-          className="absolute -top-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-2xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(139, 95, 191, 0.6) 0%, rgba(139, 95, 191, 0.1) 50%, transparent 100%)',
-            willChange: 'transform',
-            transform: 'translate3d(0, 0, 0)'
-          }}
-          animate={!isScrolling ? {
-            scale: [1, 1.2, 1],
-            x: [0, 30, 0],
-            y: [0, 20, 0],
-          } : {}}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: [0.42, 0, 0.58, 1] as const
-          }}
-        />
-        <motion.div
-          className="absolute top-1/4 -right-40 w-96 h-96 rounded-full opacity-25 blur-2xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(255, 107, 53, 0.5) 0%, rgba(255, 107, 53, 0.1) 50%, transparent 100%)',
-            willChange: 'transform',
-            transform: 'translate3d(0, 0, 0)'
-          }}
-          animate={!isScrolling ? {
-            scale: [1.1, 1, 1.1],
-            x: [0, -20, 0],
-            y: [0, 25, 0],
-          } : {}}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: [0.42, 0, 0.58, 1] as const
-          }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 left-1/4 w-72 h-72 rounded-full opacity-20 blur-2xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(236, 72, 153, 0.1) 50%, transparent 100%)',
-            willChange: 'transform',
-            transform: 'translate3d(0, 0, 0)'
-          }}
-          animate={!isScrolling ? {
-            scale: [1, 1.3, 1],
-            x: [0, -15, 0],
-            y: [0, -30, 0],
-          } : {}}
-          transition={{
-            duration: 30,
-            repeat: Infinity,
-            ease: [0.42, 0, 0.58, 1] as const
-          }}
-        />
-        <motion.div
-          className="absolute bottom-0 right-1/3 w-64 h-64 rounded-full opacity-15 blur-2xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0.1) 50%, transparent 100%)',
-            willChange: 'transform',
-            transform: 'translate3d(0, 0, 0)'
-          }}
-          animate={!isScrolling ? {
-            scale: [1.05, 1, 1.05],
-            x: [0, 25, 0],
-            y: [0, -15, 0],
-          } : {}}
-          transition={{
-            duration: 22,
-            repeat: Infinity,
-            ease: [0.42, 0, 0.58, 1] as const
-          }}
-        />
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-transparent to-orange-600/10" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-pink-600/5 to-transparent" />
-        </div>
-        {isClient && Array.from({ length: 8 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/40 rounded-full"
-            style={{
-              left: `${(i * 23 + 15) % 100}%`,
-              top: `${(i * 37 + 20) % 100}%`
-            }}
-            animate={!isScrolling ? {
-              opacity: [0.2, 0.6, 0.2],
-              scale: [0.8, 1, 0.8],
-            } : { opacity: 0.1 }}
-            transition={{
-              duration: 4 + (i % 3),
-              repeat: Infinity,
-              delay: i * 0.5
-            }}
-          />
-        ))}
-        {isClient && !isScrolling && (
-          <motion.div
-            className="absolute w-80 h-80 rounded-full opacity-[0.02] blur-xl"
-            style={{
-              background: 'radial-gradient(circle, rgba(139, 95, 191, 0.15) 0%, rgba(255, 107, 53, 0.08) 50%, transparent 80%)',
-              left: mousePosition.x - 160,
-              top: mousePosition.y - 160,
-              pointerEvents: 'none',
-              willChange: 'transform',
-              transform: 'translate3d(0, 0, 0)'
-            }}
-            animate={{
-              scale: [1, 1.05, 1],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: [0.42, 0, 0.58, 1] as const
-            }}
-          />
-        )}
-        <div className="absolute inset-0 bg-black/5 backdrop-blur-[1px]" />
-      </div>
-      <motion.div
-        className="relative z-10"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <section className="min-h-screen flex items-center justify-center px-4 py-8">
-          <div className="max-w-6xl mx-auto text-center">
-            <motion.div
-              variants={itemVariants}
-              className="mb-6 md:mb-8"
-            >
-              <motion.div
-                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-xl md:rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-2xl"
-                variants={floatingVariants}
-                animate={!isScrolling ? "animate" : undefined}
-                style={{
-                  willChange: 'transform',
-                  transform: 'translate3d(0, 0, 0)'
-                }}
-              >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="white" className="sm:w-8 sm:h-8 md:w-12 md:h-12">
-                  <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
-                  <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
-                  <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
-                  <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
-                  <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
-                  <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
-                </svg>
-              </motion.div>
-              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6">
-                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
-                  Celestial Impact
-                </span>
-                <br />
-                <span className="text-white">Simulator</span>
-              </h1>
-              <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-6 md:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
-                Experience the cosmos like never before. Simulate planetary collisions, analyze debris patterns,
-                and explore the fundamental forces that shape our universe.
-              </p>
-            </motion.div>
-            <motion.div
-              variants={itemVariants}
-              className="flex justify-center items-center mb-8 md:mb-12"
-            >
-              <motion.button
-                onClick={onEnterSimulator}
-                className="group relative overflow-hidden px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-bold text-lg sm:text-xl text-white transition-all duration-300 shadow-2xl shadow-purple-500/30 border border-purple-400/20 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                  background: 'linear-gradient(135deg, #8B5FBF 0%, #EC4899 50%, #FF6B35 100%)',
-                  boxShadow: '0 10px 30px rgba(139, 95, 191, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-                <span className="flex items-center space-x-2 sm:space-x-3 relative z-10">
-                  <PlayIcon />
-                  <span>Launch Simulator</span>
-                </span>
-              </motion.button>
-            </motion.div>
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8 max-w-4xl mx-auto"
-            >
-              {[
-                { number: "60", label: "FPS Performance", suffix: "" },
-                { number: "∞", label: "Collision Scenarios", suffix: "" },
-                { number: "100", label: "Accuracy Rate", suffix: "%" }
-              ].map((stat, index) => (
-                <motion.div
-                  key={index}
-                  variants={itemVariants}
-                  className="text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:bg-white/[0.05] transition-all duration-300"
-                  style={{
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                  }}
-                >
-                  <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    {stat.number}{stat.suffix}
-                  </div>
-                  <div className="text-gray-300 mt-1 sm:mt-2 text-sm sm:text-base">{stat.label}</div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-        <section className="py-12 md:py-20 px-4">
-          <div className="max-w-6xl mx-auto">
-            <motion.div
-              variants={itemVariants}
-              className="text-center mb-8 md:mb-16"
-            >
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
-                <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Advanced Features
-                </span>
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto px-2">
-                Powered by cutting-edge physics algorithms and modern web technologies
-                for the most realistic celestial simulation experience.
-              </p>
-            </motion.div>
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8"
-            >
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  variants={itemVariants}
-                  className="group p-4 sm:p-6 md:p-8 rounded-xl md:rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:bg-white/[0.05] transition-all duration-300"
-                  style={{
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
-                  }}
-                  whileHover={{ y: -5 }}
-                >
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg md:rounded-xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                    <div className="text-lg sm:text-xl md:text-2xl">{feature.icon}</div>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold mb-3 md:mb-4 text-white">{feature.title}</h3>
-                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">{feature.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-        <section className="py-12 md:py-20 px-4">
-          <motion.div
-            variants={itemVariants}
-            className="max-w-4xl mx-auto text-center"
-          >
-            <div
-              className="p-6 sm:p-8 md:p-12 rounded-2xl md:rounded-3xl bg-white/[0.02] backdrop-blur-2xl border border-white/10"
-              style={{
-                background: 'linear-gradient(135deg, rgba(139, 95, 191, 0.1) 0%, rgba(236, 72, 153, 0.05) 50%, rgba(255, 107, 53, 0.1) 100%)',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
-                Ready to Explore the Cosmos?
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-300 mb-6 md:mb-8 max-w-2xl mx-auto px-2">
-                Join thousands of researchers, educators, and space enthusiasts in discovering
-                the secrets of planetary collision dynamics.
-              </p>
-              <motion.button
-                onClick={onEnterSimulator}
-                className="group relative overflow-hidden px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl font-bold text-lg sm:text-xl text-white transition-all duration-300 shadow-2xl shadow-purple-500/30 border border-purple-400/20 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                  background: 'linear-gradient(135deg, #8B5FBF 0%, #EC4899 50%, #FF6B35 100%)',
-                  boxShadow: '0 10px 30px rgba(139, 95, 191, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-                <span className="flex items-center space-x-2 sm:space-x-3 relative z-10">
-                  <FaRocket className="text-sm sm:text-lg" />
-                  <span>Launch Simulator Now</span>
-                </span>
-              </motion.button>
-            </div>
-          </motion.div>
-        </section>
-      </motion.div>
-      <Footer onLinkClick={handleFooterLinkClick} />
-    </div>
-  );
-};
-const useCanvasDimensions = () => {
-  const [dimensions, setDimensions] = useState<CanvasDimensions>({ width: 800, height: 600 });
-  const ref = useRef<HTMLDivElement>(null);
+  const quizzes: Quiz[] = [
+    {
+      question: "What greeting can be used to show respect?",
+      options: ["Well howdy!", "It's a real honor to meet you.", "Hi."],
+      correctAnswer: 1,
+    },
+    {
+      question: "What greeting should be used when a person has returned after a short while?",
+      options: ["You're back!", "Welcome.", "It's a real honor to meet you."],
+      correctAnswer: 0,
+    },
+    {
+      question: "Which greeting could be appropriate if the other person is ill?",
+      options: ["You've looked better.", "Been a while.", "Wow! It's really you!"],
+      correctAnswer: 0,
+    }
+  ];
   useEffect(() => {
-    const updateDimensions = () => {
-      if (ref.current) {
-        const { width, height } = ref.current.getBoundingClientRect();
-        setDimensions({ width, height });
-      } else {
-        const isMobile = window.innerWidth < 768;
-        const padding = isMobile ? 24 : 48;
-        const availableWidth = window.innerWidth - padding;
-        let width, height;
-        if (isMobile) {
-          width = Math.max(350, Math.min(availableWidth, 600));
-          height = Math.min(window.innerHeight * 0.5, 450);
-        } else {
-          const maxWidth = 1280 - padding;
-          width = Math.max(600, Math.min(availableWidth, maxWidth));
-          height = Math.min(width * 0.6, 600);
+    const context = new (window.AudioContext ||
+      window.webkitAudioContext)();
+    setAudioContext(context);
+    const loadAudio = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          "https://cdn.freesound.org/previews/731/731767_15857333-lq.mp3"
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to load audio: ${response.status} ${response.statusText}`);
         }
-        setDimensions({ width, height });
+        const arrayBuffer = await response.arrayBuffer();
+        const decoded = await context.decodeAudioData(arrayBuffer);
+        setAudioBuffer(decoded);
+        setDuration(decoded.duration);
+        setError(null);
+      } catch (error) {
+        console.error("Failed to load audio file:", error);
+        setError("Failed to load audio. Please try again later.");
+      } finally {
+        setIsLoading(false);
       }
     };
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
-  const setRef = useCallback((node: HTMLDivElement) => {
-    ref.current = node;
-  }, []);
-  return { dimensions, setRef };
-};
-const massToRadius = (mass: number): number => {
-  return Math.round(18 + Math.sqrt(mass / 1.5));
-};
-const predictTrajectory = (body: Planet, canvasDimensions: CanvasDimensions, steps: number = 40): TrajectoryPoint[] => {
-  const trajectory: TrajectoryPoint[] = [];
-  let x = body.x;
-  let y = body.y;
-  let vx = body.vx;
-  let vy = body.vy;
-  for (let i = 0; i < steps; i++) {
-    x += vx;
-    y += vy;
-    if (x - body.radius <= 0 || x + body.radius >= canvasDimensions.width) {
-      vx *= -0.9;
-    }
-    if (y - body.radius <= 0 || y + body.radius >= canvasDimensions.height) {
-      vy *= -0.9;
-    }
-    vx *= 0.9995;
-    vy *= 0.9995;
-    trajectory.push({ x, y });
-    if (Math.abs(vx) < 0.1 && Math.abs(vy) < 0.1) break;
-  }
-  return trajectory;
-};
-const predictDebrisTrajectory = (particle: DebrisParticle, canvasDimensions: CanvasDimensions, steps: number = 20): TrajectoryPoint[] => {
-  const trajectory: TrajectoryPoint[] = [];
-  let x = particle.x;
-  let y = particle.y;
-  let vx = particle.vx;
-  let vy = particle.vy;
-  for (let i = 0; i < steps; i++) {
-    vx *= 0.997;
-    vy = vy * 0.997 + 0.015;
-    x += vx;
-    y += vy;
-    trajectory.push({ x, y });
-    if (x < 0 || x > canvasDimensions.width ||
-      y < 0 || y > canvasDimensions.height ||
-      (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05)) break;
-  }
-  return trajectory;
-};
-const useSimulation = () => {
-  const { dimensions: canvasDimensions, setRef } = useCanvasDimensions();
-  const [bodies, setBodies] = useState<Planet[]>([]);
-  const [debris, setDebris] = useState<DebrisParticle[]>([]);
-  const [collisionEffects, setCollisionEffects] = useState<CollisionEffect[]>([]);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [metrics, setMetrics] = useState<SimulationMetrics>({
-    totalKineticEnergy: 0,
-    totalAngularMomentum: 0,
-    collisionForce: 0,
-    impactVelocity: 0,
-    lastCollisionTime: 0,
-  });
-  const animationRef = useRef<number>(0);
-  const collisionCooldown = useRef<Map<string, number>>(new Map());
-  const lastFrameTime = useRef<number>(0);
-  const calculateMetrics = useCallback((currentBodies: Planet[], collisionData?: { force: number; velocity: number; timestamp: number } | null) => {
-    let totalKE = 0;
-    let totalAM = 0;
-    currentBodies.forEach(body => {
-      const velocity = Math.sqrt(body.vx ** 2 + body.vy ** 2);
-      totalKE += 0.5 * body.mass * velocity ** 2;
-      totalAM += body.mass * velocity * body.radius;
-    });
-    let displayForce = metrics.collisionForce > 0 ? metrics.collisionForce * 0.95 : 0;
-    let displayVelocity = metrics.impactVelocity > 0 ? metrics.impactVelocity * 0.95 : 0;
-    let lastCollision = metrics.lastCollisionTime;
-    if (collisionData) {
-      displayForce = collisionData.force;
-      displayVelocity = collisionData.velocity;
-      lastCollision = collisionData.timestamp;
-    }
-    return {
-      totalKineticEnergy: totalKE,
-      totalAngularMomentum: totalAM,
-      collisionForce: displayForce,
-      impactVelocity: displayVelocity,
-      lastCollisionTime: lastCollision,
-    };
-  }, [metrics.collisionForce, metrics.impactVelocity, metrics.lastCollisionTime]);
-  const pureCheckCollisions = (
-    currentBodies: Planet[],
-    canvasDimensions: CanvasDimensions,
-    collisionCooldownRef: React.MutableRefObject<Map<string, number>>
-  ) => {
-    let bodies = JSON.parse(JSON.stringify(currentBodies));
-    const newDebris: DebrisParticle[] = [];
-    const newCollisionEffects: CollisionEffect[] = [];
-    const currentTime = Date.now();
-    let maxImpactVelocity = 0;
-    let maxCollisionForce = 0;
-    let hasCollisions = false;
-    for (let i = 0; i < bodies.length; i++) {
-      for (let j = i + 1; j < bodies.length; j++) {
-        const body1 = bodies[i];
-        const body2 = bodies[j];
-        const pairId = `${Math.min(i, j)}-${Math.max(i, j)}`;
-        const lastCollisionTime = collisionCooldownRef.current.get(pairId) || 0;
-        const dx = body2.x - body1.x;
-        const dy = body2.y - body1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < body1.radius + body2.radius && currentTime - lastCollisionTime > 300) {
-          hasCollisions = true;
-          collisionCooldownRef.current.set(pairId, currentTime);
-          const normalX = dx / distance;
-          const normalY = dy / distance;
-          const tangentX = -normalY;
-          const tangentY = normalX;
-          const u1n = body1.vx * normalX + body1.vy * normalY;
-          const u1t = body1.vx * tangentX + body1.vy * tangentY;
-          const u2n = body2.vx * normalX + body2.vy * normalY;
-          const u2t = body2.vx * tangentX + body2.vy * tangentY;
-          const totalMass = body1.mass + body2.mass;
-          const v1n = (u1n * (body1.mass - body2.mass) + 2 * body2.mass * u2n) / totalMass;
-          const v2n = (u2n * (body2.mass - body1.mass) + 2 * body1.mass * u1n) / totalMass;
-          const restitution = 0.85;
-          body1.vx = (v1n * normalX + u1t * tangentX) * restitution;
-          body1.vy = (v1n * normalY + u1t * tangentY) * restitution;
-          body2.vx = (v2n * normalX + u2t * tangentX) * restitution;
-          body2.vy = (v2n * normalY + u2t * tangentY) * restitution;
-          const impactVelocity = Math.abs(v1n - v2n);
-          maxImpactVelocity = Math.max(maxImpactVelocity, impactVelocity);
-          const collisionForce = (impactVelocity * totalMass) / 0.016;
-          maxCollisionForce = Math.max(maxCollisionForce, collisionForce);
-          const collisionX = body1.x + (dx / distance) * body1.radius;
-          const collisionY = body1.y + (dy / distance) * body1.radius;
-          newCollisionEffects.push({ id: `effect-${currentTime}`, x: collisionX, y: collisionY, intensity: impactVelocity, timestamp: currentTime });
-          const numDebris = Math.min(15, Math.floor(3 + impactVelocity * 2));
-          for (let k = 0; k < numDebris; k++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * impactVelocity;
-            newDebris.push({
-              id: `debris-${currentTime}-${k}`, x: collisionX, y: collisionY,
-              vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-              mass: Math.random() + 0.5, radius: Math.random() * 1.5 + 1,
-              color: Math.random() > 0.5 ? body1.color : body2.color,
-              life: 100, maxLife: 100, trail: []
-            });
-          }
-          body1.trail = [];
-          body2.trail = [];
-        }
-      }
-    }
-    return { bodies, newDebris, newCollisionEffects, collisionData: hasCollisions ? { force: maxCollisionForce, velocity: maxImpactVelocity, timestamp: currentTime } : null };
-  };
-  useEffect(() => {
-    if (canvasDimensions.width > 0) {
-      const isMobile = canvasDimensions.width < 400;
-      const preset1 = PLANET_PRESETS.find(p => p.name === 'Earth-like')!;
-      const preset2 = PLANET_PRESETS.find(p => p.name === 'Small Terrestrial')!;
-      const body1Radius = massToRadius(preset1.mass);
-      const body2Radius = massToRadius(preset2.mass);
-      setBodies([
-        { id: '1', x: canvasDimensions.width * 0.25, y: canvasDimensions.height * 0.4, vx: isMobile ? 0.8 : preset1.velocityMagnitude, vy: isMobile ? 0.4 : preset1.velocityMagnitude * 0.5, mass: preset1.mass, radius: body1Radius, color: preset1.color, trail: [], isDragging: false, hasCollided: false, presetName: preset1.name },
-        { id: '2', x: canvasDimensions.width * 0.75, y: canvasDimensions.height * 0.6, vx: isMobile ? -0.6 : -preset2.velocityMagnitude, vy: isMobile ? -0.2 : -preset2.velocityMagnitude * 0.5, mass: preset2.mass, radius: body2Radius, color: preset2.color, trail: [], isDragging: false, hasCollided: false, presetName: preset2.name },
-      ]);
-    }
-  }, [canvasDimensions]);
-  const updateSimulation = useCallback(() => {
-    if (!isSimulating) return;
-    const frameStartTime = performance.now();
-    if (frameStartTime - lastFrameTime.current < 16) {
-      animationRef.current = requestAnimationFrame(updateSimulation);
-      return;
-    }
-    const movedBodies = bodies.map(body => {
-      if (body.isDragging) return body;
-      let newVx = body.vx * 0.9999;
-      let newVy = body.vy * 0.9999;
-      let newX = body.x + newVx;
-      let newY = body.y + newVy;
-      if (newX - body.radius < 0 || newX + body.radius > canvasDimensions.width) { newVx = -newVx * 0.8; newX = body.x; }
-      if (newY - body.radius < 0 || newY + body.radius > canvasDimensions.height) { newVy = -newVy * 0.8; newY = body.y; }
-      return { ...body, x: newX, y: newY, vx: newVx, vy: newVy, trail: [...body.trail, { x: body.x, y: body.y }].slice(-8) };
-    });
-    const collisionResult = pureCheckCollisions(movedBodies, canvasDimensions, collisionCooldown);
-    setBodies(collisionResult.bodies);
-    setDebris(prevDebris => {
-      const updatedDebris = prevDebris.map(p => ({ ...p, x: p.x + p.vx, y: p.y + p.vy, vx: p.vx * 0.99, vy: p.vy * 0.99 + 0.015, life: p.life - 1.5 }))
-        .filter(p => p.life > 0);
-      return [...updatedDebris, ...collisionResult.newDebris].slice(-150);
-    });
-    setCollisionEffects(prevEffects => {
-      const updatedEffects = prevEffects.filter(e => Date.now() - e.timestamp < 1000);
-      return [...updatedEffects, ...collisionResult.newCollisionEffects].slice(-10);
-    });
-    setMetrics(calculateMetrics(collisionResult.bodies, collisionResult.collisionData));
-    lastFrameTime.current = performance.now();
-    animationRef.current = requestAnimationFrame(updateSimulation);
-  }, [isSimulating, bodies, debris, collisionEffects, canvasDimensions, calculateMetrics]);
-  const resetSimulation = () => {
-    setIsSimulating(false);
-    const isMobile = canvasDimensions.width < 400;
-    const preset1 = PLANET_PRESETS.find(p => p.name === 'Earth-like')!;
-    const preset2 = PLANET_PRESETS.find(p => p.name === 'Small Terrestrial')!;
-    const body1Radius = massToRadius(preset1.mass);
-    const body2Radius = massToRadius(preset2.mass);
-    const minDistance = body1Radius + body2Radius + 20;
-    const centerX = canvasDimensions.width * 0.5;
-    const centerY = canvasDimensions.height * 0.5;
-    const offsetX = Math.max(minDistance * 0.6, canvasDimensions.width * 0.15);
-    const offsetY = Math.max(minDistance * 0.3, canvasDimensions.height * 0.1);
-    const body1X = Math.max(body1Radius, Math.min(canvasDimensions.width - body1Radius, centerX - offsetX));
-    const body1Y = Math.max(body1Radius, Math.min(canvasDimensions.height - body1Radius, centerY - offsetY));
-    const body2X = Math.max(body2Radius, Math.min(canvasDimensions.width - body2Radius, centerX + offsetX));
-    const body2Y = Math.max(body2Radius, Math.min(canvasDimensions.height - body2Radius, centerY + offsetY));
-    setBodies([
-      { id: '1', x: body1X, y: body1Y, vx: isMobile ? 0.8 : preset1.velocityMagnitude, vy: isMobile ? 0.4 : preset1.velocityMagnitude * 0.5, mass: preset1.mass, radius: body1Radius, color: preset1.color, trail: [], isDragging: false, hasCollided: false, presetName: preset1.name },
-      { id: '2', x: body2X, y: body2Y, vx: isMobile ? -0.6 : -preset2.velocityMagnitude, vy: isMobile ? -0.2 : -preset2.velocityMagnitude * 0.5, mass: preset2.mass, radius: body2Radius, color: preset2.color, trail: [], isDragging: false, hasCollided: false, presetName: preset2.name },
-    ]);
-    setDebris([]);
-    setCollisionEffects([]);
-    setMetrics({
-      totalKineticEnergy: 0,
-      totalAngularMomentum: 0,
-      collisionForce: 0,
-      impactVelocity: 0,
-      lastCollisionTime: 0,
-    });
-  };
-  useEffect(() => {
-    if (isSimulating) {
-      animationRef.current = requestAnimationFrame(updateSimulation);
-    } else {
-      cancelAnimationFrame(animationRef.current);
-    }
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [isSimulating, updateSimulation]);
-  return {
-    bodies,
-    setBodies,
-    debris,
-    collisionEffects,
-    isSimulating,
-    setIsSimulating,
-    metrics,
-    canvasDimensions,
-    resetSimulation,
-    setCanvasRef: setRef,
-  };
-};
-const Header: React.FC<{ onReturnToLanding?: () => void }> = ({ onReturnToLanding }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
-  return (
-    <header
-      className={`relative text-white border-b border-white/10 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'
-        }`}
-      style={{
-        background: 'rgba(0, 0, 0, 0.4)',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <div className="md:hidden py-4">
-          <div className="flex items-center justify-between">
-            <div
-              className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-              onClick={onReturnToLanding}
-            >
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                  <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
-                  <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
-                  <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
-                  <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
-                  <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
-                  <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-base font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x leading-tight">
-                  Celestial Impact Simulator
-                </h1>
-                <div className="flex items-center space-x-1 mt-1">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
-                  <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse [animation-delay:0.5s]"></div>
-                  <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse [animation-delay:1s]"></div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-500 delay-200 ${isVisible ? 'opacity-100' : 'opacity-0'
-              }`}>
-              <div className="bg-white/5 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10 shadow-sm">
-                <p className="text-sm font-medium text-white/90">Research Platform</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="hidden md:flex items-center justify-between py-4">
-          <div
-            className="flex items-center space-x-4 hover:scale-[1.02] transition-all duration-300 cursor-pointer group"
-            onClick={onReturnToLanding}
-          >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:shadow-purple-500/25 transition-all duration-300">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                <circle cx="12" cy="12" r="6" fill="white" opacity="0.9" />
-                <ellipse cx="12" cy="12" rx="9" ry="2" fill="none" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                <ellipse cx="12" cy="12" rx="8" ry="1.5" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
-                <circle cx="4" cy="6" r="1" fill="white" opacity="0.6" />
-                <circle cx="20" cy="8" r="0.8" fill="white" opacity="0.5" />
-                <circle cx="18" cy="18" r="0.6" fill="white" opacity="0.4" />
-                <circle cx="6" cy="19" r="0.7" fill="white" opacity="0.5" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x">
-                Celestial Impact Simulator
-              </h1>
-              <div className="flex items-center space-x-2 mt-1">
-                <p className="text-sm text-gray-300 font-light">
-                  Advanced Planetary Collision Dynamics & Debris Analysis
-                </p>
-                <div className="flex items-center space-x-1">
-                  <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse"></div>
-                  <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse [animation-delay:0.5s]"></div>
-                  <div className="w-1 h-1 bg-yellow-400 rounded-full animate-pulse [animation-delay:1s]"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className={`flex items-center space-x-3 transition-all duration-500 delay-500 ${isVisible ? 'opacity-100' : 'opacity-0'
-            }`}>
-            <div className="text-right bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10 hover:bg-white/10 transition-all duration-200">
-              <p className="text-xs text-gray-400 font-medium">Astrophysics Suite</p>
-              <p className="text-sm font-semibold text-white">Research Platform</p>
-            </div>
-            <div className="w-2 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full opacity-60"></div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-};
-const Footer: React.FC<{ onLinkClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }> = ({ onLinkClick }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
-  useEffect(() => {
-    setIsOnline(navigator.onLine);
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.1 }
-    );
-    const footerElement = document.getElementById('footer');
-    if (footerElement) {
-      observer.observe(footerElement);
-    }
+    loadAudio();
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      if (footerElement) {
-        observer.unobserve(footerElement);
+      if (source) {
+        source.stop();
       }
+      if (seekTimeoutRef.current) {
+        clearTimeout(seekTimeoutRef.current);
+      }
+      if (seekAnimationRef.current) {
+        cancelAnimationFrame(seekAnimationRef.current);
+      }
+      context.close();
     };
   }, []);
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (onLinkClick) {
-      onLinkClick(e);
-    } else {
-      e.preventDefault();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-  return (
-    <footer
-      id="footer"
-      className={`text-white mt-8 md:mt-12 border-t border-white/10 transition-all duration-700 backdrop-blur-xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 lg:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 lg:gap-8 mb-4 md:mb-6 lg:mb-8">
-          <div className={`md:col-span-2 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}>
-            <div className="mb-3 md:mb-4">
-              <h3 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Celestial Impact Simulator
-              </h3>
-            </div>
-            <p className="text-gray-300 text-sm leading-relaxed max-w-md">
-              Advanced astrophysics simulation platform featuring realistic planetary collision dynamics,
-              comprehensive debris trajectory analysis, and glassmorphism design for educational exploration.
-            </p>
-          </div>
-          <div className={`transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}>
-            <h4 className="text-base sm:text-lg font-semibold mb-3 md:mb-4 lg:mb-6 text-white">Features</h4>
-            <ul className="space-y-1.5 sm:space-y-2 md:space-y-3 text-gray-300 text-sm">
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Collision Physics</a></li>
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Debris Dynamics</a></li>
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Trajectory Prediction</a></li>
-            </ul>
-          </div>
-          <div className={`transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}>
-            <h4 className="text-base sm:text-lg font-semibold mb-3 md:mb-4 lg:mb-6 text-white">Resources</h4>
-            <ul className="space-y-1.5 sm:space-y-2 md:space-y-3 text-gray-300 text-sm">
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Documentation</a></li>
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">API Reference</a></li>
-              <li><a href="#" onClick={handleClick} className="hover:text-white transition-colors">Examples</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className={`border-t border-white/10 pt-4 md:pt-6 lg:pt-8 flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0 transition-all duration-700 delay-400 ${isVisible ? 'opacity-100' : 'opacity-0'
-          }`}>
-          <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 lg:space-x-6">
-            <p className="text-xs sm:text-sm text-gray-400 text-center md:text-left">
-              2025 Astrophysics Research Platform. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-400">
-              <a href="#" onClick={handleClick} className="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" onClick={handleClick} className="hover:text-white transition-colors">Terms of Service</a>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
-              <span className="text-xs text-gray-400">
-                {isOnline ? 'System Online' : 'System Offline'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};
-const ControlPanel: React.FC<{
-  isSimulating: boolean;
-  onToggleSimulation: () => void;
-  onReset: () => void;
-  metrics: SimulationMetrics;
-}> = ({ isSimulating, onToggleSimulation, onReset, metrics }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 200);
-    return () => clearTimeout(timer);
-  }, []);
-  return (
-    <div
-      className={`relative rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      style={{
-        background: 'rgba(255, 255, 255, 0.06)',
-        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-      }}
-    >
-      <div className="lg:hidden">
-        <div className="grid grid-cols-2 gap-3 text-center mb-4">
-          <MetricCard
-            icon={<FaBolt />}
-            label="Kinetic Energy"
-            value={metrics.totalKineticEnergy.toFixed(1)}
-            unit="J"
-          />
-          <MetricCard
-            icon={<FaSpinner />}
-            label="Angular Momentum"
-            value={metrics.totalAngularMomentum.toFixed(1)}
-            unit="kg⋅m²/s"
-          />
-          <MetricCard
-            icon={<FaExclamationTriangle />}
-            label="Collision Force"
-            value={metrics.collisionForce.toFixed(1)}
-            unit="N"
-            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
-          />
-          <MetricCard
-            icon={<FaRocket />}
-            label="Impact Velocity"
-            value={metrics.impactVelocity.toFixed(1)}
-            unit="m/s"
-            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
-          />
-        </div>
-        <div className="flex items-center justify-center space-x-3">
-          <button
-            onClick={onToggleSimulation}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 hover:scale-105 transform ${isSimulating
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
-              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
-              }`}
-          >
-            {isSimulating ? <PauseIcon /> : <PlayIcon />}
-            <span className="text-sm">{isSimulating ? 'Pause' : 'Start'}</span>
-          </button>
-          <button
-            onClick={onReset}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-purple-600/95 hover:bg-purple-700/95 text-white rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 shadow-lg shadow-purple-500/25 hover:scale-105 transform"
-          >
-            <ResetIcon />
-            <span className="text-sm">Reset</span>
-          </button>
-        </div>
-      </div>
-      <div className="hidden lg:flex flex-row items-center justify-between gap-6">
-        <div className="flex items-center justify-start space-x-3">
-          <button
-            onClick={onToggleSimulation}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 hover:scale-105 transform ${isSimulating
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
-              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25'
-              }`}
-          >
-            {isSimulating ? <PauseIcon /> : <PlayIcon />}
-            <span className="text-base">{isSimulating ? 'Pause' : 'Start'}</span>
-          </button>
-          <button
-            onClick={onReset}
-            className="flex items-center space-x-2 px-6 py-3 bg-purple-600/95 hover:bg-purple-700/95 text-white rounded-xl font-medium transition-all duration-200 cursor-pointer backdrop-blur-sm border border-white/20 shadow-lg shadow-purple-500/25 hover:scale-105 transform"
-          >
-            <ResetIcon />
-            <span className="text-base">Reset</span>
-          </button>
-        </div>
-        <div className="grid grid-cols-4 gap-4 text-center">
-          <MetricCard
-            icon={<FaBolt />}
-            label="Kinetic Energy"
-            value={metrics.totalKineticEnergy.toFixed(1)}
-            unit="J"
-          />
-          <MetricCard
-            icon={<FaSpinner />}
-            label="Angular Momentum"
-            value={metrics.totalAngularMomentum.toFixed(1)}
-            unit="kg⋅m²/s"
-          />
-          <MetricCard
-            icon={<FaExclamationTriangle />}
-            label="Collision Force"
-            value={metrics.collisionForce.toFixed(1)}
-            unit="N"
-            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
-          />
-          <MetricCard
-            icon={<FaRocket />}
-            label="Impact Velocity"
-            value={metrics.impactVelocity.toFixed(1)}
-            unit="m/s"
-            highlight={metrics.collisionForce > 0 || metrics.impactVelocity > 0}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-const MetricCard: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  unit: string;
-  highlight?: boolean;
-}> = React.memo(({ icon, label, value, unit, highlight = false }) => (
-  <div
-    className={`p-2 md:p-3 rounded-xl border transition-all duration-200 hover:scale-105 transform backdrop-blur-md ${highlight
-      ? 'border-orange-400/60 shadow-lg shadow-orange-400/20'
-      : 'border-white/20'
-      }`}
-    style={{
-      background: highlight
-        ? 'rgba(255, 107, 53, 0.1)'
-        : 'rgba(255, 255, 255, 0.05)',
-      boxShadow: highlight
-        ? '0 4px 16px rgba(255, 107, 53, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-        : '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-    }}
-  >
-    <div className="flex items-center justify-center space-x-1 text-purple-400 mb-1">
-      <span className="text-xs md:text-sm">{icon}</span>
-      <span className="text-xs font-medium hidden md:inline">{label}</span>
-    </div>
-    <div className={`text-sm md:text-lg font-bold transition-colors ${highlight ? 'text-orange-300' : 'text-white'
-      }`}>
-      {value} <span className="text-xs text-gray-400">{unit}</span>
-    </div>
-  </div>
-));
-const CustomSlider: React.FC<{
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-  disabled?: boolean;
-}> = ({ label, value, min, max, step, onChange, disabled = false }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const isDraggingRef = useRef(false);
-  const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
-  useEffect(() => {
-    if (!isDragging) {
-      setLocalValue(value);
-    }
-  }, [value, isDragging]);
-  const percentage = ((localValue - min) / (max - min)) * 100;
-  const updateValue = useCallback((clientX: number) => {
-    if (!sliderRef.current) return;
-    const rect = sliderRef.current.getBoundingClientRect();
-    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const newValue = min + percentage * (max - min);
-    const steppedValue = Math.round(newValue / step) * step;
-    const clampedValue = Math.max(min, Math.min(max, steppedValue));
-    setLocalValue(clampedValue);
-    const now = performance.now();
-    if (now - lastUpdateTimeRef.current > 16) {
-      lastUpdateTimeRef.current = now;
-      onChange(clampedValue);
-    }
-  }, [min, max, step, onChange]);
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (disabled) return;
-    e.preventDefault();
-    setIsDragging(true);
-    isDraggingRef.current = true;
-    updateValue(e.clientX);
-  }, [disabled, updateValue]);
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDraggingRef.current || disabled) return;
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    animationFrameRef.current = requestAnimationFrame(() => {
-      updateValue(e.clientX);
-    });
-  }, [disabled, updateValue]);
-  const handleMouseUp = useCallback(() => {
-    if (!isDraggingRef.current) return;
-    setIsDragging(false);
-    isDraggingRef.current = false;
-    onChange(localValue);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-  }, [onChange, localValue]);
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove, { passive: false });
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-          animationFrameRef.current = null;
+  const lastActiveLineRef = useRef<string | null>(null);
+  const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const seekAnimationRef = useRef<number | null>(null);
+  const updateTime = useCallback(() => {
+    if (audioContext && isPlaying && !isSeeking) {
+      const elapsed = audioContext.currentTime - startTimeRef.current;
+      const currentPos = pauseTimeRef.current + elapsed * playbackRate;
+      const now = Date.now();
+      if (now - lastUpdateTimeRef.current > 100) {
+        setCurrentTime(currentPos);
+        lastUpdateTimeRef.current = now;
+        if (progressBarRef.current && currentPos > 0) {
+          const percentage = (currentPos / duration) * 100;
+          progressBarRef.current.style.width = `${percentage}%`;
         }
-      };
+      }
+      const active = transcript.find(line =>
+        currentPos >= line.startTime && currentPos < line.endTime
+      );
+      if (active && active.id !== lastActiveLineRef.current) {
+        setActiveLine(active.id);
+        setHeardLines(prev => {
+          const newSet = new Set(prev);
+          newSet.add(active.id);
+          return newSet;
+        });
+        const lineElement = document.getElementById(`line-${active.id}`);
+        if (lineElement) {
+          lineElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+        lastActiveLineRef.current = active.id;
+      } else if (!active && lastActiveLineRef.current) {
+        setActiveLine(null);
+        lastActiveLineRef.current = null;
+      }
+      if (currentPos >= duration) {
+        stopAudio();
+        setShowQuiz(true);
+      } else {
+        animationFrameRef.current = requestAnimationFrame(updateTime);
+      }
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [audioContext, isPlaying, isSeeking, playbackRate, duration, transcript]);
   useEffect(() => {
+    if (isPlaying) {
+      updateTime();
+    }
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-    };
-  }, []);
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm text-gray-300">
-        {label}: {localValue.toFixed(2)}
-      </label>
-      <div
-        ref={sliderRef}
-        className={`relative h-2 bg-gray-600/50 rounded-full cursor-pointer transition-opacity duration-200 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-        onMouseDown={handleMouseDown}
-      >
-        <div
-          className={`absolute top-1/2 w-4 h-4 bg-purple-500 rounded-full transform -translate-y-1/2 -translate-x-1/2 transition-all duration-150 ${disabled ? 'cursor-not-allowed' : 'cursor-grab hover:scale-110'} ${isDragging ? 'scale-125 cursor-grabbing' : ''}`}
-          style={{
-            left: `${percentage}%`,
-            backgroundColor: isDragging ? '#EC4899' : '#8B5FBF',
-          }}
-        />
-      </div>
-    </div>
-  );
-};
-const SimulationCanvas: React.FC<{
-  bodies: Planet[];
-  debris: DebrisParticle[];
-  collisionEffects: CollisionEffect[];
-  setBodies: React.Dispatch<React.SetStateAction<Planet[]>>;
-  isSimulating: boolean;
-  canvasDimensions: CanvasDimensions;
-  showInstructions: boolean;
-  setShowInstructions: React.Dispatch<React.SetStateAction<boolean>>;
-  hasStarted: boolean;
-  setCanvasRef: (node: HTMLDivElement) => void;
-}> = ({ bodies, debris, collisionEffects, setBodies, isSimulating, canvasDimensions, showInstructions, setShowInstructions, hasStarted, setCanvasRef }) => {
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [interactionState, setInteractionState] = useState<InteractionState>({
-    mode: 'none',
-    bodyId: null,
-    startPos: { x: 0, y: 0 },
-    currentPos: { x: 0, y: 0 },
-    offset: { x: 0, y: 0 },
-    isActive: false,
-    isLongPress: false,
-    longPressTimer: null,
-  });
-  const [showTrajectories, setShowTrajectories] = useState(!isSimulating);
-  const [showDebrisTrajectories, setShowDebrisTrajectories] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastClickTimeRef = useRef<number>(0);
-  const [starField, setStarField] = useState<Array<{
-    id: number;
-    left: number;
-    top: number;
-    animationDelay: number;
-    animationDuration: number;
-    size: number;
-    opacity: number;
-  }>>([]);
-  useEffect(() => {
-    if (canvasDimensions.width > 0 && canvasDimensions.height > 0) {
-      const numStars = Math.min(20, Math.floor(canvasDimensions.width / 30));
-      const newStarField = Array.from({ length: numStars }, (_, i) => ({
-        id: i,
-        left: (i * 23 + 15) % 100,
-        top: (i * 37 + 20) % 100,
-        animationDelay: i * 0.5,
-        animationDuration: 2 + (i % 3),
-        size: 1 + (i % 2),
-        opacity: 0.3 + (i % 3) * 0.2,
-      }));
-      setStarField(newStarField);
-    }
-  }, [canvasDimensions.width, canvasDimensions.height]);
-  useEffect(() => {
-    setShowTrajectories(!isSimulating);
-  }, [isSimulating]);
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 400);
-    return () => clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    if (isSimulating) {
-      if (interactionState.longPressTimer) {
-        clearTimeout(interactionState.longPressTimer);
+      if (seekTimeoutRef.current) {
+        clearTimeout(seekTimeoutRef.current);
       }
-      setInteractionState({
-        mode: 'none',
-        bodyId: null,
-        startPos: { x: 0, y: 0 },
-        currentPos: { x: 0, y: 0 },
-        offset: { x: 0, y: 0 },
-        isActive: false,
-        isLongPress: false,
-        longPressTimer: null,
-      });
-    }
-  }, [isSimulating]);
-  useEffect(() => {
-    return () => {
-      if (interactionState.longPressTimer) {
-        clearTimeout(interactionState.longPressTimer);
-      }
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
+      if (seekAnimationRef.current) {
+        cancelAnimationFrame(seekAnimationRef.current);
       }
     };
-  }, [interactionState.longPressTimer]);
-  const getCoordinatesFromEvent = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    if ('touches' in e) {
-      const touch = e.touches[0] || e.changedTouches[0];
-      return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+  }, [isPlaying, updateTime]);
+  const playAudio = (startFrom: number = currentTime) => {
+    if (audioContext && audioBuffer) {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      if (source) {
+        source.stop();
+      }
+      const newSource = audioContext.createBufferSource();
+      newSource.buffer = audioBuffer;
+      newSource.playbackRate.value = playbackRate;
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 1.0;
+      newSource.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      const offset = Math.min(startFrom, duration - 0.1);
+      setCurrentTime(offset);
+      if (progressBarRef.current) {
+        const percentage = (offset / duration) * 100;
+        progressBarRef.current.style.width = `${percentage}%`;
+      }
+      newSource.start(0, offset);
+      newSource.onended = () => {
+        if (Math.abs(currentTime - duration) < 0.5) {
+          stopAudio();
+          setShowQuiz(true);
+        }
       };
-    } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
+      setSource(newSource);
+      setIsPlaying(true);
+      startTimeRef.current = audioContext.currentTime;
+      pauseTimeRef.current = offset;
     }
   };
-  const handlePointerStart = (e: React.MouseEvent | React.TouchEvent, bodyId: string) => {
-    if (isSimulating) return;
-    e.preventDefault();
-    e.stopPropagation();
-    document.body.style.overflow = 'hidden';
-    const coords = getCoordinatesFromEvent(e);
-    const body = bodies.find(b => b.id === bodyId);
-    if (!body) return;
-    if (interactionState.longPressTimer) {
-      clearTimeout(interactionState.longPressTimer);
+  const pauseAudio = () => {
+    if (!audioContext || !isPlaying) return;
+    const elapsed = audioContext.currentTime - startTimeRef.current;
+    const exactCurrentTime = pauseTimeRef.current + elapsed * playbackRate;
+    if (source) {
+      source.stop();
+      setSource(null);
     }
-    const now = Date.now();
-    const isDesktop = !('touches' in e);
-    if (isDesktop) {
-      const timeSinceLastClick = now - lastClickTimeRef.current;
-      const wasRecentClick = timeSinceLastClick < 400 && interactionState.bodyId === bodyId;
-      if (wasRecentClick) {
-        setInteractionState({
-          mode: 'velocity',
-          bodyId,
-          startPos: coords,
-          currentPos: coords,
-          offset: { x: coords.x - body.x, y: coords.y - body.y },
-          isActive: true,
-          isLongPress: true,
-          longPressTimer: null,
+    setIsPlaying(false);
+    setCurrentTime(exactCurrentTime);
+    pauseTimeRef.current = exactCurrentTime;
+    if (progressBarRef.current) {
+      const percentage = (exactCurrentTime / duration) * 100;
+      progressBarRef.current.style.width = `${percentage}%`;
+    }
+  };
+  const stopAudio = () => {
+    pauseAudio();
+    setCurrentTime(0);
+    pauseTimeRef.current = 0;
+    setActiveLine(null);
+  };
+  const seekTo = (time: number) => {
+    const targetTime = Math.min(Math.max(time, 0), duration);
+    const wasPlaying = isPlaying;
+    if (isPlaying && source) {
+      source.stop();
+      setSource(null);
+      setIsPlaying(false);
+    }
+    requestAnimationFrame(() => {
+      setCurrentTime(targetTime);
+      pauseTimeRef.current = targetTime;
+      if (progressBarRef.current) {
+        const percentage = (targetTime / duration) * 100;
+        progressBarRef.current.style.width = `${percentage}%`;
+      }
+      if (wasPlaying) {
+        playAudio(targetTime);
+      }
+    });
+  };
+  const handleLineClick = (line: TranscriptLine) => {
+    seekTo(line.startTime);
+    if (!isPlaying) {
+      playAudio(line.startTime);
+    }
+  };
+  const toggleBookmark = (line: TranscriptLine) => {
+    const exists = bookmarks.find(b => b.lineId === line.id);
+    if (exists) {
+      setBookmarks(bookmarks.filter(b => b.lineId !== line.id));
+    } else {
+      setBookmarks([...bookmarks, {
+        lineId: line.id,
+        text: line.text,
+        timestamp: line.startTime
+      }]);
+    }
+  };
+  const handleBookmarkClick = (bookmark: Bookmark) => {
+    setShowBookmarks(false);
+    seekTo(bookmark.timestamp);
+    if (!isPlaying) {
+      playAudio(bookmark.timestamp);
+    }
+  };
+  const handleQuizAnswer = () => {
+    const selectedAnswer = quizAnswers[currentQuizIndex]?.selectedAnswer;
+    if (selectedAnswer === null || selectedAnswer === undefined) return;
+    const currentQuiz = quizzes[currentQuizIndex];
+    const isCorrect = selectedAnswer === currentQuiz.correctAnswer;
+    const updatedAnswers = [...quizAnswers];
+    updatedAnswers[currentQuizIndex] = {
+      questionIndex: currentQuizIndex,
+      selectedAnswer,
+      isCorrect
+    };
+    setQuizAnswers(updatedAnswers);
+    setQuizResult({
+      message: isCorrect
+        ? "Correct! Great job!"
+        : `Not quite. The correct answer is: ${currentQuiz.options[currentQuiz.correctAnswer]}`,
+      status: isCorrect ? "correct" : "incorrect",
+    });
+  };
+  const goToNextQuestion = () => {
+    if (currentQuizIndex < quizzes.length - 1) {
+      setCurrentQuizIndex(currentQuizIndex + 1);
+      setQuizResult({ message: "", status: null });
+    } else {
+      setShowQuizResults(true);
+    }
+  };
+  const goToPreviousQuestion = () => {
+    if (currentQuizIndex > 0) {
+      setCurrentQuizIndex(currentQuizIndex - 1);
+      const prevAnswer = quizAnswers[currentQuizIndex - 1];
+      if (prevAnswer) {
+        setQuizResult({
+          message: prevAnswer.isCorrect
+            ? "Correct! Great job!"
+            : `Not quite. The correct answer is: ${quizzes[currentQuizIndex - 1].options[quizzes[currentQuizIndex - 1].correctAnswer]}`,
+          status: prevAnswer.isCorrect ? "correct" : "incorrect",
         });
-        return;
-      }
-    }
-    const longPressTimer = setTimeout(() => {
-      setInteractionState(prev => ({
-        ...prev,
-        mode: 'velocity',
-        isLongPress: true,
-      }));
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-      }
-    }, 500);
-    setInteractionState({
-      mode: 'longpress',
-      bodyId,
-      startPos: coords,
-      currentPos: coords,
-      offset: { x: coords.x - body.x, y: coords.y - body.y },
-      isActive: true,
-      isLongPress: false,
-      longPressTimer,
-    });
-    lastClickTimeRef.current = now;
-    setBodies(prev =>
-      prev.map(b => (b.id === bodyId ? { ...b, isDragging: true } : b))
-    );
-  };
-  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!interactionState.isActive || !interactionState.bodyId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const coords = getCoordinatesFromEvent(e);
-    setInteractionState(prev => ({
-      ...prev,
-      currentPos: coords,
-    }));
-    if (interactionState.mode === 'longpress' && !interactionState.isLongPress) {
-      const distance = Math.sqrt(
-        (coords.x - interactionState.startPos.x) ** 2 +
-        (coords.y - interactionState.startPos.y) ** 2
-      );
-      if (distance > 10) {
-        if (interactionState.longPressTimer) {
-          clearTimeout(interactionState.longPressTimer);
-        }
-        setInteractionState(prev => ({
-          ...prev,
-          mode: 'drag',
-          longPressTimer: null,
-        }));
-      }
-    }
-    if (interactionState.mode === 'drag' || interactionState.mode === 'longpress') {
-      const draggedBody = bodies.find(b => b.id === interactionState.bodyId);
-      if (!draggedBody) return;
-      const rawX = coords.x - interactionState.offset.x;
-      const rawY = coords.y - interactionState.offset.y;
-      let newX = Math.max(draggedBody.radius, Math.min(canvasDimensions.width - draggedBody.radius, rawX));
-      let newY = Math.max(draggedBody.radius, Math.min(canvasDimensions.height - draggedBody.radius, rawY));
-      const otherBodies = bodies.filter(b => b.id !== interactionState.bodyId);
-      for (const otherBody of otherBodies) {
-        const dx = newX - otherBody.x;
-        const dy = newY - otherBody.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const minDistance = draggedBody.radius + otherBody.radius + 8;
-        if (distance < minDistance) {
-          const angle = Math.atan2(dy, dx);
-          newX = otherBody.x + Math.cos(angle) * minDistance;
-          newY = otherBody.y + Math.sin(angle) * minDistance;
-          newX = Math.max(draggedBody.radius, Math.min(canvasDimensions.width - draggedBody.radius, newX));
-          newY = Math.max(draggedBody.radius, Math.min(canvasDimensions.height - draggedBody.radius, newY));
-        }
-      }
-      setBodies(prev =>
-        prev.map(b =>
-          b.id === interactionState.bodyId
-            ? { ...b, x: newX, y: newY }
-            : b
-        )
-      );
-    }
-  };
-  const handlePointerEnd = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    document.body.style.overflow = '';
-    if (!interactionState.isActive || !interactionState.bodyId) return;
-    if (interactionState.longPressTimer) {
-      clearTimeout(interactionState.longPressTimer);
-    }
-    if (interactionState.mode === 'velocity') {
-      const deltaX = interactionState.currentPos.x - interactionState.startPos.x;
-      const deltaY = interactionState.currentPos.y - interactionState.startPos.y;
-      const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2);
-      if (distance > 10) {
-        const maxVelocity = 5;
-        const velocityMultiplier = Math.min(distance / 60, maxVelocity);
-        const vx = (deltaX / distance) * velocityMultiplier;
-        const vy = (deltaY / distance) * velocityMultiplier;
-        setBodies(prev =>
-          prev.map(b =>
-            b.id === interactionState.bodyId ? { ...b, vx, vy, isDragging: false } : b
-          )
-        );
       } else {
-        setBodies(prev =>
-          prev.map(b =>
-            b.id === interactionState.bodyId ? { ...b, isDragging: false } : b
-          )
-        );
+        setQuizResult({ message: "", status: null });
       }
-    } else {
-      setBodies(prev =>
-        prev.map(b =>
-          b.id === interactionState.bodyId ? { ...b, isDragging: false } : b
-        )
-      );
     }
-    setInteractionState({
-      mode: 'none',
-      bodyId: null,
-      startPos: { x: 0, y: 0 },
-      currentPos: { x: 0, y: 0 },
-      offset: { x: 0, y: 0 },
-      isActive: false,
-      isLongPress: false,
-      longPressTimer: null,
-    });
   };
-  const handleButtonClick = (action: () => void) => {
-    return (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      action();
+  const resetQuiz = () => {
+    setShowQuiz(false);
+    setShowQuizResults(false);
+    setCurrentQuizIndex(0);
+    setQuizAnswers([]);
+    setQuizResult({ message: "", status: null });
+    stopAudio();
+  };
+  const calculateQuizScore = () => {
+    const correctAnswers = quizAnswers.filter(answer => answer.isCorrect).length;
+    return {
+      score: correctAnswers,
+      total: quizzes.length,
+      percentage: Math.round((correctAnswers / quizzes.length) * 100)
     };
   };
-  const combinedRef = useCallback((node: HTMLDivElement) => {
-    canvasRef.current = node;
-    setCanvasRef(node);
-  }, [setCanvasRef]);
+  useEffect(() => {
+    if (showQuiz) {
+      setQuizAnswers(quizzes.map((_, index) => ({
+        questionIndex: index,
+        selectedAnswer: null,
+        isCorrect: false
+      })));
+    }
+  }, [showQuiz]);
+  useEffect(() => {
+    if (showQuiz) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${window.scrollY}px`;
+      document.body.style.width = '100%';
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [showQuiz]);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (speedDropdownRef.current && !speedDropdownRef.current.contains(event.target as Node)) {
+        setShowSpeedDropdown(false);
+      }
+    };
+    if (showSpeedDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showSpeedDropdown]);
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
   return (
-    <div
-      className={`relative rounded-2xl overflow-hidden transition-all duration-700 w-full max-w-full backdrop-blur-xl ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-        }`}
-      style={{
-        background: 'rgba(0, 0, 0, 0.4)',
-        boxShadow: isSimulating
-          ? '0 15px 30px -8px rgba(139, 95, 191, 0.25), 0 20px 40px -10px rgba(139, 95, 191, 0.15), 0 0 0 1px rgba(139, 95, 191, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-          : '0 15px 30px -8px rgba(0, 0, 0, 0.25), 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-      }}
-    >
-      <div
-        ref={combinedRef}
-        className="relative w-full cursor-crosshair touch-none select-none"
-        style={{
-          height: canvasDimensions.height > 0 ? canvasDimensions.height : '60vh',
-          background: 'radial-gradient(circle at 30% 30%, rgba(139, 95, 191, 0.3) 0%, rgba(0, 0, 0, 0.95) 70%)',
-          WebkitUserSelect: 'none',
-          WebkitTouchCallout: 'none',
-        }}
-        onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerEnd}
-        onMouseLeave={handlePointerEnd}
-        onTouchMove={handlePointerMove}
-        onTouchEnd={handlePointerEnd}
-      >
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {starField.map((star) => (
-            <div
-              key={star.id}
-              className="absolute bg-white rounded-full animate-twinkle"
-              style={{
-                left: `${star.left}%`,
-                top: `${star.top}%`,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                opacity: star.opacity,
-                animationDelay: `${star.animationDelay}s`,
-                animationDuration: `${star.animationDuration}s`,
-                boxShadow: `0 0 ${star.size * 2}px rgba(255, 255, 255, 0.8)`,
-              }}
-            />
-          ))}
-        </div>
-        {showTrajectories && bodies.map(body => {
-          const trajectory = predictTrajectory(body, canvasDimensions);
-          return (
-            <svg
-              key={`trajectory-${body.id}`}
-              className="absolute inset-0 pointer-events-none"
-              width="100%"
-              height="100%"
-            >
-              <defs>
-                <linearGradient id={`trajectoryGradient-${body.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor={body.color} stopOpacity="0.95" />
-                  <stop offset="100%" stopColor={body.color} stopOpacity="0.2" />
-                </linearGradient>
-              </defs>
-              <path
-                d={trajectory.length > 1
-                  ? `M ${body.x} ${body.y} ${trajectory
-                    .map(point => `L ${point.x} ${point.y}`)
-                    .join(' ')}`
-                  : ''
-                }
-                stroke={`url(#trajectoryGradient-${body.id})`}
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray="8,4"
-                opacity="0.9"
-              />
-            </svg>
-          );
-        })}
-        {showDebrisTrajectories && debris.map(particle => {
-          const trajectory = predictDebrisTrajectory(particle, canvasDimensions);
-          return (
-            <svg
-              key={`debris-trajectory-${particle.id}`}
-              className="absolute inset-0 pointer-events-none"
-              width="100%"
-              height="100%"
-            >
-              <path
-                d={trajectory.length > 1
-                  ? `M ${particle.x} ${particle.y} ${trajectory
-                    .map(point => `L ${point.x} ${point.y}`)
-                    .join(' ')}`
-                  : ''
-                }
-                stroke={particle.color}
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray="3,2"
-                opacity="0.7"
-              />
-            </svg>
-          );
-        })}
-        {interactionState.isActive && (
-          interactionState.mode === 'velocity' ||
-          (interactionState.mode === 'longpress' && interactionState.isLongPress)
-        ) && (
-            <svg
-              className="absolute inset-0 pointer-events-none z-20"
-              width="100%"
-              height="100%"
-            >
-              <defs>
-                <marker
-                  id="velocityArrow"
-                  markerWidth="12"
-                  markerHeight="8"
-                  refX="10"
-                  refY="4"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0 0, 12 4, 0 8"
-                    fill="#00ff88"
-                  />
-                </marker>
-              </defs>
-              <line
-                x1={interactionState.startPos.x}
-                y1={interactionState.startPos.y}
-                x2={interactionState.currentPos.x}
-                y2={interactionState.currentPos.y}
-                stroke="#00ff88"
-                strokeWidth="4"
-                markerEnd="url(#velocityArrow)"
-                opacity="0.9"
-              />
-            </svg>
-          )}
-        {bodies.map(body => (
-          <svg
-            key={`trail-${body.id}`}
-            className="absolute inset-0 pointer-events-none"
-            width="100%"
-            height="100%"
-          >
-            <path
-              d={body.trail.length > 1
-                ? `M ${body.trail[0].x} ${body.trail[0].y} ${body.trail
-                  .slice(1)
-                  .map(point => `L ${point.x} ${point.y}`)
-                  .join(' ')}`
-                : ''
-              }
-              stroke={body.color}
-              strokeWidth="2"
-              fill="none"
-              opacity="0.6"
-              strokeLinecap="round"
-            />
-          </svg>
-        ))}
-        {debris.map(particle => (
-          <svg
-            key={`debris-trail-${particle.id}`}
-            className="absolute inset-0 pointer-events-none"
-            width="100%"
-            height="100%"
-          >
-            <path
-              d={particle.trail.length > 1
-                ? `M ${particle.trail[0].x} ${particle.trail[0].y} ${particle.trail
-                  .slice(1)
-                  .map(point => `L ${point.x} ${point.y}`)
-                  .join(' ')}`
-                : ''
-              }
-              stroke={particle.color}
-              strokeWidth="1"
-              fill="none"
-              opacity="0.4"
-              strokeLinecap="round"
-            />
-          </svg>
-        ))}
-        {collisionEffects.map(effect => (
-          <div
-            key={effect.id}
-            className="absolute pointer-events-none"
-            style={{
-              left: effect.x - 40,
-              top: effect.y - 40,
-              width: 80,
-              height: 80,
-            }}
-          >
-            <div className="w-full h-full rounded-full relative animate-collision-blast">
-              <div className="absolute inset-0 rounded-full border-2 border-orange-400 bg-orange-400/20 backdrop-blur-sm"></div>
-              <div className="absolute inset-1 rounded-full border-2 border-yellow-300 bg-yellow-300/15 animate-pulse"></div>
-              <div className="absolute inset-2 rounded-full border-1 border-white bg-white/10 animate-pulse"></div>
-            </div>
-          </div>
-        ))}
-        {debris.map(particle => {
-          const lifeRatio = particle.life / particle.maxLife;
-          const glowIntensity = Math.min(1, lifeRatio * 1.5);
-          const scaleEffect = 0.8 + (lifeRatio * 0.4);
-          return (
-            <div
-              key={particle.id}
-              className="absolute rounded-full pointer-events-none backdrop-blur-sm animate-debris-fade"
-              style={{
-                left: particle.x - particle.radius * scaleEffect,
-                top: particle.y - particle.radius * scaleEffect,
-                width: particle.radius * 2 * scaleEffect,
-                height: particle.radius * 2 * scaleEffect,
-                backgroundColor: particle.color,
-                boxShadow: `0 0 ${particle.radius * (3 + glowIntensity * 2)}px ${particle.color}${Math.floor(glowIntensity * 70).toString(16).padStart(2, '0')}`,
-                opacity: Math.max(0.1, lifeRatio * 0.9),
-                transform: `rotate(${particle.life * 3}deg)`,
-                transition: 'all 0.05s ease-out',
-                filter: `brightness(${100 + glowIntensity * 50}%)`,
-              }}
-            />
-          );
-        })}
-        {bodies.map(body => {
-          const velocity = Math.sqrt(body.vx ** 2 + body.vy ** 2);
-          const hasVelocity = velocity > 0.1;
-          const showVelocityVector = !isSimulating && hasVelocity && !body.isDragging && interactionState.bodyId !== body.id;
-          return (
-            <div key={body.id}>
-              <div
-                className="absolute cursor-pointer select-none hover:scale-105 transition-transform duration-150"
-                style={{
-                  left: body.x - body.radius,
-                  top: body.y - body.radius,
-                  width: body.radius * 2,
-                  height: body.radius * 2,
-                }}
-                onMouseDown={(e) => handlePointerStart(e, body.id)}
-                onTouchStart={(e) => handlePointerStart(e, body.id)}
-              >
-                <div
-                  className="w-full h-full rounded-full relative shadow-lg backdrop-blur-sm border border-white/30 flex items-center justify-center"
-                  style={{
-                    background: `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), ${body.color})`,
-                    boxShadow: `0 0 ${body.radius}px ${body.color}50, inset 0 0 ${body.radius / 2}px rgba(255,255,255,0.4)`,
-                  }}
-                >
-                  {!interactionState.isActive && (
-                    <div
-                      className="text-center select-none pointer-events-none font-semibold"
-                      style={{
-                        fontSize: `${Math.max(10, body.radius * 0.3)}px`,
-                        color: '#ffffff',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                        letterSpacing: '0.3px',
-                      }}
-                    >
-                      <span style={{
-                        fontWeight: '600',
-                        color: '#ffffff'
-                      }}>
-                        {body.mass.toFixed(0)}
-                      </span>
-                      <span style={{
-                        fontSize: '0.75em',
-                        opacity: 0.9,
-                        marginLeft: '2px',
-                        fontWeight: '400',
-                        color: '#e0e0e0'
-                      }}>
-                        kg
-                      </span>
-                    </div>
-                  )}
-                  {showVelocityVector && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      {(() => {
-                        const normalizedVx = body.vx / velocity;
-                        const normalizedVy = body.vy / velocity;
-                        const edgeOffset = body.radius - 4;
-                        const startX = normalizedVx * edgeOffset;
-                        const startY = normalizedVy * edgeOffset;
-                        const baseLength = Math.max(body.radius * 1.2, 15);
-                        const velocityFactor = Math.min(velocity * 6, 2.0);
-                        const arrowLength = baseLength * velocityFactor;
-                        const endX = startX + normalizedVx * arrowLength;
-                        const endY = startY + normalizedVy * arrowLength;
-                        const strokeWidth = Math.max(1.5, body.radius * 0.08);
-                        const containerPadding = 40;
-                        return (
-                          <svg
-                            className="absolute inset-0 w-full h-full"
-                            style={{
-                              width: (body.radius + arrowLength + containerPadding) * 2,
-                              height: (body.radius + arrowLength + containerPadding) * 2,
-                              left: -(arrowLength + containerPadding),
-                              top: -(arrowLength + containerPadding),
-                            }}
-                            viewBox={`${-(arrowLength + containerPadding)} ${-(arrowLength + containerPadding)} ${(arrowLength + containerPadding) * 2} ${(arrowLength + containerPadding) * 2}`}
-                          >
-                            <defs>
-                              <marker
-                                id={`arrowhead-${body.id}`}
-                                markerWidth="8"
-                                markerHeight="6"
-                                refX="7"
-                                refY="3"
-                                orient="auto"
-                                markerUnits="strokeWidth"
-                              >
-                                <polygon
-                                  points="0 0, 8 3, 0 6"
-                                  fill="#00ff88"
-                                />
-                              </marker>
-                            </defs>
-                            <line
-                              x1={startX}
-                              y1={startY}
-                              x2={endX}
-                              y2={endY}
-                              stroke="#00ff88"
-                              strokeWidth={strokeWidth}
-                              markerEnd={`url(#arrowhead-${body.id})`}
-                              opacity="0.9"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        );
-                      })()}
-                    </div>
-                  )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-['Poppins',system-ui,-apple-system,sans-serif] relative overflow-x-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-4 -right-4 w-72 h-72 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 -left-4 w-96 h-96 bg-gradient-to-br from-indigo-400/15 to-pink-600/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute -bottom-8 right-1/3 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      </div>
+              {!isLoading && (
+          <header className={`fixed top-0 left-0 right-0 z-50 bg-white/30 backdrop-blur-2xl border-b border-white/20 transition-all duration-300 ${showQuiz ? 'blur-sm' : ''}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 sm:h-20">
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 12l2 2 4-4" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent truncate">
+                    Learning Greetings
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-600 font-medium hidden sm:block">Interactive Language Learning</p>
                 </div>
               </div>
-            </div>
-          );
-        })}
-        {interactionState.isActive && (
-          <div
-            className="absolute bottom-16 md:bottom-20 right-4 text-white px-3 py-1 rounded-lg border border-white/20 text-xs z-20 backdrop-blur-md"
-            style={{
-              background: 'rgba(0, 0, 0, 0.6)',
-            }}
-          >
-            {interactionState.mode === 'velocity' || (interactionState.mode === 'longpress' && interactionState.isLongPress)
-              ? ' Velocity'
-              : ' Drag'
-            }
-          </div>
-        )}
-        <div className="absolute top-4 right-4 flex flex-col items-end space-y-3 z-50">
-          <div className="flex items-center space-x-2 md:space-x-3">
-            <div className="relative overflow-visible">
               <button
-                onMouseDown={handleButtonClick(() => setShowDebrisTrajectories(!showDebrisTrajectories))}
-                onTouchStart={handleButtonClick(() => setShowDebrisTrajectories(!showDebrisTrajectories))}
-                className={`peer p-2 md:p-3 rounded-xl border border-white/20 text-white transition-all duration-200 hover:scale-110 transform cursor-pointer select-none backdrop-blur-md pointer-events-auto ${showDebrisTrajectories
-                  ? 'shadow-lg shadow-orange-500/30'
-                  : 'hover:bg-white/10'
-                  }`}
-                style={{
-                  background: showDebrisTrajectories
-                    ? 'rgba(255, 107, 53, 0.3)'
-                    : 'rgba(0, 0, 0, 0.4)',
-                }}
-              >
-                <TargetIcon />
-              </button>
-              <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999]">
-                {showDebrisTrajectories ? "Hide debris trajectories" : "Show debris trajectories"}
-                <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
-              </div>
-            </div>
-            <div className="relative overflow-visible">
-              <button
-                onMouseDown={handleButtonClick(() => setShowInstructions(!showInstructions))}
-                onTouchStart={handleButtonClick(() => setShowInstructions(!showInstructions))}
-                className="peer p-2 md:p-3 rounded-xl border border-white/20 text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 transform cursor-pointer select-none backdrop-blur-md pointer-events-auto"
-                style={{
-                  background: 'rgba(0, 0, 0, 0.4)',
-                }}
-              >
-                <InfoIcon />
-              </button>
-              <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999]">
-                {showInstructions ? "Hide control instructions" : "Show control instructions"}
-                <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
-              </div>
-            </div>
-          </div>
-          <div className="relative overflow-visible flex items-center space-x-2">
-            <div className={`w-2 md:w-3 h-2 md:h-3 rounded-full ${isSimulating ? 'bg-green-400 animate-pulse' : hasStarted ? 'bg-red-400' : 'bg-blue-400'}`}></div>
-            <span
-              className="peer text-xs text-white px-2 md:px-3 py-1 rounded-lg border border-white/20 backdrop-blur-md cursor-help"
-              style={{
-                background: 'rgba(0, 0, 0, 0.5)',
-              }}
+                          onClick={() => setShowBookmarks(!showBookmarks)}
+              className="group relative inline-flex items-center gap-1 sm:gap-2 px-3 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs sm:text-sm font-semibold rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-105 flex-shrink-0 cursor-pointer"
             >
-              {isSimulating ? 'Running' : hasStarted ? 'Paused' : 'Idle'}
-            </span>
-            <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2 px-3 py-2 bg-black text-white text-xs rounded-lg border border-white/30 shadow-2xl invisible peer-hover:visible opacity-0 peer-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[99999] max-w-xs">
-              {isSimulating
-                ? "Simulation is actively running with real-time physics"
-                : hasStarted
-                  ? "Simulation is paused - click Start to resume"
-                  : "Simulation is ready to start"
-              }
-              <div className="absolute top-1/2 left-full -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-black"></div>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                </svg>
+                <span className="relative z-10 hidden sm:inline">Bookmarks</span>
+                <span className="relative z-10 sm:hidden">({bookmarks.length})</span>
+                <span className="relative z-10 hidden sm:inline">({bookmarks.length})</span>
+              </button>
             </div>
           </div>
-        </div>
-        <div
-          className="absolute bottom-2 md:bottom-4 right-2 md:right-4 text-xs text-white/70 px-2 py-1 rounded border border-white/10 backdrop-blur-md"
-          style={{
-            background: 'rgba(0, 0, 0, 0.3)',
-          }}
-        >
-          {canvasDimensions.width} × {canvasDimensions.height}
-        </div>
-      </div>
-    </div>
-  );
-};
-const VelocityControls: React.FC<{
-  bodies: Planet[];
-  setBodies: React.Dispatch<React.SetStateAction<Planet[]>>;
-  isSimulating: boolean;
-}> = ({ bodies, setBodies, isSimulating }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 600);
-    return () => clearTimeout(timer);
-  }, []);
-  const updateVelocity = (bodyId: string, axis: 'vx' | 'vy', value: number) => {
-    setBodies(prev =>
-      prev.map(body =>
-        body.id === bodyId ? { ...body, [axis]: value, presetName: 'Custom' } : body
-      )
-    );
-  };
-  const updateMass = (bodyId: string, mass: number) => {
-    setBodies(prev =>
-      prev.map(body =>
-        body.id === bodyId
-          ? {
-            ...body,
-            mass,
-            radius: massToRadius(mass),
-            presetName: 'Custom'
-          }
-          : body
-      )
-    );
-  };
-  const handlePresetChange = (bodyId: string, presetName: string) => {
-    const preset = PLANET_PRESETS.find(p => p.name === presetName);
-    if (!preset) return;
-    setBodies(prevBodies =>
-      prevBodies.map(body => {
-        if (body.id === bodyId) {
-          const isFirstBody = body.id === '1';
-          const isMobile = window.innerWidth < 768;
-          const vx = isFirstBody ? (isMobile ? 0.8 : preset.velocityMagnitude) : (isMobile ? -0.6 : -preset.velocityMagnitude);
-          const vy = isFirstBody ? (isMobile ? 0.4 : preset.velocityMagnitude * 0.5) : (isMobile ? -0.2 : -preset.velocityMagnitude * 0.5);
-          return {
-            ...body,
-            mass: preset.mass,
-            radius: massToRadius(preset.mass),
-            color: preset.color,
-            presetName: preset.name,
-            vx,
-            vy,
-          };
-        }
-        return body;
-      })
-    );
-  };
-  return (
-    <div
-      className={`rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      style={{
-        background: 'rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-      }}
-    >
-      <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center space-x-2">
-        <SettingsIcon />
-        <span>Planet Parameters</span>
-      </h3>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {bodies.map((body, index) => (
-          <div
-            key={body.id}
-            className={`p-4 rounded-xl border border-white/20 transition-all duration-500 backdrop-blur-md ${isVisible ? 'opacity-100 translate-x-0' : `opacity-0 ${index % 2 === 0 ? '-translate-x-5' : 'translate-x-5'}`
-              }`}
-            style={{
-              transitionDelay: `${100 * index}ms`,
-              background: 'rgba(255, 255, 255, 0.06)',
-              boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            <div className="flex items-center space-x-3 mb-4">
-              <div
-                className="w-5 md:w-6 h-5 md:h-6 rounded-full border border-white/20"
-                style={{ backgroundColor: body.color }}
-              />
-              <h4 className="font-semibold text-white text-sm md:text-base">
-                Planet {index + 1}
-              </h4>
-              <select
-                value={body.presetName}
-                onChange={(e) => handlePresetChange(body.id, e.target.value)}
-                disabled={isSimulating}
-                className="bg-gray-700/50 text-white text-xs rounded px-2 py-1 border border-white/20 hover:bg-gray-600/50"
-              >
-                {body.presetName === 'Custom' && <option value="Custom">Custom</option>}
-                {PLANET_PRESETS.map(preset => (
-                  <option key={preset.name} value={preset.name}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-              {body.hasCollided && (
-                <span className="text-xs bg-orange-500/80 backdrop-blur-sm text-white px-2 py-1 rounded border border-white/20">
-                  Merged
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <CustomSlider
-                  label="Velocity X"
-                  value={body.vx}
-                  min={-6}
-                  max={6}
-                  step={0.1}
-                  onChange={(value) => updateVelocity(body.id, 'vx', value)}
-                  disabled={isSimulating}
-                />
+        </header>
+      )}
+      <div className={`max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8 ${isLoading ? 'pt-0' : 'pt-20 sm:pt-24'} pb-4 sm:pb-8 transition-all duration-300 ${showQuiz ? 'blur-sm' : ''}`}>
+        <div className="w-full">
+          <div className="w-full">
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-[80vh] py-16 sm:py-32">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin"></div>
+                  <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+                  <div className="absolute top-2 left-2 w-12 h-12 border-4 border-transparent border-t-purple-500 rounded-full animate-spin animate-reverse"></div>
+                </div>
+                <div className="mt-8 text-center max-w-md mx-auto px-4">
+                  <p className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                    Loading Audio Experience
+                  </p>
+                  <p className="text-gray-600 text-sm sm:text-base">Preparing your interactive lesson...</p>
+                </div>
               </div>
-              <div>
-                <CustomSlider
-                  label="Velocity Y"
-                  value={body.vy}
-                  min={-6}
-                  max={6}
-                  step={0.1}
-                  onChange={(value) => updateVelocity(body.id, 'vy', value)}
-                  disabled={isSimulating}
-                />
-              </div>
-              <div className="col-span-1 md:col-span-2">
-                <CustomSlider
-                  label="Mass"
-                  value={body.mass}
-                  min={20}
-                  max={250}
-                  step={5}
-                  onChange={(value) => updateMass(body.id, value)}
-                  disabled={isSimulating}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-const InfoPanel: React.FC = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 800);
-    return () => clearTimeout(timer);
-  }, []);
-  return (
-    <div
-      className={`rounded-2xl p-4 md:p-6 shadow-2xl border border-white/20 transition-all duration-700 backdrop-blur-2xl ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      style={{
-        background: 'rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 8px 32px rgba(139, 95, 191, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-      }}
-    >
-      <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center space-x-2">
-        <InfoIcon />
-        <span>Perfect Celestial Physics Engine</span>
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-gray-300">
-        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-100 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-          }`} style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          }}>
-          <h4 className="font-semibold text-white mb-2">Flawless Dual-Mode Controls</h4>
-          <p className="text-sm">
-            Revolutionary interaction system: single click/tap for precise body positioning.
-            Works perfectly on both desktop and mobile with proper gesture recognition and visual feedback.
-          </p>
-        </div>
-        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-200 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-          }`} style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          }}>
-          <h4 className="font-semibold text-white mb-2">Optimized Performance</h4>
-          <p className="text-sm">
-            Smooth 60fps rendering with intelligent collision detection, optimized debris generation, and performance monitoring.
-            No frame drops during complex multi-body collisions with proper boundary detection and smooth physics calculations.
-          </p>
-        </div>
-        <div className={`p-4 rounded-xl border border-white/10 transition-all duration-500 delay-300 backdrop-blur-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-          }`} style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            boxShadow: '0 4px 16px rgba(139, 95, 191, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          }}>
-          <h4 className="font-semibold text-white mb-2">Professional Interface</h4>
-          <p className="text-sm">
-            Cutting-edge glassmorphism design with cosmic color palette, perfectly responsive layout, fully clickable controls,
-            and professional user experience. Clean implementation with proper event handling and flawless interactions.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-const PlanetaryCollisionSimulator: React.FC = () => {
-  const [showLandingPage, setShowLandingPage] = useState(true);
-  const {
-    bodies,
-    setBodies,
-    debris,
-    collisionEffects,
-    isSimulating,
-    setIsSimulating,
-    metrics,
-    canvasDimensions,
-    resetSimulation,
-    setCanvasRef,
-  } = useSimulation();
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
-  useEffect(() => {
-    if (showInstructions) {
-      document.body.classList.add('overflow-hidden', 'fixed', 'w-full');
-      document.documentElement.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden', 'fixed', 'w-full');
-      document.documentElement.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.body.classList.remove('overflow-hidden', 'fixed', 'w-full');
-      document.documentElement.classList.remove('overflow-hidden');
-    };
-  }, [showInstructions]);
-  const handleToggleSimulation = () => {
-    setIsSimulating(prev => !prev);
-    if (!hasStarted) {
-      setHasStarted(true);
-    }
-  };
-  const handleReset = () => {
-    resetSimulation();
-    setHasStarted(false);
-  };
-  const handleEnterSimulator = () => {
-    setShowLandingPage(false);
-    window.scrollTo(0, 0);
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  };
-  const handleReturnToLanding = () => {
-    setShowLandingPage(true);
-    resetSimulation();
-    setHasStarted(false);
-    window.scrollTo(0, 0);
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  };
-  return (
-    <>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&display=swap');
-        html, body, #__next, [id^="__next"] {
-          margin: 0;
-          padding: 0;
-          touch-action: manipulation;
-          overscroll-behavior: none;
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-          overflow-x: hidden !important;
-          font-family: 'Exo 2', sans-serif;
-        }
-        * {
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-        }
-        *::-webkit-scrollbar {
-          display: none !important;
-        }
-        @keyframes gradient-x {
-          0%, 100% {
-            background-size: 200% 200%;
-            background-position: left center;
-          }
-          50% {
-            background-size: 200% 200%;
-            background-position: right center;
-          }
-        }
-        @keyframes twinkle {
-          0%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
-            filter: brightness(0.8);
-          }
-          25% {
-            opacity: 0.6;
-            transform: scale(1);
-            filter: brightness(1);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.2);
-            filter: brightness(1.5);
-          }
-          75% {
-            opacity: 0.8;
-            transform: scale(1.1);
-            filter: brightness(1.2);
-          }
-        }
-        @keyframes collision-blast {
-          0% {
-            transform: scale(0);
-            opacity: 1;
-          }
-          20% {
-            transform: scale(1);
-            opacity: 0.9;
-          }
-          50% {
-            transform: scale(2);
-            opacity: 0.6;
-          }
-          80% {
-            transform: scale(3);
-            opacity: 0.3;
-          }
-          100% {
-            transform: scale(4);
-            opacity: 0;
-          }
-        }
-        @keyframes debris-fade {
-          0% {
-            transform: scale(0);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 0.1;
-          }
-        }
-        .animate-gradient-x {
-          animation: gradient-x 4s ease infinite;
-        }
-        .animate-twinkle {
-          animation: twinkle 3s ease-in-out infinite;
-        }
-        .animate-collision-blast {
-          animation: collision-blast 1s ease-out forwards;
-        }
-        .animate-debris-fade {
-          animation: debris-fade 0.3s ease-out;
-        }
-      `}</style>
-      {showLandingPage ? (
-        <LandingPage onEnterSimulator={handleEnterSimulator} />
-      ) : (
-        <div className={`min-h-screen bg-black text-white scroll-smooth overflow-x-hidden relative`}>
-          <Header onReturnToLanding={handleReturnToLanding} />
-          <main className="max-w-7xl mx-auto px-3 py-3 md:px-6 md:py-6 space-y-4 md:space-y-8">
-            <ControlPanel
-              isSimulating={isSimulating}
-              onToggleSimulation={handleToggleSimulation}
-              onReset={handleReset}
-              metrics={metrics}
-            />
-            <SimulationCanvas
-              bodies={bodies}
-              debris={debris}
-              collisionEffects={collisionEffects}
-              setBodies={setBodies}
-              isSimulating={isSimulating}
-              canvasDimensions={canvasDimensions}
-              showInstructions={showInstructions}
-              setShowInstructions={setShowInstructions}
-              hasStarted={hasStarted}
-              setCanvasRef={setCanvasRef}
-            />
-            {showInstructions && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto touch-none"
-              >
-                <div
-                  className="fixed inset-0 bg-black/70 backdrop-blur-sm touch-none"
-                  onClick={() => setShowInstructions(false)}
-                />
-                <div
-                  className={`relative text-white m-4 p-4 sm:p-6 rounded-2xl border border-white/20 shadow-2xl w-full max-w-sm sm:max-w-md transition-all duration-300 backdrop-blur-2xl max-h-[calc(100vh-4rem)] overflow-y-auto ${showInstructions ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-                    }`}
-                  style={{
-                    background: 'rgba(0, 0, 0, 0.9)',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
-                      <InfoIcon />
-                      <span>Perfect Controls</span>
-                    </h3>
-                    <button
-                      onClick={() => setShowInstructions(false)}
-                      className="text-gray-400 cursor-pointer hover:text-white transition-colors p-1.5 sm:p-2 rounded-lg hover:bg-white/10 -mr-1 sm:-mr-2 flex-shrink-0"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="sm:w-5 sm:h-5">
-                        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" />
+            )}
+            {error && (
+              <div className="flex flex-col items-center justify-center py-32">
+                <div className="relative bg-white/80 backdrop-blur-xl border border-red-200/50 rounded-3xl p-8 text-center max-w-md shadow-2xl shadow-red-500/10">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-50/50 to-orange-50/50 rounded-3xl"></div>
+                  <div className="relative z-10">
+                                          <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
-                    </button>
-                  </div>
-                  <div className="space-y-2.5 sm:space-y-3">
-                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
-                      <h4 className="text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Interaction Controls</h4>
-                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
-                        <li>• <span className="text-blue-400">Quick tap/click + drag</span> to move bodies</li>
-                        <li>• <span className="text-yellow-400">Long press (0.5s) + drag</span> to set velocity</li>
-                      </ul>
                     </div>
-                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
-                      <h4 className="text-xs sm:text-sm font-medium text-green-300 mb-1.5 sm:mb-2">Visual Indicators</h4>
-                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
-                        <li>• <span className="text-green-400">Green arrows</span> show velocity vectors</li>
-                        <li>• <span className="text-purple-400">Dashed lines</span> show trajectory predictions</li>
-                        <li>• <span className="text-orange-400">Target button</span> shows debris trajectories</li>
-                      </ul>
-                    </div>
-                    <div className="p-2.5 sm:p-3 rounded-lg bg-white/5 border border-white/10">
-                      <h4 className="text-xs sm:text-sm font-medium text-pink-300 mb-1.5 sm:mb-2">Performance</h4>
-                      <ul className="text-xs sm:text-sm space-y-1 sm:space-y-1.5">
-                        <li>• Real-time collision physics with debris analysis</li>
-                        <li>• Optimized 60fps performance on all devices</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div className="mt-4 sm:mt-6 flex justify-center">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Audio Loading Failed</h3>
+                    <p className="text-gray-600 mb-6">{error}</p>
                     <button
-                      onClick={() => setShowInstructions(false)}
-                      className="px-4 sm:px-6 cursor-pointer py-2 bg-purple-600/80 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base"
-                    >
-                      Got it!
+                      onClick={() => window.location.reload()}
+                                             className="group relative inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
+                     >
+                      <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="relative z-10">Try Again</span>
                     </button>
                   </div>
                 </div>
               </div>
             )}
-            <VelocityControls
-              bodies={bodies}
-              setBodies={setBodies}
-              isSimulating={isSimulating}
-            />
-            <InfoPanel />
-          </main>
-          <Footer />
+            {!isLoading && !error && (
+              <div className="space-y-3 sm:space-y-4 pb-32 sm:pb-40">
+                {transcript.map((line, index) => {
+                  const isActive = activeLine === line.id;
+                  const hasBeenHeard = heardLines.has(line.id);
+                  const isBookmarked = bookmarks.some((b) => b.lineId === line.id);
+                  return (
+                    <div
+                      key={line.id}
+                      id={`line-${line.id}`}
+                      className={`
+                         group relative bg-white/80 backdrop-blur-lg rounded-2xl sm:rounded-3xl border border-white/30 overflow-hidden 
+                         transition-all duration-500 active:scale-95 sm:hover:scale-[1.02] hover:bg-white/95
+                                                    ${isActive ? "bg-white/95 border-blue-500/40 scale-[1.02]" : ""}
+                         ${isActive ? "ring-2 ring-blue-500/20" : ""}
+                       `}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      {isActive && (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 animate-pulse"></div>
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-600 rounded-r-full shadow-lg"></div>
+                        </>
+                      )}
+                      <div
+                        className="relative z-10 flex items-center justify-between p-4 sm:p-6 cursor-pointer touch-manipulation"
+                        onClick={() => handleLineClick(line)}
+                      >
+                        <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                          <div className="flex-shrink-0 relative">
+                            <div className={`
+                               w-4 h-4 sm:w-5 sm:h-5 rounded-full transition-all duration-500 shadow-lg
+                               ${isActive
+                                ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-blue-500/50 animate-pulse-glow"
+                                : hasBeenHeard
+                                  ? "bg-gradient-to-r from-green-400 to-blue-500 shadow-green-400/30"
+                                  : "bg-gradient-to-r from-gray-300 to-gray-400 group-hover:from-blue-400 group-hover:to-purple-500"
+                              }
+                             `}>
+                              {isActive && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-ping opacity-75"></div>
+                              )}
+                            </div>
+                            {hasBeenHeard && !isActive && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white shadow-sm"></div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className={`
+                               block text-base sm:text-lg font-medium transition-all duration-300 
+                               ${isActive
+                                ? "text-gray-900 font-semibold"
+                                : "text-gray-700 group-hover:text-gray-900"
+                              }
+                             `}>
+                              {line.text}
+                            </span>
+                            <div className="mt-1 sm:hidden">
+                              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                <span>#{index + 1}</span>
+                                {hasBeenHeard && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-green-600 font-medium">Heard</span>
+                                  </>
+                                )}
+                                {isBookmarked && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-blue-600 font-medium flex items-center">
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                                      </svg>
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          className={`
+                             group/btn relative p-2 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-95 sm:hover:scale-110 flex-shrink-0 cursor-pointer
+                             ${isBookmarked
+                              ? "text-blue-600 bg-blue-50/80 shadow-lg shadow-blue-500/20 border border-blue-200/50"
+                              : "text-gray-400 hover:text-blue-500 hover:bg-blue-50/80 border border-transparent hover:border-blue-200/50"
+                            }
+                    `}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleBookmark(line);
+                          }}
+                        >
+                          {isBookmarked && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-xl sm:rounded-2xl blur-sm"></div>
+                          )}
+                          <svg className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 transition-transform group-active/btn:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                          </svg>
+                        </button>
+                      </div>
+                      {line.culturalNote && hasBeenHeard && (
+                        <div className="px-6 pb-6">
+                          <div className="relative bg-gradient-to-br from-amber-50/80 to-orange-50/80 backdrop-blur-sm border border-amber-200/50 rounded-2xl p-4 shadow-lg shadow-amber-500/10">
+                            <div className="absolute inset-0 bg-gradient-to-br from-amber-100/20 to-orange-100/20 rounded-2xl"></div>
+                            <div className="relative z-10 flex gap-3">
+                                                              <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-amber-900 mb-1">Cultural Context</p>
+                                <p className="text-sm text-amber-800 leading-relaxed">{line.culturalNote}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        {showBookmarks && (
+          <div className="hidden lg:block fixed top-28 right-4 w-[28rem] xl:w-[32rem] z-40">
+            <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl border border-white/40 p-6 animate-slide-in-right">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 to-purple-50/80 rounded-3xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent truncate">Bookmarks</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowBookmarks(false)}
+                    className="group p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-white/80 transition-all duration-300 cursor-pointer flex-shrink-0"
+                  >
+                    <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden overscroll-contain">
+                  {bookmarks.length === 0 ? (
+                    <div className="text-center py-12">
+                                              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-600 font-medium mb-1">No bookmarks yet</p>
+                      <p className="text-gray-500 text-sm">Tap the bookmark icon to save your favorite phrases</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {bookmarks.map((bookmark, index) => (
+                        <div
+                          key={bookmark.lineId}
+                          onClick={() => handleBookmarkClick(bookmark)}
+                          className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 cursor-pointer hover:bg-white/95 transition-all duration-300 border border-white/50 hover:scale-[1.02]"
+                        >
+                          <div className="flex items-start justify-between min-w-0">
+                            <div className="flex-1 min-w-0 pr-3">
+                              <p className="text-sm font-medium text-gray-900 mb-2 group-hover:text-blue-800 transition-colors break-words">{bookmark.text}</p>
+                              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                                <span className="whitespace-nowrap">{formatTime(bookmark.timestamp)}</span>
+                              </div>
+                            </div>
+                            <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex-shrink-0"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {showBookmarks && (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center p-0">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            onClick={() => setShowBookmarks(false)}
+          ></div>
+          <div
+                         className="relative w-full max-h-[80vh] bg-white/98 backdrop-blur-3xl rounded-t-3xl transform transition-all duration-500 ease-out animate-slide-up border-t-2 border-white/60"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-blue-50/60 to-purple-50/60 rounded-t-3xl"></div>
+            <div className="relative z-10 flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+            <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/20">
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                    </svg>
+                  </div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent truncate">Your Bookmarks</h3>
+              </div>
+              <button
+                onClick={() => setShowBookmarks(false)}
+                className="group p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100/50 transition-all duration-300 touch-manipulation cursor-pointer flex-shrink-0"
+              >
+                <svg className="w-6 h-6 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="relative z-10 p-6 overflow-y-auto overflow-x-hidden max-h-[60vh] overscroll-contain">
+              {bookmarks.length === 0 ? (
+                <div className="text-center py-12">
+                                      <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-10 h-10 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-2">No bookmarks yet</h4>
+                  <div className="text-gray-500 text-sm leading-relaxed max-w-sm mx-auto text-center space-y-1">
+                    <p>Tap the bookmark icon next to any phrase</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                      </svg>
+                      <span>to save it here for quick access</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bookmarks.map((bookmark, index) => (
+                    <div
+                      key={bookmark.lineId}
+                      onClick={() => handleBookmarkClick(bookmark)}
+                                             className="group relative bg-white/90 backdrop-blur-sm rounded-2xl p-4 cursor-pointer active:scale-95 transition-all duration-300 hover:bg-white/98 border border-white/60 touch-manipulation"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className="flex items-start space-x-4 min-w-0">
+                        <div className="flex-shrink-0">
+                                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="text-base font-semibold text-gray-900 mb-2 group-hover:text-blue-800 transition-colors leading-tight break-words">
+                            "{bookmark.text}"
+                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-1 sm:space-y-0 text-sm text-gray-500">
+                            <div className="flex items-center space-x-1">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                              </svg>
+                              <span className="font-medium whitespace-nowrap">{formatTime(bookmark.timestamp)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              <span className="text-blue-600 font-medium whitespace-nowrap">Tap to play</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
-    </>
+      {!isLoading && !error && (
+        <div
+          ref={audioPlayerRef}
+                      className={`fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-3xl border-t border-white/30 z-30 transition-all duration-300 ${showQuiz ? 'blur-sm' : ''}`}
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.95) 100%)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-50/40 via-purple-50/20 to-transparent"></div>
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500/60 to-transparent"></div>
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+            <div
+              className="group relative h-2 sm:h-2.5 bg-white/40 backdrop-blur-sm rounded-full mb-4 sm:mb-5 cursor-pointer touch-manipulation border border-white/30"
+              onClick={(e) => {
+                e.preventDefault();
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
+                const newTime = percentage * duration;
+                if (progressBarRef.current) {
+                  progressBarRef.current.style.width = `${percentage * 100}%`;
+                }
+                seekTo(newTime);
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 rounded-full blur-sm"></div>
+              <div
+                ref={progressBarRef}
+                className="absolute h-full bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 rounded-full transition-all duration-300 shadow-lg"
+                style={{
+                  width: `${(currentTime / duration) * 100}%`,
+                }}
+              />
+              <input
+                type="range"
+                min="0"
+                max={duration}
+                value={currentTime}
+                onChange={(e) => {
+                  if (!isSeeking) {
+                    seekTo(parseFloat((e.target as HTMLInputElement).value));
+                  }
+                }}
+                onInput={(e) => {
+                  if (!isSeeking) {
+                    setIsSeeking(true);
+                  }
+                  const newTime = parseFloat((e.target as HTMLInputElement).value);
+                  if (seekAnimationRef.current) {
+                    cancelAnimationFrame(seekAnimationRef.current);
+                  }
+                  seekAnimationRef.current = requestAnimationFrame(() => {
+                    setCurrentTime(newTime);
+                    pauseTimeRef.current = newTime;
+                    if (progressBarRef.current) {
+                      const percentage = (newTime / duration) * 100;
+                      progressBarRef.current.style.width = `${percentage}%`;
+                    }
+                  });
+                  if (isPlaying && source) {
+                    if (seekTimeoutRef.current) {
+                      clearTimeout(seekTimeoutRef.current);
+                    }
+                    seekTimeoutRef.current = setTimeout(() => {
+                      if (source) {
+                        source.stop();
+                        setSource(null);
+                        playAudio(newTime);
+                      }
+                    }, 8);
+                  }
+                }}
+                onMouseDown={() => {
+                  setIsSeeking(true);
+                }}
+                onMouseUp={(e) => {
+                  const finalTime = parseFloat((e.target as HTMLInputElement).value);
+                  if (seekAnimationRef.current) {
+                    cancelAnimationFrame(seekAnimationRef.current);
+                  }
+                  if (seekTimeoutRef.current) {
+                    clearTimeout(seekTimeoutRef.current);
+                  }
+                  seekTo(finalTime);
+                  setIsSeeking(false);
+                }}
+                onTouchStart={() => {
+                  setIsSeeking(true);
+                }}
+                onTouchEnd={(e) => {
+                  const finalTime = parseFloat((e.target as HTMLInputElement).value);
+                  if (seekAnimationRef.current) {
+                    cancelAnimationFrame(seekAnimationRef.current);
+                  }
+                  if (seekTimeoutRef.current) {
+                    clearTimeout(seekTimeoutRef.current);
+                  }
+                  seekTo(finalTime);
+                  setIsSeeking(false);
+                }}
+                className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer touch-manipulation z-10"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:gap-6">
+                              <div className="bg-white/50 backdrop-blur-xl rounded-xl px-3 sm:px-4 py-2.5 border border-white/30">
+                <div className="flex items-center space-x-2 text-sm font-mono">
+                  <span className="font-bold text-gray-900">{formatTime(currentTime)}</span>
+                  <span className="text-gray-400 font-medium">/</span>
+                  <span className="text-gray-600">{formatTime(duration)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <button
+                  onClick={stopAudio}
+                                      className="group p-2.5 sm:p-3.5 bg-white/60 backdrop-blur-xl text-gray-600 hover:text-blue-600 rounded-xl border border-white/30 hover:bg-blue-50/80 hover:border-blue-200/50 transition-all duration-300 active:scale-95 touch-manipulation cursor-pointer"
+                >
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => (isPlaying ? pauseAudio() : playAudio())}
+                  className="group relative p-3.5 sm:p-4.5 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-2xl transition-all duration-300 active:scale-95 touch-manipulation overflow-hidden cursor-pointer"
+                >
+                  <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-purple-500/30 rounded-2xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                  <div className="relative z-10">
+                    {isPlaying ? (
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  {isPlaying && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500 rounded-2xl animate-ping opacity-25"></div>
+                  )}
+                </button>
+                <div ref={speedDropdownRef} className="relative group">
+                  <button
+                    onClick={() => setShowSpeedDropdown(!showSpeedDropdown)}
+                                  className="appearance-none bg-white/70 backdrop-blur-xl border border-white/40 rounded-xl px-2.5 sm:px-3 py-3 pr-7 sm:pr-8 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/60 hover:bg-white/90 hover:border-blue-300/50 transition-all duration-300 cursor-pointer touch-manipulation w-[68px] sm:w-[76px] sm:min-w-[76px] flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
+                backdropFilter: 'blur(20px)',
+              }}
+                  >
+                    {playbackRate}x
+                  </button>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-purple-50/10 to-transparent rounded-xl pointer-events-none"></div>
+                  <div className="absolute right-1 sm:right-1.5 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                          <div className="w-4 h-4 sm:w-5 sm:h-5 bg-white/60 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/30">
+                      <svg className={`w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-600 group-hover:text-blue-600 transition-all duration-300 ${showSpeedDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  {showSpeedDropdown && (
+                                          <div className="absolute bottom-full right-0 mb-2 w-[68px] sm:w-[76px] bg-white/95 backdrop-blur-3xl border border-white/40 rounded-2xl z-50 overflow-hidden"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
+                          backdropFilter: 'blur(25px)',
+                        }}>
+                      {[0.5, 0.75, 1, 1.25, 1.5].map((rate, index) => (
+                        <button
+                          key={rate}
+                          onClick={() => {
+                            setPlaybackRate(rate);
+                            if (source) {
+                              source.playbackRate.value = rate;
+                            }
+                            setShowSpeedDropdown(false);
+                          }}
+                          className={`w-full px-3 sm:px-4 py-3 text-sm font-semibold text-center sm:text-left transition-all duration-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-95 touch-manipulation cursor-pointer ${playbackRate === rate
+                              ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/10 text-blue-800 font-bold'
+                              : 'text-gray-700 hover:bg-blue-50/60'
+                            } ${index === 0 ? 'rounded-t-2xl' : ''} ${index === 4 ? 'rounded-b-2xl' : ''}`}
+                          style={{
+                            backdropFilter: 'blur(10px)',
+                          }}
+                        >
+                          <div className="flex items-center justify-center sm:justify-between">
+                            <span>{rate}x</span>
+                            {playbackRate === rate && (
+                              <svg className="w-3 h-3 text-blue-600 ml-1 sm:ml-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showQuiz && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 lg:p-6">
+          <div className="relative bg-white/95 backdrop-blur-3xl rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-2xl xl:max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto border border-white/30"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%)',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.15), 0 10px 30px rgba(59, 130, 246, 0.1)'
+            }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-purple-50/20 to-transparent rounded-2xl sm:rounded-3xl"></div>
+            {!showQuizResults ? (
+              <div className="relative z-10 p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5 gap-3 sm:gap-0">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent truncate">Quiz Time</h2>
+                      <p className="text-sm sm:text-base text-gray-600 font-medium">Test your knowledge</p>
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-3 sm:gap-4">
+                                          <div className="bg-white/60 backdrop-blur-xl rounded-lg sm:rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 border border-white/40 flex-shrink-0 w-fit">
+                      <span className="text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                        Question {currentQuizIndex + 1} of {quizzes.length}
+                      </span>
+                    </div>
+                    <button
+                      onClick={resetQuiz}
+                                              className="group p-2 text-gray-500 hover:text-gray-700 bg-white/60 backdrop-blur-xl rounded-lg sm:rounded-xl border border-white/40 hover:bg-white/80 transition-all duration-300 flex-shrink-0 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="sm:hidden bg-white/60 backdrop-blur-xl rounded-lg px-3 py-1.5 border border-white/40 flex-shrink-0 w-fit">
+                    <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                      Question {currentQuizIndex + 1} of {quizzes.length}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={resetQuiz}
+                                      className="absolute top-4 right-4 sm:hidden z-20 group p-2 text-gray-500 hover:text-gray-700 bg-white/60 backdrop-blur-xl rounded-lg border border-white/40 hover:bg-white/80 transition-all duration-300 cursor-pointer"
+                >
+                  <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <div className="relative h-2 sm:h-3 bg-white/40 backdrop-blur-sm rounded-full mb-4 sm:mb-5 border border-white/30">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 rounded-full blur-sm"></div>
+                  <div
+                    className="relative h-full bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 rounded-full transition-all duration-500 shadow-lg"
+                                      style={{
+                    width: `${((currentQuizIndex + 1) / quizzes.length) * 100}%`,
+                  }}
+                  />
+                </div>
+                <div className="mb-5 sm:mb-6">
+                  <div className="bg-white/50 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-white/40 mb-4 sm:mb-5">
+                    <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-relaxed">{quizzes[currentQuizIndex].question}</h3>
+                  </div>
+                  <div className="space-y-2.5 sm:space-y-3">
+                    {quizzes[currentQuizIndex].options.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          const newAnswers = [...quizAnswers];
+                          newAnswers[currentQuizIndex] = {
+                            ...newAnswers[currentQuizIndex],
+                            selectedAnswer: index
+                          };
+                          setQuizAnswers(newAnswers);
+                        }}
+                        disabled={quizResult.status !== null}
+                                                  className={`
+                            group relative w-full p-4 sm:p-5 text-left rounded-xl sm:rounded-2xl border-2 transition-all duration-300 backdrop-blur-xl touch-manipulation
+                          ${quizAnswers[currentQuizIndex]?.selectedAnswer === index
+                                                          ? "border-blue-500/60 bg-blue-50/80 text-blue-900"
+                            : "border-white/40 bg-white/60 hover:border-blue-300/60 hover:bg-white/80 text-gray-800"
+                          }
+                          ${quizResult.status !== null ? "opacity-70 cursor-not-allowed" : "hover:opacity-90 cursor-pointer"}
+                        `}
+                      >
+                        <div className={`
+                          absolute left-4 sm:left-5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border-2 transition-all duration-300
+                          ${quizAnswers[currentQuizIndex]?.selectedAnswer === index
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-300 group-hover:border-blue-400"
+                          }
+                        `}>
+                          {quizAnswers[currentQuizIndex]?.selectedAnswer === index && (
+                            <div className="absolute inset-0.5 sm:inset-1 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <div className="pl-7 sm:pl-8 font-medium text-sm sm:text-base leading-relaxed">{option}</div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {quizResult.status && (
+                    <div className={`
+                      p-3 sm:p-4 backdrop-blur-xl rounded-lg sm:rounded-xl border transition-all duration-300 animate-fade-in
+                      ${quizResult.status === "correct"
+                        ? "bg-green-50/80 border-green-200/60"
+                        : "bg-red-50/80 border-red-200/60"}
+                    `}>
+                      <div className="flex items-center space-x-3">
+                        <div className={`
+                          w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center flex-shrink-0
+                          ${quizResult.status === "correct"
+                            ? "bg-green-500 text-white"
+                            : "bg-red-500 text-white"}
+                        `}>
+                          {quizResult.status === "correct" ? (
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm sm:text-base font-medium leading-tight ${quizResult.status === "correct" ? "text-green-800" : "text-red-800"
+                            }`}>
+                            {quizResult.message}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={goToPreviousQuestion}
+                        disabled={currentQuizIndex === 0}
+                        className={`
+                          px-3 py-2 bg-white/60 backdrop-blur-xl border border-white/40 rounded-lg font-medium transition-all duration-300 touch-manipulation text-sm
+                        ${currentQuizIndex === 0
+                            ? "opacity-50 cursor-not-allowed text-gray-400"
+                            : "text-gray-700 hover:bg-white/80 cursor-pointer"}
+                      `}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      {currentQuizIndex < quizzes.length - 1 && (
+                        <button
+                          onClick={() => {
+                            const updatedAnswers = [...quizAnswers];
+                            updatedAnswers[currentQuizIndex] = {
+                              questionIndex: currentQuizIndex,
+                              selectedAnswer: null,
+                              isCorrect: false
+                            };
+                            setQuizAnswers(updatedAnswers);
+                            setCurrentQuizIndex(currentQuizIndex + 1);
+                            setQuizResult({ message: "", status: null });
+                          }}
+                          className="px-3 py-2 text-gray-500 hover:text-gray-700 bg-white/60 backdrop-blur-xl border border-white/40 hover:bg-white/80 rounded-lg font-medium transition-all duration-300 text-sm touch-manipulation cursor-pointer"
+                        >
+                          Skip
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex-1 flex justify-end">
+                      {quizResult.status === null ? (
+                        <button
+                          onClick={handleQuizAnswer}
+                          disabled={quizAnswers[currentQuizIndex]?.selectedAnswer === null}
+                          className={`
+                            group relative px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold transition-all duration-300 overflow-hidden touch-manipulation text-sm
+                            ${quizAnswers[currentQuizIndex]?.selectedAnswer === null
+                              ? "opacity-50 cursor-not-allowed"
+                              : "hover:from-blue-700 hover:to-purple-700 cursor-pointer"}
+                          `}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 to-purple-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <span className="relative z-10">Check Answer</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={goToNextQuestion}
+                          className="group relative px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all duration-300 overflow-hidden touch-manipulation text-sm cursor-pointer"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 to-purple-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="relative z-10 flex items-center space-x-1.5">
+                            <span>{currentQuizIndex < quizzes.length - 1 ? "Next" : "Results"}</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="relative z-10 p-4 sm:p-6 lg:p-8">
+                <div className="relative mb-4 sm:mb-6">
+                  <button
+                    onClick={resetQuiz}
+                    className="absolute top-0 right-0 z-10 group p-2 text-gray-500 hover:text-gray-700 bg-white/60 backdrop-blur-xl rounded-lg sm:rounded-xl border border-white/40 hover:bg-white/80 transition-all duration-300 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center space-x-3 sm:space-x-4 pr-12 sm:pr-16">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent truncate">Quiz Results</h2>
+                      <p className="text-sm sm:text-base text-gray-600 font-medium">Your performance summary</p>
+                    </div>
+                  </div>
+                </div>
+                {(() => {
+                  const { score, total, percentage } = calculateQuizScore();
+                  return (
+                    <div className="bg-white/50 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/40 shadow-lg mb-4 sm:mb-6">
+                      <div className="text-center">
+                        <div className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 sm:mb-3">{percentage}%</div>
+                        <p className="text-lg sm:text-xl lg:text-2xl text-gray-700 mb-2 sm:mb-4 font-semibold">
+                          You scored {score} out of {total}
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-sm sm:text-base text-gray-600 font-medium">
+                          {percentage >= 80 ? (
+                            <>
+                              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <span>Excellent work!</span>
+                            </>
+                          ) : percentage >= 60 ? (
+                            <>
+                              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <span>Good job!</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              </svg>
+                              <span>Keep practicing!</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                  <div className="bg-white/50 backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-white/40">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Review Your Answers
+                    </h3>
+                  </div>
+                  {quizAnswers.map((answer, index) => (
+                    <div
+                      key={index}
+                      className={`relative bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-5 border-2 transition-all duration-300 ${answer.isCorrect
+                          ? 'border-green-200/60 bg-green-50/80'
+                          : 'border-red-200/60 bg-red-50/80'
+                        }`}
+                    >
+                      <div className="flex gap-3 sm:gap-4">
+                        <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${answer.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                          }`}>
+                          <span className="text-lg sm:text-xl font-bold">
+                            {answer.isCorrect ? '✓' : '✗'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base leading-relaxed">{quizzes[index].question}</p>
+                          {answer.selectedAnswer !== null ? (
+                            <div className="space-y-1 sm:space-y-2">
+                              <p className="text-xs sm:text-sm">
+                                <span className="text-gray-600 font-medium">Your answer: </span>
+                                <span className={`font-semibold ${answer.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                  {quizzes[index].options[answer.selectedAnswer]}
+                                </span>
+                              </p>
+                              {!answer.isCorrect && (
+                                <p className="text-xs sm:text-sm">
+                                  <span className="text-gray-600 font-medium">Correct answer: </span>
+                                  <span className="text-green-700 font-semibold">
+                                    {quizzes[index].options[quizzes[index].correctAnswer]}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1 sm:space-y-2">
+                              <p className="text-xs sm:text-sm">
+                                <span className="text-gray-600 font-medium">Your answer: </span>
+                                <span className="text-gray-500 font-semibold italic">Skipped</span>
+                              </p>
+                              <p className="text-xs sm:text-sm">
+                                <span className="text-gray-600 font-medium">Correct answer: </span>
+                                <span className="text-green-700 font-semibold">
+                                  {quizzes[index].options[quizzes[index].correctAnswer]}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <button
+                    onClick={resetQuiz}
+                    className="flex-1 px-4 sm:px-6 py-3 sm:py-3 bg-white/60 backdrop-blur-xl border border-white/40 text-gray-700 rounded-xl font-semibold hover:bg-white/80 hover:border-gray-300/60 transition-all duration-300 touch-manipulation text-sm sm:text-base cursor-pointer"
+                  >
+                    Exit Quiz
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowQuizResults(false);
+                      setCurrentQuizIndex(0);
+                      setQuizAnswers(quizzes.map((_, index) => ({
+                        questionIndex: index,
+                        selectedAnswer: null,
+                        isCorrect: false
+                      })));
+                      setQuizResult({ message: "", status: null });
+                    }}
+                    className="flex-1 px-4 sm:px-6 py-3 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all duration-300 touch-manipulation text-sm sm:text-base cursor-pointer"
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Try Again</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+        html, body {
+          padding: 0;
+          margin: 0;
+          font-family: 'Poppins', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+          overflow-x: hidden;
+        }
+        * {
+          box-sizing: border-box;
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-10px) rotate(1deg); }
+          66% { transform: translateY(5px) rotate(-1deg); }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes fade-in {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-pulse-glow {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
+        .animate-reverse {
+          animation-direction: reverse;
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+        .touch-manipulation {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        @keyframes mobile-bounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(0.95); }
+        }
+        .animate-mobile-bounce {
+          animation: mobile-bounce 0.15s ease-in-out;
+        }
+        @keyframes slide-up {
+          0% { 
+            transform: translateY(100%); 
+            opacity: 0;
+          }
+          100% { 
+            transform: translateY(0); 
+            opacity: 1;
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slide-in-right {
+          0% { 
+            transform: translateX(100%); 
+            opacity: 0;
+          }
+          100% { 
+            transform: translateX(0); 
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .animate-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
+        }
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: content-box;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563eb, #7c3aed);
+          background-clip: content-box;
+        }
+        select {
+          background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.95) 100%) !important;
+          backdrop-filter: blur(25px) !important;
+          border: 1px solid rgba(255,255,255,0.4) !important;
+        }
+                  select option {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.98) 100%) !important;
+            backdrop-filter: blur(20px) !important;
+            color: #374151 !important;
+            font-weight: 600 !important;
+            padding: 12px 16px !important;
+            border-radius: 12px !important;
+            margin: 4px 8px !important;
+            border: 1px solid rgba(255,255,255,0.3) !important;
+            transition: all 0.2s ease !important;
+          }
+                  select option:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 51, 234, 0.08) 100%) !important;
+            color: #1e40af !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+            transform: translateY(-1px) !important;
+          }
+                  select option:checked,
+          select option[selected] {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(147, 51, 234, 0.15) 100%) !important;
+            color: #1e40af !important;
+            font-weight: 700 !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+          }
+        select option:active {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.1) 100%) !important;
+          transform: translateY(0) !important;
+        }
+                  select:focus {
+            outline: none !important;
+            border-color: rgba(59, 130, 246, 0.5) !important;
+          }
+        @media (max-width: 640px) {
+          select {
+            transform: translateY(-2px);
+            direction: rtl;
+          }
+          select option {
+            direction: ltr;
+            transform: translateY(-100%);
+          }
+        }
+        select {
+          position: relative;
+        }
+        @supports (-webkit-appearance: none) {
+          @media (max-width: 640px) {
+            select {
+              -webkit-appearance: none;
+              appearance: none;
+              background-position: right 8px center;
+              background-repeat: no-repeat;
+            }
+          }
+        }
+        .glass {
+          background: rgba(255, 255, 255, 0.25);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .glass-dark {
+          background: rgba(0, 0, 0, 0.25);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+      `}</style>
+    </div>
   );
 };
-export default PlanetaryCollisionSimulator;
+export default LanguageLearningApp;
