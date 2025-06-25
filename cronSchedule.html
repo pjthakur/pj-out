@@ -6,7 +6,6 @@
   <title>Visual Cron Scheduler</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
-
     :root {
       --bg-primary: #0f0f23;
       --bg-secondary: #1a1a2e;
@@ -40,13 +39,25 @@
       --cell-border: #334155;
       --cell-hover: #293548;
     }
-
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-
+    *::-webkit-scrollbar {
+      display: none;
+    }
+    .timeline-container {
+      scrollbar-width: thin !important;
+      scrollbar-color: rgba(139, 92, 246, 0.3) transparent !important;
+      -ms-overflow-style: auto !important;
+    }
+    .timeline-container::-webkit-scrollbar {
+      display: block !important;
+      height: 4px !important;
+    }
     body {
       font-family: 'Varela Round', sans-serif;
       background: var(--bg-primary);
@@ -54,9 +65,12 @@
       min-height: 100vh;
       overflow: hidden;
       position: relative;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-
-    /* background elements */
+    body::-webkit-scrollbar {
+      display: none;
+    }
     body::before {
       content: '';
       position: fixed;
@@ -91,8 +105,6 @@
       z-index: -2;
       opacity: 0.4;
     }
-
-    /* Floating geometric shapes */
     .geometric-bg {
       position: fixed;
       top: 0;
@@ -102,14 +114,12 @@
       z-index: -1;
       pointer-events: none;
     }
-
     .geometric-shape {
       position: absolute;
       border: 1px solid rgba(139, 92, 246, 0.15);
       border-radius: 50%;
       animation: geometricFloat 20s linear infinite;
     }
-
     .geometric-shape:nth-child(1) {
       width: 60px;
       height: 60px;
@@ -117,7 +127,6 @@
       left: 10%;
       animation-delay: 0s;
     }
-
     .geometric-shape:nth-child(2) {
       width: 40px;
       height: 40px;
@@ -127,7 +136,6 @@
       border-radius: 0;
       transform: rotate(45deg);
     }
-
     .geometric-shape:nth-child(3) {
       width: 80px;
       height: 80px;
@@ -136,7 +144,6 @@
       animation-delay: -15s;
       border-color: rgba(6, 182, 212, 0.12);
     }
-
     @keyframes meshFloat {
       0% { transform: translateY(0px) translateX(0px) rotate(0deg); }
       25% { transform: translateY(-8px) translateX(4px) rotate(1deg); }
@@ -144,15 +151,12 @@
       75% { transform: translateY(-6px) translateX(8px) rotate(0.5deg); }
       100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
     }
-
     @keyframes geometricFloat {
       0% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
       33% { transform: translateY(-15px) rotate(120deg); opacity: 0.6; }
       66% { transform: translateY(8px) rotate(240deg); opacity: 0.4; }
       100% { transform: translateY(0px) rotate(360deg); opacity: 0.3; }
     }
-
-    /* Header */
     .header {
       background: var(--glass-bg);
       backdrop-filter: blur(20px);
@@ -161,7 +165,6 @@
       position: relative;
       z-index: 100;
     }
-
     .header::before {
       content: '';
       position: absolute;
@@ -172,21 +175,19 @@
       background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
       opacity: 0.4;
     }
-
     .header-content {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
-      max-width: 1400px;
-      margin: 0 auto;
+      max-width: none;
+      margin: 0;
+      padding-left: 0;
     }
-
     .header-title {
       display: flex;
       align-items: center;
       gap: 16px;
     }
-
     .header-logo {
       width: 40px;
       height: 40px;
@@ -200,19 +201,16 @@
       font-size: 1.2rem;
       box-shadow: var(--shadow-soft);
     }
-
     .header-text h1 {
       font-size: 1.5rem;
       font-weight: 400;
       color: var(--text-primary);
       margin-bottom: 2px;
     }
-
     .header-text p {
       font-size: 0.85rem;
       color: var(--text-secondary);
     }
-
     .container {
       display: grid;
       grid-template-columns: 320px 1fr 380px;
@@ -221,7 +219,6 @@
       gap: 24px;
       position: relative;
     }
-
     .panel {
       background: var(--glass-bg);
       backdrop-filter: blur(20px);
@@ -234,8 +231,6 @@
       position: relative;
       overflow: hidden;
     }
-
-    /* panel */
     .panel::before {
       content: '';
       position: absolute;
@@ -246,7 +241,6 @@
       background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
       opacity: 0.4;
     }
-
     .panel::after {
       content: '';
       position: absolute;
@@ -260,7 +254,6 @@
         -20px 0 0 -1px rgba(139, 92, 246, 0.3),
         -40px 0 0 -2px rgba(139, 92, 246, 0.2);
     }
-
     .panel-header {
       display: flex;
       justify-content: space-between;
@@ -270,7 +263,6 @@
       border-bottom: 1px solid var(--neutral-light);
       position: relative;
     }
-
     .panel-title {
       font-size: 1.5rem;
       color: var(--text-primary);
@@ -278,7 +270,6 @@
       letter-spacing: 0.5px;
       position: relative;
     }
-
     .panel-title::after {
       content: '';
       position: absolute;
@@ -289,27 +280,14 @@
       background: linear-gradient(90deg, var(--accent-primary), transparent);
       border-radius: 1px;
     }
-
-    /* Left Panel */
     .left-panel {
       overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent-primary) transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-
     .left-panel::-webkit-scrollbar {
-      width: 4px;
+      display: none;
     }
-
-    .left-panel::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .left-panel::-webkit-scrollbar-thumb {
-      background: var(--accent-primary);
-      border-radius: 2px;
-    }
-
     .task-block {
       background: var(--glass-bg-hover);
       border: 1px solid var(--glass-border);
@@ -326,7 +304,6 @@
       justify-content: center;
       min-height: 80px;
     }
-
     .task-block::before {
       content: '';
       position: absolute;
@@ -338,22 +315,18 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-
     .task-block:hover::before {
       opacity: 1;
     }
-
     .task-block:hover {
       transform: translateY(-4px) scale(1.02);
       box-shadow: var(--shadow-glow), var(--shadow-deep);
       border-color: var(--accent-primary);
     }
-
     .task-block:active {
       cursor: grabbing;
       transform: scale(0.98);
     }
-
     .task-block h3 {
       font-size: 1.1rem;
       margin-bottom: 8px;
@@ -364,7 +337,6 @@
       position: relative;
       z-index: 1;
     }
-
     .task-block p {
       font-size: 0.9rem;
       color: var(--text-secondary);
@@ -372,53 +344,50 @@
       z-index: 1;
       margin: 0;
     }
-
     .task-icon {
       width: 32px;
       height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--accent-primary-light);
-      border: 1px solid var(--accent-primary);
-      border-radius: var(--border-radius-small);
-      color: var(--accent-primary);
-      font-weight: 400;
-      font-size: 0.9rem;
-      backdrop-filter: blur(10px);
-      flex-shrink: 0;
+      border-radius: 8px;
+      border: 1px solid;
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-right: 8px;
+      box-sizing: border-box;
     }
-
-    /* Center Panel */
     .center-panel {
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }
-
     .timeline-container {
       flex: 1;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: hidden;
       scrollbar-width: thin;
-      scrollbar-color: var(--accent-primary) transparent;
-      min-width: 0; /* Allow flex item to shrink */
+      scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
-
     .timeline-container::-webkit-scrollbar {
-      width: 4px;
       height: 4px;
     }
-
     .timeline-container::-webkit-scrollbar-track {
       background: transparent;
     }
-
     .timeline-container::-webkit-scrollbar-thumb {
-      background: var(--accent-primary);
+      background: rgba(139, 92, 246, 0.3);
       border-radius: 2px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-
-    /* TIMELINE SECTION */
+    .timeline-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(139, 92, 246, 0.6);
+      transform: scaleY(1.5);
+    }
     .timeline-header {
       display: flex;
       background: var(--bg-secondary);
@@ -430,11 +399,10 @@
       border: 1px solid var(--glass-border);
       box-shadow: var(--shadow-soft);
       overflow: hidden;
-      width: calc(100px + 40px * 24); /* Day label (100px) + 24 hour cells (40px each) */
+      width: calc(100px + 40px * 24);
       min-width: calc(100px + 40px * 24);
       max-width: calc(100px + 40px * 24);
     }
-
     .timeline-header-cell {
       flex: 1;
       text-align: center;
@@ -443,9 +411,8 @@
       color: var(--text-secondary);
       padding: 12px 4px;
       transition: all 0.2s ease;
-      min-width: 40px; /* Match hour cell width */
+      min-width: 40px;
     }
-
     .timeline-header-cell:first-child {
       flex: 0 0 100px;
       text-align: left;
@@ -453,35 +420,35 @@
       color: var(--accent-primary);
       font-weight: 400;
       border-right: 1px solid var(--glass-border);
-      min-width: 100px; /* Fixed width to match day label */
+      min-width: 100px;
     }
-
     .timeline-header-cell:hover:not(:first-child) {
       background: var(--accent-primary-light);
       color: var(--accent-primary);
     }
-
     .timeline-days {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      width: calc(100px + 40px * 24); /* Day label (100px) + 24 hour cells (40px each) */
+      gap: 6px;
+              width: calc(100px + 40px * 24);
       min-width: calc(100px + 40px * 24);
       max-width: calc(100px + 40px * 24);
+      flex: 1;
+      height: 100%;
     }
-
     .timeline-day {
       display: flex;
-      min-height: 70px;
+      flex: 1;
+      min-height: 0;
+      height: calc((100% - 30px) / 7);
       background: var(--bg-secondary);
       border-radius: var(--border-radius-small);
       border: 1px solid var(--glass-border);
       overflow: hidden;
-      width: calc(100px + 40px * 24); /* Day label (100px) + 24 hour cells (40px each) */
+      width: calc(100px + 40px * 24);
       min-width: calc(100px + 40px * 24);
       max-width: calc(100px + 40px * 24);
     }
-
     .day-label {
       flex: 0 0 100px;
       display: flex;
@@ -495,69 +462,61 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 100px; /* Fixed width */
+      width: 100px;
       min-width: 100px;
       max-width: 100px;
     }
-
     .day-cells {
       flex: 1;
       display: flex;
-      width: calc(40px * 24); /* Exactly 24 cells × 40px each */
-      min-width: calc(40px * 24); /* Prevent shrinking below this */
-      max-width: calc(40px * 24); /* Prevent growing beyond this */
+      width: calc(40px * 24);
+      min-width: calc(40px * 24);
+      max-width: calc(40px * 24);
     }
-
     .hour-cell {
-      flex: 0 0 40px; /* Fixed flex basis, no grow, no shrink */
+      flex: 0 0 40px; 
       position: relative;
-      min-height: 68px;
-      width: 40px; /* Fixed width for consistency */
+      height: 100%;
+      min-height: 50px;
+      width: 40px;
       background: var(--cell-bg);
       border-right: 1px solid var(--cell-border);
       transition: all 0.2s ease;
     }
-
     .hour-cell:last-child {
       border-right: none;
     }
-
     .hour-cell:hover {
       background: var(--cell-hover);
     }
-
     .hour-cell.drop-indicator {
       background: var(--accent-primary-light);
       border: 2px dashed var(--accent-primary);
       animation: pulse 1.5s infinite;
     }
-
     .timeline-task {
       position: absolute;
-      height: 48px;
+      width: 32px;
+      height: 32px;
       top: 50%;
-      transform: translateY(-50%);
-      left: 4px;
-      right: 4px;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: var(--glass-bg-hover);
-      border: 1px solid var(--accent-silver);
-      border-radius: var(--border-radius-small);
+      border-radius: 8px !important;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 8px;
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       cursor: grab;
       z-index: 5;
       box-shadow: var(--shadow-soft);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       backdrop-filter: blur(10px);
       color: var(--text-primary);
+      border: 1.5px solid;
+      box-sizing: border-box;
+      font-weight: bold;
     }
-
     .timeline-task::before {
       content: '';
       position: absolute;
@@ -569,84 +528,77 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-
     .timeline-task:hover::before {
       opacity: 1;
     }
-
     .timeline-task:hover {
-      transform: translateY(-50%) scale(1.05);
+      transform: translate(-50%, -50%) scale(1.05);
       box-shadow: var(--shadow-glow), 0 8px 25px rgba(0, 0, 0, 0.3);
       z-index: 6;
     }
-
     .timeline-task:active {
       cursor: grabbing;
-      transform: translateY(-50%) scale(0.95);
+      transform: translate(-50%, -50%) scale(0.95);
     }
-
     .timeline-task.selected {
       border-color: var(--accent-primary);
       box-shadow: 0 0 0 2px var(--accent-primary), var(--shadow-deep);
       background: var(--accent-primary-light);
     }
-
     .timeline-task.http {
       border-color: var(--accent-primary);
     }
-
     .timeline-task.file {
       border-color: var(--accent-secondary);
     }
-
     .timeline-task.script {
       border-color: var(--accent-tertiary);
     }
-
     .timeline-task.backup {
       border-color: var(--warning);
     }
-
     .timeline-task.notification {
       border-color: var(--success);
     }
-
-    /* Cron Preview */
     .right-panel {
       overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent-primary) transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       display: flex;
       flex-direction: column;
       height: 100%;
     }
-
     .right-panel::-webkit-scrollbar {
-      width: 4px;
+      display: none;
     }
-
-    .right-panel::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .right-panel::-webkit-scrollbar-thumb {
-      background: var(--accent-primary);
-      border-radius: 2px;
-    }
-
     .cron-preview {
       background: var(--bg-secondary);
       border: 1px solid var(--glass-border);
       border-radius: var(--border-radius);
-      padding: 24px;
+      padding: 0;
       font-family: 'Courier New', monospace;
       margin-bottom: 16px;
       position: relative;
       backdrop-filter: blur(10px);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
       flex-shrink: 0;
+      max-height: 275px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
-
+    .cron-content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      min-height: 0;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .cron-content::-webkit-scrollbar {
+      display: none;
+    }
     .cron-expression {
       margin-bottom: 16px;
       font-size: 1.1rem;
@@ -654,46 +606,43 @@
       color: var(--accent-primary);
       letter-spacing: 1px;
     }
-
     .cron-explanation {
       font-size: 0.9rem;
       color: var(--text-secondary);
       line-height: 1.6;
       font-family: 'Varela Round', sans-serif;
     }
-
     .copy-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: var(--glass-bg-hover);
-      border: 1px solid var(--glass-border);
+      background: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
       border-radius: var(--border-radius-small);
-      width: 36px;
-      height: 36px;
+      padding: 12px 24px;
+      margin: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 8px;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      color: var(--text-secondary);
-      backdrop-filter: blur(10px);
-      position: relative;
-    }
-
-    .copy-btn:hover {
-      background: var(--accent-primary-light);
-      border-color: var(--accent-primary);
-      color: var(--accent-primary);
-      transform: scale(1.1);
-    }
-
-    .copy-btn.copied {
-      background: var(--success);
-      border-color: var(--success);
       color: white;
+      backdrop-filter: blur(10px);
+      font-family: 'Varela Round', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      box-shadow: var(--shadow-soft);
+      flex-shrink: 0;
     }
-
+    .copy-btn:hover {
+      background: var(--accent-primary-dark);
+      border-color: var(--accent-primary-dark);
+      transform: scale(1.05);
+    }
+    .copy-btn.copied {
+      background: var(--accent-primary-dark);
+      border-color: var(--accent-primary-dark);
+      color: white;
+      box-shadow: var(--shadow-glow);
+    }
     .validation-status {
       display: flex;
       align-items: center;
@@ -706,19 +655,16 @@
       transition: all 0.3s ease;
       flex-shrink: 0;
     }
-
     .validation-status.valid {
       background: var(--accent-primary-light);
       border: 1px solid var(--accent-primary);
       color: var(--accent-primary);
     }
-
     .validation-status.invalid {
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(239, 68, 68, 0.3);
       color: var(--error);
     }
-
     .task-details {
       background: var(--glass-bg-hover);
       border: 1px solid var(--glass-border);
@@ -730,34 +676,36 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
+      max-height: 240px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-
+    .task-details::-webkit-scrollbar {
+      display: none;
+    }
     .task-details h3 {
       margin-bottom: 16px;
       font-size: 1.1rem;
       font-weight: 400;
       color: var(--accent-primary);
     }
-
     .detail-row {
       display: flex;
       margin-bottom: 12px;
       align-items: center;
     }
-
     .detail-label {
       width: 120px;
       font-weight: 400;
       color: var(--text-secondary);
       font-size: 0.9rem;
     }
-
     .detail-value {
       flex: 1;
       color: var(--text-primary);
       font-size: 0.9rem;
     }
-
     .delete-btn {
       background: var(--error);
       border: none;
@@ -770,12 +718,10 @@
       margin-top: 12px;
       font-family: 'Varela Round', sans-serif;
     }
-
     .delete-btn:hover {
       background: #c23e3e;
       transform: scale(1.05);
     }
-
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -790,42 +736,155 @@
       background: var(--glass-bg);
       backdrop-filter: blur(10px);
       margin-top: 16px;
-      min-height: 250px;
     }
-
     .empty-state svg {
       margin-bottom: 16px;
       opacity: 0.5;
     }
-
     .empty-state p {
       font-size: 0.9rem;
       line-height: 1.5;
     }
-
-    /* Animations */
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
-
     @keyframes glow {
       0%, 100% { box-shadow: 0 0 5px var(--accent-primary); }
       50% { box-shadow: 0 0 20px var(--accent-primary), 0 0 30px var(--accent-primary); }
     }
-
     .dragging {
       opacity: 0.8;
       transform: scale(1.05) rotate(2deg);
       box-shadow: var(--shadow-glow), var(--shadow-deep);
       z-index: 1000;
     }
-
     .copy-animation {
       animation: glow 0.6s ease-in-out;
     }
-
-    /* Responsive adjustments */
+    .mobile-controls {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 12px 16px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .hamburger-btn, .floating-btn {
+      background: var(--accent-primary);
+      border: none;
+      border-radius: var(--border-radius-small);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: white;
+      box-shadow: var(--shadow-soft);
+      position: relative;
+    }
+    .hamburger-btn:hover, .floating-btn:hover {
+      background: var(--accent-primary-dark);
+      transform: scale(1.05);
+    }
+    .hamburger-icon, .close-icon {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+    }
+    .hamburger-btn.active .hamburger-icon {
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(180deg) scale(0.8);
+    }
+    .hamburger-btn.active .close-icon {
+      opacity: 1;
+      transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    }
+    .hamburger-btn .close-icon {
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-180deg) scale(0.8);
+    }
+    .hamburger-btn .hamburger-icon {
+      opacity: 1;
+      transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    }
+    .mobile-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 180;
+    }
+    .mobile-panel {
+      position: fixed;
+      top: 68px;
+      height: calc(100% - 68px);
+      width: 320px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 210;
+      overflow-y: auto;
+    }
+    .mobile-panel.right {
+      right: 0;
+      transform: translateX(100%);
+      width: 90%;
+      max-width: 400px;
+    }
+    .mobile-panel.active {
+      transform: translateX(0);
+    }
+    .mobile-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--glass-border);
+      background: var(--bg-secondary);
+    }
+    .mobile-panel-title {
+      font-size: 1.2rem;
+      color: var(--text-primary);
+      font-weight: 400;
+    }
+    .close-btn {
+      background: var(--glass-bg-hover);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: var(--border-radius-small);
+      transition: all 0.2s ease;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .close-btn:hover {
+      background: var(--accent-primary);
+      color: white;
+      transform: scale(1.1);
+    }
     @media (max-width: 1400px) {
       .container {
         grid-template-columns: 280px 1fr 340px;
@@ -833,30 +892,342 @@
         padding: 20px;
       }
     }
-
     @media (max-width: 1200px) {
       .container {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr;
+        display: block;
         height: auto;
+        overflow-y: visible;
+        width: 100vw;
+      }
+      body {
         overflow-y: auto;
       }
-      
       .panel {
+        width: 100%;
+        box-sizing: border-box;
         margin-bottom: 20px;
       }
     }
+    .selection-banner {
+      display: none;
+      position: fixed;
+      top: 68px;
+      left: 0;
+      right: 0;
+      background: rgba(139, 92, 246, 0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: var(--text-primary);
+      padding: 12px 16px;
+      z-index: 150;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+    }
+    .selection-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+    .selection-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .selection-text {
+      font-size: 0.9rem;
+      font-weight: 400;
+    }
+    .cancel-selection-btn {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: var(--border-radius-small);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Varela Round', sans-serif;
+    }
+    .cancel-selection-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    .hour-cell.mobile-highlight {
+      background: rgba(139, 92, 246, 0.08) !important;
+      border: 1px solid rgba(139, 92, 246, 0.3) !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+    }
+    .hour-cell.mobile-highlight:hover {
+      background: rgba(139, 92, 246, 0.15) !important;
+      border: 1px solid rgba(139, 92, 246, 0.5) !important;
+    }
+    .mobile-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .mobile-modal {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--border-radius);
+      width: 100%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-deep);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .mobile-modal-overlay.active .mobile-modal {
+      transform: scale(1);
+    }
+    .mobile-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 20px 16px 20px;
+      border-bottom: 1px solid var(--glass-border);
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    .mobile-modal-title {
+      font-size: 1.2rem;
+      color: var(--text-primary);
+      font-weight: 400;
+    }
+    .mobile-modal-content {
+      padding: 20px;
+    }
+          @media (max-width: 768px) {
+        body {
+          overflow: auto;
+          padding-top: 68px;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        body::-webkit-scrollbar {
+          display: none;
+        }
+      .header {
+        display: none;
+      }
+      .mobile-controls {
+        display: flex;
+      }
+      .container {
+        display: block;
+        height: auto;
+        padding: 16px;
+        gap: 0;
+        margin-top: 0;
+      }
+      .container.with-selection {
+        margin-top: 60px;
+      }
+      .left-panel, .right-panel {
+        display: none;
+      }
+      .center-panel {
+        width: 100%;
+        margin: 0;
+      }
+      .timeline-container {
+        overflow-x: auto;
+        width: 100%;
+      }
+      .timeline-header,
+      .timeline-days {
+        min-width: 800px;
+      }
+    }
+    .timeline-container {
+      overflow-x: auto;
+      width: 100%;
+    }
+    .timeline-header,
+    .timeline-days {
+      min-width: 600px;
+    }
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .loading-screen.fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    .loading-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .logo-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dark));
+      border-radius: var(--border-radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 2.5rem;
+      box-shadow: var(--shadow-glow), var(--shadow-deep);
+      animation: logoFloat 3s ease-in-out infinite;
+    }
+    .loading-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+    .dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+    .dot:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+    .dot:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+    .loading-text {
+      text-align: center;
+      animation: textFade 2s ease-in-out infinite;
+    }
+    .loading-text h2 {
+      font-size: 1.8rem;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+    .loading-text p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+    @keyframes logoFloat {
+      0%, 100% {
+        transform: translateY(0px);
+        box-shadow: var(--shadow-glow), var(--shadow-deep);
+      }
+      50% {
+        transform: translateY(-10px);
+        box-shadow: 
+          0 0 30px rgba(139, 92, 246, 0.4),
+          0 30px 60px -12px rgba(0, 0, 0, 0.5);
+      }
+    }
+    @keyframes dotPulse {
+      0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+    }
+    @keyframes textFade {
+      0%, 100% {
+        opacity: 0.7;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    .task-icon.http {
+      color: #8b5cf6;
+      border-color: #8b5cf6;
+      background: rgba(139,92,246,0.15);
+    }
+    .task-icon.file {
+      color: #06b6d4;
+      border-color: #06b6d4;
+      background: rgba(6,182,212,0.15);
+    }
+    .task-icon.script {
+      color: #10b981;
+      border-color: #10b981;
+      background: rgba(16,185,129,0.15);
+    }
+    .task-icon.backup {
+      color: #f59e0b;
+      border-color: #f59e0b;
+      background: rgba(245,158,11,0.15);
+    }
+    .task-icon.notification {
+      color: #ef4444;
+      border-color: #ef4444;
+      background: rgba(239,68,68,0.15);
+    }
   </style>
-</head>
-<body>
-  <!-- Geometric background shapes -->
+  </head>
+  <body>
+    <div class="loading-screen" id="loading-screen">
+      <div class="loading-container">
+        <div class="loading-logo">
+          <div class="logo-icon">C</div>
+          <div class="loading-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+        <div class="loading-text">
+          <h2>Cron Scheduler</h2>
+          <p>Loading your workspace...</p>
+        </div>
+      </div>
+    </div>
   <div class="geometric-bg">
     <div class="geometric-shape"></div>
     <div class="geometric-shape"></div>
     <div class="geometric-shape"></div>
   </div>
-
-  <!-- Header -->
   <header class="header">
     <div class="header-content">
       <div class="header-title">
@@ -868,63 +1239,176 @@
       </div>
     </div>
   </header>
-
-  <div class="container">
-    <!-- Left Panel - Task Blocks -->
-    <div class="panel left-panel">
-      <div class="panel-header">
-        <h2 class="panel-title">Task Blocks</h2>
+  <div class="mobile-controls">
+    <button class="hamburger-btn" id="mobile-menu-btn">
+      <svg class="hamburger-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      <svg class="close-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <div class="header-text">
+      <h1 style="font-size: 1.2rem;">Cron Scheduler</h1>
+    </div>
+  </div>
+  <div class="mobile-overlay" id="mobile-overlay"></div>
+  <div class="selection-banner" id="selection-banner">
+    <div class="selection-info">
+      <div class="selection-icon" id="selection-icon">H</div>
+      <div class="selection-text" id="selection-text">HTTP Request selected - Tap on timeline to place</div>
+    </div>
+    <button class="cancel-selection-btn" id="cancel-selection-btn">Cancel</button>
+  </div>
+  <div class="mobile-modal-overlay" id="mobile-modal-overlay">
+    <div class="mobile-modal" id="mobile-modal">
+      <div class="mobile-modal-header">
+        <h3 class="mobile-modal-title">Task Details</h3>
+        <button class="close-btn" id="close-modal-btn" title="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      
+      <div class="mobile-modal-content">
+        <div class="detail-row">
+          <div class="detail-label">Type:</div>
+          <div class="detail-value" id="modal-detail-type">None selected</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Schedule:</div>
+          <div class="detail-value" id="modal-detail-schedule">-</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Next Run:</div>
+          <div class="detail-value" id="modal-detail-next-run">-</div>
+        </div>
+        <button class="delete-btn" id="modal-delete-task-btn">Delete Task</button>
+      </div>
+    </div>
+  </div>
+  <div class="mobile-panel" id="mobile-left-panel">
+    <div class="mobile-panel-header">
+      <h3 class="mobile-panel-title">Task Blocks</h3>
+    </div>
+    <div style="padding: 20px;">
       <div class="task-block" draggable="true" data-task-type="http">
         <h3>
-          <span class="task-icon">H</span>
+          <span class="task-icon http">H</span>
           HTTP Request
         </h3>
         <p>Make API calls or web requests</p>
       </div>
-      
       <div class="task-block" draggable="true" data-task-type="file">
         <h3>
-          <span class="task-icon">F</span>
+          <span class="task-icon file">F</span>
           File Operation
         </h3>
         <p>Read, write or process files</p>
       </div>
-      
       <div class="task-block" draggable="true" data-task-type="script">
         <h3>
-          <span class="task-icon">S</span>
+          <span class="task-icon script">S</span>
           Run Script
         </h3>
         <p>Execute shell or custom scripts</p>
       </div>
-      
       <div class="task-block" draggable="true" data-task-type="backup">
         <h3>
-          <span class="task-icon">B</span>
+          <span class="task-icon backup">B</span>
           Backup Task
         </h3>
         <p>Create backups of files or databases</p>
       </div>
-      
       <div class="task-block" draggable="true" data-task-type="notification">
         <h3>
-          <span class="task-icon">N</span>
+          <span class="task-icon notification">N</span>
+          Send Notification
+        </h3>
+        <p>Email, SMS or push notifications</p>
+      </div>
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--glass-border);">
+        <h3 style="color: var(--accent-primary); margin-bottom: 16px; font-size: 1.2rem; font-weight: 400;">Cron Preview</h3>
+        <div id="mobile-left-validation-status" class="validation-status valid" style="margin-bottom: 16px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          Valid cron expression
+        </div>
+        <div class="cron-preview" style="margin-bottom: 16px;">
+          <div class="cron-content">
+            <div class="cron-expression" id="mobile-left-cron-expression">0 9 * * 1-5</div>
+            <div class="cron-explanation" id="mobile-left-cron-explanation">
+              Runs at 9:00 AM, Monday through Friday
+            </div>
+          </div>
+          <button class="copy-btn" id="mobile-left-copy-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="check-icon" style="display: none;">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span class="copy-text">Copy Cron</span>
+            <span class="copied-text" style="display: none;">Copied!</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="panel left-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Task Blocks</h2>
+      </div>
+      <div class="task-block" draggable="true" data-task-type="http">
+        <h3>
+          <span class="task-icon http">H</span>
+          HTTP Request
+        </h3>
+        <p>Make API calls or web requests</p>
+      </div>
+      <div class="task-block" draggable="true" data-task-type="file">
+        <h3>
+          <span class="task-icon file">F</span>
+          File Operation
+        </h3>
+        <p>Read, write or process files</p>
+      </div>
+      <div class="task-block" draggable="true" data-task-type="script">
+        <h3>
+          <span class="task-icon script">S</span>
+          Run Script
+        </h3>
+        <p>Execute shell or custom scripts</p>
+      </div>
+      <div class="task-block" draggable="true" data-task-type="backup">
+        <h3>
+          <span class="task-icon backup">B</span>
+          Backup Task
+        </h3>
+        <p>Create backups of files or databases</p>
+      </div>
+      <div class="task-block" draggable="true" data-task-type="notification">
+        <h3>
+          <span class="task-icon notification">N</span>
           Send Notification
         </h3>
         <p>Email, SMS or push notifications</p>
       </div>
     </div>
-    
-    <!-- Timeline Grid -->
     <div class="panel center-panel">
       <div class="panel-header">
         <h2 class="panel-title">Schedule Timeline</h2>
       </div>
-      
       <div class="timeline-container">
-        <!-- Completely redesigned timeline header -->
         <div class="timeline-header">
           <div class="timeline-header-cell">Time (Hours)</div>
           <div class="timeline-header-cell">00</div>
@@ -952,8 +1436,6 @@
           <div class="timeline-header-cell">22</div>
           <div class="timeline-header-cell">23</div>
         </div>
-        
-        <!-- timeline days -->
         <div class="timeline-days">
           <div class="timeline-day" data-day="0">
             <div class="day-label">Sunday</div>
@@ -984,7 +1466,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="1">
             <div class="day-label">Monday</div>
             <div class="day-cells">
@@ -1014,7 +1495,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="2">
             <div class="day-label">Tuesday</div>
             <div class="day-cells">
@@ -1044,7 +1524,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="3">
             <div class="day-label">Wednesday</div>
             <div class="day-cells">
@@ -1074,7 +1553,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="4">
             <div class="day-label">Thursday</div>
             <div class="day-cells">
@@ -1104,7 +1582,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="5">
             <div class="day-label">Friday</div>
             <div class="day-cells">
@@ -1134,7 +1611,6 @@
               <div class="hour-cell" data-hour="23"></div>
             </div>
           </div>
-          
           <div class="timeline-day" data-day="6">
             <div class="day-label">Saturday</div>
             <div class="day-cells">
@@ -1167,13 +1643,10 @@
         </div>
       </div>
     </div>
-    
-    <!-- Cron Preview -->
     <div class="panel right-panel">
       <div class="panel-header">
         <h2 class="panel-title">Cron Preview</h2>
       </div>
-      
       <div id="validation-status" class="validation-status valid">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -1181,11 +1654,12 @@
         </svg>
         Valid cron expression
       </div>
-      
       <div class="cron-preview">
-        <div class="cron-expression" id="cron-expression">0 9 * * 1-5</div>
-        <div class="cron-explanation" id="cron-explanation">
-          Runs at 9:00 AM, Monday through Friday
+        <div class="cron-content">
+          <div class="cron-expression" id="cron-expression">0 9 * * 1-5</div>
+          <div class="cron-explanation" id="cron-explanation">
+            Runs at 9:00 AM, Monday through Friday
+          </div>
         </div>
         <button class="copy-btn" id="copy-btn">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon">
@@ -1196,9 +1670,10 @@
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
+          <span class="copy-text">Copy Cron</span>
+          <span class="copied-text" style="display: none;">Copied!</span>
         </button>
       </div>
-      
       <div id="task-details" class="task-details">
         <h3>Selected Task Details</h3>
         <div class="detail-row">
@@ -1215,7 +1690,6 @@
         </div>
         <button class="delete-btn" id="delete-task-btn" style="display: none;">Delete Task</button>
       </div>
-      
       <div class="empty-state" id="empty-state">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
@@ -1226,23 +1700,24 @@
       </div>
     </div>
   </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Task counter for unique IDs
+      <script>
+      window.addEventListener('load', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        setTimeout(() => {
+          loadingScreen.classList.add('fade-out');
+          setTimeout(() => {
+            loadingScreen.remove();
+          }, 500);
+        }, 1200);
+      });
+      document.addEventListener('DOMContentLoaded', function() {
       let taskCounter = 0;
-      
-      // Store scheduled tasks
       const scheduledTasks = [];
       let selectedTask = null;
-      
-      // Drag and drop functionality
       let draggedTask = null;
       let draggedElement = null;
       let isDraggingFromPanel = false;
       let isMovingExistingTask = false;
-      
-      // Get all draggable task blocks
       const taskBlocks = document.querySelectorAll('.task-block');
       const hourCells = document.querySelectorAll('.hour-cell');
       const timelineDays = document.querySelectorAll('.timeline-day');
@@ -1256,40 +1731,43 @@
       const detailSchedule = document.getElementById('detail-schedule');
       const detailNextRun = document.getElementById('detail-next-run');
       const deleteTaskBtn = document.getElementById('delete-task-btn');
-      
-      // Initialize
       updateCronPreview();
-      
-      // Add event listeners to task blocks
       taskBlocks.forEach(taskBlock => {
         taskBlock.addEventListener('dragstart', handleDragStart);
         taskBlock.addEventListener('dragend', handleDragEnd);
       });
-      
-      // Add event listeners to hour cells
       hourCells.forEach(cell => {
         cell.addEventListener('dragover', handleDragOver);
         cell.addEventListener('dragenter', handleDragEnter);
         cell.addEventListener('dragleave', handleDragLeave);
         cell.addEventListener('drop', handleDrop);
       });
-      
-      // Copy button 
       copyBtn.addEventListener('click', function() {
         const copyIcon = this.querySelector('.copy-icon');
         const checkIcon = this.querySelector('.check-icon');
-        
-        navigator.clipboard.writeText(cronExpression.textContent)
-          .then(() => {
-            // Change to check icon
+        const copyText = this.querySelector('.copy-text');
+        const copiedText = this.querySelector('.copied-text');
+        let cronText = '';
+        if (scheduledTasks.length === 0) {
+          cronText = 'No tasks scheduled';
+        } else if (scheduledTasks.length === 1) {
+          const task = scheduledTasks[0];
+          cronText = `0 ${task.hour} * * ${task.day}`;
+        } else {
+          cronText = scheduledTasks.map(task => `0 ${task.hour} * * ${task.day}`).join('\n');
+        }
+        navigator.clipboard.writeText(cronText)
+          .then(() => { 
             copyIcon.style.display = 'none';
             checkIcon.style.display = 'block';
+            copyText.style.display = 'none';
+            copiedText.style.display = 'block';
             this.classList.add('copied');
-            
-            // Revert after 2 seconds
             setTimeout(() => {
               copyIcon.style.display = 'block';
               checkIcon.style.display = 'none';
+              copyText.style.display = 'block';
+              copiedText.style.display = 'none';
               this.classList.remove('copied');
             }, 2000);
           })
@@ -1297,33 +1775,23 @@
             console.error('Failed to copy: ', err);
           });
       });
-
-      // Delete task button 
       deleteTaskBtn.addEventListener('click', function() {
         if (selectedTask) {
           deleteTask(selectedTask.id);
         }
       });
-      
-      // Drag start handler
       function handleDragStart(e) {
         draggedElement = this;
         isDraggingFromPanel = this.classList.contains('task-block');
         isMovingExistingTask = this.classList.contains('timeline-task');
-        
-        // Store the task type
         const taskType = this.getAttribute('data-task-type');
-        
-        // Create data to transfer
         if (isDraggingFromPanel) {
-          // If dragging from the left panel
           draggedTask = {
             id: `task-${taskCounter++}`,
             type: taskType,
             title: this.querySelector('h3').textContent.trim()
           };
         } else if (isMovingExistingTask) {
-          // If dragging an existing task on the timeline
           draggedTask = {
             id: this.getAttribute('data-task-id'),
             type: this.getAttribute('data-task-type'),
@@ -1331,57 +1799,36 @@
             day: parseInt(this.getAttribute('data-day')),
             hour: parseInt(this.getAttribute('data-hour'))
           };
-          
         }
-        
-        // Set drag image and effect
         e.dataTransfer.effectAllowed = 'move';
         this.classList.add('dragging');
-        
-        // Set data transfer
         e.dataTransfer.setData('text/plain', JSON.stringify(draggedTask));
       }
-      
-      // Drag end handler
       function handleDragEnd() {
         this.classList.remove('dragging');
         hourCells.forEach(cell => {
           cell.classList.remove('drop-indicator');
         });
-        
-        // Reset flags
         draggedTask = null;
         isMovingExistingTask = false;
         isDraggingFromPanel = false;
       }
-      
-      // Drag over handler
       function handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
       }
-      
-      // Drag enter handler
       function handleDragEnter(e) {
         e.preventDefault();
         this.classList.add('drop-indicator');
       }
-      
-      // Drag leave handler
       function handleDragLeave() {
         this.classList.remove('drop-indicator');
       }
-      
-      // Drop handler
       function handleDrop(e) {
         e.preventDefault();
         this.classList.remove('drop-indicator');
-        
-        // Get the day and hour from the cell
         const day = parseInt(this.closest('.timeline-day').getAttribute('data-day'));
         const hour = parseInt(this.getAttribute('data-hour'));
-        
-        // Get the task data
         let task;
         if (draggedTask) {
           task = draggedTask;
@@ -1393,156 +1840,125 @@
             return;
           }
         }
-        
-        // moving a task
         if (isMovingExistingTask) {
-          // Remove from scheduled tasks array
           const index = scheduledTasks.findIndex(t => t.id === task.id);
           if (index !== -1) {
             scheduledTasks.splice(index, 1);
           }
-          
-          // Remove the original visual element
           const originalElement = document.querySelector(`[data-task-id="${task.id}"]`);
           if (originalElement) {
             originalElement.remove();
           }
         }
-        
         const existingTask = this.querySelector('.timeline-task');
         if (existingTask) {
           const existingTaskId = existingTask.getAttribute('data-task-id');
-          // Remove from scheduled tasks array
           const existingIndex = scheduledTasks.findIndex(t => t.id === existingTaskId);
           if (existingIndex !== -1) {
             scheduledTasks.splice(existingIndex, 1);
           }
           existingTask.remove();
         }
-        
-        // Add day and hour to the task
         task.day = day;
         task.hour = hour;
-        
-        // Add the task to the scheduled tasks array
         scheduledTasks.push(task);
-        
-        // Create a visual representation of the task on the timeline
         createTimelineTask(task);
-        
-        // Update the cron preview
         updateCronPreview();
-        
-        // Reset dragged task
         draggedTask = null;
         isMovingExistingTask = false;
       }
-      
-      // Create a visual task on the timeline
       function createTimelineTask(task) {
         const timelineDay = document.querySelector(`.timeline-day[data-day="${task.day}"]`);
         const hourCell = timelineDay.querySelector(`.hour-cell[data-hour="${task.hour}"]`);
-        
-        // Remove any existing task in this cell first
         const existingTask = hourCell.querySelector('.timeline-task');
         if (existingTask) {
           existingTask.remove();
         }
-        
-        // Create the task element
+        const taskTypeMap = {
+          http: { abbr: 'H', name: 'HTTP Request', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
+          file: { abbr: 'F', name: 'File Operation', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)' },
+          script: { abbr: 'S', name: 'Run Script', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+          backup: { abbr: 'B', name: 'Backup Task', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+          notification: { abbr: 'N', name: 'Send Notification', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' }
+        };
+        const typeInfo = taskTypeMap[task.type] || { abbr: '?', name: task.type, color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' };
         const taskElement = document.createElement('div');
-        taskElement.className = `timeline-task ${task.type}`;
-        taskElement.textContent = task.title.replace(/[A-Z]\s*$/, '').trim(); // Remove the icon letter
+        taskElement.className = `timeline-task task-icon ${task.type}`;
+        taskElement.textContent = typeInfo.abbr;
+        taskElement.title = typeInfo.name;
         taskElement.setAttribute('draggable', 'true');
         taskElement.setAttribute('data-task-id', task.id);
         taskElement.setAttribute('data-task-type', task.type);
         taskElement.setAttribute('data-day', task.day);
         taskElement.setAttribute('data-hour', task.hour);
-        
-        // Add event listeners for dragging
+        taskElement.style.borderColor = typeInfo.color;
+        taskElement.style.background = typeInfo.bg;
+        taskElement.style.color = typeInfo.color;
+        taskElement.style.fontWeight = 'bold';
+        taskElement.style.fontSize = '1.1rem';
+        taskElement.style.textAlign = 'center';
+        taskElement.style.minWidth = '32px';
+        taskElement.style.maxWidth = '32px';
+        taskElement.style.height = '32px';
+        taskElement.style.lineHeight = '32px';
+        taskElement.style.borderRadius = '50%';
+        taskElement.style.display = 'flex';
+        taskElement.style.alignItems = 'center';
+        taskElement.style.justifyContent = 'center';
         taskElement.addEventListener('dragstart', handleDragStart);
         taskElement.addEventListener('dragend', handleDragEnd);
-        
-        // Add event listener for selecting/deselecting the task (toggle behavior)
         taskElement.addEventListener('click', function() {
-          const isCurrentlySelected = this.classList.contains('selected');
-          
-          // Deselect all tasks first
-          document.querySelectorAll('.timeline-task').forEach(t => {
-            t.classList.remove('selected');
-          });
-          
-          if (!isCurrentlySelected) {
-            // Select this task if it wasn't selected
-            this.classList.add('selected');
+          if (window.innerWidth <= 768) {
             selectedTask = task;
-            
-            // Update task details
-            updateTaskDetails(task);
-            
-            // Hide empty state and show task details
-            emptyState.style.display = 'none';
-            taskDetails.style.display = 'block';
-            deleteTaskBtn.style.display = 'block';
+            showMobileTaskModal(task);
           } else {
-            // Deselect - clear selection
-            selectedTask = null;
-            
-            // Clear task details
-            detailType.textContent = 'None selected';
-            detailSchedule.textContent = '-';
-            detailNextRun.textContent = '-';
-            deleteTaskBtn.style.display = 'none';
-            
-            // Show empty state if no tasks exist, otherwise just hide delete button
-            if (scheduledTasks.length === 0) {
-              emptyState.style.display = 'flex';
-              taskDetails.style.display = 'none';
+            const isCurrentlySelected = this.classList.contains('selected');
+            document.querySelectorAll('.timeline-task').forEach(t => {
+              t.classList.remove('selected');
+            });
+            if (!isCurrentlySelected) {
+              this.classList.add('selected');
+              selectedTask = task;
+              updateTaskDetails(task);
+              emptyState.style.display = 'none';
+              taskDetails.style.display = 'block';
+              deleteTaskBtn.style.display = 'block';
+            } else {
+              selectedTask = null;
+              detailType.textContent = 'None selected';
+              detailSchedule.textContent = '-';
+              detailNextRun.textContent = '-';
+              deleteTaskBtn.style.display = 'none';
+              if (scheduledTasks.length === 0) {
+                emptyState.style.display = 'flex';
+                taskDetails.style.display = 'none';
+              }
             }
           }
         });
-        
-        // Add the task to the hour cell
         hourCell.appendChild(taskElement);
-        
-        // Don't auto-select tasks when they're created
-        // Let the user manually select tasks
       }
-
-      // Delete task function
       function deleteTask(taskId) {
-        // Remove from scheduled tasks array
         const index = scheduledTasks.findIndex(task => task.id === taskId);
         if (index !== -1) {
           scheduledTasks.splice(index, 1);
         }
-        
-        // Remove visual element
         const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
         if (taskElement) {
           taskElement.remove();
         }
-        
-        // Clear selection
         selectedTask = null;
-        
-        // Update UI
         updateCronPreview();
-        
-        // Show empty state if no tasks
         if (scheduledTasks.length === 0) {
           emptyState.style.display = 'flex';
           taskDetails.style.display = 'none';
         } else {
-          // Clear task details when a task is deleted
           deleteTaskBtn.style.display = 'none';
           detailType.textContent = 'None selected';
           detailSchedule.textContent = '-';
           detailNextRun.textContent = '-';
         }
       }
-      
-      // Update the task details panel
       function updateTaskDetails(task) {
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const taskTypes = {
@@ -1552,29 +1968,19 @@
           'backup': 'Backup Task',
           'notification': 'Send Notification'
         };
-        
         detailType.textContent = taskTypes[task.type] || task.type;
         detailSchedule.textContent = `${dayNames[task.day]} at ${task.hour.toString().padStart(2, '0')}:00`;
-        
-        // Calculate next run time
         const now = new Date();
         const nextRun = new Date();
         const currentDay = now.getDay();
         const daysUntilTask = (task.day - currentDay + 7) % 7;
-        
         nextRun.setDate(now.getDate() + (daysUntilTask === 0 && now.getHours() >= task.hour ? 7 : daysUntilTask));
         nextRun.setHours(task.hour, 0, 0, 0);
-        
         detailNextRun.textContent = nextRun.toLocaleString();
-        
-        // Show delete button
         deleteTaskBtn.style.display = 'block';
       }
-      
-      // Update the cron preview based on scheduled tasks
       function updateCronPreview() {
         if (scheduledTasks.length === 0) {
-          // No tasks scheduled - show empty state
           cronExpression.textContent = 'No tasks scheduled';
           cronExplanation.textContent = 'Drag tasks from the left panel to the timeline to create a cron schedule';
           validationStatus.className = 'validation-status invalid';
@@ -1590,18 +1996,12 @@
           taskDetails.style.display = 'none';
           return;
         }
-        
-        // For multiple tasks, we'll show multiple cron expressions or find common patterns
         if (scheduledTasks.length === 1) {
-          // Single task
           const task = scheduledTasks[0];
           const cron = `0 ${task.hour} * * ${task.day}`;
           cronExpression.textContent = cron;
         } else {
-          // Multiple tasks 
           const tasksByTimeSlot = {};
-          
-          // Group tasks by exact time slot (day + hour combination)
           scheduledTasks.forEach(task => {
             const timeSlot = `${task.day}-${task.hour}`;
             if (!tasksByTimeSlot[timeSlot]) {
@@ -1609,17 +2009,11 @@
             }
             tasksByTimeSlot[timeSlot].push(task);
           });
-          
-          // Check if all tasks are at the same hour but different days
           const uniqueHours = [...new Set(scheduledTasks.map(t => t.hour))];
           const uniqueDays = [...new Set(scheduledTasks.map(t => t.day))];
-          
           if (uniqueHours.length === 1) {
-            // All tasks at same hour, different days
             const hour = uniqueHours[0];
             let daysOfWeek = uniqueDays.sort((a, b) => a - b).join(',');
-            
-            // Format days of week for better readability
             if (daysOfWeek === '1,2,3,4,5') {
               daysOfWeek = '1-5';
             } else if (daysOfWeek === '0,6') {
@@ -1627,20 +2021,15 @@
             } else if (daysOfWeek === '0,1,2,3,4,5,6') {
               daysOfWeek = '*';
             }
-            
             const cron = `0 ${hour} * * ${daysOfWeek}`;
             cronExpression.textContent = cron;
           } else {
-            // Complex schedule 
             const firstTask = scheduledTasks[0];
             const cron = `0 ${firstTask.hour} * * ${firstTask.day}`;
             cronExpression.textContent = `${cron} (+${scheduledTasks.length - 1} more)`;
           }
         }
-        
-        // Generate explanation
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
         if (scheduledTasks.length === 1) {
           const task = scheduledTasks[0];
           const hourStr = task.hour.toString().padStart(2, '0') + ':00';
@@ -1649,14 +2038,11 @@
         } else {
           const uniqueHours = [...new Set(scheduledTasks.map(t => t.hour))];
           const uniqueDays = [...new Set(scheduledTasks.map(t => t.day))];
-          
           if (uniqueHours.length === 1) {
-            // All tasks at same hour
             const hourStr = uniqueHours[0].toString().padStart(2, '0') + ':00';
             const daysList = uniqueDays.sort((a, b) => a - b).map(d => dayNames[d]).join(', ');
             cronExplanation.textContent = `Runs at ${hourStr} on ${daysList}`;
           } else {
-            // Multiple different times
             const taskList = scheduledTasks.map(task => {
               const hourStr = task.hour.toString().padStart(2, '0') + ':00';
               const dayStr = dayNames[task.day];
@@ -1665,8 +2051,6 @@
             cronExplanation.textContent = `Multiple schedules: ${taskList}`;
           }
         }
-        
-        // Validate cron expression
         const isValid = validateCronExpression(cronExpression.textContent);
         if (isValid) {
           validationStatus.className = 'validation-status valid';
@@ -1689,64 +2073,34 @@
           `;
         }
       }
-      
-      // Validate cron expression
       function validateCronExpression(cron) {
-        // Handle multiple cron expressions
         if (cron.includes('(+')) {
-          // Extract the main cron part before the (+X more) note
           cron = cron.split(' (+')[0];
         }
-        
-        // Check if the expression has 5 parts
         const parts = cron.split(' ');
         if (parts.length !== 5) return false;
-        
-        // Validate each part with proper ranges
         const [minutes, hours, dayOfMonth, months, dayOfWeek] = parts;
-        
-        // Minutes: 0-59
         if (!isValidCronPart(minutes, 0, 59)) return false;
-        
-        // Hours: 0-23
         if (!isValidCronPart(hours, 0, 23)) return false;
-        
-        // Day of Month: 1-31
         if (!isValidCronPart(dayOfMonth, 1, 31)) return false;
-        
-        // Months: 1-12
         if (!isValidCronPart(months, 1, 12)) return false;
-        
-        // Day of Week: 0-7 (0 and 7 are Sunday)
         if (!isValidCronPart(dayOfWeek, 0, 7)) return false;
-        
         return true;
       }
-      
-      // Helper function to validate individual cron parts
       function isValidCronPart(part, min, max) {
         if (part === '*') return true;
-        
-        // Handle ranges (e.g., 1-5)
         if (part.includes('-')) {
           const [start, end] = part.split('-').map(Number);
           return start >= min && end <= max && start <= end;
         }
-        
-        // Handle lists (e.g., 1,3,5)
         if (part.includes(',')) {
           const values = part.split(',').map(Number);
           return values.every(val => val >= min && val <= max);
         }
-        
-        // Handle single number
         const num = Number(part);
         return !isNaN(num) && num >= min && num <= max;
       }
-      
-      // Add some example tasks for demonstration
       function addExampleTasks() {
-        // Monday at 9:00
         const task1 = {
           id: `task-${taskCounter++}`,
           type: 'http',
@@ -1754,8 +2108,6 @@
           day: 1,
           hour: 9
         };
-        
-        // Wednesday at 15:00
         const task2 = {
           id: `task-${taskCounter++}`,
           type: 'backup',
@@ -1763,8 +2115,6 @@
           day: 3,
           hour: 15
         };
-        
-        // Friday at 17:00
         const task3 = {
           id: `task-${taskCounter++}`,
           type: 'notification',
@@ -1772,21 +2122,226 @@
           day: 5,
           hour: 17
         };
-        
-        // Add tasks to the scheduled tasks array
         scheduledTasks.push(task1, task2, task3);
-        
-        // Create visual representations
         createTimelineTask(task1);
         createTimelineTask(task2);
         createTimelineTask(task3);
-        
-        // Update the cron preview
         updateCronPreview();
       }
-      
-      // Add example tasks
       setTimeout(addExampleTasks, 1000);
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileOverlay = document.getElementById('mobile-overlay');
+      const mobileLeftPanel = document.getElementById('mobile-left-panel');
+      const selectionBanner = document.getElementById('selection-banner');
+      const selectionIcon = document.getElementById('selection-icon');
+      const selectionText = document.getElementById('selection-text');
+      const cancelSelectionBtn = document.getElementById('cancel-selection-btn');
+      const container = document.querySelector('.container');
+      let mobileSelectedTask = null;
+      const mobileLeftValidationStatus = document.getElementById('mobile-left-validation-status');
+      const mobileLeftCronExpression = document.getElementById('mobile-left-cron-expression');
+      const mobileLeftCronExplanation = document.getElementById('mobile-left-cron-explanation');
+      const mobileLeftCopyBtn = document.getElementById('mobile-left-copy-btn');
+      const mobileModalOverlay = document.getElementById('mobile-modal-overlay');
+      const mobileModal = document.getElementById('mobile-modal');
+      const closeModalBtn = document.getElementById('close-modal-btn');
+      const modalDetailType = document.getElementById('modal-detail-type');
+      const modalDetailSchedule = document.getElementById('modal-detail-schedule');
+      const modalDetailNextRun = document.getElementById('modal-detail-next-run');
+      const modalDeleteBtn = document.getElementById('modal-delete-task-btn');
+      function syncMobileLeftPanel() {
+        mobileLeftValidationStatus.className = validationStatus.className;
+        mobileLeftValidationStatus.innerHTML = validationStatus.innerHTML;
+        mobileLeftCronExpression.textContent = cronExpression.textContent;
+        mobileLeftCronExplanation.textContent = cronExplanation.textContent;
+      }
+      function showMobileTaskModal(task) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const taskTypes = {
+          'http': 'HTTP Request',
+          'file': 'File Operation',
+          'script': 'Run Script',
+          'backup': 'Backup Task',
+          'notification': 'Send Notification'
+        };
+        modalDetailType.textContent = taskTypes[task.type] || task.type;
+        modalDetailSchedule.textContent = `${dayNames[task.day]} at ${task.hour.toString().padStart(2, '0')}:00`;
+        const now = new Date();
+        const nextRun = new Date();
+        const currentDay = now.getDay();
+        const daysUntilTask = (task.day - currentDay + 7) % 7;
+        nextRun.setDate(now.getDate() + (daysUntilTask === 0 && now.getHours() >= task.hour ? 7 : daysUntilTask));
+        nextRun.setHours(task.hour, 0, 0, 0);
+        modalDetailNextRun.textContent = nextRun.toLocaleString();
+        mobileModalOverlay.style.display = 'flex';
+        setTimeout(() => {
+          mobileModalOverlay.classList.add('active');
+        }, 10);
+      }
+      function hideMobileTaskModal() {
+        mobileModalOverlay.classList.remove('active');
+        setTimeout(() => {
+          mobileModalOverlay.style.display = 'none';
+        }, 300);
+      }
+      function openMobileLeftPanel() {
+        mobileOverlay.style.display = 'block';
+        mobileLeftPanel.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        mobileMenuBtn.classList.add('active');
+        syncMobileLeftPanel();
+      }
+      function closeMobilePanels() {
+        mobileOverlay.style.display = 'none';
+        mobileLeftPanel.classList.remove('active');
+        document.body.style.overflow = 'auto';
+        mobileMenuBtn.classList.remove('active');
+      }
+      function showSelectionBanner(task) {
+        const taskTypes = {
+          'http': { name: 'HTTP Request', icon: 'H', color: '#8b5cf6' },
+          'file': { name: 'File Operation', icon: 'F', color: '#06b6d4' },
+          'script': { name: 'Run Script', icon: 'S', color: '#10b981' },
+          'backup': { name: 'Backup Task', icon: 'B', color: '#f59e0b' },
+          'notification': { name: 'Send Notification', icon: 'N', color: '#ef4444' }
+        };
+        const taskInfo = taskTypes[task.type];
+        selectionIcon.textContent = taskInfo.icon;
+        selectionIcon.style.backgroundColor = taskInfo.color;
+        selectionText.textContent = `${taskInfo.name} selected - Tap on timeline to place`;
+        selectionBanner.style.display = 'flex';
+        container.classList.add('with-selection');
+        hourCells.forEach(cell => {
+          if (!cell.querySelector('.timeline-task')) {
+            cell.classList.add('mobile-highlight');
+          }
+        });
+      }
+      function hideSelectionBanner() {
+        selectionBanner.style.display = 'none';
+        container.classList.remove('with-selection');
+        mobileSelectedTask = null;
+        hourCells.forEach(cell => {
+          cell.classList.remove('mobile-highlight');
+        });
+      }
+      function handleMobileTaskSelection(taskElement) {
+        const taskType = taskElement.getAttribute('data-task-type');
+        mobileSelectedTask = {
+          id: `task-${taskCounter++}`,
+          type: taskType,
+          title: taskElement.querySelector('h3').textContent.trim()
+        };
+        closeMobilePanels();
+        showSelectionBanner(mobileSelectedTask);
+      }
+      function handleMobileCellTap(cell) {
+        if (!mobileSelectedTask) return;
+        const day = parseInt(cell.closest('.timeline-day').getAttribute('data-day'));
+        const hour = parseInt(cell.getAttribute('data-hour'));
+        if (cell.querySelector('.timeline-task')) {
+          const existingTaskId = cell.querySelector('.timeline-task').getAttribute('data-task-id');
+          const existingIndex = scheduledTasks.findIndex(t => t.id === existingTaskId);
+          if (existingIndex !== -1) {
+            scheduledTasks.splice(existingIndex, 1);
+          }
+          cell.querySelector('.timeline-task').remove();
+        }
+        mobileSelectedTask.day = day;
+        mobileSelectedTask.hour = hour;
+        scheduledTasks.push(mobileSelectedTask);
+        createTimelineTask(mobileSelectedTask);
+        updateCronPreview();
+        hideSelectionBanner();
+      }
+      mobileMenuBtn.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          if (mobileLeftPanel.classList.contains('active')) {
+            closeMobilePanels();
+          } else {
+            openMobileLeftPanel();
+            const mobileTaskBlocks = mobileLeftPanel.querySelectorAll('.task-block');
+            mobileTaskBlocks.forEach(taskBlock => {
+              taskBlock.removeEventListener('click', handleMobileTaskSelection);
+              taskBlock.addEventListener('click', () => handleMobileTaskSelection(taskBlock));
+              taskBlock.addEventListener('dragstart', handleDragStart);
+              taskBlock.addEventListener('dragend', handleDragEnd);
+            });
+          }
+        }
+      });
+      mobileOverlay.addEventListener('click', closeMobilePanels);
+              window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && mobileLeftPanel.classList.contains('active')) {
+          closeMobilePanels();
+        }
+      });
+      closeModalBtn.addEventListener('click', hideMobileTaskModal);
+      mobileModalOverlay.addEventListener('click', (e) => {
+        if (e.target === mobileModalOverlay) {
+          hideMobileTaskModal();
+        }
+      });
+      hourCells.forEach(cell => {
+        cell.addEventListener('click', (e) => {
+          if (window.innerWidth <= 768 && mobileSelectedTask) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleMobileCellTap(cell);
+          }
+        });
+      });
+      cancelSelectionBtn.addEventListener('click', hideSelectionBanner);
+      mobileLeftCopyBtn.addEventListener('click', function() {
+        const mobileCopyIcon = this.querySelector('.copy-icon');
+        const mobileCheckIcon = this.querySelector('.check-icon');
+        const mobileCopyText = this.querySelector('.copy-text');
+        const mobileCopiedText = this.querySelector('.copied-text');
+        let cronText = '';
+        if (scheduledTasks.length === 0) {
+          cronText = 'No tasks scheduled';
+        } else if (scheduledTasks.length === 1) {
+          const task = scheduledTasks[0];
+          cronText = `0 ${task.hour} * * ${task.day}`;
+        } else {
+          cronText = scheduledTasks.map(task => `0 ${task.hour} * * ${task.day}`).join('\n');
+        }
+        navigator.clipboard.writeText(cronText)
+          .then(() => {
+            mobileCopyIcon.style.display = 'none';
+            mobileCheckIcon.style.display = 'block';
+            mobileCopyText.style.display = 'none';
+            mobileCopiedText.style.display = 'block';
+            this.classList.add('copied');
+            setTimeout(() => {
+              mobileCopyIcon.style.display = 'block';
+              mobileCheckIcon.style.display = 'none';
+              mobileCopyText.style.display = 'block';
+              mobileCopiedText.style.display = 'none';
+              this.classList.remove('copied');
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('Failed to copy: ', err);
+          });
+      });
+      modalDeleteBtn.addEventListener('click', function() {
+        if (selectedTask) {
+          deleteTask(selectedTask.id);
+          hideMobileTaskModal();
+          syncMobileLeftPanel();
+        }
+      });
+      const originalUpdateCronPreview = updateCronPreview;
+      updateCronPreview = function() {
+        originalUpdateCronPreview();
+        syncMobileLeftPanel();
+      };
+      const originalUpdateTaskDetails = updateTaskDetails;
+      updateTaskDetails = function(task) {
+        originalUpdateTaskDetails(task);
+        syncMobileLeftPanel();
+      };
     });
   </script>
 </body>
