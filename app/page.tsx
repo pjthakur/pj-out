@@ -1,12 +1,7 @@
-// imports
-
 "use client";
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-
-// Configure Poppins font
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
@@ -15,19 +10,14 @@ const poppins = Poppins({
 });
 import { 
   MdTrendingUp, MdShoppingCart, MdPeople, MdGpsFixed, MdSearch, MdFilterList, MdNotifications, MdPerson, MdMenu, MdClose, MdExpandMore,
-  MdAttachMoney, MdShowChart, MdVisibility, MdCheckCircle, MdAccessTime, MdWarning, MdCancel, MdDarkMode, MdLightMode, MdChevronLeft,
-  MdChevronRight, MdDownload, MdSettings, MdRefresh, MdBarChart, MdError, MdFlashOn, MdSave, MdCheck
+  MdAttachMoney, MdVisibility, MdCheckCircle, MdAccessTime, MdCancel, MdDarkMode, MdLightMode, MdChevronLeft,
+  MdChevronRight, MdDownload, MdRefresh, MdBarChart, MdError, MdFlashOn, MdCheck
 } from 'react-icons/md';
-
-// TypeScript Interfaces
 interface SalesDataPoint {
   date: string;
   sales: number;
   revenue: number;
 }
-
-//Component  Interfaces
-// Props Interfaces
 interface Transaction {
   id: number;
   product: string;
@@ -36,9 +26,7 @@ interface Transaction {
   status: 'completed' | 'pending' | 'processing' | 'failed';
   date: string;
 }
-
-
-interface Metric {   // Display title for the metric
+interface Metric {
   title: string;
   value: string;
   change: string;
@@ -46,36 +34,29 @@ interface Metric {   // Display title for the metric
   color: string;
   bgColor: string;
 }
-
-interface Notification {     // Notification item 
+interface Notification { 
   id: number;
   message: string;
   timestamp: Date;
   type: 'success' | 'info' | 'warning';
   isRead: boolean;
 }
-
 interface UserProfile {
   name: string;
   email: string;
   avatar?: string;
 }
-
 interface StatusConfig {
   icon: React.ReactElement;
   badge: string;
   label: string;
 }
-
 interface SalesDataCollection {
   [key: string]: SalesDataPoint[];
 }
-
-// Props Interfaces
 interface TransactionStatusProps {
   status: Transaction['status'];
 }
-
 interface NavBarProps {
   isDark: boolean;
   toggleTheme: () => void;
@@ -88,14 +69,13 @@ interface NavBarProps {
   setIsMobileMenuOpen: (open: boolean) => void;
   onNotificationClick: () => void;
   unreadNotificationCount: number;
+  showNotifications: boolean;
 }
-
 interface MetricCardProps {
   metric: Metric;
   isDark: boolean;
 }
-
-interface ChartCardProps {              // Chart title
+interface ChartCardProps {
   title: string;   
   icon: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
@@ -103,15 +83,12 @@ interface ChartCardProps {              // Chart title
   isLoading: boolean;
   onExport?: () => void;
 }
-
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   isDark: boolean;
 }
-
-// PROFILE MODAL COMPONENT
 const ProfileModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -119,25 +96,20 @@ const ProfileModal: React.FC<{
   onSave: (profile: UserProfile) => void;
   isDark: boolean;
 }> = ({ isOpen, onClose, userProfile, onSave, isDark }) => {
-  const [name, setName] = useState(userProfile.name);
-  const [email, setEmail] = useState(userProfile.email);
-
+  const [name, setName] = useState(userProfile.name || 'John');
+  const [email, setEmail] = useState(userProfile.email || 'john@businesshb.com');
   useEffect(() => {
-    setName(userProfile.name);
-    setEmail(userProfile.email);
+    setName(userProfile.name || '');
+    setEmail(userProfile.email || '');
   }, [userProfile]);
-
-  // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (isOpen) {
-      // Save current scroll position
+          if (isOpen) {
       const scrollY = window.scrollY;
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Restore scroll position
+              document.body.style.overflow = 'hidden';
+      } else {
       const scrollY = document.body.style.top;
       document.body.style.position = '';
       document.body.style.top = '';
@@ -145,10 +117,8 @@ const ProfileModal: React.FC<{
       document.body.style.overflow = '';
       if (scrollY) {
         window.scrollTo(0, parseInt(scrollY || '0') * -1);
+              }
       }
-    }
-
-    // Cleanup function
     return () => {
       document.body.style.position = '';
       document.body.style.top = '';
@@ -156,22 +126,18 @@ const ProfileModal: React.FC<{
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
   const handleSave = () => {
-    if (name.trim() && email.trim()) {
+    if (name && email && name.trim() && email.trim()) {
       onSave({ ...userProfile, name: name.trim(), email: email.trim() });
       onClose();
     }
   };
-
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
-
   if (!isOpen) return null;
-
   return (
     <div 
       className="fixed inset-0 bg-black/40 backdrop-blur-lg z-[9999] flex items-center justify-center p-4"
@@ -189,7 +155,6 @@ const ProfileModal: React.FC<{
         `}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="text-center p-4 sm:p-8 pb-4 sm:pb-6">
           <div className="flex flex-col items-center space-y-3 sm:space-y-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg">
@@ -205,8 +170,6 @@ const ProfileModal: React.FC<{
             </div>
           </div>
         </div>
-
-        {/* Form */}
         <div className="px-4 sm:px-8 pb-4 sm:pb-6 space-y-4 sm:space-y-6">
           <div className="space-y-1.5 sm:space-y-2">
             <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -231,7 +194,6 @@ const ProfileModal: React.FC<{
               />
             </div>
           </div>
-
           <div className="space-y-1.5 sm:space-y-2">
             <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               Email Address
@@ -256,8 +218,6 @@ const ProfileModal: React.FC<{
             </div>
           </div>
         </div>
-
-        {/* Footer */}
         <div className="flex justify-end space-x-2 sm:space-x-3 p-4 sm:p-8 pt-4 sm:pt-8">
           <button
             onClick={onClose}
@@ -274,7 +234,7 @@ const ProfileModal: React.FC<{
           </button>
           <button
             onClick={handleSave}
-            disabled={!name.trim() || !email.trim()}
+            disabled={!name || !email || !name.trim() || !email.trim()}
             className="
               px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 
               hover:from-blue-700 hover:to-indigo-700
@@ -295,10 +255,6 @@ const ProfileModal: React.FC<{
     </div>
   );
 };
-
-// TRANSACTION STATUS COMPONENT
-
-// Enhanced Status Component
 const TransactionStatus: React.FC<TransactionStatusProps> = ({ status }) => {
   const getStatusConfig = (status: Transaction['status']): StatusConfig => {
     switch (status) {
@@ -334,9 +290,7 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({ status }) => {
         };
     }
   };
-
   const config = getStatusConfig(status);
-  
   return (
     <div className="flex items-center space-x-2">
       {config.icon}
@@ -346,9 +300,6 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({ status }) => {
     </div>
   );
 };
-
-
-// Navigation Component
 const NavBar: React.FC<NavBarProps> = ({ 
   isDark, 
   toggleTheme, 
@@ -360,7 +311,8 @@ const NavBar: React.FC<NavBarProps> = ({
   isMobileMenuOpen, 
   setIsMobileMenuOpen,
   onNotificationClick,
-  unreadNotificationCount
+  unreadNotificationCount,
+  showNotifications
 }) => {
   return (
     <nav className={`
@@ -369,6 +321,7 @@ const NavBar: React.FC<NavBarProps> = ({
       ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} 
       sticky top-0 z-50 transition-all duration-300 shadow-lg
       ${isMobileMenuOpen ? 'blur-sm' : ''}
+      ${showNotifications ? 'md:blur-none blur-sm' : ''}
     `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -384,7 +337,6 @@ const NavBar: React.FC<NavBarProps> = ({
               </h1>
             </div>
           </div>
-
           <div className="hidden md:flex items-center space-x-4">
             <button
               onClick={() => {
@@ -396,7 +348,6 @@ const NavBar: React.FC<NavBarProps> = ({
             >
               <MdRefresh className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
-            
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-lg cursor-pointer ${isDark ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'} transition-all`}
@@ -404,7 +355,6 @@ const NavBar: React.FC<NavBarProps> = ({
             >
               {isDark ? <MdLightMode className="h-5 w-5" /> : <MdDarkMode className="h-5 w-5" />}
             </button>
-            
             <div className="relative">
               <button
                 onClick={onNotificationClick}
@@ -417,7 +367,6 @@ const NavBar: React.FC<NavBarProps> = ({
                 )}
               </button>
             </div>
-            
             <div 
               className="flex items-center space-x-3 cursor-pointer group"
               onClick={onProfileClick}
@@ -432,7 +381,6 @@ const NavBar: React.FC<NavBarProps> = ({
               </div>
             </div>
           </div>
-
           <div className="md:hidden flex items-center space-x-2">
             <button
               onClick={onNotificationClick}
@@ -444,7 +392,6 @@ const NavBar: React.FC<NavBarProps> = ({
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
               )}
             </button>
-            
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={`p-2 rounded-lg cursor-pointer ${isDark ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'} transition-all`}
@@ -457,13 +404,10 @@ const NavBar: React.FC<NavBarProps> = ({
     </nav>
   );
 };
-
-
-// Enhanced Metric Card
 const MetricCard: React.FC<MetricCardProps> = ({ metric, isDark }) => (
   <div className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : metric.bgColor} rounded-2xl border ${isDark ? 'border-gray-700/50' : 'border-white/50'} p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group`}>
     <div className="flex items-center justify-between mb-4">
-      <div className={`w-12 h-12 bg-gradient-to-br ${metric.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+      <div className={`w-12 h-12 bg-gradient-to-br ${metric.color} rounded-xl flex items-center justify-center shadow-lg transition-all duration-300`}>
         <metric.icon className="h-6 w-6 text-white" />
       </div>
       <span className="text-sm font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">
@@ -471,13 +415,9 @@ const MetricCard: React.FC<MetricCardProps> = ({ metric, isDark }) => (
       </span>
     </div>
     <h3 className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-slate-600'} mb-1`}>{metric.title}</h3>
-    <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} group-hover:scale-105 transition-transform duration-300`}>{metric.value}</p>
+    <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} transition-all duration-300`}>{metric.value}</p>
   </div>
 );
-
-
-
-// Enhanced Chart Component
 const ChartCard: React.FC<ChartCardProps> = ({ title, icon: Icon, children, isDark, isLoading, onExport }) => (
   <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-2xl border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} p-6 shadow-lg hover:shadow-xl transition-all duration-300`}>
     <div className="flex items-center justify-between mb-6">
@@ -505,27 +445,21 @@ const ChartCard: React.FC<ChartCardProps> = ({ title, icon: Icon, children, isDa
       </div>
     )}
   </div>
-);
-
-// Enhanced Pagination Component
+  );
 const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange, isDark }) => {
   const pages: number[] = [];
   const maxVisiblePages = 5;
-  
   let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
   let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-  
   if (endPage - startPage + 1 < maxVisiblePages) {
     startPage = Math.max(1, endPage - maxVisiblePages + 1);
   }
-  
   for (let i = startPage; i <= endPage; i++) {
     pages.push(i);
   }
-
   return (
-    <div className="flex items-center justify-between px-6 py-4">
-      <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+    <div className="flex items-center justify-center sm:justify-between px-6 py-4">
+      <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'} hidden sm:block`}>
         Showing page {currentPage} of {totalPages}
       </div>
       <div className="flex items-center space-x-2">
@@ -536,7 +470,6 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
         >
           <MdChevronLeft className="h-4 w-4" />
         </button>
-        
         {pages.map(page => (
           <button
             key={page}
@@ -552,7 +485,6 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
             {page}
           </button>
         ))}
-        
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
@@ -564,7 +496,6 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPage
     </div>
   );
 };
-
 const BusinessDashboard: React.FC = () => {
   const [selectedDateRange, setSelectedDateRange] = useState<string>('7d');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -576,41 +507,33 @@ const BusinessDashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [salesData, setSalesData] = useState<SalesDataCollection>({});
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'John Doe',
-    email: 'john.doe@businesshub.com'
+    name: 'John',
+    email: 'john@businesshb.com'
   });
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  
-  // Notification state
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<Notification[]>([
     { id: 1, message: "New order received", timestamp: new Date(Date.now() - 2 * 60 * 1000), type: "success", isRead: false },
     { id: 2, message: "Payment processed", timestamp: new Date(Date.now() - 5 * 60 * 1000), type: "info", isRead: false },
-    { id: 3, message: "System update available", timestamp: new Date(Date.now() - 60 * 60 * 1000), type: "warning", isRead: false }
+    { id: 3, message: "System update available", timestamp: new Date(Date.now() - 60 * 60 * 1000), type: "warning", isRead: false },
+    { id: 4, message: "New customer registration", timestamp: new Date(Date.now() - 10 * 60 * 1000), type: "info", isRead: false },
+    { id: 5, message: "Monthly report is ready", timestamp: new Date(Date.now() - 15 * 60 * 1000), type: "success", isRead: false }
   ]);
-
   const itemsPerPage = 5;
-
-  // Count unread notifications
   const unreadCount = notifications.filter(notification => !notification.isRead).length;
-
-  // Function to calculate relative time
   const getRelativeTime = (timestamp: Date): string => {
     const now = new Date();
     const diffInMs = now.getTime() - timestamp.getTime();
     const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
     const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
     if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
     return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
   };
-
-  // Mark all notifications as read when dropdown is opened
   const handleNotificationClick = () => {
     if (!showNotifications && unreadCount > 0) {
       setNotifications(prevNotifications => 
@@ -619,17 +542,13 @@ const BusinessDashboard: React.FC = () => {
     }
     setShowNotifications(!showNotifications);
   };
-
-  // Simulate API call
   const fetchData = useCallback(async (dateRange: string, showRefresh: boolean = false): Promise<void> => {
     if (showRefresh) {
       setIsRefreshing(true);
     } else {
       setIsLoading(true);
     }
-    
     await new Promise(resolve => setTimeout(resolve, 800));
-    
     const mockSalesData: SalesDataCollection = {
       '7d': [
         { date: 'Mon', sales: 4200, revenue: 8400 },
@@ -652,7 +571,6 @@ const BusinessDashboard: React.FC = () => {
         { date: 'Month 3', sales: 148000, revenue: 296000 }
       ]
     };
-
     const mockTransactions: Transaction[] = [
       { id: 1, product: 'Premium Analytics Suite', category: 'Software', revenue: 2499, status: 'completed', date: '2025-06-26' },
       { id: 2, product: 'Marketing Dashboard Pro', category: 'SaaS', revenue: 899, status: 'pending', date: '2025-06-26' },
@@ -667,35 +585,24 @@ const BusinessDashboard: React.FC = () => {
       { id: 11, product: 'Team Collaboration Hub', category: 'Productivity', revenue: 599, status: 'processing', date: '2025-06-21' },
       { id: 12, product: 'Enterprise Security Pack', category: 'Security', revenue: 5999, status: 'completed', date: '2025-06-21' }
     ];
-
     setSalesData(mockSalesData);
     setTransactions(mockTransactions);
     setIsLoading(false);
     setIsRefreshing(false);
   }, []);
-
-
-// REACT EFFECTS
-
   useEffect(() => {
     fetchData(selectedDateRange);
   }, [selectedDateRange, fetchData]);
-
-  // Disable scrolling when refreshing overlay is active
   useEffect(() => {
     if (isRefreshing) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-
-    // Cleanup function to restore scrolling when component unmounts
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isRefreshing]);
-
-  // Load user profile from localStorage on mount
   useEffect(() => {
     const savedProfile = localStorage.getItem('userProfile');
     if (savedProfile) {
@@ -707,30 +614,21 @@ const BusinessDashboard: React.FC = () => {
       }
     }
   }, []);
-
-  // Set mounted to true after component mounts to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Disable scrolling when mobile menu is active
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-
-    // Cleanup function to restore scrolling when component unmounts
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isMobileMenuOpen]);
-
-  // Prevent scrolling when mobile notification menu is open
   useEffect(() => {
     if (showNotifications) {
-      // Only prevent scrolling on mobile
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
         document.body.style.overflow = 'hidden';
@@ -738,52 +636,38 @@ const BusinessDashboard: React.FC = () => {
     } else {
       document.body.style.overflow = 'unset';
     }
-
-    // Cleanup function
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [showNotifications]);
-
-  // Update relative times every minute
   const [, forceUpdate] = useState({});
   useEffect(() => {
     const interval = setInterval(() => {
       forceUpdate({});
-    }, 60000); // Update every minute
-
+    }, 60000); 
     return () => clearInterval(interval);
   }, []);
-
-
-
-// EVENT HANDLERS 
   const handleDateRangeChange = (range: string): void => {
     setSelectedDateRange(range);
     setCurrentPage(1);
   };
-
   const toggleTheme = (): void => {
     setIsDark(!isDark);
   };
-
   const handleRefresh = (): void => {
     fetchData(selectedDateRange, true);
+    setShowNotifications(false); 
   };
-
   const handleProfileUpdate = (updatedProfile: UserProfile): void => {
     setUserProfile(updatedProfile);
-    // Here you could also save to localStorage or send to API
     localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
   };
-
   const exportTransactions = (): void => {
     const csvContent = "data:text/csv;charset=utf-8," + 
       "Product,Category,Revenue,Status,Date\n" +
       filteredTransactions.map(t => 
         `"${t.product}","${t.category}",${t.revenue},"${t.status}","${t.date}"`
       ).join("\n");
-    
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -792,7 +676,6 @@ const BusinessDashboard: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
-
   const exportSalesData = (): void => {
     const currentData = salesData[selectedDateRange] || [];
     const csvContent = "data:text/csv;charset=utf-8," + 
@@ -800,7 +683,6 @@ const BusinessDashboard: React.FC = () => {
       currentData.map(item => 
         `"${item.date}",${item.sales},${item.revenue}`
       ).join("\n");
-    
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -809,7 +691,6 @@ const BusinessDashboard: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
-
   const exportRevenueData = (): void => {
     const currentData = salesData[selectedDateRange] || [];
     const csvContent = "data:text/csv;charset=utf-8," + 
@@ -817,7 +698,6 @@ const BusinessDashboard: React.FC = () => {
       currentData.map(item => 
         `"${item.date}",${item.revenue}`
       ).join("\n");
-    
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -826,11 +706,6 @@ const BusinessDashboard: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
-
-
-
-// DATA FILTERING & PAGINATION 
-
   const filteredTransactions = useMemo((): Transaction[] => {
     return transactions.filter(transaction => {
       const matchesSearch = transaction.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -839,14 +714,9 @@ const BusinessDashboard: React.FC = () => {
       return matchesSearch && matchesStatus;
     });
   }, [transactions, searchTerm, selectedStatus]);
-
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
-
-
-// METRIC CONFIGURATION
-
   const getMetricsForDateRange = (dateRange: string): Metric[] => {
     const metricsData = {
       '7d': {
@@ -868,24 +738,22 @@ const BusinessDashboard: React.FC = () => {
         conversion: { value: '4.7%', change: '+1.2%' }
       }
     };
-
     const data = metricsData[dateRange as keyof typeof metricsData];
-
     return [
     {
       title: 'Total Revenue',
         value: data.revenue.value,
         change: data.revenue.change,
         icon: MdAttachMoney,
-      color: 'from-emerald-500 to-teal-600',
-      bgColor: 'from-emerald-50 to-teal-50'
+      color: 'from-blue-600 to-indigo-700',
+      bgColor: 'from-blue-50 to-indigo-50'
     },
     {
       title: 'Orders',
         value: data.orders.value,
         change: data.orders.change,
         icon: MdShoppingCart,
-      color: 'from-blue-500 to-indigo-600',
+      color: 'from-blue-600 to-indigo-700',
       bgColor: 'from-blue-50 to-indigo-50'
     },
     {
@@ -893,29 +761,42 @@ const BusinessDashboard: React.FC = () => {
         value: data.retention.value,
         change: data.retention.change,
         icon: MdPeople,
-      color: 'from-purple-500 to-violet-600',
-      bgColor: 'from-purple-50 to-violet-50'
+      color: 'from-blue-600 to-indigo-700',
+      bgColor: 'from-blue-50 to-indigo-50'
     },
     {
       title: 'Conversion Rate',
         value: data.conversion.value,
         change: data.conversion.change,
         icon: MdGpsFixed,
-      color: 'from-amber-500 to-orange-600',
-      bgColor: 'from-amber-50 to-orange-50'
+      color: 'from-blue-600 to-indigo-700',
+      bgColor: 'from-blue-50 to-indigo-50'
     }
   ];
   };
-
   const metrics = getMetricsForDateRange(selectedDateRange);
-
-
-
-// RENDER 
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'} ${poppins.className}`}>
-      {/* Refreshing Overlay */}
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'} ${poppins.className}`} style={{
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+    }}>
+      <style jsx global>{`
+        ::-webkit-scrollbar {
+          width: 0px;
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: transparent;
+        }
+        html {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar {
+          width: 0px;
+          background: transparent;
+        }
+      `}</style>
       {isRefreshing && (
         <div className="fixed inset-0 backdrop-blur-sm z-[9998] flex items-center justify-center">
           <div className={`${isDark ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-md rounded-2xl border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} p-6 shadow-2xl flex items-center space-x-4`}>
@@ -926,7 +807,6 @@ const BusinessDashboard: React.FC = () => {
           </div>
         </div>
       )}
-      
       <NavBar 
         isDark={isDark} 
         toggleTheme={toggleTheme} 
@@ -939,26 +819,25 @@ const BusinessDashboard: React.FC = () => {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         onNotificationClick={handleNotificationClick}
         unreadNotificationCount={unreadCount}
+        showNotifications={showNotifications}
       />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} mb-2`}>Dashboard Overview</h2>
           <p className={`${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Monitor your business performance and key metrics</p>
         </div>
-
         <div className="mb-8">
           <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-2xl border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} p-6 shadow-lg hover:shadow-xl transition-all duration-300`}>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>Performance Analytics</h3>
-              <div className="flex items-center space-x-3">
-                <MdFilterList className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`} />
-                <div className="relative">
-                <select
-                  value={selectedDateRange}
-                  onChange={(e) => handleDateRangeChange(e.target.value)}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-800'} flex-shrink-0`}>Performance Analytics</h3>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
+                <MdFilterList className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-slate-500'} flex-shrink-0`} />
+                <div className="relative min-w-0 flex-shrink-0">
+                  <select
+                    value={selectedDateRange}
+                    onChange={(e) => handleDateRangeChange(e.target.value)}
                     className={`
-                      appearance-none cursor-pointer min-w-[140px]
+                      appearance-none cursor-pointer w-full min-w-[140px]
                       ${isDark 
                         ? 'bg-gray-700/80 border-gray-600/50 text-white hover:bg-gray-700 focus:bg-gray-700' 
                         : 'bg-white/80 border-slate-300/50 text-slate-700 hover:bg-white focus:bg-white'
@@ -969,11 +848,11 @@ const BusinessDashboard: React.FC = () => {
                       transition-all duration-200 ease-out
                       hover:shadow-md hover:scale-[1.02]
                     `}
-                >
+                  >
                     <option value="7d">Weekly</option>
                     <option value="30d">Monthly</option>
                     <option value="90d">Quarterly</option>
-                </select>
+                  </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <MdExpandMore className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-slate-500'} transition-transform duration-200`} />
                   </div>
@@ -982,7 +861,6 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {metrics.map((metric, index) => (
             <div key={`${selectedDateRange}-${index}`} className="transform transition-all duration-500 ease-out">
@@ -990,7 +868,6 @@ const BusinessDashboard: React.FC = () => {
             </div>
           ))}
         </div>
-
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
           <ChartCard 
             title="Sales Overview" 
@@ -1012,12 +889,10 @@ const BusinessDashboard: React.FC = () => {
                  dataKey="date" 
                  stroke={isDark ? '#9ca3af' : '#64748b'}
                  fontSize={12}
-                 
                />
                <YAxis 
                  stroke={isDark ? '#9ca3af' : '#64748b'}
                  fontSize={12}
-                 
                />
                <Tooltip 
                  contentStyle={{
@@ -1040,7 +915,6 @@ const BusinessDashboard: React.FC = () => {
              </AreaChart>
            </ResponsiveContainer>
          </ChartCard>
-
          <ChartCard 
            title="Revenue Trends" 
              icon={MdBarChart} 
@@ -1085,7 +959,6 @@ const BusinessDashboard: React.FC = () => {
            </ResponsiveContainer>
          </ChartCard>
        </div>
-
        <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm rounded-2xl border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden`}>
          <div className="p-4 sm:p-6 border-b border-gray-200/50">
            <div className="flex flex-col space-y-4">
@@ -1153,8 +1026,6 @@ const BusinessDashboard: React.FC = () => {
              </div>
            </div>
          </div>
-
-         {/* Horizontally Scrollable Table */}
          <div className="overflow-x-auto">
            <table className="w-full min-w-[640px]">
              <thead className={`${isDark ? 'bg-gray-700/50' : 'bg-slate-50/80'} backdrop-blur-sm`}>
@@ -1205,7 +1076,6 @@ const BusinessDashboard: React.FC = () => {
              </tbody>
            </table>
          </div>
-
          {totalPages > 1 && (
            <Pagination
              currentPage={currentPage}
@@ -1215,35 +1085,22 @@ const BusinessDashboard: React.FC = () => {
            />
          )}
        </div>
-
-       <div className="mt-8 text-center">
-         <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-           Last updated: {mounted ? new Date().toLocaleString() : 'Loading...'}
-         </p>
-       </div>
      </main>
-
-     {/* Modern Footer */}
      <footer className={`${isDark ? 'bg-gray-900/50' : 'bg-white/50'} backdrop-blur-sm border-t ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} py-6 mt-2`}>
        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
          <div className="text-center">
            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'} font-medium`}>
-             2025 BusinessHub. Crafted for modern businesses.
+             {`2025 BusinessHub. Crafted for modern businesses. Last updated: ${mounted ? new Date().toLocaleString() : 'Loading...'}`}
            </p>
          </div>
        </div>
      </footer>
-
-     {/* Mobile Sidebar */}
      {isMobileMenuOpen && (
        <>
-         {/* Backdrop */}
          <div 
            className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
            onClick={() => setIsMobileMenuOpen(false)}
          />
-         
-         {/* Sidebar */}
          <div className={`
            md:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] z-50
            ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} 
@@ -1252,8 +1109,7 @@ const BusinessDashboard: React.FC = () => {
            shadow-2xl
          `}>
            <div className="flex flex-col h-full">
-             {/* Sidebar Header */}
-             <div className="flex items-center justify-between p-6 border-b border-gray-200/20">
+             <div className="flex items-center justify-between h-18 px-6 border-b border-gray-200/20">
                <div className="flex items-center space-x-3">
                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
                    <MdTrendingUp className="h-6 w-6 text-white" />
@@ -1269,10 +1125,7 @@ const BusinessDashboard: React.FC = () => {
                  <MdClose className="h-5 w-5" />
                </button>
              </div>
-
-             {/* Sidebar Content */}
              <div className="flex-1 p-6 space-y-6">
-               {/* Profile Section */}
                <div 
                  className={`
                    p-4 rounded-2xl cursor-pointer transition-all duration-200
@@ -1285,8 +1138,8 @@ const BusinessDashboard: React.FC = () => {
                  }}
                >
                  <div className="flex items-center space-x-4">
-                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                     <MdPerson className="h-6 w-6 text-white" />
+                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                     <MdPerson className="h-5 w-5 text-white" />
                    </div>
                    <div className="flex-1">
                      <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -1299,10 +1152,7 @@ const BusinessDashboard: React.FC = () => {
                    <MdChevronRight className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-slate-400'}`} />
                  </div>
                </div>
-
-               {/* Menu Items */}
                <div className="space-y-3">
-                 {/* Refresh */}
                  <button
                    onClick={() => {
                      handleRefresh();
@@ -1325,8 +1175,6 @@ const BusinessDashboard: React.FC = () => {
                      </p>
                    </div>
                  </button>
-
-                 {/* Theme Toggle */}
                  <button
                    onClick={() => {
                      toggleTheme();
@@ -1349,8 +1197,6 @@ const BusinessDashboard: React.FC = () => {
                  </button>
                </div>
              </div>
-
-             {/* Sidebar Footer */}
              <div className="p-6 border-t border-gray-200/20">
                <p className={`text-xs text-center ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>
                  2025 BusinessHub
@@ -1360,16 +1206,14 @@ const BusinessDashboard: React.FC = () => {
          </div>
        </>
      )}
-
-     {/* Desktop Notification Dropdown - Outside nav container */}
      {showNotifications && (
-       <div className="hidden md:block relative">
+       <div className="hidden md:block fixed inset-0 z-40 pointer-events-none">
          <div className={`
-           absolute right-4 top-2 w-80 max-w-[90vw] 
+           absolute right-4 top-20 w-80 max-w-[90vw] pointer-events-auto
            ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} 
            backdrop-blur-2xl rounded-2xl shadow-2xl border 
            ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} 
-           z-50 transition-all duration-300
+           transition-all duration-300
            ring-1 ${isDark ? 'ring-gray-700/50' : 'ring-black/5'}
          `}>
            <div className="p-6">
@@ -1407,18 +1251,13 @@ const BusinessDashboard: React.FC = () => {
            </div>
          </div>
        </div>
-     )}
-
-     {/* Mobile Notification Side Menu */}
+      )}
      {showNotifications && (
        <div className="md:hidden">
-         {/* Backdrop */}
          <div 
            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
            onClick={() => setShowNotifications(false)}
          />
-         
-         {/* Notification Sidebar */}
          <div className={`
            fixed top-0 right-0 h-full w-80 max-w-[85vw] z-50
            ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} 
@@ -1427,8 +1266,7 @@ const BusinessDashboard: React.FC = () => {
            shadow-2xl
          `}>
            <div className="flex flex-col h-full">
-             {/* Notification Header */}
-             <div className="flex items-center justify-between p-6 border-b border-gray-200/20">
+             <div className="flex items-center justify-between h-18 px-6 border-b border-gray-200/20">
                <div className="flex items-center space-x-3">
                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
                    <MdNotifications className="h-6 w-6 text-white" />
@@ -1451,8 +1289,6 @@ const BusinessDashboard: React.FC = () => {
                  <MdClose className="h-5 w-5" />
                </button>
              </div>
-
-             {/* Notification Content */}
              <div className="flex-1 p-6 space-y-4 overflow-y-auto">
                {notifications.map((notification) => (
                  <div 
@@ -1476,30 +1312,10 @@ const BusinessDashboard: React.FC = () => {
                  </div>
                ))}
              </div>
-
-             {/* Notification Footer */}
-             <div className="p-6 border-t border-gray-200/20">
-               <button 
-                 onClick={() => {
-                   setNotifications(prevNotifications => 
-                     prevNotifications.map(notification => ({ ...notification, isRead: true }))
-                   );
-                 }}
-                 className={`
-                   w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
-                   ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}
-                   hover:scale-[1.02]
-                 `}
-               >
-                 Mark all as read
-               </button>
-             </div>
            </div>
          </div>
        </div>
      )}
-
-     {/* Desktop Notification Dropdown - Rendered at root level */}
      {showNotifications && (
        <div className="hidden md:block fixed inset-0 z-40 pointer-events-none">
          <div className={`
@@ -1546,236 +1362,6 @@ const BusinessDashboard: React.FC = () => {
          </div>
        </div>
      )}
-
-     {/* Mobile Notification Side Menu */}
-     {showNotifications && (
-       <div className="md:hidden">
-         {/* Backdrop */}
-         <div 
-           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-           onClick={() => setShowNotifications(false)}
-         />
-         
-         {/* Notification Sidebar */}
-         <div className={`
-           fixed top-0 right-0 h-full w-80 max-w-[85vw] z-50
-           ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} 
-           backdrop-blur-xl border-l ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'}
-           transform transition-transform duration-300 ease-out
-           shadow-2xl
-         `}>
-           <div className="flex flex-col h-full">
-             {/* Notification Header */}
-             <div className="flex items-center justify-between p-6 border-b border-gray-200/20">
-               <div className="flex items-center space-x-3">
-                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
-                   <MdNotifications className="h-6 w-6 text-white" />
-                 </div>
-                 <div>
-                   <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                     Notifications
-                   </h2>
-                   {unreadCount > 0 && (
-                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                       {unreadCount} new notification{unreadCount > 1 ? 's' : ''}
-                     </p>
-                   )}
-                 </div>
-               </div>
-               <button
-                 onClick={() => setShowNotifications(false)}
-                 className={`p-2 rounded-lg cursor-pointer ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'} transition-all`}
-               >
-                 <MdClose className="h-5 w-5" />
-               </button>
-             </div>
-
-             {/* Notification Content */}
-             <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-               {notifications.map((notification) => (
-                 <div 
-                   key={notification.id} 
-                   className={`
-                     p-4 rounded-2xl transition-all duration-200 relative
-                     ${isDark ? 'bg-gray-800/50 hover:bg-gray-800' : 'bg-slate-50/50 hover:bg-slate-100'}
-                     border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'}
-                     ${!notification.isRead ? 'ring-2 ring-blue-500/30' : ''}
-                   `}
-                 >
-                   {!notification.isRead && (
-                     <div className="absolute top-3 right-3 w-3 h-3 bg-blue-500 rounded-full"></div>
-                   )}
-                   <p className={`text-sm ${isDark ? 'text-gray-200' : 'text-slate-800'} ${!notification.isRead ? 'font-semibold' : 'font-medium'} pr-6 leading-relaxed`}>
-                     {notification.message}
-                   </p>
-                   <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'} mt-2 font-medium`}>
-                     {getRelativeTime(notification.timestamp)}
-                   </p>
-                 </div>
-               ))}
-             </div>
-
-             {/* Notification Footer */}
-             <div className="p-6 border-t border-gray-200/20">
-               <button 
-                 onClick={() => {
-                   setNotifications(prevNotifications => 
-                     prevNotifications.map(notification => ({ ...notification, isRead: true }))
-                   );
-                 }}
-                 className={`
-                   w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
-                   ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}
-                   hover:scale-[1.02]
-                 `}
-               >
-                 Mark all as read
-               </button>
-             </div>
-           </div>
-         </div>
-       </div>
-     )}
-
-     {/* Desktop Notification Dropdown - Rendered at root level */}
-     {showNotifications && (
-       <div className="hidden md:block fixed inset-0 z-40 pointer-events-none">
-         <div className={`
-           absolute right-4 top-20 w-80 max-w-[90vw] pointer-events-auto
-           ${isDark ? 'bg-gray-800/95' : 'bg-white/95'} 
-           backdrop-blur-2xl rounded-2xl shadow-2xl border 
-           ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'} 
-           transition-all duration-300
-           ring-1 ${isDark ? 'ring-gray-700/50' : 'ring-black/5'}
-         `}>
-           <div className="p-6">
-             <div className="flex items-center justify-between mb-4">
-               <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
-               {unreadCount > 0 && (
-                 <span className="text-xs bg-blue-500 text-white px-3 py-1 rounded-full font-medium">
-                   {unreadCount} new
-                 </span>
-               )}
-             </div>
-             <div className="space-y-3 max-h-80 overflow-y-auto">
-               {notifications.map((notification) => (
-                 <div 
-                   key={notification.id} 
-                   className={`
-                     p-4 rounded-xl transition-all duration-200 relative cursor-pointer
-                     ${isDark ? 'bg-gray-700/50 hover:bg-gray-700/70' : 'bg-slate-50/80 hover:bg-slate-100/80'}
-                     ${!notification.isRead ? 'ring-2 ring-blue-500/30' : ''}
-                     hover:scale-[1.02] hover:shadow-md
-                   `}
-                 >
-                   {!notification.isRead && (
-                     <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
-                   )}
-                   <p className={`text-sm ${isDark ? 'text-gray-200' : 'text-slate-800'} ${!notification.isRead ? 'font-semibold' : 'font-medium'} pr-6 leading-relaxed`}>
-                     {notification.message}
-                   </p>
-                   <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'} mt-2 font-medium`}>
-                     {getRelativeTime(notification.timestamp)}
-                   </p>
-                 </div>
-               ))}
-             </div>
-           </div>
-         </div>
-       </div>
-     )}
-
-     {/* Mobile Notification Side Menu */}
-     {showNotifications && (
-       <div className="md:hidden">
-         {/* Backdrop */}
-         <div 
-           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-           onClick={() => setShowNotifications(false)}
-         />
-         
-         {/* Notification Sidebar */}
-         <div className={`
-           fixed top-0 right-0 h-full w-80 max-w-[85vw] z-50
-           ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} 
-           backdrop-blur-xl border-l ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'}
-           transform transition-transform duration-300 ease-out
-           shadow-2xl
-         `}>
-           <div className="flex flex-col h-full">
-             {/* Notification Header */}
-             <div className="flex items-center justify-between p-6 border-b border-gray-200/20">
-               <div className="flex items-center space-x-3">
-                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
-                   <MdNotifications className="h-6 w-6 text-white" />
-                 </div>
-                 <div>
-                   <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                     Notifications
-                   </h2>
-                   {unreadCount > 0 && (
-                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                       {unreadCount} new notification{unreadCount > 1 ? 's' : ''}
-                     </p>
-                   )}
-                 </div>
-               </div>
-               <button
-                 onClick={() => setShowNotifications(false)}
-                 className={`p-2 rounded-lg cursor-pointer ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'} transition-all`}
-               >
-                 <MdClose className="h-5 w-5" />
-               </button>
-             </div>
-
-             {/* Notification Content */}
-             <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-               {notifications.map((notification) => (
-                 <div 
-                   key={notification.id} 
-                   className={`
-                     p-4 rounded-2xl transition-all duration-200 relative
-                     ${isDark ? 'bg-gray-800/50 hover:bg-gray-800' : 'bg-slate-50/50 hover:bg-slate-100'}
-                     border ${isDark ? 'border-gray-700/50' : 'border-slate-200/50'}
-                     ${!notification.isRead ? 'ring-2 ring-blue-500/30' : ''}
-                   `}
-                 >
-                   {!notification.isRead && (
-                     <div className="absolute top-3 right-3 w-3 h-3 bg-blue-500 rounded-full"></div>
-                   )}
-                   <p className={`text-sm ${isDark ? 'text-gray-200' : 'text-slate-800'} ${!notification.isRead ? 'font-semibold' : 'font-medium'} pr-6 leading-relaxed`}>
-                     {notification.message}
-                   </p>
-                   <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'} mt-2 font-medium`}>
-                     {getRelativeTime(notification.timestamp)}
-                   </p>
-                 </div>
-               ))}
-             </div>
-
-             {/* Notification Footer */}
-             <div className="p-6 border-t border-gray-200/20">
-               <button 
-                 onClick={() => {
-                   setNotifications(prevNotifications => 
-                     prevNotifications.map(notification => ({ ...notification, isRead: true }))
-                   );
-                 }}
-                 className={`
-                   w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
-                   ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}
-                   hover:scale-[1.02]
-                 `}
-               >
-                 Mark all as read
-               </button>
-             </div>
-           </div>
-         </div>
-       </div>
-     )}
-
-     {/* Profile Modal - Rendered at root level */}
      <ProfileModal
        isOpen={showProfileModal}
        onClose={() => setShowProfileModal(false)}
@@ -1786,5 +1372,4 @@ const BusinessDashboard: React.FC = () => {
    </div>
  );
 };
-
 export default BusinessDashboard;
