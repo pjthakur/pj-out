@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Kinematics - Master Physics Through Motion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    screens: {
+                        'xs': '475px',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        /* Hide scrollbar for all browsers */
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        *::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        html, body {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            scroll-behavior: smooth; /* Smooth scrolling */
+        }
+        html::-webkit-scrollbar, body::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .glass {
+            backdrop-filter: blur(40px) saturate(180%);
+            background: rgba(15, 23, 42, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .glass-dark {
+            backdrop-filter: blur(30px) saturate(150%);
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(71, 85, 105, 0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        .gradient-bg {
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 60% 90%, rgba(59, 130, 246, 0.08) 0%, transparent 70%),
+                radial-gradient(ellipse at 90% 60%, rgba(139, 92, 246, 0.06) 0%, transparent 60%),
+                linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 15%, #16213e 35%, #0f172a 55%, #1e1b4b 75%, #312e81 95%, #1e1065 100%);
+            min-height: 100vh;
+            filter: blur(0.5px);
+        }
+        .chart-container {
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(30px) saturate(150%);
+            border-radius: 20px;
+            border: 1px solid rgba(75, 85, 99, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .control-section {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px) saturate(160%);
+        }
+        .values-section {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            box-shadow: 0 15px 35px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px) saturate(160%);
+        }
+        .motion-track {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            box-shadow: inset 0 2px 8px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px) saturate(140%);
+            position: relative;
+            overflow: visible;
+        }
+        .motion-track::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .canvas-bg {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.25);
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px) saturate(130%);
+        }
+        .canvas-bg canvas {
+            border-radius: 12px;
+        }
+        .modern-card {
+            background: rgba(15, 23, 42, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px) saturate(160%);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .modern-button {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1);
+            border: none;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+        }
+        .modern-button:hover {
+            background: linear-gradient(135deg, #2563eb, #7c3aed, #4f46e5);
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <div id="landingPage" class="min-h-screen flex flex-col">
+        <nav class="container mx-auto px-6 sm:px-8 lg:px-12 py-6 sm:py-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+                    <i class="fas fa-atom text-xl sm:text-2xl md:text-3xl text-blue-400"></i>
+                    <span class="text-base sm:text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap">Interactive Kinematics</span>
+                </div>
+                <button id="launchSimulator" class="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <i class="fas fa-rocket mr-2"></i>
+                    <span class="sm:hidden">Start</span>
+                    <span class="hidden sm:inline">Launch Simulator</span>
+                </button>
+            </div>
+        </nav>
+        <div class="flex-1 flex items-center justify-center px-6 sm:px-8 sm:pt-12 pt-4">
+            <div class="text-center max-w-5xl mx-auto">
+                <div class="mb-12 sm:mb-16">
+                    <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-8 sm:mb-10 bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-2xl leading-tight">
+                        Master Physics Through Motion
+                    </h1>
+                    <p class="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 sm:mb-16 leading-relaxed max-w-4xl mx-auto px-4 sm:px-0">
+                        Dive deep into the principles of motion with our comprehensive physics simulator. 
+                        Experiment with velocity, acceleration, and rotational dynamics in real-time with stunning visual feedback.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-16 sm:mb-20">
+                    <div class="glass-dark rounded-xl p-6 sm:p-8 transform hover:scale-105 transition-all duration-300">
+                        <div class="text-4xl sm:text-5xl mb-6 text-blue-400">
+                            <i class="fas fa-arrows-alt-h"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Linear Motion</h3>
+                        <p class="text-gray-300 leading-relaxed">Study displacement, velocity, and acceleration with interactive controls and real-time visualization.</p>
+                    </div>
+                    <div class="glass-dark rounded-xl p-6 sm:p-8 transform hover:scale-105 transition-all duration-300">
+                        <div class="text-4xl sm:text-5xl mb-6 text-purple-400">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Rotational Motion</h3>
+                        <p class="text-gray-300 leading-relaxed">Explore circular motion, angular velocity, and the relationship between linear and angular motion.</p>
+                    </div>
+                    <div class="glass-dark rounded-xl p-6 sm:p-8 transform hover:scale-105 transition-all duration-300 sm:col-span-2 lg:col-span-1">
+                        <div class="text-4xl sm:text-5xl mb-6 text-cyan-400">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold mb-4">Real-time Analytics</h3>
+                        <p class="text-gray-300 leading-relaxed">Watch motion graphs update in real-time as you adjust parameters and observe the physics in action.</p>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <button id="startExploring" class="w-full sm:w-auto bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 hover:from-blue-600 hover:via-purple-600 hover:to-indigo-700 px-8 py-4 sm:px-10 sm:py-5 rounded-xl font-bold text-lg sm:text-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                        <i class="fas fa-play mr-3"></i>Start Learning Motion
+                    </button>
+                    <p class="text-base sm:text-lg text-gray-400">
+                        Perfect for students, educators, and physics enthusiasts
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="relative flex items-center justify-center py-8 sm:py-12 px-6 sm:px-8 lg:px-12">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            </div>
+        </div>
+        <div class="container mx-auto px-6 sm:px-8 lg:px-12 py-8">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-center mb-12 sm:mb-16 lg:mb-20">Why Choose Interactive Kinematics?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12">
+                    <div class="flex items-start space-x-5 sm:space-x-6">
+                        <div class="text-3xl sm:text-4xl text-blue-400 mt-1 flex-shrink-0">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Educational Excellence</h3>
+                            <p class="text-gray-300 leading-relaxed text-base sm:text-lg">Designed for learning with clear visualizations and intuitive controls that make complex physics concepts accessible.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-5 sm:space-x-6">
+                        <div class="text-3xl sm:text-4xl text-purple-400 mt-1 flex-shrink-0">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Responsive Design</h3>
+                            <p class="text-gray-300 leading-relaxed text-base sm:text-lg">Works seamlessly across all devices - desktop, tablet, and mobile. Learn physics anywhere, anytime.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-5 sm:space-x-6">
+                        <div class="text-3xl sm:text-4xl text-cyan-400 mt-1 flex-shrink-0">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Interactive Controls</h3>
+                            <p class="text-gray-300 leading-relaxed text-base sm:text-lg">Adjust parameters in real-time and immediately see how they affect motion. Perfect for experimentation and discovery.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-5 sm:space-x-6">
+                        <div class="text-3xl sm:text-4xl text-green-400 mt-1 flex-shrink-0">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Instant Feedback</h3>
+                            <p class="text-gray-300 leading-relaxed text-base sm:text-lg">Real-time calculations and smooth animations provide immediate visual feedback for better understanding.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="container mx-auto px-6 sm:px-8 lg:px-12 py-4 sm:py-5 border-t border-white border-opacity-10">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex flex-col sm:flex-row justify-center sm:justify-between items-center space-y-2 sm:space-y-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-atom text-lg text-blue-400"></i>
+                        <span class="font-semibold text-sm">Interactive Kinematics</span>
+                        <span class="text-gray-400 text-xs">2024</span>
+                    </div>
+                    <div class="flex items-center text-xs text-gray-400">
+                        <span class="hidden sm:inline">Interactive Physics Education • </span>
+                        <span>Made with</span>
+                        <i class="fas fa-heart text-red-400 mx-1"></i>
+                        <span>for Learning</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <div id="simulatorPage" class="hidden min-h-screen">
+        <div class="container mx-auto px-3 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8">
+        <div class="max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-6 sm:mb-8">
+                    <div class="flex items-center space-x-2 sm:space-x-3">
+                        <i class="fas fa-atom text-lg sm:text-xl md:text-2xl lg:text-3xl text-blue-400"></i>
+                        <h1 class="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap">Interactive Kinematics</h1>
+                    </div>
+                    <div class="flex-1"></div>
+                    <button id="backToLanding" class="glass-dark px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 flex items-center">
+                        <i class="fas fa-arrow-left text-sm sm:text-base"></i>
+                        <span class="ml-2 hidden sm:inline text-sm sm:text-base">Back to Home</span>
+                    </button>
+                </div>
+                <div class="glass rounded-2xl p-2 sm:p-4 md:p-6 lg:p-8 shadow-2xl min-h-[700px] md:min-h-[600px] flex flex-col">
+                <div class="flex flex-row justify-center mt-4 sm:mt-0 mb-6 md:mb-8 gap-2 md:gap-4">
+                    <button id="linearTab" class="tab-btn active px-3 sm:px-4 md:px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 text-sm md:text-base flex-1 max-w-[140px] sm:max-w-[160px] md:max-w-[180px]">
+                        Linear Motion
+                    </button>
+                    <button id="rotationTab" class="tab-btn px-3 sm:px-4 md:px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 text-sm md:text-base flex-1 max-w-[140px] sm:max-w-[160px] md:max-w-[180px]">
+                        Rotation
+                    </button>
+                </div>
+                <div id="linearContent" class="tab-content flex-1">
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-4 md:gap-6 lg:gap-8 h-full min-h-[500px]">
+                        <div class="flex flex-col space-y-2 sm:space-y-4 md:space-y-6 order-2 xl:order-1">
+                            <div class="control-section rounded-xl p-4 md:p-6 flex-1">
+                                <h3 class="text-lg md:text-xl font-bold mb-3 md:mb-4 text-white drop-shadow-lg"><i class="fas fa-cog mr-2"></i>Controls</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-bold mb-2 text-white">Initial Velocity (m/s)</label>
+                                        <input type="range" id="initialVelocity" min="-20" max="20" value="5" class="w-full h-3 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                                        <span id="velocityValue" class="text-sm font-bold text-blue-300 bg-blue-500 bg-opacity-20 px-3 py-1 rounded-lg">5 m/s</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold mb-2 text-white">Acceleration (m/s²)</label>
+                                        <input type="range" id="acceleration" min="-10" max="10" value="2" step="0.5" class="w-full h-3 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                                        <span id="accelerationValue" class="text-sm font-bold text-purple-300 bg-purple-500 bg-opacity-20 px-3 py-1 rounded-lg">2 m/s²</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold mb-2 text-white">Time (s)</label>
+                                        <input type="range" id="time" min="0" max="10" value="5" step="0.1" class="w-full h-3 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                                        <span id="timeValue" class="text-sm font-bold text-blue-300 bg-blue-500 bg-opacity-20 px-3 py-1 rounded-lg">5 s</span>
+                                    </div>
+                                    <button id="playLinear" class="w-full modern-button py-3 rounded-xl font-bold text-white transition-all duration-300">
+                                        <i class="fas fa-play mr-2"></i>Play
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="values-section rounded-xl p-4 md:p-6 flex-1 flex flex-col">
+                                <h3 class="text-lg md:text-xl font-bold mb-3 md:mb-4 text-white drop-shadow-lg"><i class="fas fa-chart-bar mr-2"></i>Current Values</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm flex-1">
+                                    <div class="bg-blue-500 bg-opacity-15 rounded-lg p-3 md:p-4 border border-blue-400 border-opacity-30 flex flex-col justify-center min-h-[80px]">
+                                        <span class="text-blue-300 font-medium text-sm">Displacement:</span>
+                                        <span id="currentDisplacement" class="block text-lg md:text-xl font-bold text-white drop-shadow">0 m</span>
+                                    </div>
+                                    <div class="bg-purple-500 bg-opacity-15 rounded-lg p-3 md:p-4 border border-purple-400 border-opacity-30 flex flex-col justify-center min-h-[80px]">
+                                        <span class="text-purple-300 font-medium text-sm">Velocity:</span>
+                                        <span id="currentVelocity" class="block text-lg md:text-xl font-bold text-white drop-shadow">0 m/s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col order-1 xl:order-2">
+                            <div class="chart-container p-4 md:p-6 h-full flex flex-col">
+                                <h3 class="text-lg md:text-xl font-bold mb-4 text-center text-white drop-shadow-lg"><i class="fas fa-crosshairs mr-2"></i>Linear Motion</h3>
+                                <div class="relative motion-track rounded-xl h-32 sm:h-36 md:h-40 mb-4 md:mb-6">
+                                    <div id="zeroLine" class="absolute top-4 sm:top-5 md:top-6 w-0.5 h-20 sm:h-24 md:h-28 bg-green-400 opacity-70 transition-all duration-300 z-5" style="left: 50%;"></div>
+                                    <div class="absolute top-4 sm:top-5 md:top-6 w-full h-20 sm:h-24 md:h-28 border-t border-b border-white border-opacity-20"></div>
+                                    <div id="linearObject" class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-8 sm:w-9 md:w-10 h-8 sm:h-9 md:h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-lg transition-all duration-100 ease-linear z-20 border-2 border-white"></div>
+                                    <div id="motionTrail" class="absolute top-1/2 transform -translate-y-1/2 h-2 sm:h-2.5 md:h-3 bg-gradient-to-r from-blue-400 to-purple-500 opacity-40 rounded transition-all duration-100 ease-linear z-10" style="width: 0%; left: 50%;"></div>
+                                    <div id="leftLabel" class="absolute bottom-1 sm:bottom-1.5 md:bottom-2 left-1 sm:left-2 md:left-3 text-xs sm:text-sm font-semibold text-white bg-slate-700 bg-opacity-90 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">-50m</div>
+                                    <div id="rightLabel" class="absolute bottom-1 sm:bottom-1.5 md:bottom-2 right-1 sm:right-2 md:right-3 text-xs sm:text-sm font-semibold text-white bg-slate-700 bg-opacity-90 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">50m</div>
+                                    <div id="zeroLabel" class="absolute bottom-1 sm:bottom-1.5 md:bottom-2 left-1/2 transform -translate-x-1/2 text-xs sm:text-sm font-semibold text-white bg-green-500 bg-opacity-80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">START</div>
+                                    <div id="trackStatus" class="absolute top-1 sm:top-1.5 md:top-2 left-1/2 transform -translate-x-1/2 text-xs sm:text-sm font-semibold text-white bg-black bg-opacity-50 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full">Motion Track</div>
+                                    <div id="directionIndicator" class="absolute top-1 sm:top-1.5 md:top-2 right-2 sm:right-3 md:right-4 text-xs sm:text-sm font-semibold text-white bg-purple-500 bg-opacity-80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg opacity-0 transition-opacity duration-300">→</div>
+                                    <div id="progressIndicator" class="absolute top-1 sm:top-1.5 md:top-2 left-2 sm:left-3 md:left-4 text-xs sm:text-sm font-semibold text-white bg-blue-500 bg-opacity-80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg opacity-0 transition-opacity duration-300">0%</div>
+                                </div>
+                                <div class="canvas-bg rounded-xl flex-1 p-2 md:p-4 min-h-[300px] sm:min-h-[350px] md:min-h-[400px]">
+                                    <canvas id="linearChart" class="w-full h-full"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="rotationContent" class="tab-content hidden flex-1">
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-4 md:gap-6 lg:gap-8 h-full min-h-[500px]">
+                        <div class="flex flex-col space-y-2 sm:space-y-4 md:space-y-6 order-2 xl:order-1">
+                            <div class="control-section rounded-xl p-4 md:p-6 flex-1">
+                                <h3 class="text-lg md:text-xl font-bold mb-3 md:mb-4 text-white drop-shadow-lg"><i class="fas fa-cog mr-2"></i>Controls</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-bold mb-2 text-white">Angular Speed (rad/s)</label>
+                                        <input type="range" id="angularSpeed" min="0.1" max="5" value="1" step="0.1" class="w-full h-3 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                                        <span id="angularSpeedValue" class="text-sm font-bold text-blue-300 bg-blue-500 bg-opacity-20 px-3 py-1 rounded-lg">1 rad/s</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold mb-2 text-white">Radius (m)</label>
+                                        <input type="range" id="radius" min="20" max="80" value="50" class="w-full h-3 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                                        <span id="radiusValue" class="text-sm font-bold text-purple-300 bg-purple-500 bg-opacity-20 px-3 py-1 rounded-lg">50 m</span>
+                                    </div>
+                                    <button id="playRotation" class="w-full modern-button py-3 rounded-xl font-bold text-white transition-all duration-300">
+                                        <i class="fas fa-play mr-2"></i>Play
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="values-section rounded-xl p-4 md:p-6 flex-1 flex flex-col">
+                                <h3 class="text-lg md:text-xl font-bold mb-3 md:mb-4 text-white drop-shadow-lg"><i class="fas fa-chart-bar mr-2"></i>Current Values</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm flex-1">
+                                    <div class="bg-blue-500 bg-opacity-15 rounded-lg p-3 md:p-4 border border-blue-400 border-opacity-30 flex flex-col justify-center min-h-[80px]">
+                                        <span class="text-blue-300 font-medium text-sm">Angular Displacement:</span>
+                                        <span id="currentAngle" class="block text-lg md:text-xl font-bold text-white drop-shadow">0 rad</span>
+                                    </div>
+                                    <div class="bg-purple-500 bg-opacity-15 rounded-lg p-3 md:p-4 border border-purple-400 border-opacity-30 flex flex-col justify-center min-h-[80px]">
+                                        <span class="text-purple-300 font-medium text-sm">Linear Speed:</span>
+                                        <span id="linearSpeed" class="block text-lg md:text-xl font-bold text-white drop-shadow">0 m/s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col order-1 xl:order-2">
+                            <div class="chart-container p-4 md:p-6 h-full flex flex-col justify-center">
+                                <h3 class="text-lg md:text-xl font-bold mb-4 text-center text-white drop-shadow-lg"><i class="fas fa-circle-notch mr-2"></i>Circular Motion</h3>
+                                <div class="flex-1 canvas-container flex items-center justify-center">
+                                    <canvas id="rotationCanvas" width="450" height="450" class="canvas-bg rounded-xl max-w-full max-h-full" style="width: min(100%, 450px); height: min(100%, 450px); aspect-ratio: 1/1;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <script>
+        const landingPage = document.getElementById('landingPage');
+        const simulatorPage = document.getElementById('simulatorPage');
+        const launchSimulatorBtn = document.getElementById('launchSimulator');
+        const startExploringBtn = document.getElementById('startExploring');
+        const backToLandingBtn = document.getElementById('backToLanding');
+        function showSimulator() {
+            landingPage.classList.add('hidden');
+            simulatorPage.classList.remove('hidden');
+            // Reset scroll position to top when showing simulator
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+        function showLanding() {
+            simulatorPage.classList.add('hidden');
+            landingPage.classList.remove('hidden');
+            // Reset scroll position to top when showing landing page
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+        launchSimulatorBtn.addEventListener('click', showSimulator);
+        startExploringBtn.addEventListener('click', showSimulator);
+        backToLandingBtn.addEventListener('click', showLanding);
+        let linearAnimationId;
+        let rotationAnimationId;
+        let rotationStartTime = 0;
+        let isRotating = false;
+        const linearTab = document.getElementById('linearTab');
+        const rotationTab = document.getElementById('rotationTab');
+        const linearContent = document.getElementById('linearContent');
+        const rotationContent = document.getElementById('rotationContent');
+        const initialVelocitySlider = document.getElementById('initialVelocity');
+        const accelerationSlider = document.getElementById('acceleration');
+        const timeSlider = document.getElementById('time');
+        const angularSpeedSlider = document.getElementById('angularSpeed');
+        const radiusSlider = document.getElementById('radius');
+        const velocityValue = document.getElementById('velocityValue');
+        const accelerationValue = document.getElementById('accelerationValue');
+        const timeValue = document.getElementById('timeValue');
+        const angularSpeedValue = document.getElementById('angularSpeedValue');
+        const radiusValue = document.getElementById('radiusValue');
+        const currentDisplacement = document.getElementById('currentDisplacement');
+        const currentVelocity = document.getElementById('currentVelocity');
+        const currentAngle = document.getElementById('currentAngle');
+        const linearSpeed = document.getElementById('linearSpeed');
+        const linearObject = document.getElementById('linearObject');
+        const linearChart = document.getElementById('linearChart');
+        const rotationCanvas = document.getElementById('rotationCanvas');
+        const rotCtx = rotationCanvas.getContext('2d');
+        let myChart = null;
+        let canvasInitialized = false;
+        function switchTab(activeTab, inactiveTab, activeContent, inactiveContent) {
+            activeTab.classList.add('active');
+            inactiveTab.classList.remove('active');
+            activeContent.classList.remove('hidden');
+            inactiveContent.classList.add('hidden');
+        }
+        linearTab.addEventListener('click', () => {
+            switchTab(linearTab, rotationTab, linearContent, rotationContent);
+            setTimeout(() => {
+                if (myChart) myChart.resize();
+            }, 100);
+        });
+        rotationTab.addEventListener('click', () => {
+            switchTab(rotationTab, linearTab, rotationContent, linearContent);
+            setTimeout(() => {
+                drawRotationCanvas();
+            }, 100);
+        });
+        initialVelocitySlider.addEventListener('input', (e) => {
+            velocityValue.textContent = `${e.target.value} m/s`;
+            updateLinearDisplay();
+        });
+        accelerationSlider.addEventListener('input', (e) => {
+            accelerationValue.textContent = `${e.target.value} m/s²`;
+            updateLinearDisplay();
+        });
+        timeSlider.addEventListener('input', (e) => {
+            timeValue.textContent = `${e.target.value} s`;
+            updateLinearDisplay();
+        });
+        angularSpeedSlider.addEventListener('input', (e) => {
+            angularSpeedValue.textContent = `${e.target.value} rad/s`;
+            updateRotationDisplay();
+        });
+        radiusSlider.addEventListener('input', (e) => {
+            radiusValue.textContent = `${e.target.value} m`;
+            updateRotationDisplay();
+        });
+        function updateTrackLabels(minRange, maxRange) {
+            const leftLabel = document.getElementById('leftLabel');
+            const rightLabel = document.getElementById('rightLabel');
+            const zeroLabel = document.getElementById('zeroLabel');
+            const zeroLine = document.getElementById('zeroLine');
+            if (leftLabel) leftLabel.textContent = `${minRange.toFixed(1)}m`;
+            if (rightLabel) rightLabel.textContent = `${maxRange.toFixed(1)}m`;
+            if (zeroLine) {
+                zeroLine.style.left = '50%';
+                zeroLine.style.opacity = '0.7';
+            }
+            if (zeroLabel) {
+                zeroLabel.style.opacity = '1';
+            }
+        }
+        function updateLinearDisplay() {
+            const v0 = parseFloat(initialVelocitySlider.value);
+            const a = parseFloat(accelerationSlider.value);
+            const t = parseFloat(timeSlider.value);
+            const displacement = v0 * t + 0.5 * a * t * t;
+            const velocity = v0 + a * t;
+            currentDisplacement.textContent = `${displacement.toFixed(2)} m`;
+            currentVelocity.textContent = `${velocity.toFixed(2)} m/s`;
+            let minDisp = Infinity, maxDisp = -Infinity;
+            for (let i = 0; i <= 100; i++) {
+                const time = (i / 100) * t;
+                const disp = v0 * time + 0.5 * a * time * time;
+                minDisp = Math.min(minDisp, disp);
+                maxDisp = Math.max(maxDisp, disp);
+            }
+            const range = Math.max(Math.abs(minDisp), Math.abs(maxDisp));
+            const paddedRange = range * 1.2 + 5;
+            updateTrackLabels(-paddedRange, paddedRange);
+            if (!isLinearAnimating) {
+                const progressIndicator = document.getElementById('progressIndicator');
+                const motionTrail = document.getElementById('motionTrail');
+                const directionIndicator = document.getElementById('directionIndicator');
+                const linearObject = document.getElementById('linearObject');
+                if (progressIndicator) progressIndicator.style.opacity = '0';
+                if (directionIndicator) directionIndicator.style.opacity = '0';
+                if (motionTrail) {
+                    motionTrail.style.width = '0%';
+                    motionTrail.style.left = '50%';
+                }
+                if (linearObject) {
+                    linearObject.style.left = '50%';
+                }
+            } else {
+                const trackStatus = document.getElementById('trackStatus');
+                if (trackStatus) {
+                    trackStatus.textContent = 'Motion Track';
+                    trackStatus.style.background = 'rgba(0, 0, 0, 0.5)';
+                }
+            }
+            drawLinearChart();
+        }
+        function updateRotationDisplay() {
+            const omega = parseFloat(angularSpeedSlider.value);
+            const r = parseFloat(radiusSlider.value);
+            const v = omega * (r / 100);
+            linearSpeed.textContent = `${v.toFixed(2)} m/s`;
+            if (!isRotating) {
+                drawRotationCanvas();
+            }
+        }
+        function initializeChart() {
+            if (myChart) {
+                myChart.destroy();
+            }
+            const ctx = linearChart.getContext('2d');
+            const gradientDisplacement = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientDisplacement.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+            gradientDisplacement.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+            const gradientVelocity = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientVelocity.addColorStop(0, 'rgba(139, 92, 246, 0.3)');
+            gradientVelocity.addColorStop(1, 'rgba(139, 92, 246, 0.05)');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Displacement (m)',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: gradientDisplacement,
+                            borderWidth: 3,
+                            fill: 'origin',
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 8,
+                            pointHoverBackgroundColor: '#3b82f6',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 3,
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                        },
+                        {
+                            label: 'Velocity (m/s)',
+                            data: [],
+                            borderColor: '#8b5cf6',
+                            backgroundColor: gradientVelocity,
+                            borderWidth: 3,
+                            fill: 'origin',
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 8,
+                            pointHoverBackgroundColor: '#8b5cf6',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 3,
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'center',
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    family: 'Poppins',
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                usePointStyle: true,
+                                padding: 15,
+                                boxWidth: 12,
+                                boxHeight: 12,
+                                generateLabels: function(chart) {
+                                    const originalLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                    const isMobile = window.innerWidth < 640;
+                                    return originalLabels.map((label, index) => {
+                                        if (isMobile) {
+                                            label.text = index === 0 ? 's (m)' : 'v (m/s)';
+                                        } else {
+                                            label.text = index === 0 ? 'Displacement (m)' : 'Velocity (m/s)';
+                                        }
+                                        return label;
+                                    });
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            cornerRadius: 8,
+                            titleFont: {
+                                family: 'Poppins',
+                                size: 13,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                family: 'Poppins',
+                                size: 12
+                            },
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return `Time: ${context[0].label}s`;
+                                },
+                                afterBody: function(context) {
+                                    const time = parseFloat(context[0].label);
+            const v0 = parseFloat(initialVelocitySlider.value);
+            const a = parseFloat(accelerationSlider.value);
+                                    return `\nPhysics:\nv₀ = ${v0} m/s\na = ${a} m/s²`;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (s)',
+                                color: '#ffffff',
+                                font: {
+                                    family: 'Poppins',
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                lineWidth: 1
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    family: 'Poppins',
+                                    size: 10
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Value',
+                                color: '#ffffff',
+                                font: {
+                                    family: 'Poppins',
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                lineWidth: 1
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    family: 'Poppins',
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 750,
+                        easing: 'easeInOutQuart'
+                    },
+                    elements: {
+                        point: {
+                            hoverRadius: 8
+                        },
+                        line: {
+                            borderJoinStyle: 'round',
+                            borderCapStyle: 'round'
+                        }
+                    }
+                }
+            });
+        }
+        function updateChart(currentTime = null, isAnimating = false) {
+            if (!myChart) return;
+            const v0 = parseFloat(initialVelocitySlider.value);
+            const a = parseFloat(accelerationSlider.value);
+            const maxTime = parseFloat(timeSlider.value);
+            const steps = 50;
+            const labels = [];
+            const displacementData = [];
+            const velocityData = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = (i / steps) * maxTime;
+                const displacement = v0 * t + 0.5 * a * t * t;
+                const velocity = v0 + a * t;
+                labels.push(t.toFixed(1));
+                displacementData.push(displacement);
+                velocityData.push(velocity);
+            }
+            myChart.data.labels = labels;
+            myChart.data.datasets[0].data = displacementData;
+            myChart.data.datasets[1].data = velocityData;
+            if (isAnimating && currentTime !== null) {
+                const currentIndex = Math.floor((currentTime / maxTime) * steps);
+                myChart.data.datasets[0].pointRadius = labels.map((_, i) => i === currentIndex ? 8 : 0);
+                myChart.data.datasets[1].pointRadius = labels.map((_, i) => i === currentIndex ? 8 : 0);
+                if (myChart.options.plugins.annotation) {
+                    myChart.options.plugins.annotation.annotations = {
+                        line1: {
+                            type: 'line',
+                            xMin: currentTime.toFixed(1),
+                            xMax: currentTime.toFixed(1),
+                            borderColor: 'rgba(255, 255, 255, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [5, 5]
+                        }
+                    };
+                }
+                } else {
+                myChart.data.datasets[0].pointRadius = 0;
+                myChart.data.datasets[1].pointRadius = 0;
+                if (myChart.options.plugins.annotation) {
+                    myChart.options.plugins.annotation.annotations = {};
+                }
+            }
+            const updateMode = isAnimating ? 'none' : 'resize';
+            myChart.update(updateMode);
+        }
+        function drawLinearChart(currentTime = null, isAnimating = false) {
+            updateChart(currentTime, isAnimating);
+        }
+        function animateLinearMotion() {
+            const v0 = parseFloat(initialVelocitySlider.value);
+            const a = parseFloat(accelerationSlider.value);
+            const maxTime = parseFloat(timeSlider.value);
+            let minDisp = Infinity, maxDisp = -Infinity;
+            for (let i = 0; i <= 100; i++) {
+                const t = (i / 100) * maxTime;
+                const displacement = v0 * t + 0.5 * a * t * t;
+                minDisp = Math.min(minDisp, displacement);
+                maxDisp = Math.max(maxDisp, displacement);
+            }
+            const range = Math.max(Math.abs(minDisp), Math.abs(maxDisp));
+            const paddedRange = range * 1.2 + 5;
+            minDisp = -paddedRange;
+            maxDisp = paddedRange;
+            const totalRange = maxDisp - minDisp;
+            updateTrackLabels(minDisp, maxDisp);
+            const progressIndicator = document.getElementById('progressIndicator');
+            const motionTrail = document.getElementById('motionTrail');
+            const directionIndicator = document.getElementById('directionIndicator');
+            const linearObject = document.getElementById('linearObject');
+            progressIndicator.style.opacity = '1';
+            directionIndicator.style.opacity = '1';
+            motionTrail.style.width = '0%';
+            motionTrail.style.left = '50%';
+            linearObject.style.left = '50%';
+            let startTime = Date.now();
+            let lastDisplacement = 0;
+            function animate() {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const t = Math.min(elapsed, maxTime);
+                const displacement = v0 * t + 0.5 * a * t * t;
+                const velocity = v0 + a * t;
+                const position = 50 + (displacement / paddedRange) * 40;
+                const clampedPosition = Math.max(5, Math.min(95, position));
+                linearObject.style.left = `${clampedPosition}%`;
+                const startPos = 50;
+                if (clampedPosition >= startPos) {
+                    motionTrail.style.left = `${startPos}%`;
+                    motionTrail.style.width = `${clampedPosition - startPos}%`;
+                    motionTrail.style.background = 'linear-gradient(to right, #60a5fa, #a855f7)';
+                } else {
+                    motionTrail.style.left = `${clampedPosition}%`;
+                    motionTrail.style.width = `${startPos - clampedPosition}%`;
+                    motionTrail.style.background = 'linear-gradient(to left, #60a5fa, #a855f7)';
+                }
+                if (velocity > 0.1) {
+                    directionIndicator.textContent = '→';
+                    directionIndicator.style.background = 'rgba(34, 197, 94, 0.8)';
+                } else if (velocity < -0.1) {
+                    directionIndicator.textContent = '←';
+                    directionIndicator.style.background = 'rgba(239, 68, 68, 0.8)';
+                } else {
+                    directionIndicator.textContent = '●';
+                    directionIndicator.style.background = 'rgba(168, 85, 247, 0.8)';
+                }
+                const progress = (t / maxTime) * 100;
+                progressIndicator.textContent = `${progress.toFixed(0)}%`;
+                currentDisplacement.textContent = `${displacement.toFixed(2)} m`;
+                currentVelocity.textContent = `${velocity.toFixed(2)} m/s`;
+                drawLinearChart(t, true);
+                lastDisplacement = displacement;
+                if (t < maxTime) {
+                    linearAnimationId = requestAnimationFrame(animate);
+                } else {
+                    drawLinearChart();
+                    progressIndicator.style.opacity = '0';
+                    directionIndicator.style.opacity = '0';
+                    updatePlayButton(false);
+                    updateLinearDisplay();
+                    setTimeout(() => {
+                        motionTrail.style.width = '0%';
+                        motionTrail.style.left = '50%';
+                    }, 3000);
+                }
+            }
+            animate();
+        }
+        function drawRotationCanvas() {
+            const container = rotationCanvas.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const canvasRect = rotationCanvas.getBoundingClientRect();
+            const maxSize = Math.min(containerRect.width, containerRect.height) - 20;
+            const displaySize = Math.min(maxSize, 400);
+            const canvasSize = Math.max(displaySize, 200);
+            const scale = window.devicePixelRatio || 1;
+            if (!canvasInitialized || Math.abs(rotationCanvas.width - canvasSize * scale) > 10) {
+                rotationCanvas.width = canvasSize * scale;
+                rotationCanvas.height = canvasSize * scale;
+                rotationCanvas.style.width = canvasSize + 'px';
+                rotationCanvas.style.height = canvasSize + 'px';
+                rotCtx.resetTransform();
+                rotCtx.scale(scale, scale);
+                canvasInitialized = true;
+            }
+            const r = parseFloat(radiusSlider.value);
+            const centerX = canvasSize / 2;
+            const centerY = canvasSize / 2;
+            const scaledRadius = Math.min(r * (canvasSize / 320), canvasSize * 0.45);
+            const scaleFactor = canvasSize / 400;
+            const fontSize = Math.max(10, Math.min(16, 12 * scaleFactor));
+            const objectRadius = Math.max(8, Math.min(15, 12 * scaleFactor));
+            const centerDotRadius = Math.max(3, Math.min(6, 4 * scaleFactor));
+            const arrowLength = Math.max(20, Math.min(40, 30 * scaleFactor));
+            const textPadding = Math.max(8, Math.min(15, 12 * scaleFactor));
+            const lineHeight = fontSize + 4;
+            rotCtx.clearRect(0, 0, canvasSize, canvasSize);
+            rotCtx.strokeStyle = 'rgba(75, 85, 99, 0.3)';
+            rotCtx.lineWidth = Math.max(2, 3 * scaleFactor);
+            const dashSize = Math.max(3, 6 * scaleFactor);
+            rotCtx.setLineDash([dashSize, dashSize]);
+            rotCtx.beginPath();
+            rotCtx.arc(centerX, centerY, scaledRadius, 0, 2 * Math.PI);
+            rotCtx.stroke();
+            rotCtx.setLineDash([]);
+            if (isRotating) {
+                const omega = parseFloat(angularSpeedSlider.value);
+                const elapsed = (Date.now() - rotationStartTime) / 1000;
+                const angle = omega * elapsed;
+                const x = centerX + scaledRadius * Math.cos(angle);
+                const y = centerY + scaledRadius * Math.sin(angle);
+                rotCtx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+                rotCtx.lineWidth = Math.max(2, 3 * scaleFactor);
+                rotCtx.beginPath();
+                rotCtx.moveTo(centerX, centerY);
+                rotCtx.lineTo(x, y);
+                rotCtx.stroke();
+                rotCtx.fillStyle = '#8b5cf6';
+                rotCtx.beginPath();
+                rotCtx.arc(x, y, objectRadius, 0, 2 * Math.PI);
+                rotCtx.fill();
+                rotCtx.strokeStyle = 'white';
+                rotCtx.lineWidth = Math.max(2, 3 * scaleFactor);
+                rotCtx.beginPath();
+                rotCtx.arc(x, y, objectRadius, 0, 2 * Math.PI);
+                rotCtx.stroke();
+                const velocityLength = arrowLength;
+                const velocityAngle = angle + Math.PI / 2; 
+                const arrowX = x + velocityLength * Math.cos(velocityAngle);
+                const arrowY = y + velocityLength * Math.sin(velocityAngle);
+                rotCtx.strokeStyle = '#10b981';
+                rotCtx.lineWidth = Math.max(2, 3 * scaleFactor);
+                rotCtx.beginPath();
+                rotCtx.moveTo(x, y);
+                rotCtx.lineTo(arrowX, arrowY);
+                rotCtx.stroke();
+                const headLength = Math.max(6, 8 * scaleFactor);
+                const headAngle = Math.PI / 6;
+                rotCtx.beginPath();
+                rotCtx.moveTo(arrowX, arrowY);
+                rotCtx.lineTo(
+                    arrowX - headLength * Math.cos(velocityAngle - headAngle),
+                    arrowY - headLength * Math.sin(velocityAngle - headAngle)
+                );
+                rotCtx.moveTo(arrowX, arrowY);
+                rotCtx.lineTo(
+                    arrowX - headLength * Math.cos(velocityAngle + headAngle),
+                    arrowY - headLength * Math.sin(velocityAngle + headAngle)
+                );
+                rotCtx.stroke();
+                rotCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                rotCtx.beginPath();
+                rotCtx.arc(centerX, centerY, centerDotRadius + 2, 0, 2 * Math.PI);
+                rotCtx.fill();
+                rotCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                rotCtx.font = `bold ${fontSize}px Poppins`;
+                rotCtx.fillText(`θ = ${angle.toFixed(2)} rad`, textPadding, textPadding + lineHeight);
+                rotCtx.fillText(`ω = ${omega} rad/s`, textPadding, textPadding + lineHeight * 2);
+                rotCtx.fillText(`r = ${r} m`, textPadding, textPadding + lineHeight * 3);
+                rotCtx.fillText(`v = ${(omega * (r/100)).toFixed(2)} m/s`, textPadding, textPadding + lineHeight * 4);
+                currentAngle.textContent = `${angle.toFixed(2)} rad`;
+                rotationAnimationId = requestAnimationFrame(drawRotationCanvas);
+            } else {
+                const lineGradient = rotCtx.createLinearGradient(centerX, centerY, centerX + scaledRadius, centerY);
+                lineGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+                lineGradient.addColorStop(1, '#3b82f6');
+                rotCtx.strokeStyle = lineGradient;
+                rotCtx.lineWidth = Math.max(3, 4 * scaleFactor);
+                rotCtx.lineCap = 'round';
+                rotCtx.beginPath();
+                rotCtx.moveTo(centerX, centerY);
+                rotCtx.lineTo(centerX + scaledRadius, centerY);
+                rotCtx.stroke();
+                rotCtx.fillStyle = '#8b5cf6';
+                rotCtx.beginPath();
+                rotCtx.arc(centerX + scaledRadius, centerY, objectRadius, 0, 2 * Math.PI);
+                rotCtx.fill();
+                rotCtx.strokeStyle = 'white';
+                rotCtx.lineWidth = Math.max(2, 3 * scaleFactor);
+                rotCtx.beginPath();
+                rotCtx.arc(centerX + scaledRadius, centerY, objectRadius, 0, 2 * Math.PI);
+                rotCtx.stroke();
+                rotCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                rotCtx.beginPath();
+                rotCtx.arc(centerX, centerY, centerDotRadius + 2, 0, 2 * Math.PI);
+                rotCtx.fill();
+                rotCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                rotCtx.font = `bold ${fontSize}px Poppins`;
+                rotCtx.fillText(`θ = 0.00 rad`, textPadding, textPadding + lineHeight);
+                rotCtx.fillText(`ω = ${parseFloat(angularSpeedSlider.value)} rad/s`, textPadding, textPadding + lineHeight * 2);
+                rotCtx.fillText(`r = ${parseFloat(radiusSlider.value)} m`, textPadding, textPadding + lineHeight * 3);
+                rotCtx.fillText(`v = ${(parseFloat(angularSpeedSlider.value) * (parseFloat(radiusSlider.value)/100)).toFixed(2)} m/s`, textPadding, textPadding + lineHeight * 4);
+            }
+        }
+        let isLinearAnimating = false;
+        function updatePlayButton(isPlaying) {
+            const playButton = document.getElementById('playLinear');
+            const icon = playButton.querySelector('i');
+            const linearSliders = [
+                document.getElementById('initialVelocity'),
+                document.getElementById('acceleration'),
+                document.getElementById('time')
+            ];
+            if (isPlaying) {
+                icon.className = 'fas fa-stop mr-2';
+                playButton.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop';
+                playButton.classList.remove('modern-button');
+                playButton.classList.add('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'hover:from-red-700', 'hover:to-red-800');
+                linearSliders.forEach(slider => {
+                    if (slider) {
+                        slider.disabled = true;
+                        slider.style.opacity = '0.5';
+                        slider.style.cursor = 'not-allowed';
+                    }
+                });
+            } else {
+                icon.className = 'fas fa-play mr-2';
+                playButton.innerHTML = '<i class="fas fa-play mr-2"></i>Play';
+                playButton.classList.add('modern-button');
+                playButton.classList.remove('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'hover:from-red-700', 'hover:to-red-800');
+                linearSliders.forEach(slider => {
+                    if (slider) {
+                        slider.disabled = false;
+                        slider.style.opacity = '1';
+                        slider.style.cursor = 'pointer';
+                    }
+                });
+            }
+            isLinearAnimating = isPlaying;
+        }
+        document.getElementById('playLinear').addEventListener('click', () => {
+            if (isLinearAnimating) {
+            if (linearAnimationId) {
+                cancelAnimationFrame(linearAnimationId);
+                    linearAnimationId = null;
+                }
+                const progressIndicator = document.getElementById('progressIndicator');
+                const directionIndicator = document.getElementById('directionIndicator');
+                const motionTrail = document.getElementById('motionTrail');
+                if (progressIndicator) progressIndicator.style.opacity = '0';
+                if (directionIndicator) directionIndicator.style.opacity = '0';
+                setTimeout(() => {
+                    if (motionTrail) {
+                        motionTrail.style.width = '0%';
+                        motionTrail.style.left = '50%';
+                    }
+                }, 1000);
+                drawLinearChart();
+                updatePlayButton(false);
+                updateLinearDisplay();
+            } else {
+                if (linearAnimationId) {
+                    cancelAnimationFrame(linearAnimationId);
+                }
+                document.getElementById('linearObject').style.left = '50%';
+                updatePlayButton(true);
+            animateLinearMotion();
+            }
+        });
+        function updateRotationButton(isPlaying) {
+            const playButton = document.getElementById('playRotation');
+            const icon = playButton.querySelector('i');
+            const rotationSliders = [
+                document.getElementById('angularSpeed'),
+                document.getElementById('radius')
+            ];
+            if (isPlaying) {
+                icon.className = 'fas fa-stop mr-2';
+                playButton.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop';
+                playButton.classList.remove('modern-button');
+                playButton.classList.add('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'hover:from-red-700', 'hover:to-red-800');
+                rotationSliders.forEach(slider => {
+                    if (slider) {
+                        slider.disabled = true;
+                        slider.style.opacity = '0.5';
+                        slider.style.cursor = 'not-allowed';
+                    }
+                });
+            } else {
+                icon.className = 'fas fa-play mr-2';
+                playButton.innerHTML = '<i class="fas fa-play mr-2"></i>Play';
+                playButton.classList.add('modern-button');
+                playButton.classList.remove('bg-gradient-to-r', 'from-red-600', 'to-red-700', 'hover:from-red-700', 'hover:to-red-800');
+                rotationSliders.forEach(slider => {
+                    if (slider) {
+                        slider.disabled = false;
+                        slider.style.opacity = '1';
+                        slider.style.cursor = 'pointer';
+                    }
+                });
+            }
+        }
+        document.getElementById('playRotation').addEventListener('click', () => {
+            if (isRotating) {
+            isRotating = false;
+            if (rotationAnimationId) {
+                cancelAnimationFrame(rotationAnimationId);
+            }
+            currentAngle.textContent = '0.00 rad';
+            drawRotationCanvas();
+                updateRotationButton(false);
+                updateRotationDisplay();
+            } else {
+                isRotating = true;
+                rotationStartTime = Date.now();
+                updateRotationButton(true);
+                function updateRotationValues() {
+                    if (isRotating) {
+                        const omega = parseFloat(angularSpeedSlider.value);
+                        const r = parseFloat(radiusSlider.value);
+                        const linearSpeedValue = omega * (r / 100);
+                        linearSpeed.textContent = `${linearSpeedValue.toFixed(2)} m/s`;
+                        requestAnimationFrame(updateRotationValues);
+                    }
+                }
+                updateRotationValues();
+                drawRotationCanvas();
+            }
+        });
+        updateLinearDisplay();
+        updateRotationDisplay();
+        window.addEventListener('resize', () => {
+            drawRotationCanvas();
+            if (myChart) {
+                myChart.resize();
+                setTimeout(() => {
+                    myChart.update('none');
+                }, 100);
+            }
+        });
+        function initializeRotationCanvas() {
+            if (canvasInitialized) return;
+            const container = rotationCanvas.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const maxSize = Math.min(containerRect.width, containerRect.height) - 20;
+            const displaySize = Math.min(maxSize, 400);
+            const canvasSize = Math.max(displaySize, 200);
+            const scale = window.devicePixelRatio || 1;
+            rotationCanvas.width = canvasSize * scale;
+            rotationCanvas.height = canvasSize * scale;
+            rotationCanvas.style.width = canvasSize + 'px';
+            rotationCanvas.style.height = canvasSize + 'px';
+            rotCtx.scale(scale, scale);
+            canvasInitialized = true;
+            drawRotationCanvas();
+        }
+        setTimeout(() => {
+            initializeChart();
+            initializeRotationCanvas();
+            updateLinearDisplay();
+            // Ensure page starts at top
+            window.scrollTo(0, 0);
+        }, 50);
+        // Prevent scroll position issues when switching pages
+        window.addEventListener('beforeunload', function() {
+            window.scrollTo(0, 0);
+        });
+        // Reset scroll when page is loaded/refreshed
+        window.addEventListener('load', function() {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        });
+        const style = document.createElement('style');
+        style.textContent = `
+            .tab-btn {
+                background: rgba(75, 85, 99, 0.2);
+                border: 1px solid rgba(75, 85, 99, 0.3);
+                color: rgba(255, 255, 255, 0.7);
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+            .tab-btn.active {
+                background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                border: 1px solid #6366f1;
+                color: white;
+                box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+                font-weight: 600;
+            }
+            .tab-btn:hover:not(.active) {
+                background: rgba(75, 85, 99, 0.3);
+                color: rgba(255, 255, 255, 0.9);
+            }
+            input[type="range"] {
+                background: rgba(148, 163, 184, 0.4);
+                border: 1px solid rgba(148, 163, 184, 0.6);
+                border-radius: 8px;
+                height: 8px;
+            }
+            input[type="range"]::-webkit-slider-track {
+                background: rgba(148, 163, 184, 0.4);
+                border-radius: 8px;
+                height: 8px;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                appearance: none;
+                height: 22px;
+                width: 22px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1);
+                cursor: pointer;
+                box-shadow: 0 3px 12px rgba(139, 92, 246, 0.5);
+                border: 2px solid white;
+                transition: all 0.2s ease;
+            }
+            input[type="range"]::-moz-range-thumb {
+                height: 22px;
+                width: 22px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #3b82f6, #8b5cf6, #6366f1);
+                cursor: pointer;
+                border: 2px solid white;
+                box-shadow: 0 3px 12px rgba(139, 92, 246, 0.5);
+                transition: all 0.2s ease;
+            }
+            input[type="range"]::-moz-range-track {
+                background: rgba(148, 163, 184, 0.4);
+                border-radius: 8px;
+                height: 8px;
+                border: none;
+            }
+            input[type="range"]:hover::-webkit-slider-thumb {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(139, 92, 246, 0.7);
+            }
+            input[type="range"]:hover::-moz-range-thumb {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(139, 92, 246, 0.7);
+            }
+            input[type="range"]:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            input[type="range"]:disabled::-webkit-slider-thumb {
+                background: rgba(107, 114, 128, 0.7);
+                cursor: not-allowed;
+                box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+                transform: none;
+            }
+            input[type="range"]:disabled::-moz-range-thumb {
+                background: rgba(107, 114, 128, 0.7);
+                cursor: not-allowed;
+                box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+                transform: none;
+            }
+            input[type="range"]:disabled::-webkit-slider-track {
+                background: rgba(107, 114, 128, 0.3);
+            }
+            input[type="range"]:disabled::-moz-range-track {
+                background: rgba(107, 114, 128, 0.3);
+            }
+            #rotationCanvas {
+                aspect-ratio: 1 / 1;
+                display: block;
+                transition: none;
+                max-width: 100%;
+                max-height: 100%;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+            }
+            .canvas-container {
+                width: 100%;
+                max-width: 400px;
+                max-height: 400px;
+                aspect-ratio: 1 / 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                contain: layout;
+                position: relative;
+                overflow: hidden;
+                margin: 0 auto;
+            }
+            @media (max-width: 1024px) {
+                .canvas-container {
+                    max-width: 350px;
+                    max-height: 350px;
+                }
+            }
+            @media (max-width: 768px) {
+                .canvas-container {
+                    max-width: 300px;
+                    max-height: 300px;
+                    width: 100%;
+                    height: auto;
+                }
+                #rotationCanvas {
+                    width: 100% !important;
+                    height: 100% !important;
+                    max-width: 300px !important;
+                    max-height: 300px !important;
+                }
+            }
+            @media (max-width: 480px) {
+                .canvas-container {
+                    max-width: 250px;
+                    max-height: 250px;
+                }
+                #rotationCanvas {
+                    max-width: 250px !important;
+                    max-height: 250px !important;
+                }
+            }
+            @media (max-width: 640px) {
+                #landingPage .container {
+                    padding-left: 1.5rem;
+                    padding-right: 1.5rem;
+                }
+                #landingPage .text-center h1 {
+                    margin-bottom: 2rem;
+                }
+                #landingPage .text-center p {
+                    margin-bottom: 3rem;
+                }
+            }
+            @media (max-width: 640px) {
+                .tab-content {
+                    padding: 0.5rem;
+                }
+                .grid.grid-cols-1.xl\\:grid-cols-2 {
+                    gap: 1rem;
+                }
+                .chart-container {
+                    min-height: 350px;
+                    overflow: hidden;
+                    position: relative;
+                    padding: 0.75rem !important;
+                }
+                .canvas-bg {
+                    min-height: 320px !important;
+                }
+                .control-section, .values-section {
+                    padding: 0.75rem !important;
+                }
+                #rotationContent .chart-container {
+                    max-width: 100%;
+                    padding: 0.5rem !important;
+                    box-sizing: border-box;
+                }
+                #rotationContent {
+                    overflow: hidden;
+                }
+                #rotationContent .grid {
+                    max-width: 100%;
+                }
+                .values-section .grid.grid-cols-1.sm\\:grid-cols-2 > div {
+                    min-height: 80px;
+                    padding: 0.75rem;
+                }
+                .values-section #currentAngle,
+                .values-section #linearSpeed {
+                    font-variant-numeric: tabular-nums;
+                    min-width: 100px;
+                    text-align: left;
+                    line-height: 1.2;
+                    word-break: break-all;
+                    overflow-wrap: break-word;
+                }
+                .motion-track {
+                    height: 10rem !important;
+                    margin-bottom: 1rem !important;
+                    min-height: 160px;
+                }
+                .motion-track #zeroLine {
+                    height: 5rem !important; /* 80px to match the increased track height */
+                    top: 50% !important;
+                    transform: translateY(-50%) !important;
+                    left: 50% !important;
+                }
+                .motion-track div[class*="border-t border-b"] {
+                    height: 5rem !important; /* 80px to match zero line */
+                    top: 50% !important;
+                    transform: translateY(-50%) !important;
+                }
+                .motion-track #linearObject {
+                    width: 32px !important;
+                    height: 32px !important;
+                    border-width: 2px !important;
+                    top: 50% !important;
+                    transform: translateY(-50%) translateX(-50%) !important;
+                }
+                .motion-track #motionTrail {
+                    height: 8px !important;
+                    top: 50% !important;
+                    transform: translateY(-50%) !important;
+                }
+                .motion-track div[id$="Label"] {
+                    font-size: 0.75rem !important;
+                    padding: 0.5rem 0.75rem !important;
+                    font-weight: 600 !important;
+                }
+                .motion-track #trackStatus,
+                .motion-track #directionIndicator,
+                .motion-track #progressIndicator {
+                    font-size: 0.75rem !important;
+                    padding: 0.5rem 0.75rem !important;
+                    font-weight: 600 !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
